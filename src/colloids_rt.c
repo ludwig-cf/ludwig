@@ -31,7 +31,12 @@
 #include "pair_lj_cut.h"
 #include "pair_yukawa.h"
 #include "bond_fene.h"
+//CHANGE1
+#include "bond_harmonic.h"
 #include "angle_cosine.h"
+//CHANGE1
+#include "angle_harmonic.h"
+#include "angle_dihedral.h"
 
 #include "colloids_halo.h"
 #include "colloids_init.h"
@@ -46,7 +51,12 @@ int pair_ss_cut_init(pe_t * pe, cs_t * cs, rt_t * rt, interact_t * inter);
 int pair_yukawa_init(pe_t * pe, cs_t * cs, rt_t * rt, interact_t * inter);
 int pair_lj_cut_init(pe_t * pe, cs_t * cs, rt_t * rt, interact_t * inter);
 int bond_fene_init(pe_t * pe, cs_t * cs, rt_t * rt, interact_t * interact);
+//CHANGE1
+int bond_harmonic_init(pe_t * pe, cs_t * cs, rt_t * rt, interact_t * interact);
 int angle_cosine_init(pe_t * pe, cs_t * cs, rt_t * rt, interact_t * interact);
+//CHANGE1
+int angle_harmonic_init(pe_t * pe, cs_t * cs, rt_t * rt, interact_t * interact);
+int angle_dihedral_init(pe_t * pe, cs_t * cs, rt_t * rt, interact_t * interact);
 
 int pair_ss_cut_ij_init(pe_t * pe, cs_t * cs, rt_t * rt, interact_t * intrct);
 
@@ -141,7 +151,12 @@ int colloids_init_rt(pe_t * pe, rt_t * rt, cs_t * cs, colloids_info_t ** pinfo,
   pair_lj_cut_init(pe, cs, rt, *interact);
   pair_yukawa_init(pe, cs, rt, *interact);
   bond_fene_init(pe, cs, rt, *interact);
+  //CHANGE1
+  bond_harmonic_init(pe, cs, rt, *interact);
   angle_cosine_init(pe, cs, rt, *interact);
+  //CHANGE1
+  angle_harmonic_init(pe, cs, rt, *interact);
+  angle_dihedral_init(pe, cs, rt, *interact);
 
   pair_ss_cut_ij_init(pe, cs, rt, *interact);
 
@@ -757,6 +772,8 @@ int pair_ss_cut_init(pe_t * pe, cs_t * cs, rt_t * rt, interact_t * inter) {
   int nu;
   double kt;
   double cutoff;
+  //CHANGE1
+  int unbonded;
 
   physics_t * phys = NULL;
   pair_ss_cut_t * pair = NULL;
@@ -784,8 +801,13 @@ int pair_ss_cut_init(pe_t * pe, cs_t * cs, rt_t * rt, interact_t * inter) {
     n = rt_double_parameter(rt, "soft_sphere_cutoff", &cutoff);
     if (n == 0) pe_fatal(pe, "Check soft_sphere_cutoff appears in input\n");
 
+    //CHANGE1
+    n = rt_int_parameter(rt, "soft_sphere_unbonded", &unbonded);
+    if (n == 0) pe_fatal(pe, "Must set soft_sphere_unbonded in input for soft sphere potential\n");
+
+    //CHANGE1
     pair_ss_cut_create(pe, cs, &pair);
-    pair_ss_cut_param_set(pair, epsilon, sigma, nu, cutoff);
+    pair_ss_cut_param_set(pair, epsilon, sigma, nu, cutoff, unbonded);
     pair_ss_cut_register(pair, inter);
     pair_ss_cut_info(pair);
   }
@@ -889,6 +911,7 @@ int pair_yukawa_init(pe_t * pe, cs_t * cs, rt_t * rt, interact_t * interact) {
  *
  *****************************************************************************/
 
+//CHANGE1
 int pair_lj_cut_init(pe_t * pe, cs_t * cs, rt_t * rt, interact_t * inter) {
 
   int n;
@@ -896,6 +919,7 @@ int pair_lj_cut_init(pe_t * pe, cs_t * cs, rt_t * rt, interact_t * inter) {
   double epsilon;
   double sigma;
   double cutoff;
+  int unbonded;
 
   pair_lj_cut_t * lj = NULL;
 
@@ -912,9 +936,11 @@ int pair_lj_cut_init(pe_t * pe, cs_t * cs, rt_t * rt, interact_t * inter) {
     if (n == 0) pe_fatal(pe, "Must set lj_sigma in input for LJ potential\n");
     n = rt_double_parameter(rt, "lj_cutoff", &cutoff);
     if (n == 0) pe_fatal(pe, "Must set lj_cutoff in input for LJ potential\n");
+    n = rt_int_parameter(rt, "lj_unbonded", &unbonded);
+    if (n == 0) pe_fatal(pe, "Must set lj_unbonded in input for LJ potential\n");
 
     pair_lj_cut_create(pe, cs, &lj);
-    pair_lj_cut_param_set(lj, epsilon, sigma, cutoff);
+    pair_lj_cut_param_set(lj, epsilon, sigma, cutoff, unbonded);
     pair_lj_cut_register(lj, inter);
     pair_lj_cut_info(lj);
   }
@@ -958,6 +984,43 @@ int bond_fene_init(pe_t * pe, cs_t * cs, rt_t * rt, interact_t * interact) {
   return 0;
 }
 
+//CHANGE1
+/*****************************************************************************
+ *
+ *  bond_harmonic_init
+ *
+ *****************************************************************************/
+
+int bond_harmonic_init(pe_t * pe, cs_t * cs, rt_t * rt, interact_t * interact) {
+
+  int n;
+  int on = 0;
+  double kappa;
+  double r0;
+
+  bond_harmonic_t * harmonic = NULL;
+
+  assert(pe);
+  assert(rt);
+  assert(interact);
+
+  rt_int_parameter(rt, "bond_harmonic_on", &on);
+
+  if (on) {
+    n = rt_double_parameter(rt, "bond_harmonic_k", &kappa);
+    if (n == 0) pe_fatal(pe, "Must set bond_harmonic_k in input for harmonic bond\n");
+    n = rt_double_parameter(rt, "bond_harmonic_r0", &r0);
+    if (n == 0) pe_fatal(pe, "Must set bond_harmonic_r0 in input for harmonic bond\n");
+
+    bond_harmonic_create(pe, cs,&harmonic);
+    bond_harmonic_param_set(harmonic, kappa, r0);
+    bond_harmonic_register(harmonic, interact);
+    bond_harmonic_info(harmonic);
+  }
+
+  return 0;
+}
+
 /*****************************************************************************
  *
  *  angle_cosine_init
@@ -985,6 +1048,84 @@ int angle_cosine_init(pe_t * pe, cs_t * cs, rt_t * rt, interact_t * interact) {
     angle_cosine_param_set(angle, kappa);
     angle_cosine_register(angle, interact);
     angle_cosine_info(angle);
+  }
+
+  return 0;
+}
+
+//CHANGE1
+/*****************************************************************************
+ *
+ *  angle_harmonic_init
+ *
+ *****************************************************************************/
+
+int angle_harmonic_init(pe_t * pe, cs_t * cs, rt_t * rt, interact_t * interact) {
+
+  int n;
+  int on = 0;
+  double kappa;
+  double theta0;
+
+  angle_harmonic_t * angle = NULL;
+
+  assert(rt);
+  assert(interact);
+
+  rt_int_parameter(rt,"angle_harmonic_on", &on);
+
+  if (on) {
+    n = rt_double_parameter(rt, "angle_harmonic_k", &kappa);
+    if (n == 0) pe_fatal(pe, "Must set anagle_harmonic_k in input for angle\n");
+
+    n = rt_double_parameter(rt, "angle_harmonic_theta0", &theta0);
+    if (n == 0) pe_fatal(pe, "Must set anagle_harmonic_theta0 in input for angle\n");
+
+    angle_harmonic_create(pe, cs, &angle);
+    angle_harmonic_param_set(angle, kappa,theta0);
+    angle_harmonic_register(angle, interact);
+    angle_harmonic_info(angle);
+  }
+
+  return 0;
+}
+
+//CHANGE1
+/*****************************************************************************
+ *
+ *  angle_dihedral_init
+ *
+ *****************************************************************************/
+
+int angle_dihedral_init(pe_t * pe, cs_t * cs, rt_t * rt, interact_t * interact) {
+
+  int n;
+  int on = 0;
+  double kappa;
+  double phi0;
+  int mu;
+
+  angle_dihedral_t * angle = NULL;
+
+  assert(rt);
+  assert(interact);
+
+  rt_int_parameter(rt,"angle_dihedral_on", &on);
+
+  if (on) {
+    n = rt_double_parameter(rt, "angle_dihedral_k", &kappa);
+    if (n == 0) pe_fatal(pe, "Must set anagle_dihedral_k in input for angle\n");
+
+    n = rt_double_parameter(rt, "angle_dihedral_phi0", &phi0);
+    if (n == 0) pe_fatal(pe, "Must set anagle_dihedral_phi0 in input for angle\n");
+
+    n = rt_int_parameter(rt, "angle_dihedral_mu", &mu);
+    if (n == 0) pe_fatal(pe, "Must set anagle_dihedral_mu in input for angle\n");
+
+    angle_dihedral_create(pe, cs, &angle);
+    angle_dihedral_param_set(angle, kappa, mu, phi0);
+    angle_dihedral_register(angle, interact);
+    angle_dihedral_info(angle);
   }
 
   return 0;

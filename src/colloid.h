@@ -29,9 +29,11 @@ typedef enum colloid_io_version colloid_io_version_t;
  * useful to know to check the ASCII read/write. */
 
 #define NTOT_VAR (32+48)
-#define NPAD_INT  13
+//CHANGE1
+#define NPAD_INT  12
 #define NPAD_DBL  15
-#define NBOND_MAX  2
+//CHANGE1
+#define NBOND_MAX  3
 
 enum colloid_type_enum {COLLOID_TYPE_DEFAULT = 0,
 			COLLOID_TYPE_ACTIVE,

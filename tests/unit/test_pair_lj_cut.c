@@ -71,7 +71,8 @@ int test_pair_lj_cut1(pe_t * pe, cs_t * cs) {
   pair_lj_cut_create(pe, cs, &lj);
   assert(lj);
 
-  pair_lj_cut_param_set(lj, PAIR_EPSILON, PAIR_SIGMA, PAIR_RC);
+  //CHANGE1
+  pair_lj_cut_param_set(lj, PAIR_EPSILON, PAIR_SIGMA, PAIR_RC,0);
 
   h = PAIR_SIGMA;
   pair_lj_cut_single(lj, h, &f, &v);
@@ -118,7 +119,8 @@ int test_pair_lj_cut2(pe_t * pe, cs_t * cs) {
   assert(interact);
   assert(lj);
 
-  pair_lj_cut_param_set(lj, PAIR_EPSILON, PAIR_SIGMA, PAIR_RC);
+  //CHANGE1
+  pair_lj_cut_param_set(lj, PAIR_EPSILON, PAIR_SIGMA, PAIR_RC, 0);
   pair_lj_cut_register(lj, interact);
 
   test_pair_config1(cinfo, interact, lj);

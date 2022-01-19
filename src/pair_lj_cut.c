@@ -40,6 +40,8 @@ struct pair_lj_cut_s {
   double epsilon;
   double sigma;
   double rc;
+  //CHANGE1
+  int unbonded;
   double vlocal;
   double hminlocal;
   double rminlocal;
@@ -93,12 +95,14 @@ int pair_lj_cut_free(pair_lj_cut_t * obj) {
  *****************************************************************************/
 
 int pair_lj_cut_param_set(pair_lj_cut_t * obj, double epsilon, double sigma,
-			  double rc) {
+			  double rc,int unbonded) {
   assert(obj);
 
   obj->epsilon = epsilon;
   obj->sigma = sigma;
   obj->rc = rc;
+  //CHANGE1
+  obj->unbonded = unbonded;
 
   return 0;
 }
@@ -117,6 +121,8 @@ int pair_lj_cut_info(pair_lj_cut_t * obj) {
   pe_info(obj->pe, "epsilon:                  %14.7e\n", obj->epsilon);
   pe_info(obj->pe, "sigma:                    %14.7e\n", obj->sigma);
   pe_info(obj->pe, "cut off (centre-centre)   %14.7e\n", obj->rc);
+  //CHANGE1
+  pe_info(obj->pe, "unbonded:                  %d\n", obj->unbonded);
 
   return 0;
 }
@@ -162,6 +168,9 @@ int pair_lj_cut_compute(colloids_info_t * cinfo, void * self) {
   double r12[3];
   double f, h;
   double ltot[3];
+  //CHANGE1
+  int n;
+  int c;
 
   colloid_t * pc1;
   colloid_t * pc2;
@@ -200,6 +209,15 @@ int pair_lj_cut_compute(colloids_info_t * cinfo, void * self) {
                 for (; pc2; pc2 = pc2->next) {
 
 		  if (pc1->s.index >= pc2->s.index) continue;
+
+                  //CHANGE1
+                  if (obj->unbonded && pc1->s.nbonds) { 
+                    c=0;
+                    for (n = 0; n < pc1->s.nbonds; n++) { 
+                      if (pc1->bonded[n]->s.index == pc2->s.index) {c=1;break;}
+                    }
+                    if (c) continue;
+                  }
 
 		  cs_minimum_distance(obj->cs, pc1->s.r, pc2->s.r, r12);
 		  r2 = r12[X]*r12[X] + r12[Y]*r12[Y] + r12[Z]*r12[Z];

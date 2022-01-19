@@ -20,10 +20,14 @@
 #include "colloids.h"
 #include "ewald.h"
 
+//CHANGE1
 typedef enum interact_enum {
   INTERACT_PAIR = 0,
   INTERACT_BOND,
+  INTERACT_BOND_HARMONIC,
   INTERACT_ANGLE,
+  INTERACT_ANGLE_HARMONIC,
+  INTERACT_ANGLE_DIHEDRAL,
   INTERACT_LUBR,
   INTERACT_WALL,
   INTERACT_MAX
@@ -57,7 +61,14 @@ int interact_compute(interact_t * interact, colloids_info_t * cinfo,
 int interact_pairwise(interact_t * interact, colloids_info_t * cinfo);
 int interact_wall(interact_t * interact, colloids_info_t * cinfo);
 int interact_bonds(interact_t * obj, colloids_info_t * cinfo);
+//CHANGE1
+int interact_bonds_harmonic(interact_t * obj, colloids_info_t * cinfo);
+//CHANGE1
 int interact_angles(interact_t * obj, colloids_info_t * cinfo);
+//CHANGE1
+int interact_angles_harmonic(interact_t * obj, colloids_info_t * cinfo);
+int interact_angles_dihedral(interact_t * obj, colloids_info_t * cinfo);
+//CHANGE1
 int interact_find_bonds(interact_t * obj, colloids_info_t * cinfo);
 int interact_find_bonds_all(interact_t * obj, colloids_info_t * cinfo, int nx);
 int interact_stats(interact_t * obj, colloids_info_t * cinfo);

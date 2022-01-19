@@ -51,6 +51,8 @@ struct pair_ss_cut_s {
   double vlocal;         /* local contribution to energy */
   double hminlocal;      /* local nearest separation */
   double rminlocal;      /* local min centre-centre separation */
+  //CHANGE1
+  int unbonded;
 };
 
 /*****************************************************************************
@@ -98,15 +100,17 @@ int pair_ss_cut_free(pair_ss_cut_t * obj) {
  *  pair_ss_cut_param_set
  *
  *****************************************************************************/
-
+//CHANGE1
 int pair_ss_cut_param_set(pair_ss_cut_t * obj, double epsilon, double sigma,
-			  int nu, double hc) {
+			  int nu, double hc, int unbonded) {
   assert(obj);
 
   obj->epsilon = epsilon;
   obj->sigma = sigma;
   obj->nu = nu;
   obj->hc = hc;
+  //CHANGE1
+  obj->unbonded = unbonded;
 
   return 0;
 }
@@ -134,6 +138,8 @@ int pair_ss_cut_info(pair_ss_cut_t * obj) {
   if (kt > 0.0) {
     pe_info(obj->pe, "epsilon / kT              %14.7e\n", obj->epsilon/kt);
   }
+  //CHANGE1
+  pe_info(obj->pe, "unbonded:                  %d\n", obj->unbonded);
 
   return 0;
 }
@@ -179,6 +185,9 @@ int pair_ss_cut_compute(colloids_info_t * cinfo, void * obj) {
   double r12[3];                        /* centre-centre min distance 1->2 */
   double f;
   double ltot[3];
+  //CHANGE1
+  int n;
+  int c;
 
   colloid_t * pc1;
   colloid_t * pc2;
@@ -216,6 +225,15 @@ int pair_ss_cut_compute(colloids_info_t * cinfo, void * obj) {
                 for (; pc2; pc2 = pc2->next) {
 
                   if (pc1->s.index >= pc2->s.index) continue;
+
+                  //CHANGE1
+                  if (self->unbonded && pc1->s.nbonds) { 
+                    c=0;
+                    for (n = 0; n < pc1->s.nbonds; n++) { 
+                      if (pc1->bonded[n]->s.index == pc2->s.index) {c=1;break;}
+                    }
+                    if (c) continue;
+                  }
 
 		  cs_minimum_distance(self->cs, pc1->s.r, pc2->s.r, r12);
 		  r = sqrt(r12[X]*r12[X] + r12[Y]*r12[Y] + r12[Z]*r12[Z]);

@@ -197,9 +197,16 @@ int interact_compute(interact_t * interact, colloids_info_t * cinfo,
     interact_wall(interact, cinfo);
     
     if (nc > 1) {
-      interact_pairwise(interact, cinfo);
       interact_bonds(interact, cinfo);
+      //CHANGE1
+      interact_bonds_harmonic(interact, cinfo);
+      //CHANGE1
+      interact_pairwise(interact, cinfo);
       interact_angles(interact, cinfo);
+      //CHANGE1
+      interact_angles_harmonic(interact, cinfo);
+      interact_angles_dihedral(interact, cinfo);
+      //CHANGE1
       if (ewald) ewald_sum(ewald);
     }
 
@@ -239,8 +246,6 @@ int interact_stats(interact_t * obj, colloids_info_t * cinfo) {
   
   if (nc > 0) {
 
-    /* Colloid-wall. */
-
     intr = obj->abstr[INTERACT_WALL];
     
     if (intr) {
@@ -257,12 +262,8 @@ int interact_stats(interact_t * obj, colloids_info_t * cinfo) {
       pe_info(obj->pe, "Wall potential energy is:    %14.7e\n", v);
     }
 
-
     if (nc > 1) {
   
-      /* Colloid-colloid lubrication */
-      /* Minimum lubrication distance */
-
       intr = obj->abstr[INTERACT_LUBR];
 
      if (intr) {
@@ -273,9 +274,6 @@ int interact_stats(interact_t * obj, colloids_info_t * cinfo) {
 	MPI_Reduce(&hminlocal, &hmin, 1, MPI_DOUBLE, MPI_MIN, 0, comm);
 	pe_info(obj->pe, "Lubrication minimum h is:    %14.7e\n", hmin);
       }
-
-     /* Pairwise */
-     /* Minimum separation, potential energy */
 
       intr = obj->abstr[INTERACT_PAIR];
 
@@ -292,9 +290,6 @@ int interact_stats(interact_t * obj, colloids_info_t * cinfo) {
 	pe_info(obj->pe, "Pair potential minimum h is: %14.7e\n", hmin);
 	pe_info(obj->pe, "Pair potential energy is:    %14.7e\n", v);
       }
-
-      /* Bonds */
-      /* Min, max bond length; total potential energy */
 
       intr = obj->abstr[INTERACT_BOND];
 
@@ -315,8 +310,25 @@ int interact_stats(interact_t * obj, colloids_info_t * cinfo) {
 	pe_info(obj->pe, "Bond potential energy is:    %14.7e\n", v);
       }
 
-      /* Angles */
-      /* Min, max angle; total potential energy */
+      //CHANGE1
+      intr = obj->abstr[INTERACT_BOND_HARMONIC];
+
+      if (intr) {
+
+	obj->stats[INTERACT_BOND_HARMONIC](intr, stats);
+
+	rminlocal = stats[INTERACT_STAT_RMINLOCAL];
+	rmaxlocal = stats[INTERACT_STAT_RMAXLOCAL];
+	vlocal = stats[INTERACT_STAT_VLOCAL];
+
+	MPI_Reduce(&rminlocal, &rmin, 1, MPI_DOUBLE, MPI_MIN, 0, comm);
+	MPI_Reduce(&rmaxlocal, &rmax, 1, MPI_DOUBLE, MPI_MAX, 0, comm);
+	MPI_Reduce(&vlocal, &v, 1, MPI_DOUBLE, MPI_SUM, 0, comm);
+
+	pe_info(obj->pe, "Bond harmonic potential minimum r is: %14.7e\n", rmin);
+	pe_info(obj->pe, "Bond harmonic potential maximum r is: %14.7e\n", rmax);
+	pe_info(obj->pe, "Bond harmonic potential energy is:    %14.7e\n", v);
+      }
 
       intr = obj->abstr[INTERACT_ANGLE];
 
@@ -335,6 +347,48 @@ int interact_stats(interact_t * obj, colloids_info_t * cinfo) {
 	pe_info(obj->pe, "Angle minimum angle is:      %14.7e\n", rmin);
 	pe_info(obj->pe, "Angle maximum angle is:      %14.7e\n", rmax);
 	pe_info(obj->pe, "Angle potential energy is:   %14.7e\n", v);
+      }
+
+      //CHANGE1
+      intr = obj->abstr[INTERACT_ANGLE_HARMONIC];
+
+      //CHANGE1
+      if (intr) {
+
+	obj->stats[INTERACT_ANGLE_HARMONIC](intr, stats);
+
+	rminlocal = stats[INTERACT_STAT_RMINLOCAL];
+	rmaxlocal = stats[INTERACT_STAT_RMAXLOCAL];
+	vlocal = stats[INTERACT_STAT_VLOCAL];
+
+	MPI_Reduce(&rminlocal, &rmin, 1, MPI_DOUBLE, MPI_MIN, 0, comm);
+	MPI_Reduce(&rmaxlocal, &rmax, 1, MPI_DOUBLE, MPI_MAX, 0, comm);
+	MPI_Reduce(&vlocal, &v, 1, MPI_DOUBLE, MPI_SUM, 0, comm);
+
+	pe_info(obj->pe, "Angle harmonic minimum angle is:      %14.7e\n", rmin);
+	pe_info(obj->pe, "Angle harmonic maximum angle is:      %14.7e\n", rmax);
+	pe_info(obj->pe, "Angle harmonic potential energy is:   %14.7e\n", v);
+      }
+
+      //CHANGE1
+      intr = obj->abstr[INTERACT_ANGLE_DIHEDRAL];
+
+      //CHANGE1
+      if (intr) {
+
+	obj->stats[INTERACT_ANGLE_DIHEDRAL](intr, stats);
+
+	rminlocal = stats[INTERACT_STAT_RMINLOCAL];
+	rmaxlocal = stats[INTERACT_STAT_RMAXLOCAL];
+	vlocal = stats[INTERACT_STAT_VLOCAL];
+
+	MPI_Reduce(&rminlocal, &rmin, 1, MPI_DOUBLE, MPI_MIN, 0, comm);
+	MPI_Reduce(&rmaxlocal, &rmax, 1, MPI_DOUBLE, MPI_MAX, 0, comm);
+	MPI_Reduce(&vlocal, &v, 1, MPI_DOUBLE, MPI_SUM, 0, comm);
+
+	pe_info(obj->pe, "Angle dihedral minimum angle is:      %14.7e\n", rmin);
+	pe_info(obj->pe, "Angle dihedral maximum angle is:      %14.7e\n", rmax);
+	pe_info(obj->pe, "Angle dihedral potential energy is:   %14.7e\n", v);
       }
     }
   }
@@ -603,6 +657,27 @@ int interact_bonds(interact_t * obj, colloids_info_t * cinfo) {
   return 0;
 }
 
+//CHANGE1
+/*****************************************************************************
+ *
+ *  interact_bonds_harmonic
+ *
+ *****************************************************************************/
+
+int interact_bonds_harmonic(interact_t * obj, colloids_info_t * cinfo) {
+
+  void * intr = NULL;
+
+  assert(obj);
+  assert(cinfo);
+
+  intr = obj->abstr[INTERACT_BOND_HARMONIC];
+  if (intr) interact_find_bonds_all(obj, cinfo, 1);
+  if (intr) obj->compute[INTERACT_BOND_HARMONIC](cinfo, intr);
+
+  return 0;
+}
+
 /*****************************************************************************
  *
  *  interact_angles
@@ -618,6 +693,44 @@ int interact_angles(interact_t * obj, colloids_info_t * cinfo) {
 
   intr = obj->abstr[INTERACT_ANGLE];
   if (intr) obj->compute[INTERACT_ANGLE](cinfo, intr);
+
+  return 0;
+}
+
+//CHANGE1
+/*****************************************************************************
+ *
+ *  interact_angles_harmonic
+ *
+ *****************************************************************************/
+int interact_angles_harmonic(interact_t * obj, colloids_info_t * cinfo) {
+
+  void * intr = NULL;
+
+  assert(obj);
+  assert(cinfo);
+
+  intr = obj->abstr[INTERACT_ANGLE_HARMONIC];
+  if (intr) obj->compute[INTERACT_ANGLE_HARMONIC](cinfo, intr);
+
+  return 0;
+}
+
+//CHANGE1
+/*****************************************************************************
+ *
+ *  interact_angles_dihedral
+ *
+ *****************************************************************************/
+int interact_angles_dihedral(interact_t * obj, colloids_info_t * cinfo) {
+
+  void * intr = NULL;
+
+  assert(obj);
+  assert(cinfo);
+
+  intr = obj->abstr[INTERACT_ANGLE_DIHEDRAL];
+  if (intr) obj->compute[INTERACT_ANGLE_DIHEDRAL](cinfo, intr);
 
   return 0;
 }
