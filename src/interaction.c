@@ -27,6 +27,7 @@
 #include <assert.h>
 #include <float.h>
 #include <stdlib.h>
+#include <math.h>
 
 #include "pe.h"
 #include "util.h"
@@ -180,7 +181,8 @@ int interact_statistic_add(interact_t * obj, interact_enum_t it, void * pot,
  *****************************************************************************/
 
 int interact_compute(interact_t * interact, colloids_info_t * cinfo,
-		     map_t * map, psi_t * psi, ewald_t * ewald) {
+		     map_t * map, psi_t * psi, ewald_t * ewald, field_t * phi,
+			field_t * subgrid_flux) {
 
   int nc;
 
@@ -195,18 +197,14 @@ int interact_compute(interact_t * interact, colloids_info_t * cinfo,
     colloids_update_forces_fluid_gravity(cinfo, map);
     colloids_update_forces_fluid_driven(cinfo, map);
     interact_wall(interact, cinfo);
-    
+    if (phi != NULL) colloids_update_forces_phi(cinfo, phi, subgrid_flux); 
     if (nc > 1) {
       interact_bonds(interact, cinfo);
-      //CHANGE1
       interact_bonds_harmonic(interact, cinfo);
-      //CHANGE1
       interact_pairwise(interact, cinfo);
       interact_angles(interact, cinfo);
-      //CHANGE1
       interact_angles_harmonic(interact, cinfo);
       interact_angles_dihedral(interact, cinfo);
-      //CHANGE1
       if (ewald) ewald_sum(ewald);
     }
 
@@ -595,6 +593,139 @@ int colloids_update_forces_fluid_driven(colloids_info_t * cinfo,
 
   return 0;
 }
+
+
+
+
+/*****************************************************************************
+ *
+ *  colloids_update_forces_phi
+ *
+ *****************************************************************************/
+
+
+int colloids_update_forces_phi(colloids_info_t * cinfo, field_t * phi, field_t * subgrid_flux) {
+  int i, j, k, ic, jc, kc, i_min, i_max, j_min, j_max, k_min, k_max, index, ia;
+  int nlocal[3], offset[3], ncell[3];
+  double u0, delta, cutoff, phi_, rnorm, rsq,u;;
+  double r0[3], r[3], force[3], grad_u[3];
+
+  colloid_t * pc = NULL;
+  assert(cinfo);
+  assert(phi);
+  assert(subgrid_flux);
+
+  cs_nlocal(cinfo->cs, nlocal);
+  cs_nlocal_offset(cinfo->cs, offset);
+  colloids_info_ncell(cinfo, ncell);
+
+  /* Initialize subgrid flux to 0 before loop over colloids */
+  for (i = 1; i <= nlocal[X]; i++) {
+    for (j = 1; j <= nlocal[Y]; j++) {
+      for (k = 1; k <= nlocal[Z]; k++) {
+        index = cs_index(cinfo->cs, i, j, k);
+        field_scalar_set(subgrid_flux, index, 0);
+      }
+    }
+  }
+
+  /* Loop through all cells (including the halo cells) */
+
+  for (ic = 0; ic <= ncell[X] + 1; ic++) {
+    for (jc = 0; jc <= ncell[Y] + 1; jc++) {
+      for (kc = 0; kc <= ncell[Z] + 1; kc++) {
+        colloids_info_cell_list_head(cinfo, ic, jc, kc, &pc);
+
+        /* Loop through all colloids */
+        for (; pc; pc = pc->next) {
+
+          u0 = pc->s.u0;
+          delta = pc->s.delta;
+          cutoff = pc->s.cutoff;
+
+          /* Need to translate the colloid position to "local"
+          * coordinates, so that the correct range of lattice
+          * nodes is found */
+
+          r0[X] = pc->s.r[X] - 1.0*offset[X];
+          r0[Y] = pc->s.r[Y] - 1.0*offset[Y];
+          r0[Z] = pc->s.r[Z] - 1.0*offset[Z];
+
+          /* Work out which local lattice sites are involved
+          * and loop around */
+
+          i_min = imax(1,         (int) floor(r0[X] - cutoff));
+          i_max = imin(nlocal[X], (int) ceil (r0[X] + cutoff));
+          j_min = imax(1,         (int) floor(r0[Y] - cutoff));
+          j_max = imin(nlocal[Y], (int) ceil (r0[Y] + cutoff));
+          k_min = imax(1,         (int) floor(r0[Z] - cutoff));
+          k_max = imin(nlocal[Z], (int) ceil (r0[Z] + cutoff));
+
+          /* Initialisation of the force on colloid to 0 before the loop */
+
+          force[X] =0.0;
+          force[Y] =0.0;
+          force[Z] =0.0;
+
+          for (i = i_min; i <= i_max; i++) {
+            for (j = j_min; j <= j_max; j++) {
+              for (k = k_min; k <= k_max; k++) {
+
+                index = cs_index(cinfo->cs, i, j, k);
+
+                /* Compute the distance between the colloid and the node  */
+
+                r[X] = - r0[X] + 1.0*i;
+                r[Y] = - r0[Y] + 1.0*j;
+                r[Z] = - r0[Z] + 1.0*k;
+
+                rsq = r[X]*r[X] + r[Y]*r[Y] + r[Z]*r[Z];
+                rnorm = sqrt(rsq);
+
+                /* Retrieve phi */
+                phi_ = phi->data[addr_rank0(phi->nsites, index)];
+
+                /* Compute potential and grad of potential (grad_u) */
+
+                u = u0/(sqrt(2*M_PI*delta))*exp(-0.5*(rsq)/delta);
+
+                grad_u[X] = -r[X]/delta*u;
+                grad_u[Y] = -r[Y]/delta*u;
+                grad_u[Z] = -r[Z]/delta*u;
+
+                /* Store for flux calculation in phi_forcd.c */
+                /* subgrid_flux is variable passed from main */
+
+                subgrid_flux->data[addr_rank0(subgrid_flux->nsites, index)] += u;
+                /* Compute force  */
+		
+		/* !!!!!!!!! Force on the colloid is still using grad_u 
+		instead of the centered difference gradient as for the
+		force exerted on the fluid !!!!!!!!!!!!!!!*/
+                force[X] = phi_*grad_u[X];
+                force[Y] = phi_*grad_u[Y];
+                force[Z] = phi_*grad_u[Z];
+
+                pc->force[X] += force[X];
+                pc->force[Y] += force[Y];
+                pc->force[Z] += force[Z];
+
+                /* Add reaction of the colloid force to the node */
+              }
+            }
+          }
+        //Next colloid
+        }
+      }
+    }
+  }
+  //Next cell list
+  return 0;
+}
+
+
+
+
 
 /*****************************************************************************
  *

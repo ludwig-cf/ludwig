@@ -22,9 +22,10 @@
 #include "map.h"
 
 __host__ int phi_grad_mu_fluid(cs_t * cs, field_t * phi, fe_t * fe,
-			       hydro_t * hydro);
+			       hydro_t * hydro, field_t * subgrid_flux);
 __host__ int phi_grad_mu_solid(cs_t * cs, field_t * phi, fe_t * fe,
-			       hydro_t * hydro, map_t * map);
+			       hydro_t * hydro, map_t * map, 
+				field_t * subgrid_flux);
 __host__ int phi_grad_mu_external(cs_t * cs, field_t * phi, hydro_t * hydro);
 
 #endif

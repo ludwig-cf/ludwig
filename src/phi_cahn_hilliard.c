@@ -48,6 +48,7 @@
 #include "phi_cahn_hilliard.h"
 
 static int phi_ch_flux_mu1(phi_ch_t * pch, fe_t * fes);
+static int phi_ch_flux_interaction(phi_ch_t * pch, field_t * subgrid_flux);
 static int phi_ch_flux_mu2(phi_ch_t * pch, fe_t * fes);
 static int phi_ch_update_forward_step(phi_ch_t * pch, field_t * phif);
 static int phi_ch_flux_mu_ext(phi_ch_t * pch);
@@ -82,6 +83,11 @@ struct phi_correct_s {
 __global__ void phi_ch_flux_mu1_kernel(kernel_ctxt_t * ktx,
 				       lees_edw_t * le, fe_t * fe,
 				       advflux_t * flux, double mobility);
+
+__global__ void phi_ch_flux_interaction_kernel(kernel_ctxt_t * ktx,
+                                       lees_edw_t * le, field_t * subgrid_flux,
+                                       advflux_t * flux, double mobility);
+
 __global__ void phi_ch_flux_mu_ext_kernel(kernel_ctxt_t * ktx,
 					  lees_edw_t * le, advflux_t * flux,
 					  ch_kernel_t ch);
@@ -185,14 +191,14 @@ __host__ int phi_ch_free(phi_ch_t * pch) {
 
 int phi_cahn_hilliard(phi_ch_t * pch, fe_t * fe, field_t * phi,
 		      hydro_t * hydro, map_t * map,
-		      noise_t * noise) {
+		      noise_t * noise, field_t * subgrid_flux) {
   int nf;
   int noise_phi = 0;
 
   assert(pch);
   assert(fe);
   assert(phi);
-
+ 
   if (noise) noise_present(noise, NOISE_PHI, &noise_phi);
 
   field_nf(phi, &nf);
@@ -204,6 +210,7 @@ int phi_cahn_hilliard(phi_ch_t * pch, fe_t * fe, field_t * phi,
   if (hydro) {
     hydro_u_halo(hydro); /* Reposition to main to prevent repeat */
     hydro_lees_edwards(hydro); /* Repoistion to main ditto */ 
+    field_halo(subgrid_flux); /* necessary ? */
     advection_x(pch->flux, hydro, phi);
   }
   else {
@@ -217,6 +224,7 @@ int phi_cahn_hilliard(phi_ch_t * pch, fe_t * fe, field_t * phi,
   }
   else {
     phi_ch_flux_mu1(pch, fe);
+    phi_ch_flux_interaction(pch, subgrid_flux);
   }
 
   /* External chemical potential gradient (could switch out if zero) */
@@ -242,6 +250,129 @@ int phi_cahn_hilliard(phi_ch_t * pch, fe_t * fe, field_t * phi,
 
 
   return 0;
+}
+
+
+/*****************************************************************************
+ *
+ *  phi_ch_flux_interaction
+ *
+ *  Kernel driver for "diffusive" (interaction with subgrid particles) flux co *  -mputation.
+ *
+ *****************************************************************************/
+
+static int phi_ch_flux_interaction(phi_ch_t * pch, field_t * subgrid_flux) {
+
+  int nlocal[3];
+  double mobility;
+  dim3 nblk, ntpb;
+  kernel_info_t limits;
+
+  field_t * sftarget = NULL;
+  physics_t * phys = NULL;
+  lees_edw_t * letarget = NULL;
+  kernel_ctxt_t * ctxt = NULL;
+
+  assert(pch);
+  assert(subgrid_flux);
+
+  lees_edw_nlocal(pch->le, nlocal);
+  lees_edw_target(pch->le, &letarget);
+  sftarget = subgrid_flux->target;
+
+  physics_ref(&phys);
+  physics_mobility(phys, &mobility);
+
+  limits.imin = 1; limits.imax = nlocal[X];
+  limits.jmin = 0; limits.jmax = nlocal[Y];
+  limits.kmin = 0; limits.kmax = nlocal[Z];
+
+  kernel_ctxt_create(pch->cs, 1, limits, &ctxt);
+  kernel_ctxt_launch_param(ctxt, &nblk, &ntpb);
+
+  tdpLaunchKernel(phi_ch_flux_interaction_kernel, nblk, ntpb, 0, 0,
+                  ctxt->target, letarget, sftarget, pch->flux->target, mobility);
+  tdpAssert(tdpPeekAtLastError());
+  tdpAssert(tdpDeviceSynchronize());
+
+  kernel_ctxt_free(ctxt);
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  phi_ch_flux_interaction_kernel
+ *
+ *  Unvectorised kernel.
+ *
+ *  Accumulate [add to a previously computed advective flux] the
+ *  contribution related to the interaction between the order parameter
+ *  field and the subgrid particles. It's computed everywhere regardless of fl *  uid/solid status.
+ *
+ *  This is a two point stencil the in the interaction potential,
+ *  and the mobility is constant.
+ *
+ *****************************************************************************/
+
+__global__ void phi_ch_flux_interaction_kernel(kernel_ctxt_t * ktx,
+                                       lees_edw_t * le, field_t * subgrid_flux,
+                                       advflux_t * flux, double mobility) {
+  int kindex;
+  __shared__ int kiterations;
+
+  assert(ktx);
+  assert(le);
+  assert(subgrid_flux);
+  assert(flux);
+
+  kiterations = kernel_iterations(ktx);
+
+  for_simt_parallel(kindex, kiterations, 1) {
+
+    int ic, jc, kc;
+    int index0, index1;
+    int icm1, icp1;
+    double mu0, mu1;
+
+    ic = kernel_coords_ic(ktx, kindex);
+    jc = kernel_coords_jc(ktx, kindex);
+    kc = kernel_coords_kc(ktx, kindex);
+
+    icm1 = lees_edw_ic_to_buff(le, ic, -1);
+    icp1 = lees_edw_ic_to_buff(le, ic, +1);
+
+    index0 = lees_edw_index(le, ic, jc, kc);
+
+    mu0 = subgrid_flux->data[addr_rank0(flux->nsite, index0)];
+
+    /* x-direction (between ic-1 and ic) */
+
+    index1 = lees_edw_index(le, icm1, jc, kc);
+    mu1 = subgrid_flux->data[addr_rank0(flux->nsite, index1)];
+    flux->fw[addr_rank0(flux->nsite, index0)] -= mobility*(mu0 - mu1);
+
+    /* ...and between ic and ic+1 */
+
+    index1 = lees_edw_index(le, icp1, jc, kc);
+    mu1 = subgrid_flux->data[addr_rank0(flux->nsite, index1)];
+    flux->fe[addr_rank0(flux->nsite, index0)] -= mobility*(mu1 - mu0);
+
+
+    /* y direction */
+    index1 = lees_edw_index(le, ic, jc+1, kc);
+    mu1 = subgrid_flux->data[addr_rank0(flux->nsite, index1)];
+    flux->fy[addr_rank0(flux->nsite, index0)] -= mobility*(mu1 - mu0);
+
+    /* z direction */
+
+    index1 = lees_edw_index(le, ic, jc, kc+1);
+    mu1 = subgrid_flux->data[addr_rank0(flux->nsite, index1)];
+    flux->fz[addr_rank0(flux->nsite, index0)] -= mobility*(mu1 - mu0);
+
+    /* Next site */
+  }
+  return;
 }
 
 /*****************************************************************************

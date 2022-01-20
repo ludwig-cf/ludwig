@@ -48,6 +48,9 @@ int colloid_state_read_ascii(colloid_state_t * ps, FILE * fp) {
   nread += fscanf(fp, isformat, &ps->isfixedw);
   nread += fscanf(fp, isformat, &ps->isfixeds);
   nread += fscanf(fp, isformat, &ps->type);
+  nread += fscanf(fp, sformat, &ps->u0);
+  nread += fscanf(fp, sformat, &ps->delta);
+  nread += fscanf(fp, sformat, &ps->cutoff);
 
   for (n = 0; n < NBOND_MAX; n++) {
     nread += fscanf(fp, isformat, &ps->bond[n]);
@@ -162,6 +165,9 @@ int colloid_state_write_ascii(const colloid_state_t * s, FILE * fp) {
   nwrite += fprintf(fp, isformat, s->isfixedw);
   nwrite += fprintf(fp, isformat, s->isfixeds);
   nwrite += fprintf(fp, isformat, s->type);
+  nwrite += fprintf(fp, sformat, s->u0);
+  nwrite += fprintf(fp, sformat, s->delta);
+  nwrite += fprintf(fp, sformat, s->cutoff);
 
   for (n = 0; n < NBOND_MAX; n++) {
     nwrite += fprintf(fp, isformat, s->bond[n]);

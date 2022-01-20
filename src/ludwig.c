@@ -132,6 +132,7 @@ struct ludwig_s {
   field_t * phi;            /* Scalar order parameter */
   field_t * p;              /* Vector order parameter */
   field_t * q;              /* Tensor order parameter */
+  field_t * subgrid_flux;   /* Phi-subgrid particles interaction field */
   field_grad_t * phi_grad;  /* Gradients for phi */
   field_grad_t * p_grad;    /* Gradients for p */
   field_grad_t * q_grad;    /* Gradients for q */
@@ -483,6 +484,7 @@ void ludwig_run(const char * inputfile) {
   lb_memcpy(ludwig->lb, tdpMemcpyHostToDevice);
 
   if (ludwig->phi) field_memcpy(ludwig->phi, tdpMemcpyHostToDevice);
+  if (ludwig->subgrid_flux) field_memcpy(ludwig->subgrid_flux, tdpMemcpyHostToDevice);
   if (ludwig->p)   field_memcpy(ludwig->p, tdpMemcpyHostToDevice);
   if (ludwig->q)   field_memcpy(ludwig->q, tdpMemcpyHostToDevice);
 
@@ -556,6 +558,7 @@ void ludwig_run(const char * inputfile) {
 
       TIMER_start(TIMER_PHI_HALO);
       field_halo(ludwig->phi);
+      field_halo(ludwig->subgrid_flux);
       TIMER_stop(TIMER_PHI_HALO);
 
       field_grad_compute(ludwig->phi_grad);
@@ -672,7 +675,7 @@ void ludwig_run(const char * inputfile) {
 	/* Force in electrokinetic models is computed above */
       }
       else {
-	if (ncolloid == 0) {
+	if (ncolloid != 0) {/* I want to go in gradmu method with particles*/ 
 
 	  /* LC-droplet requires partial body force input and momentum
            * correction. This correction, via hydro_correct_momentum(),
@@ -699,7 +702,8 @@ void ludwig_run(const char * inputfile) {
           phi_force_calculation(ludwig->pe, ludwig->cs, ludwig->le,
 				ludwig->wall,
                                 ludwig->pth, ludwig->fe, ludwig->map,
-                                ludwig->phi, ludwig->hydro);
+                                ludwig->phi, ludwig->hydro,
+				ludwig->subgrid_flux);
 
 	  /* Ternary free energy gradmu requires of momentum correction
 	     after force calculation */
@@ -727,8 +731,9 @@ void ludwig_run(const char * inputfile) {
 
       if (ludwig->pch) {
 	phi_cahn_hilliard(ludwig->pch, ludwig->fe, ludwig->phi,
-			  ludwig->hydro,
-			  ludwig->map, ludwig->noise_phi);
+			  ludwig->hydro, 
+			  ludwig->map, ludwig->noise_phi,
+				ludwig->subgrid_flux);
       }
 
       if (ludwig->p) {
@@ -1238,6 +1243,10 @@ int free_energy_init_rt(ludwig_t * ludwig) {
 
     field_create(pe, cs, nf, "phi", &ludwig->phi);
     field_init(ludwig->phi, nhalo, le);
+
+    field_create(pe, cs, nf, "subgrid_flux", &ludwig->subgrid_flux);
+    field_init(ludwig->subgrid_flux, nhalo, le);
+
     field_grad_create(pe, ludwig->phi, ngrad, &ludwig->phi_grad);
 
     pe_info(pe, "\n");
@@ -1928,7 +1937,8 @@ static int ludwig_colloids_update_low_freq(ludwig_t * ludwig) {
   colloids_info_update_lists(ludwig->collinfo);
 
   interact_compute(ludwig->interact, ludwig->collinfo, ludwig->map,
-        	     ludwig->psi, ludwig->ewald);
+        	     ludwig->psi, ludwig->ewald, ludwig->phi, 
+			ludwig->subgrid_flux);
 
   subgrid_force_from_particles(ludwig->collinfo, ludwig->hydro, ludwig->wall);
 
@@ -1987,7 +1997,10 @@ int ludwig_colloids_update(ludwig_t * ludwig) {
   TIMER_stop(TIMER_HALO_LATTICE);
 
   TIMER_start(TIMER_FREE1);
-  if (iconserve && ludwig->phi) field_halo(ludwig->phi);
+  if (iconserve && ludwig->phi) {
+    field_halo(ludwig->phi);
+    field_halo(ludwig->subgrid_flux);
+  }
   if (iconserve && ludwig->psi) psi_halo_rho(ludwig->psi);
   TIMER_stop(TIMER_FREE1);
 
@@ -2010,7 +2023,8 @@ int ludwig_colloids_update(ludwig_t * ludwig) {
   TIMER_start(TIMER_FORCES);
 
   interact_compute(ludwig->interact, ludwig->collinfo, ludwig->map,
-		   ludwig->psi, ludwig->ewald);
+		   ludwig->psi, ludwig->ewald, ludwig->phi, 
+			ludwig->subgrid_flux);
   subgrid_force_from_particles(ludwig->collinfo, ludwig->hydro, ludwig->wall);
 
   TIMER_stop(TIMER_FORCES);
