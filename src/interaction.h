@@ -20,10 +20,17 @@
 #include "colloids.h"
 #include "ewald.h"
 
+#include "field.h"
+#include "field_s.h"
+
+//CHANGE1
 typedef enum interact_enum {
   INTERACT_PAIR = 0,
   INTERACT_BOND,
+  INTERACT_BOND_HARMONIC,
   INTERACT_ANGLE,
+  INTERACT_ANGLE_HARMONIC,
+  INTERACT_ANGLE_DIHEDRAL,
   INTERACT_LUBR,
   INTERACT_WALL,
   INTERACT_MAX
@@ -53,11 +60,17 @@ int interact_rc_set(interact_t * obj, interact_enum_t it, double rc);
 int interact_hc_set(interact_t * obj, interact_enum_t it, double hc);
 int interact_range_check(interact_t * obj, colloids_info_t * cinfo);
 int interact_compute(interact_t * interact, colloids_info_t * cinfo,
-		     map_t * map, psi_t * psi, ewald_t * ewald);
+		     map_t * map, psi_t * psi, ewald_t * ewald,
+			field_t * phi,
+			field_t * subgrid_flux);
 int interact_pairwise(interact_t * interact, colloids_info_t * cinfo);
 int interact_wall(interact_t * interact, colloids_info_t * cinfo);
 int interact_bonds(interact_t * obj, colloids_info_t * cinfo);
+int interact_bonds_harmonic(interact_t * obj, colloids_info_t * cinfo);
 int interact_angles(interact_t * obj, colloids_info_t * cinfo);
+int interact_angles_harmonic(interact_t * obj, colloids_info_t * cinfo);
+int interact_angles_dihedral(interact_t * obj, colloids_info_t * cinfo);
+int colloids_update_forces_phi(colloids_info_t * cinfo, field_t * phi, field_t * subgrid_flux);
 int interact_find_bonds(interact_t * obj, colloids_info_t * cinfo);
 int interact_find_bonds_all(interact_t * obj, colloids_info_t * cinfo, int nx);
 int interact_stats(interact_t * obj, colloids_info_t * cinfo);

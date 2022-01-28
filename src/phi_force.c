@@ -75,7 +75,8 @@ static __host__ int phi_force_wallx(cs_t * cs, wall_t * wall, fe_t * fe, double 
 __host__ int phi_force_calculation(pe_t * pe, cs_t * cs, lees_edw_t * le,
 				   wall_t * wall,
 				   pth_t * pth, fe_t * fe, map_t * map,
-				   field_t * phi, hydro_t * hydro) {
+				   field_t * phi, hydro_t * hydro,
+					field_t * subgrid_flux) {
 
   int is_pm;
   int nplanes = 0;
@@ -109,15 +110,15 @@ __host__ int phi_force_calculation(pe_t * pe, cs_t * cs, lees_edw_t * le,
     case PTH_METHOD_GRADMU:
 
       if (wall_present(wall) || is_pm) {
-	phi_grad_mu_solid(cs, phi, fe, hydro, map);
+	phi_grad_mu_solid(cs, phi, fe, hydro, map, subgrid_flux);
 	phi_grad_mu_external(cs, phi, hydro);
       }
       else {
 	/* Fluid only  */
-	phi_grad_mu_fluid(cs, phi, fe, hydro);
+	phi_grad_mu_fluid(cs, phi, fe, hydro, subgrid_flux);
 	phi_grad_mu_external(cs, phi, hydro);
       }
-      break;
+    break;
     case PTH_METHOD_STRESS_ONLY:
       pth_stress_compute(pth, fe);
       break;
@@ -146,10 +147,13 @@ __host__ int phi_force_calculation(pe_t * pe, cs_t * cs, lees_edw_t * le,
  *  which collapses to the fluid version away from any wall.
  *
  *****************************************************************************/
+/* V1 
+force is now 0.5*(mu(i+1) - mu(i-1) + u(i+) - u(i-1)) with u the interaction  field with the subgrid particles */
 
 int phi_force_solid_phi_gradmu(lees_edw_t * le, pth_t * pth,
 			       fe_t * fe, field_t * fphi,
-			       hydro_t * hydro, map_t * map) {
+			       hydro_t * hydro, map_t * map, 
+			       field_t * subgrid_flux) {
 
   int ic, jc, kc, icm1, icp1;
   int index0, indexm1, indexp1;
@@ -157,7 +161,7 @@ int phi_force_solid_phi_gradmu(lees_edw_t * le, pth_t * pth,
   int nlocal[3];
   int zs, ys, xs;
   int mapm1, mapp1;
-  double phi, mu, mum1, mup1;
+  double phi, mu, mum1, mup1, um1, up1;
   double force[3];
 
   assert(le);
@@ -188,33 +192,39 @@ int phi_force_solid_phi_gradmu(lees_edw_t * le, pth_t * pth,
 
 	fe->func->mu(fe, indexm1, &mum1);
 	fe->func->mu(fe, indexp1, &mup1);
+	field_scalar(subgrid_flux, indexm1, &um1);
+	field_scalar(subgrid_flux, indexp1, &up1);
 
         map_status(map, index0 - xs, &mapm1);
         map_status(map, index0 + xs, &mapp1);
         if (mapm1 == MAP_BOUNDARY) mum1 = mu;
         if (mapp1 == MAP_BOUNDARY) mup1 = mu;
 
-        force[X] = -phi*0.5*(mup1 - mu + mu - mum1);
+        force[X] = -phi*0.5*(mup1 - mu + mu - mum1 + up1 - um1);
 
 	fe->func->mu(fe, index0 - ys, &mum1);
 	fe->func->mu(fe, index0 + ys, &mup1);
+	field_scalar(subgrid_flux, index0 - ys, &um1);
+	field_scalar(subgrid_flux, index0 + ys, &um1);
 
         map_status(map, index0 - ys, &mapm1);
         map_status(map, index0 + ys, &mapp1);
         if (mapm1 == MAP_BOUNDARY) mum1 = mu;
         if (mapp1 == MAP_BOUNDARY) mup1 = mu;
 
-        force[Y] = -phi*0.5*(mup1 - mu + mu - mum1);
+        force[Y] = -phi*0.5*(mup1 - mu + mu - mum1 + up1 - um1);
 
 	fe->func->mu(fe, index0 - zs, &mum1);
 	fe->func->mu(fe, index0 + zs, &mup1);
+	field_scalar(subgrid_flux, index0 - zs, &um1);
+	field_scalar(subgrid_flux, index0 + zs, &um1);
 
         map_status(map, index0 - zs, &mapm1);
         map_status(map, index0 + zs, &mapp1);
         if (mapm1 == MAP_BOUNDARY) mum1 = mu;
         if (mapp1 == MAP_BOUNDARY) mup1 = mu;
 
-        force[Z] = -phi*0.5*(mup1 - mu + mu - mum1);
+        force[Z] = -phi*0.5*(mup1 - mu + mu - mum1 + up1 - um1);
 
 	/* Store the force on lattice */
 

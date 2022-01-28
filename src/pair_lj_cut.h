@@ -24,8 +24,9 @@ typedef struct pair_lj_cut_s pair_lj_cut_t;
 
 int pair_lj_cut_create(pe_t * pe, cs_t * cs, pair_lj_cut_t ** pobj);
 int pair_lj_cut_free(pair_lj_cut_t * obj);
+//CHANGE1
 int pair_lj_cut_param_set(pair_lj_cut_t * obj, double epsilon, double sigma,
-			  double rc);
+			  double rc,int unbonded);
 int pair_lj_cut_info(pair_lj_cut_t * obj);
 int pair_lj_cut_register(pair_lj_cut_t * obj, interact_t * parent);
 int pair_lj_cut_compute(colloids_info_t * cinfo, void * self);

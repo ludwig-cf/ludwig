@@ -28,6 +28,9 @@
 #define PAIR_SIGMA   0.8
 #define PAIR_NU      2
 #define PAIR_HC      0.25
+//CHANGE1
+#define PAIR_UNBONDED    0.0
+
 
 static int test_pair_ss_cut1(pe_t * pe, cs_t * cs);
 static int test_pair_ss_cut2(pe_t * pe, cs_t * cs);
@@ -76,7 +79,8 @@ static int test_pair_ss_cut1(pe_t * pe, cs_t * cs) {
   pair_ss_cut_create(pe, cs, &pair);
   assert(pair);
 
-  pair_ss_cut_param_set(pair, PAIR_EPSILON, PAIR_SIGMA, PAIR_NU, PAIR_HC);
+  //CHANGE1
+  pair_ss_cut_param_set(pair, PAIR_EPSILON, PAIR_SIGMA, PAIR_NU, PAIR_HC, PAIR_UNBONDED);
 
   h = 0.0125;
   pair_ss_cut_single(pair, h, &f, &v);
@@ -118,7 +122,8 @@ static int test_pair_ss_cut2(pe_t * pe, cs_t * cs) {
   pair_ss_cut_create(pe, cs, &pair);
   assert(pair);
 
-  pair_ss_cut_param_set(pair, PAIR_EPSILON, PAIR_SIGMA, PAIR_NU, PAIR_HC);
+  //CHANGE1
+  pair_ss_cut_param_set(pair, PAIR_EPSILON, PAIR_SIGMA, PAIR_NU, PAIR_HC, PAIR_UNBONDED);
   pair_ss_cut_register(pair, interact);
 
   test_pair_config1(cinfo, interact, pair);
