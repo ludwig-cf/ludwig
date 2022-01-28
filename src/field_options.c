@@ -29,6 +29,7 @@ field_options_t field_options_default(void) {
   field_options_t opts = {.ndata  = 1,
                           .nhcomm = 0,
                           .haloscheme = FIELD_HALO_TARGET,
+			  .haloverbose = 0,
                           .iodata = io_info_args_default()};
   return opts;
 }

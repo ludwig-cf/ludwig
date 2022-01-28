@@ -28,7 +28,10 @@ typedef struct field_options_s field_options_t;
 struct field_options_s {
   int ndata;                            /* Number of field components */
   int nhcomm;                           /* Actual halo width required */
+
   field_halo_enum_t haloscheme;         /* Halo swap method */
+  int haloverbose;                      /* Halo information level */
+
   io_info_args_t iodata;                /* I/O information */
 };
 

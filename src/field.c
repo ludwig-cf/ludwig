@@ -32,6 +32,8 @@
 #include "coords.h"
 #include "leesedwards.h"
 #include "io_harness.h"
+
+#include "timer.h"
 #include "util.h"
 #include "field.h"
 
@@ -95,6 +97,8 @@ __host__ int field_create(pe_t * pe, cs_t * cs, lees_edw_t * le,
   field_init(obj, opts->nhcomm, le);
   field_halo_create(obj, &obj->h);
   obj->opts = *opts;
+
+  if (obj->opts.haloverbose) field_halo_info(obj);
 
   *pobj = obj;
 
@@ -1205,6 +1209,8 @@ int field_halo_post(const field_t * field, field_halo_t * h) {
 
   /* Post recvs */
 
+  TIMER_start(TIMER_FIELD_HALO_IRECV);
+
   h->request[0] = MPI_REQUEST_NULL;
 
   for (int ireq = 1; ireq < h->nvel; ireq++) {
@@ -1222,7 +1228,11 @@ int field_halo_post(const field_t * field, field_halo_t * h) {
 	      tagbase + ireq, h->comm, h->request + ireq);
   }
 
+  TIMER_stop(TIMER_FIELD_HALO_IRECV);
+
   /* Load send buffers; post sends */
+
+  TIMER_start(TIMER_FIELD_HALO_PACK);
 
   #pragma omp parallel
   {
@@ -1230,6 +1240,10 @@ int field_halo_post(const field_t * field, field_halo_t * h) {
       field_halo_enqueue_send(field, h, ireq);
     }
   }
+
+  TIMER_stop(TIMER_FIELD_HALO_PACK);
+
+  TIMER_start(TIMER_FIELD_HALO_ISEND);
 
   h->request[27] = MPI_REQUEST_NULL;
 
@@ -1245,6 +1259,8 @@ int field_halo_post(const field_t * field, field_halo_t * h) {
 	      tagbase + ireq, h->comm, h->request + 27 + ireq);
   }
 
+  TIMER_stop(TIMER_FIELD_HALO_ISEND);
+
   return 0;
 }
 
@@ -1259,7 +1275,13 @@ int field_halo_wait(field_t * field, field_halo_t * h) {
   assert(field);
   assert(h);
 
+  TIMER_start(TIMER_FIELD_HALO_WAITALL);
+
   MPI_Waitall(2*h->nvel, h->request, MPI_STATUSES_IGNORE);
+
+  TIMER_stop(TIMER_FIELD_HALO_WAITALL);
+
+  TIMER_start(TIMER_FIELD_HALO_UNPACK);
 
   #pragma omp parallel
   {
@@ -1267,6 +1289,8 @@ int field_halo_wait(field_t * field, field_halo_t * h) {
       field_halo_dequeue_recv(field, h, ireq);
     }
   }
+
+  TIMER_stop(TIMER_FIELD_HALO_UNPACK);
 
   return 0;
 }
@@ -1277,10 +1301,14 @@ int field_halo_wait(field_t * field, field_halo_t * h) {
  *
  *****************************************************************************/
 
-int field_halo_info(pe_t * pe, const field_t * f, const field_halo_t * h) {
+int field_halo_info(const field_t * f) {
 
-  assert(pe);
-  assert(h);
+  assert(f);
+  assert(f->pe);
+  assert(f->h);
+
+  pe_t * pe = f->pe;
+  const field_halo_t * h = &f->h;
 
   /* For each direction, send limits */
 
@@ -1316,7 +1344,6 @@ int field_halo_info(pe_t * pe, const field_t * f, const field_halo_t * h) {
 	    h->rlim[ireq].kmin, h->rlim[ireq].kmax,
 	    f->nf*field_halo_size(h->rlim[ireq])*sizeof(double));
   }
-
 
   return 0;
 }

@@ -71,7 +71,7 @@ struct field_s {
 int field_halo_create(const field_t * field, field_halo_t * h);
 int field_halo_post(const field_t * field, field_halo_t * h);
 int field_halo_wait(field_t * field, field_halo_t * h);
-int field_halo_info(pe_t * pe, const field_t * field, const field_halo_t * h);
+int field_halo_info(const field_t * field);
 int field_halo_free(field_halo_t * h);
 
 __host__ int field_create(pe_t * pe, cs_t * cs, lees_edw_t * le,

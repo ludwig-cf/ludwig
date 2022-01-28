@@ -7,7 +7,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2011-2021 The University of Edinburgh
+ *  (c) 2011-2022 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -1595,6 +1595,7 @@ int free_energy_init_rt(ludwig_t * ludwig) {
 
       if (rt_switch(rt, "field_halo_openmp")) {
 	opts.haloscheme = FIELD_HALO_OPENMP;
+	opts.haloverbose = rt_switch(rt, "field_halo_verbose");
       }
       field_create(pe, cs, le, "q", &opts, &ludwig->q);
       field_grad_create(pe, ludwig->q, ngrad, &ludwig->q_grad);
