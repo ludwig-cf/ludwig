@@ -1305,7 +1305,6 @@ int field_halo_info(const field_t * f) {
 
   assert(f);
   assert(f->pe);
-  assert(f->h);
 
   pe_t * pe = f->pe;
   const field_halo_t * h = &f->h;
