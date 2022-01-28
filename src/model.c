@@ -442,7 +442,7 @@ static int lb_mpi_init(lb_t * lb) {
   nz = nlocal[Z] + 2*nhalo;
 
   /* extent of single site (AOS) */
-  extent = lb->nvel*lb->ndist*sizeof(double);
+  extent = sizeof(double)*lb->nvel*lb->ndist;
 
   /* X direction */
 
@@ -686,7 +686,7 @@ __host__ int lb_io_info_set(lb_t * lb, io_info_t * io_info, int form_in, int for
   io_info_read_set(lb->io_info, IO_FORMAT_BINARY, lb_f_read);
   io_info_write_set(lb->io_info, IO_FORMAT_BINARY, lb_f_write);
   io_info_set_bytesize(lb->io_info, IO_FORMAT_BINARY,
-		       lb->ndist*lb->nvel*sizeof(double));
+		       sizeof(double)*lb->ndist*lb->nvel);
   io_info_read_set(lb->io_info, IO_FORMAT_ASCII, lb_f_read_ascii);
   io_info_write_set(lb->io_info, IO_FORMAT_ASCII, lb_f_write_ascii);
   io_info_format_set(lb->io_info, form_in, form_out);

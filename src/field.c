@@ -1320,12 +1320,12 @@ int field_halo_info(const field_t * f) {
   pe_info(pe,
 	  "------------------------------------------------------\n");
   for (int ireq = 1; ireq < h->nvel; ireq++) {
-    pe_info(pe, "%3d (%2d %2d %2d) %4d %4d %4d %4d %4d %4d %9d\n", ireq,
+    pe_info(pe, "%3d (%2d %2d %2d) %4d %4d %4d %4d %4d %4d %9ld\n", ireq,
 	    h->cv[ireq][X], h->cv[ireq][Y], h->cv[ireq][Z],
 	    h->slim[ireq].imin, h->slim[ireq].imax,
 	    h->slim[ireq].jmin, h->slim[ireq].jmax,
 	    h->slim[ireq].kmin, h->slim[ireq].kmax,
-	    f->nf*field_halo_size(h->slim[ireq])*sizeof(double));
+	    (size_t) f->nf*field_halo_size(h->slim[ireq])*sizeof(double));
   }
 
   /* Recv limits counts */
@@ -1336,12 +1336,12 @@ int field_halo_info(const field_t * f) {
   pe_info(pe,
 	  "------------------------------------------------------\n");
   for (int ireq = 1; ireq < h->nvel; ireq++) {
-    pe_info(pe, "%3d (%2d %2d %2d) %4d %4d %4d %4d %4d %4d %9d\n", ireq,
+    pe_info(pe, "%3d (%2d %2d %2d) %4d %4d %4d %4d %4d %4d %9ld\n", ireq,
 	    h->cv[ireq][X], h->cv[ireq][Y], h->cv[ireq][Z],
 	    h->rlim[ireq].imin, h->rlim[ireq].imax,
 	    h->rlim[ireq].jmin, h->rlim[ireq].jmax,
 	    h->rlim[ireq].kmin, h->rlim[ireq].kmax,
-	    f->nf*field_halo_size(h->rlim[ireq])*sizeof(double));
+	    (size_t) f->nf*field_halo_size(h->rlim[ireq])*sizeof(double));
   }
 
   return 0;
