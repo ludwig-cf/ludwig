@@ -3,4 +3,5 @@ script:
   - cp config/travis-gcc.mk ./config.mk
   - make serial
   - make
+  - export OMP_NUM_THREADS=1
   - make test
