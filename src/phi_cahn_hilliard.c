@@ -40,7 +40,6 @@
 #include <stdlib.h>
 #include <math.h>
 
-#include "field_s.h"
 #include "physics.h"
 #include "advection_s.h"
 #include "advection_bcs.h"
@@ -121,8 +120,8 @@ __host__ int phi_ch_create(pe_t * pe, cs_t * cs, lees_edw_t * le,
   advflux_le_create(pe, cs, le, 1, &obj->flux);
 
   if (obj->info.conserve) {
-    field_create(pe, cs, 1, "compensated sum", &obj->csum);
-    field_init(obj->csum, 0, NULL);
+    field_options_t opts = field_options_ndata_nhalo(1, 0);
+    field_create(pe, cs, NULL, "compensated sum", &opts, &obj->csum);
   }
 
   pe_retain(pe);

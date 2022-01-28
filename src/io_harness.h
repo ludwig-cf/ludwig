@@ -38,13 +38,6 @@ typedef struct io_info_s io_info_t;
 /* Callback signature for lattice site I/O */
 typedef int (*io_rw_cb_ft)(FILE * fp, int index, void * self);
 
-/* TO BE REMVOED */
-typedef struct io_info_arg_s io_info_arg_t;
-
-struct io_info_arg_s {
-  int grid[3];                   /* Current */
-};
-
 struct io_implementation_s {
   char         name[BUFSIZ];      /* Descriptive name */
   io_rw_cb_ft  write_ascii;       /* Callback function for ascii write */
@@ -98,7 +91,7 @@ struct io_info_s {
   io_rw_cb_ft read_binary;
 };
 
-__host__ int io_info_create(pe_t * pe, cs_t * cs, io_info_arg_t * arg,
+__host__ int io_info_create(pe_t * pe, cs_t * cs, io_info_args_t * arg,
 			    io_info_t ** pinfo);
 __host__ int io_info_free(io_info_t *);
 

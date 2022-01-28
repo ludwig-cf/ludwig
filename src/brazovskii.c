@@ -38,7 +38,6 @@
 #include <math.h>
 
 #include "pe.h"
-#include "field_s.h"
 #include "util.h"
 #include "brazovskii.h"
 

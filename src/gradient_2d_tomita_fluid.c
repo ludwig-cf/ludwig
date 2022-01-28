@@ -48,7 +48,6 @@
 #include "leesedwards.h"
 #include "kernel.h"
 #include "wall.h"
-#include "field_s.h"
 #include "gradient_2d_tomita_fluid.h"
 
 static const double epsilon_ = 0.5;

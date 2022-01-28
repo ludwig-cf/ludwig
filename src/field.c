@@ -32,6 +32,8 @@
 #include "coords.h"
 #include "leesedwards.h"
 #include "io_harness.h"
+
+#include "timer.h"
 #include "util.h"
 #include "field.h"
 
@@ -42,12 +44,13 @@ static int field_read_ascii(FILE * fp, int index, void * self);
 
 static int field_leesedwards_parallel(field_t * obj);
 
+__host__ int field_init(field_t * obj, int nhcomm, lees_edw_t * le);
+
 /*****************************************************************************
  *
  *  field_create
  *
- *  Allocation of data space is deferred until phi_init(), at which point
- *  a via coordinate system object should be available.
+ *  le_t * le may be NULL if no Lees Edwards planes are present.
  *
  *  This just sets the type of field; often order parameter, e.g.,:
  *     nf = 1 for scalar "phi"
@@ -56,21 +59,28 @@ static int field_leesedwards_parallel(field_t * obj);
  *
  *****************************************************************************/
 
-__host__ int field_create(pe_t * pe, cs_t * cs, int nf, const char * name,
+__host__ int field_create(pe_t * pe, cs_t * cs, lees_edw_t * le,
+			  const char * name,
+			  const field_options_t * opts,
 			  field_t ** pobj) {
 
   field_t * obj = NULL;
 
   assert(pe);
   assert(cs);
-  assert(nf > 0);
+  assert(name);
+  assert(opts);
   assert(pobj);
+
+  if (field_options_valid(opts) == 0) {
+    pe_fatal(pe, "Internal error: invalid field options\n");
+  }
 
   obj = (field_t *) calloc(1, sizeof(field_t));
   assert(obj);
   if (obj == NULL) pe_fatal(pe, "calloc(obj) failed\n");
 
-  obj->nf = nf;
+  obj->nf = opts->ndata;
 
   obj->name = (char *) calloc(strlen(name) + 1, sizeof(char));
   assert(obj->name);
@@ -83,6 +93,12 @@ __host__ int field_create(pe_t * pe, cs_t * cs, int nf, const char * name,
   obj->cs = cs;
   pe_retain(pe);
   cs_retain(cs);
+
+  field_init(obj, opts->nhcomm, le);
+  field_halo_create(obj, &obj->h);
+  obj->opts = *opts;
+
+  if (obj->opts.haloverbose) field_halo_info(obj);
 
   *pobj = obj;
 
@@ -115,6 +131,9 @@ __host__ int field_free(field_t * obj) {
   if (obj->name) free(obj->name);
   if (obj->halo) halo_swap_free(obj->halo);
   if (obj->info) io_info_free(obj->info);
+
+  field_halo_free(&obj->h);
+
   cs_free(obj->cs);
   pe_free(obj->pe);
   free(obj);
@@ -265,7 +284,7 @@ __host__ __device__ int field_nf(field_t * obj, int * nf) {
 __host__ int field_init_io_info(field_t * obj, int grid[3], int form_in,
 				int form_out) {
 
-  io_info_arg_t args;
+  io_info_args_t args = {};
 
   assert(obj);
   assert(obj->info == NULL);
@@ -332,7 +351,7 @@ __host__ int field_halo(field_t * obj) {
   }
   else {
     /* Default to ... */
-    field_halo_swap(obj, FIELD_HALO_TARGET);
+    field_halo_swap(obj, obj->opts.haloscheme);
   }
 
   return 0;
@@ -358,6 +377,10 @@ __host__ int field_halo_swap(field_t * obj, field_halo_enum_t flag) {
     tdpMemcpy(&data, &obj->target->data, sizeof(double *),
 	      tdpMemcpyDeviceToHost);
     halo_swap_packed(obj->halo, data);
+    break;
+  case FIELD_HALO_OPENMP:
+    field_halo_post(obj, &obj->h);
+    field_halo_wait(obj, &obj->h);
     break;
   default:
     assert(0);
@@ -951,6 +974,395 @@ static int field_write_ascii(FILE * fp, int index, void * self) {
   if (nwrite != 1) {
     pe_fatal(obj->pe, "fprintf(%s) failed at index %d\n", obj->name, index);
   }
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  field_halo_size
+ *
+ *****************************************************************************/
+
+int field_halo_size(cs_limits_t lim) {
+
+  int szx = 1 + lim.imax - lim.imin;
+  int szy = 1 + lim.jmax - lim.jmin;
+  int szz = 1 + lim.kmax - lim.kmin;
+
+  return szx*szy*szz;
+}
+
+/*****************************************************************************
+ *
+ *  field_halo_enqueue_send
+ *
+ *****************************************************************************/
+
+int field_halo_enqueue_send(const field_t * field, field_halo_t * h, int ireq) {
+
+  assert(field);
+  assert(h);
+  assert(1 <= ireq && ireq < h->nvel);
+
+  int nx = 1 + h->slim[ireq].imax - h->slim[ireq].imin;
+  int ny = 1 + h->slim[ireq].jmax - h->slim[ireq].jmin;
+  int nz = 1 + h->slim[ireq].kmax - h->slim[ireq].kmin;
+
+  int strz = 1;
+  int stry = strz*nz;
+  int strx = stry*ny;
+
+  #pragma omp for nowait
+  for (int ih = 0; ih < nx*ny*nz; ih++) {
+    int ic = h->slim[ireq].imin + ih/strx;
+    int jc = h->slim[ireq].jmin + (ih % strx)/stry;
+    int kc = h->slim[ireq].kmin + (ih % stry)/strz;
+    int index = cs_index(field->cs, ic, jc, kc);
+
+    for (int ibf = 0; ibf < field->nf; ibf++) {
+      int faddr = addr_rank1(field->nsites, field->nf, index, ibf);
+      h->send[ireq][ih*field->nf + ibf] = field->data[faddr];
+    }
+  }
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  field_halo_dequeue_recv
+ *
+ *****************************************************************************/
+
+int field_halo_dequeue_recv(field_t * field, const field_halo_t * h, int ireq) {
+  assert(field);
+  assert(h);
+  assert(1 <= ireq && ireq < h->nvel);
+
+  int nx = 1 + h->rlim[ireq].imax - h->rlim[ireq].imin;
+  int ny = 1 + h->rlim[ireq].jmax - h->rlim[ireq].jmin;
+  int nz = 1 + h->rlim[ireq].kmax - h->rlim[ireq].kmin;
+
+  int strz = 1;
+  int stry = strz*nz;
+  int strx = stry*ny;
+
+  double * recv = h->recv[ireq];
+
+  /* Check if this a copy from our own send buffer */
+  {
+    int i = 1 + h->cv[h->nvel - ireq][X];
+    int j = 1 + h->cv[h->nvel - ireq][Y];
+    int k = 1 + h->cv[h->nvel - ireq][Z];
+
+    if (h->nbrrank[i][j][k] == h->nbrrank[1][1][1]) recv = h->send[ireq];
+  }
+
+  #pragma omp for nowait
+  for (int ih = 0; ih < nx*ny*nz; ih++) {
+    int ic = h->rlim[ireq].imin + ih/strx;
+    int jc = h->rlim[ireq].jmin + (ih % strx)/stry;
+    int kc = h->rlim[ireq].kmin + (ih % stry)/strz;
+    int index = cs_index(field->cs, ic, jc, kc);
+
+    for (int ibf = 0; ibf < field->nf; ibf++) {
+      int faddr = addr_rank1(field->nsites, field->nf, index, ibf);
+      field->data[faddr] = recv[ih*field->nf + ibf];
+    }
+  }
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  field_halo_create
+ *
+ *  It's convenient to borrow the velocity notation from the lb for
+ *  the commnunication directions.
+ *
+ *****************************************************************************/
+
+#include "lb_d3q27.h"
+
+int field_halo_create(const field_t * field, field_halo_t * h) {
+
+  int nlocal[3] = {};
+  int nhalo = 0;
+
+  assert(field);
+  assert(h);
+
+  *h = (field_halo_t) {0};
+
+  /* Communictation model */
+
+  cs_cart_comm(field->cs, &h->comm);
+
+  {
+    LB_CV_D3Q27(cv27);
+
+    h->nvel = 27;
+    for (int p = 0; p < h->nvel; p++) {
+      h->cv[p][X] = cv27[p][X];
+      h->cv[p][Y] = cv27[p][Y];
+      h->cv[p][Z] = cv27[p][Z];
+    }
+  }
+
+  /* Ranks of Cartesian neighbours */
+
+  {
+    int dims[3] = {};
+    int periods[3] = {};
+    int coords[3] = {};
+
+    MPI_Cart_get(h->comm, 3, dims, periods, coords);
+
+    for (int p = 0; p < h->nvel; p++) {
+      int nbr[3] = {};
+      int out[3] = {};  /* Out-of-range is erroneous for non-perioidic dims */
+      int i = 1 + h->cv[p][X];
+      int j = 1 + h->cv[p][Y];
+      int k = 1 + h->cv[p][Z];
+
+      nbr[X] = coords[X] + h->cv[p][X];
+      nbr[Y] = coords[Y] + h->cv[p][Y];
+      nbr[Z] = coords[Z] + h->cv[p][Z];
+      out[X] = (!periods[X] && (nbr[X] < 0 || nbr[X] > dims[X]));
+      out[Y] = (!periods[Y] && (nbr[Y] < 0 || nbr[Y] > dims[Y]));
+      out[Z] = (!periods[Z] && (nbr[Z] < 0 || nbr[Z] > dims[Z]));
+
+      if (out[X] || out[Y] || out[Z]) {
+	h->nbrrank[i][j][k] = MPI_PROC_NULL;
+      }
+      else {
+	MPI_Cart_rank(h->comm, nbr, &h->nbrrank[i][j][k]);
+      }
+    }
+    /* I must be in the middle */
+    assert(h->nbrrank[1][1][1] == cs_cart_rank(field->cs));
+  }
+
+  /* Set out limits for send and recv regions. */
+
+  cs_nlocal(field->cs, nlocal);
+  cs_nhalo(field->cs, &nhalo);
+
+  for (int p = 1; p < h->nvel; p++) {
+
+    int8_t cx = h->cv[p][X];
+    int8_t cy = h->cv[p][Y];
+    int8_t cz = h->cv[p][Z];
+
+    cs_limits_t send = {1, nlocal[X], 1, nlocal[Y], 1, nlocal[Z]};
+    cs_limits_t recv = {1, nlocal[X], 1, nlocal[Y], 1, nlocal[Z]};
+
+    if (cx == -1) send.imax = nhalo;
+    if (cx == +1) send.imin = send.imax - (nhalo - 1);
+    if (cy == -1) send.jmax = nhalo;
+    if (cy == +1) send.jmin = send.jmax - (nhalo - 1);
+    if (cz == -1) send.kmax = nhalo;
+    if (cz == +1) send.kmin = send.kmax - (nhalo - 1);
+
+    /* For recv, direction is reversed cf. send */
+    if (cx == +1) { recv.imin = 1 - nhalo;     recv.imax = 0;}
+    if (cx == -1) { recv.imin = recv.imax + 1; recv.imax = recv.imax + nhalo;}
+    if (cy == +1) { recv.jmin = 1 - nhalo;     recv.jmax = 0;}
+    if (cy == -1) { recv.jmin = recv.jmax + 1; recv.jmax = recv.jmax + nhalo;}
+    if (cz == +1) { recv.kmin = 1 - nhalo;     recv.kmax = 0;}
+    if (cz == -1) { recv.kmin = recv.kmax + 1; recv.kmax = recv.kmax + nhalo;}
+
+    h->slim[p] = send;
+    h->rlim[p] = recv;
+  }
+
+  /* Message count and buffers */
+
+  for (int p = 1; p < h->nvel; p++) {
+
+    int scount = field->nf*field_halo_size(h->slim[p]);
+    int rcount = field->nf*field_halo_size(h->rlim[p]);
+
+    h->send[p] = (double *) calloc(scount, sizeof(double));
+    h->recv[p] = (double *) calloc(rcount, sizeof(double));
+    assert(h->send[p]);
+    assert(h->recv[p]);
+  }
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  field_halo_post
+ *
+ *****************************************************************************/
+
+int field_halo_post(const field_t * field, field_halo_t * h) {
+
+  const int tagbase = 2022;
+
+  assert(field);
+  assert(h);
+
+  /* Post recvs */
+
+  TIMER_start(TIMER_FIELD_HALO_IRECV);
+
+  h->request[0] = MPI_REQUEST_NULL;
+
+  for (int ireq = 1; ireq < h->nvel; ireq++) {
+
+    int i = 1 + h->cv[h->nvel - ireq][X];
+    int j = 1 + h->cv[h->nvel - ireq][Y];
+    int k = 1 + h->cv[h->nvel - ireq][Z];
+    int mcount = field->nf*field_halo_size(h->rlim[ireq]);
+
+    h->request[ireq] = MPI_REQUEST_NULL;
+
+    if (h->nbrrank[i][j][k] == h->nbrrank[1][1][1]) mcount = 0;
+
+    MPI_Irecv(h->recv[ireq], mcount, MPI_DOUBLE, h->nbrrank[i][j][k],
+	      tagbase + ireq, h->comm, h->request + ireq);
+  }
+
+  TIMER_stop(TIMER_FIELD_HALO_IRECV);
+
+  /* Load send buffers; post sends */
+
+  TIMER_start(TIMER_FIELD_HALO_PACK);
+
+  #pragma omp parallel
+  {
+    for (int ireq = 1; ireq < h->nvel; ireq++) {
+      field_halo_enqueue_send(field, h, ireq);
+    }
+  }
+
+  TIMER_stop(TIMER_FIELD_HALO_PACK);
+
+  TIMER_start(TIMER_FIELD_HALO_ISEND);
+
+  h->request[27] = MPI_REQUEST_NULL;
+
+  for (int ireq = 1; ireq < h->nvel; ireq++) {
+    int i = 1 + h->cv[ireq][X];
+    int j = 1 + h->cv[ireq][Y];
+    int k = 1 + h->cv[ireq][Z];
+    int mcount = field->nf*field_halo_size(h->slim[ireq]);
+
+    if (h->nbrrank[i][j][k] == h->nbrrank[1][1][1]) mcount = 0;
+
+    MPI_Isend(h->send[ireq], mcount, MPI_DOUBLE, h->nbrrank[i][j][k],
+	      tagbase + ireq, h->comm, h->request + 27 + ireq);
+  }
+
+  TIMER_stop(TIMER_FIELD_HALO_ISEND);
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  field_halo_wait
+ *
+ *****************************************************************************/
+
+int field_halo_wait(field_t * field, field_halo_t * h) {
+
+  assert(field);
+  assert(h);
+
+  TIMER_start(TIMER_FIELD_HALO_WAITALL);
+
+  MPI_Waitall(2*h->nvel, h->request, MPI_STATUSES_IGNORE);
+
+  TIMER_stop(TIMER_FIELD_HALO_WAITALL);
+
+  TIMER_start(TIMER_FIELD_HALO_UNPACK);
+
+  #pragma omp parallel
+  {
+    for (int ireq = 1; ireq < h->nvel; ireq++) {
+      field_halo_dequeue_recv(field, h, ireq);
+    }
+  }
+
+  TIMER_stop(TIMER_FIELD_HALO_UNPACK);
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  field_halo_info
+ *
+ *****************************************************************************/
+
+int field_halo_info(const field_t * f) {
+
+  assert(f);
+  assert(f->pe);
+
+  pe_t * pe = f->pe;
+  const field_halo_t * h = &f->h;
+
+  /* For each direction, send limits */
+
+  pe_info(pe, "\n");
+  pe_info(pe, "Field halo information at root: %s\n", f->name);
+  pe_info(pe, "\n");
+  pe_info(pe, "Send requests\n");
+  pe_info(pe,
+	  "Req (cx cy cz) imin imax jmin jmax kmin kmax     bytes\n");
+  pe_info(pe,
+	  "------------------------------------------------------\n");
+  for (int ireq = 1; ireq < h->nvel; ireq++) {
+    pe_info(pe, "%3d (%2d %2d %2d) %4d %4d %4d %4d %4d %4d %9ld\n", ireq,
+	    h->cv[ireq][X], h->cv[ireq][Y], h->cv[ireq][Z],
+	    h->slim[ireq].imin, h->slim[ireq].imax,
+	    h->slim[ireq].jmin, h->slim[ireq].jmax,
+	    h->slim[ireq].kmin, h->slim[ireq].kmax,
+	    (size_t) f->nf*field_halo_size(h->slim[ireq])*sizeof(double));
+  }
+
+  /* Recv limits counts */
+  pe_info(pe, "\n");
+  pe_info(pe, "Receive requests\n");
+  pe_info(pe,
+	  "Req (cx cy cz) imin imax jmin jmax kmin kmax     bytes\n");
+  pe_info(pe,
+	  "------------------------------------------------------\n");
+  for (int ireq = 1; ireq < h->nvel; ireq++) {
+    pe_info(pe, "%3d (%2d %2d %2d) %4d %4d %4d %4d %4d %4d %9ld\n", ireq,
+	    h->cv[ireq][X], h->cv[ireq][Y], h->cv[ireq][Z],
+	    h->rlim[ireq].imin, h->rlim[ireq].imax,
+	    h->rlim[ireq].jmin, h->rlim[ireq].jmax,
+	    h->rlim[ireq].kmin, h->rlim[ireq].kmax,
+	    (size_t) f->nf*field_halo_size(h->rlim[ireq])*sizeof(double));
+  }
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  field_halo_free
+ *
+ *****************************************************************************/
+
+int field_halo_free(field_halo_t * h) {
+
+  assert(h);
+
+  for (int p = 1; p < h->nvel; p++) {
+    free(h->send[p]);
+    free(h->recv[p]);
+  }
+
+  *h = (field_halo_t) {0};
 
   return 0;
 }

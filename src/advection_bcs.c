@@ -24,7 +24,6 @@
 #include "kernel.h"
 #include "advection_s.h"
 #include "psi_gradients.h"
-#include "field_s.h"
 #include "timer.h"
 #include "advection_bcs.h"
 

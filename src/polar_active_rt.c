@@ -4,8 +4,6 @@
  *
  *  Run time initialisation for active gel free energy.
  *
- *  $Id$
- *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
@@ -23,7 +21,6 @@
 #include <string.h>
 
 #include "coords.h"
-#include "field_s.h"
 #include "polar_active_rt.h"
 
 static int polar_active_init_code(field_t * p);

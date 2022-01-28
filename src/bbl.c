@@ -24,8 +24,6 @@
 #include "coords.h"
 #include "physics.h"
 #include "colloid_sums.h"
-#include "model.h"
-#include "lb_model_s.h"
 #include "util.h"
 #include "wall.h"
 #include "bbl.h"

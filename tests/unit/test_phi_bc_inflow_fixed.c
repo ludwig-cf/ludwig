@@ -80,13 +80,14 @@ __host__ int test_phi_bc_inflow_fixed_update(pe_t * pe, cs_t * cs) {
   int noffset[3] = {};
   phi_bc_inflow_opts_t options = {.phi0 = 999.999, .flow = {1,0,0}};
   phi_bc_inflow_fixed_t * inflow = NULL;
+
   field_t * phi = NULL;
+  field_options_t opts = field_options_ndata_nhalo(1, 1);
 
   assert(pe);
   assert(cs);
 
-  field_create(pe, cs, 1, "phi", &phi);
-  field_init(phi, 1, NULL);
+  field_create(pe, cs, NULL, "phi", &opts, &phi);
   assert(phi);
   
   phi_bc_inflow_fixed_create(pe, cs, &options, &inflow);

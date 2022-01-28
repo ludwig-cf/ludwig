@@ -25,7 +25,6 @@
 #include "pe.h"
 #include "util.h"
 #include "coords.h"
-#include "field_s.h"
 #include "field_grad.h"
 #include "blue_phase.h"
 #include "blue_phase_init.h"

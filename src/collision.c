@@ -30,13 +30,10 @@
 #include "util.h"
 #include "coords_s.h"
 #include "physics.h"
-#include "model.h"
-#include "lb_model_s.h"
 #include "free_energy.h"
 #include "visc.h"
 #include "control.h"
 #include "collision.h"
-#include "field_s.h"
 #include "kernel.h"
 #include "timer.h"
 

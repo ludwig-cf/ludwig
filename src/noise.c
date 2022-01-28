@@ -296,7 +296,7 @@ __host__ int noise_init_io_info(noise_t * obj, int grid[3], int form_in,
 
   const char * name = "Lattice noise RNG state";
   const char * stubname = "noise";
-  io_info_arg_t args;
+  io_info_args_t args = {};
 
   assert(obj);
 

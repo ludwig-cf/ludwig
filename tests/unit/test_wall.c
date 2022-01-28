@@ -163,16 +163,17 @@ __host__ int test_wall_slip(void) {
 
 __host__ int test_wall_link_normal(pe_t * pe, cs_t * cs) {
 
-  lb_t * lb = NULL;
   map_t * map = NULL;
   wall_t * wall = NULL;
   wall_param_t param = {0};
 
+  lb_data_options_t options = lb_data_options_default();
+  lb_t * lb = NULL;
+
   assert(pe);
   assert(cs);
 
-  lb_create(pe, cs, &lb);
-  lb_init(lb);
+  lb_data_create(pe, cs, &options, &lb);
 
   map_create(pe, cs, 1, &map);
   wall_create(pe, cs, map, lb, &wall);
@@ -234,16 +235,17 @@ __host__ int test_wall_link_normal(pe_t * pe, cs_t * cs) {
 
 __host__ int test_wall_link_slip_direction(pe_t * pe, cs_t * cs) {
 
-  lb_t * lb = NULL;
   map_t * map = NULL;
   wall_t * wall = NULL;
   wall_param_t param = {0};
 
+  lb_data_options_t options =  lb_data_options_default();
+  lb_t * lb = NULL;
+
   assert(pe);
   assert(cs);
 
-  lb_create(pe, cs, &lb);
-  lb_init(lb);
+  lb_data_create(pe, cs, &options, &lb);
 
   map_create(pe, cs, 1, &map);
   wall_create(pe, cs, map, lb, &wall);
@@ -294,16 +296,17 @@ __host__ int test_wall_link_slip_direction(pe_t * pe, cs_t * cs) {
 
 __host__ int test_wall_link_slip(pe_t * pe, cs_t * cs) {
 
-  lb_t * lb = NULL;
   map_t * map = NULL;
   wall_t * wall = NULL;
   wall_param_t param = {0};
 
+  lb_data_options_t options = lb_data_options_default();
+  lb_t * lb = NULL;
+
   assert(pe);
   assert(cs);
 
-  lb_create(pe, cs, &lb);
-  lb_init(lb);
+  lb_data_create(pe, cs, &options, &lb);
 
   map_create(pe, cs, 1, &map);
   wall_create(pe, cs, map, lb, &wall);
@@ -347,16 +350,17 @@ __host__ int test_wall_link_slip(pe_t * pe, cs_t * cs) {
 
 __host__ int test_wall_commit1(pe_t * pe, cs_t * cs) {
 
-  lb_t * lb = NULL;
   map_t * map = NULL;
   wall_t * wall = NULL;
   wall_param_t param = {0};
 
+  lb_data_options_t options = lb_data_options_default();
+  lb_t * lb = NULL;
+
   assert(pe);
   assert(cs);
 
-  lb_create(pe, cs, &lb);
-  lb_init(lb);
+  lb_data_create(pe, cs, &options, &lb);
 
   map_create(pe, cs, 1, &map);
   wall_create(pe, cs, map, lb, &wall);
@@ -394,16 +398,17 @@ __host__ int test_wall_commit1(pe_t * pe, cs_t * cs) {
 
 __host__ int test_wall_commit2(pe_t * pe, cs_t * cs) {
 
-  lb_t * lb = NULL;
   map_t * map = NULL;
   wall_t * wall = NULL;
   wall_param_t param = {0};
 
+  lb_data_options_t options = lb_data_options_default();
+  lb_t * lb = NULL;
+
   assert(pe);
   assert(cs);
 
-  lb_create(pe, cs, &lb);
-  lb_init(lb);
+  lb_data_create(pe, cs, &options, &lb);
 
   map_create(pe, cs, 1, &map);
   wall_create(pe, cs, map, lb, &wall);

@@ -70,7 +70,7 @@ __host__ int test_lb_bc_inflow_rhou_create(pe_t * pe, cs_t * cs) {
 
   assert(inflow);
   assert(inflow->pe == pe);
-  assert(inflow->cs = cs);
+  assert(inflow->cs == cs);
 
   assert(inflow->super.func);
   assert(inflow->super.id == LB_BC_INFLOW_RHOU);
@@ -107,6 +107,8 @@ __host__ int test_lb_bc_inflow_rhou_update(pe_t * pe, cs_t * cs, int nvel) {
                                  .flow = {1, 0, 0},
                                  .u0   = {-1.0,-2.0,-3.0}};
   lb_bc_inflow_rhou_t * inflow = NULL;
+
+  hydro_options_t hopts = hydro_options_default();
   hydro_t * hydro = NULL;
 
   assert(pe);
@@ -116,7 +118,7 @@ __host__ int test_lb_bc_inflow_rhou_update(pe_t * pe, cs_t * cs, int nvel) {
   cs_nlocal_offset(cs, noffset);
 
   lb_bc_inflow_rhou_create(pe, cs, &options, &inflow);
-  hydro_create(pe, cs, NULL, 1, &hydro);
+  hydro_create(pe, cs, NULL, &hopts, &hydro);
 
   /* Set the relevant domain values (rho only here) */
 
@@ -189,8 +191,12 @@ __host__ int test_lb_bc_inflow_rhou_impose(pe_t * pe, cs_t * cs, int nvel) {
                                  .flow = {1, 0, 0},
                                  .u0   = {0.01, 0.0, 0.0}};
   lb_bc_inflow_rhou_t * inflow = NULL;
-  hydro_t * hydro = NULL;
+
+  lb_data_options_t lb_options = lb_data_options_default();
   lb_t * lb = NULL;
+
+  hydro_options_t hopts = hydro_options_default();
+  hydro_t * hydro = NULL;
 
   assert(pe);
   assert(cs);
@@ -202,9 +208,8 @@ __host__ int test_lb_bc_inflow_rhou_impose(pe_t * pe, cs_t * cs, int nvel) {
   cs_nlocal_offset(cs, noffset);
 
   lb_bc_inflow_rhou_create(pe, cs, &options, &inflow);
-  hydro_create(pe, cs, NULL, 1, &hydro);
-  lb_create(pe, cs, &lb);
-  lb_init(lb);
+  hydro_create(pe, cs, NULL, &hopts, &hydro);
+  lb_data_create(pe, cs, &lb_options, &lb);
 
   /* Set the relevant domain values (rho only here) */
 

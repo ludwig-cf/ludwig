@@ -8,7 +8,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2010-2017 The University of Edinburgh
+ *  (c) 2010-2022 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -23,7 +23,7 @@
 
 #include "pe.h"
 #include "coords.h"
-#include "model.h"
+#include "lb_data.h"
 #include "control.h"
 #include "tests.h"
 
@@ -47,7 +47,7 @@ int test_halo_suite(void) {
   cs_init(cs);
 
   do_test_const_blocks();
-
+  
   do_test_halo_null(pe, cs, LB_HALO_FULL);
   do_test_halo_null(pe, cs, LB_HALO_REDUCED);
 
@@ -128,11 +128,14 @@ int do_test_halo_null(pe_t * pe, cs_t * cs, lb_halo_enum_t halo) {
 
   MPI_Comm_rank(comm, &rank);
 
-  lb_create(pe, cs, &lb);
-  lb_ndist_set(lb, ndist);
-  lb_init(lb);
-  lb_halo_set(lb, halo);
-
+  {
+    lb_data_options_t options = lb_data_options_default();
+    options.ndim = NDIM;
+    options.nvel = NVEL;
+    options.ndist = ndist;
+    lb_data_create(pe, cs, &options, &lb);
+    lb_halo_set(lb, halo);
+  }
   cs_nlocal(cs, nlocal);
 
   /* Set entire distribution (all sites including halos) to 1.0 */
@@ -233,10 +236,14 @@ int do_test_halo(pe_t * pe, cs_t * cs, int dim, lb_halo_enum_t halo) {
   assert(dim == X || dim == Y || dim == Z);
 
 
-  lb_create(pe, cs, &lb);
-  lb_ndist_set(lb, ndist);
-  lb_init(lb);
-  lb_halo_set(lb, halo);
+  {
+    lb_data_options_t options = lb_data_options_default();
+    options.nvel = NVEL;
+    options.ndim = NDIM;
+    options.ndist = ndist;
+    lb_data_create(pe, cs, &options, &lb);
+    lb_halo_set(lb, halo);
+  }
 
   cs_nhalo(cs, &nhalo);
   nextra = nhalo;

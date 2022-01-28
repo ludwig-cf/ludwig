@@ -22,7 +22,6 @@
 #include "coords.h"
 #include "kernel.h"
 #include "memory.h"
-#include "lb_model_s.h"
 #include "propagation.h"
 #include "tests.h"
 
@@ -83,16 +82,17 @@ int do_test_velocity(pe_t * pe, cs_t * cs, lb_halo_enum_t halo) {
   int ndist = 2;
   double f_actual;
 
+  lb_data_options_t options = lb_data_options_default();
   lb_t * lb = NULL;
 
   assert(pe);
   assert(cs);
 
-  lb_create(pe, cs, &lb);
+  options.ndim = NDIM;
+  options.nvel = NVEL;
+  options.ndist = ndist;
+  lb_data_create(pe, cs, &options, &lb);
   assert(lb);
-
-  lb_ndist_set(lb, ndist);
-  lb_init(lb);
 
   cs_nlocal(cs, nlocal);
 
@@ -173,15 +173,17 @@ int do_test_source_destination(pe_t * pe, cs_t * cs, lb_halo_enum_t halo) {
   double f_actual, f_expect;
   double ltot[3];
 
+  lb_data_options_t options = lb_data_options_default();
   lb_t * lb = NULL;
 
   assert(pe);
   assert(cs);
 
-  lb_create(pe, cs, &lb);
+  options.ndim = NDIM;
+  options.nvel = NVEL;
+  options.ndist = ndist;
+  lb_data_create(pe, cs, &options, &lb);
   assert(lb);
-  lb_ndist_set(lb, ndist);
-  lb_init(lb);
 
   cs_ltot(cs, ltot);
   cs_ntotal(cs, ntotal);

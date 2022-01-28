@@ -31,7 +31,8 @@
 #include "tests.h"
 
 static int do_test1(pe_t * pe);
-static int do_test_halo1(pe_t * pe, int nhalo, int nhcomm);
+static int do_test_halo1(pe_t * pe, int nhalo, int nhcomm,
+			 hydro_halo_enum_t haloscheme);
 static int do_test_io1(pe_t * pe, int io_format);
 
 int test_hydro_rho(pe_t * pe);
@@ -49,9 +50,11 @@ int test_hydro_suite(void) {
   pe_create(MPI_COMM_WORLD, PE_QUIET, &pe);
 
   do_test1(pe);
-  do_test_halo1(pe, 1, 1);
-  do_test_halo1(pe, 2, 2);
-  do_test_halo1(pe, 2, 1);
+  do_test_halo1(pe, 1, 1, HYDRO_U_HALO_TARGET);
+  do_test_halo1(pe, 2, 2, HYDRO_U_HALO_TARGET);
+  do_test_halo1(pe, 2, 1, HYDRO_U_HALO_TARGET);
+  do_test_halo1(pe, 1, 1, HYDRO_U_HALO_OPENMP);
+  do_test_halo1(pe, 2, 1, HYDRO_U_HALO_OPENMP);
 
   test_hydro_rho(pe);
 
@@ -80,6 +83,8 @@ static int do_test1(pe_t * pe) {
 
   cs_t * cs = NULL;
   lees_edw_t * le = NULL;
+
+  hydro_options_t opts = hydro_options_default();
   hydro_t * hydro = NULL;
 
   assert(pe);
@@ -89,8 +94,9 @@ static int do_test1(pe_t * pe) {
   cs_init(cs);
   lees_edw_create(pe, cs, NULL, &le);
 
-  hydro_create(pe, cs, le, 1, &hydro);
+  hydro_create(pe, cs, le, &opts, &hydro);
   assert(hydro);
+  assert(hydro->opts.nhcomm == 1);
 
   index = cs_index(cs, 1, 1, 1);
   hydro_f_local_set(hydro, index, force);
@@ -123,11 +129,14 @@ static int do_test1(pe_t * pe) {
  *
  *****************************************************************************/
 
-static int do_test_halo1(pe_t * pe, int nhalo, int nhcomm) {
+static int do_test_halo1(pe_t * pe, int nhalo, int nhcomm,
+			 hydro_halo_enum_t haloscheme) {
 
-  hydro_t * hydro = NULL;
   cs_t * cs = NULL;
   lees_edw_t * le = NULL;
+
+  hydro_options_t opts = {.nhcomm = nhcomm, .haloscheme = haloscheme};
+  hydro_t * hydro = NULL;
 
   assert(pe);
 
@@ -136,7 +145,7 @@ static int do_test_halo1(pe_t * pe, int nhalo, int nhcomm) {
   cs_init(cs);
   lees_edw_create(pe, cs, NULL, &le);
 
-  hydro_create(pe, cs, le, nhcomm, &hydro);
+  hydro_create(pe, cs, le, &opts, &hydro);
   assert(hydro);
 
   test_coords_field_set(cs, NHDIM, hydro->u, MPI_DOUBLE, test_ref_double1);
@@ -171,6 +180,8 @@ static int do_test_io1(pe_t * pe, int io_format) {
 
   cs_t * cs = NULL;
   io_info_t * iohandler = NULL;
+
+  hydro_options_t opts = hydro_options_default();
   hydro_t * hydro = NULL;
 
   assert(pe);
@@ -186,7 +197,7 @@ static int do_test_io1(pe_t * pe, int io_format) {
     grid[Z] = 2;
   }
 
-  hydro_create(pe, cs, NULL, 1, &hydro);
+  hydro_create(pe, cs, NULL, &opts, &hydro);
   assert(hydro);
 
   hydro_init_io_info(hydro, grid, io_format, io_format);
@@ -216,6 +227,8 @@ static int do_test_io1(pe_t * pe, int io_format) {
 int test_hydro_rho(pe_t * pe) {
 
   cs_t * cs = NULL;
+
+  hydro_options_t opts = hydro_options_default();
   hydro_t * hydro = NULL;
 
   assert(pe);
@@ -223,7 +236,7 @@ int test_hydro_rho(pe_t * pe) {
   cs_create(pe, &cs);
   cs_init(cs);
 
-  hydro_create(pe, cs, NULL, 1, &hydro);
+  hydro_create(pe, cs, NULL, &opts, &hydro);
 
   assert(hydro->rho);
 

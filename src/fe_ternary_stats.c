@@ -20,7 +20,6 @@
 #include "pe.h"
 #include "coords.h"
 #include "kernel.h"
-#include "field_s.h"
 #include "fe_ternary_stats.h"
 
 
