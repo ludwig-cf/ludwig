@@ -7,7 +7,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2010-2021 The University of Edinburgh
+ *  (c) 2010-2022 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -254,10 +254,12 @@ int test_lb_halo(pe_t * pe) {
     test_lb_halo_post_wait(pe, cs, 3, 15, LB_HALO_OPENMP_FULL);
     test_lb_halo_post_wait(pe, cs, 3, 19, LB_HALO_OPENMP_REDUCED);
     test_lb_halo_post_wait(pe, cs, 3, 19, LB_HALO_OPENMP_FULL);
-    /* This will break while still fixed NVEL present...
-    test_lb_halo_create(pe, cs, 3, 27, 0);
-    test_lb_halo_create(pe, cs, 3, 27, 1);
-    */
+
+    /* TODO: add when NVEL is not fixed...
+     * "3, 27, LB_HALO_OPENMP_REDUCED"
+     * "3, 27, LB_HALO_OPENMP_FULL"
+     */
+
     cs_free(cs);
   }
 
