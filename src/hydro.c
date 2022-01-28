@@ -24,6 +24,8 @@
 #include "util.h"
 #include "hydro.h"
 
+#include "timer.h"
+
 static int hydro_lees_edwards_parallel(hydro_t * obj);
 static int hydro_u_write(FILE * fp, int index, void * self);
 static int hydro_u_write_ascii(FILE * fp, int index, void * self);
@@ -1538,6 +1540,8 @@ int hydro_halo_post(hydro_t * hydro) {
 
   /* Post recvs */
 
+  TIMER_start(TIMER_HYDRO_HALO_IRECV);
+
   for (int ireq = 1; ireq < h->nvel; ireq++) {
 
     int i = 1 + h->cv[h->nvel - ireq][X];
@@ -1551,7 +1555,11 @@ int hydro_halo_post(hydro_t * hydro) {
 	      tagbase + ireq, h->comm, h->request + ireq);
   }
 
+  TIMER_stop(TIMER_HYDRO_HALO_IRECV);
+
   /* Load send buffers; post sends */
+
+  TIMER_start(TIMER_HYDRO_HALO_PACK);
 
   #pragma omp parallel
   {
@@ -1559,6 +1567,10 @@ int hydro_halo_post(hydro_t * hydro) {
       hydro_halo_enqueue_send(hydro, h, ireq);
     }
   }
+
+  TIMER_stop(TIMER_HYDRO_HALO_PACK);
+
+  TIMER_start(TIMER_HYDRO_HALO_ISEND);
 
   for (int ireq = 1; ireq < h->nvel; ireq++) {
     int i = 1 + h->cv[ireq][X];
@@ -1571,6 +1583,8 @@ int hydro_halo_post(hydro_t * hydro) {
     MPI_Isend(h->send[ireq], mcount, MPI_DOUBLE, h->nbrrank[i][j][k],
 	      tagbase + ireq, h->comm, h->request + 27 + ireq);
   }
+
+  TIMER_stop(TIMER_HYDRO_HALO_ISEND);
 
   return 0;
 }
@@ -1587,7 +1601,13 @@ int hydro_halo_wait(hydro_t * hydro) {
 
   hydro_halo_t * h = &hydro->h;
 
+  TIMER_start(TIMER_HYDRO_HALO_WAITALL);
+
   MPI_Waitall(2*h->nvel, h->request, MPI_STATUSES_IGNORE);
+
+  TIMER_stop(TIMER_HYDRO_HALO_WAITALL);
+
+  TIMER_start(TIMER_HYDRO_HALO_UNPACK);
 
   #pragma omp parallel
   {
@@ -1595,6 +1615,8 @@ int hydro_halo_wait(hydro_t * hydro) {
       hydro_halo_dequeue_recv(hydro, h, ireq);
     }
   }
+
+  TIMER_stop(TIMER_HYDRO_HALO_UNPACK);
 
   return 0;
 }
