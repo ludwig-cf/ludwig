@@ -30,6 +30,7 @@ lb_data_options_t lb_data_options_default(void) {
   lb_data_options_t opts = {.ndim = 3, .nvel = 19, .ndist = 1,
                             .nrelax = LB_RELAXATION_M10,
 			    .halo   = LB_HALO_TARGET,
+			    .reportimbalance = 0,
                             .data = io_info_args_default(),
                             .rho  = io_info_args_default()};
 
@@ -46,8 +47,7 @@ int lb_data_options_valid(const lb_data_options_t * opts) {
 
   int valid = 1;
 
-  if (!(opts->ndim == 2 || opts->ndim == 3)) valid = 0;
-  /* nvel */
+  if (!(opts->ndim  == 2 || opts->ndim  == 3)) valid = 0;
   if (!(opts->ndist == 1 || opts->ndist == 2)) valid = 0;
 
   return valid;

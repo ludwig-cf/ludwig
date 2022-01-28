@@ -129,6 +129,7 @@ struct lb_data_s {
   lb_relaxation_enum_t nrelax;  /* Relaxation scheme */
   lb_halo_enum_t haloscheme;    /* halo scheme */
 
+  lb_data_options_t opts;       /* Copy of run time options */
   lb_halo_t h;                  /* halo information/buffers */
 
   /* MPI data types for halo swaps; these are comupted at runtime

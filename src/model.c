@@ -30,6 +30,8 @@
 #include "coords.h"
 #include "lb_data.h"
 #include "io_harness.h"
+
+#include "timer.h"
 #include "util.h"
 
 static int lb_mpi_init(lb_t * lb);
@@ -125,6 +127,7 @@ int lb_data_create(pe_t * pe, cs_t * cs, const lb_data_options_t * options,
   lb_halo_create(obj, &obj->h, obj->haloscheme);
   lb_init(obj);
 
+  obj->opts = *options;
   *lb = obj;
 
   return 0;
@@ -2017,7 +2020,16 @@ int lb_halo_post(const lb_t * lb, lb_halo_t * h) {
   assert(lb);
   assert(h);
 
+  /* Imbalance timer */
+  if (lb->opts.reportimbalance) {
+    TIMER_start(TIMER_LB_HALO_IMBAL);
+    MPI_Barrier(h->comm);
+    TIMER_stop(TIMER_LB_HALO_IMBAL);
+  }
+
   /* Post recvs (from opposite direction cf send) */
+
+  TIMER_start(TIMER_LB_HALO_IRECV);
 
   for (int ireq = 0; ireq < h->map.nvel; ireq++) {
 
@@ -2036,8 +2048,12 @@ int lb_halo_post(const lb_t * lb, lb_halo_t * h) {
     }
   }
 
+  TIMER_stop(TIMER_LB_HALO_IRECV);
+
   /* Load send buffers */
   /* Enqueue sends (second half of request array) */
+
+  TIMER_start(TIMER_LB_HALO_PACK);
 
   #pragma omp parallel
   {
@@ -2045,6 +2061,10 @@ int lb_halo_post(const lb_t * lb, lb_halo_t * h) {
       lb_halo_enqueue_send(lb, h, ireq);
     }
   }
+
+  TIMER_stop(TIMER_LB_HALO_PACK);
+
+  TIMER_start(TIMER_LB_HALO_ISEND);
 
   for (int ireq = 0; ireq < h->map.nvel; ireq++) {
 
@@ -2064,6 +2084,8 @@ int lb_halo_post(const lb_t * lb, lb_halo_t * h) {
     }
   }
 
+  TIMER_stop(TIMER_LB_HALO_ISEND);
+
   return 0;
 }
 
@@ -2078,7 +2100,13 @@ int lb_halo_wait(lb_t * lb, lb_halo_t * h) {
   assert(lb);
   assert(h);
 
+  TIMER_start(TIMER_LB_HALO_WAIT);
+
   MPI_Waitall(2*h->map.nvel, h->request, MPI_STATUSES_IGNORE);
+
+  TIMER_stop(TIMER_LB_HALO_WAIT);
+
+  TIMER_start(TIMER_LB_HALO_UNPACK);
 
   #pragma omp parallel
   {
@@ -2086,6 +2114,8 @@ int lb_halo_wait(lb_t * lb, lb_halo_t * h) {
       lb_halo_dequeue_recv(lb, h, ireq);
     }
   }
+
+  TIMER_stop(TIMER_LB_HALO_UNPACK);
 
   return 0;
 }

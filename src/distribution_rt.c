@@ -278,6 +278,11 @@ int lb_run_time_prev(pe_t * pe, cs_t * cs, rt_t * rt, lb_t ** lb) {
     if (havetype) {
       pe_info(pe, "Halo scheme:      %s\n", htype);
     }
+
+    options.reportimbalance = rt_switch(rt, "lb_halo_report_imbalance");
+    if (options.reportimbalance) {
+      pe_info(pe, "Imbalance time:   %s\n", "reported");
+    }
   }
   
   lb_data_create(pe, cs, &options, lb);
