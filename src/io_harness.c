@@ -54,11 +54,14 @@ int io_unpack_local_buf(io_info_t * obj, int mpi_sender, const char * buf,
  *
  *  io_info_create
  *
- *  Retrun a pointer to a new io_info_t with specified arguments.
+ *  Return a pointer to a new io_info_t with specified arguments.
+ *
+ *  This needs to be phased out in favour of version with implementation
+ *  details. At the moment only arg->grid is used.
  *
  *****************************************************************************/
 
-int io_info_create(pe_t * pe, cs_t * cs, io_info_arg_t * arg, io_info_t ** p) {
+int io_info_create(pe_t * pe, cs_t * cs, io_info_args_t * arg, io_info_t ** p) {
 
   io_info_t * info = NULL;
 

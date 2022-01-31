@@ -92,9 +92,10 @@ static int do_test1(pe_t * pe) {
   assert(psi);
   fe_electro_create(pe, psi, &fe_elec);
 
-  field_create(pe, cs, 1, "phi", &phi);
-  assert(phi);
-  field_init(phi, 1, NULL);
+  {
+    field_options_t opts = field_options_ndata_nhalo(1, 1);
+    field_create(pe, cs, NULL, "phi", &opts, &phi);
+  }
 
   field_grad_create(pe, phi, 2, &dphi);
   assert(dphi);

@@ -83,13 +83,14 @@ __host__ int test_phi_bc_outflow_free_update(pe_t * pe, cs_t * cs) {
   
   phi_bc_outflow_opts_t options = {.flow = {1,0,0}};
   phi_bc_outflow_free_t * outflow = NULL;
+
   field_t * phi = NULL;
+  field_options_t opts = field_options_ndata_nhalo(1, 1);
   
   assert(pe);
   assert(cs);
 
-  field_create(pe, cs, 1, "phi", &phi);
-  field_init(phi, 1, NULL);
+  field_create(pe, cs, NULL, "phi", &opts, &phi);
 
   /* Provide some initial conditions in the domain proper,
    * with some artificial data. */

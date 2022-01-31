@@ -57,11 +57,12 @@ __host__ int test_fe_ternary_suite(void) {
   }
   else {
 
+    field_options_t opts = field_options_ndata_nhalo(nf2, nhalo);
+
     cs_create(pe, &cs);
     cs_init(cs);
 
-    field_create(pe, cs, nf2, "ternary", &phi);
-    field_init(phi, nhalo, NULL);
+    field_create(pe, cs, NULL, "ternary", &opts, &phi);
 
     test_fe_ternary_create(pe, cs, phi);
     test_fe_ternary_fed(pe, cs, phi);

@@ -6,10 +6,47 @@
  *
  *  See Nash et al. (2007).
  *
+ *  Overview.
+ *
+ *  Two-way coupling between sub-grid particles and the fluid is implemented
+ *  in roughly two phases.
+ *
+ *  (1) Force on each particle from the immediately surrounding fluid.
+ *  (2) Influence of the particles on local fluid nodes;
+ *
+ *  (1) subgrid_update() is responsible for the particle update and setting
+ *      any poistion increment dr. Schematically:
+ *
+ *      -> subgrid_interpolation()
+ *         accumulates contributions to the force on the particle from
+ *         local fluid nodes to local particle copies (fsub[3]);
+ *      -> COLLOID_SUM_SUBGRID
+ *         ensures all copies agree on the net force per particle fsub[3].
+ *      -> all copies update v and dr = v.dt from fsub[3] and must agree.
+ *      -> Actual position updates must be deferred until the start of
+ *         the next time step and solloids_info_position_update().
+ *
+ *  (2) subgrid_force_from_particle() is responsible for computing
+ *      the force on local fluid nodes from particles. Schematically;
+ *
+ *      -> On entry, fex[3] may contain pair interaction and other
+ *         "external" forces on the particle;
+ *      -> subgrid_wall_lubrication()
+ *          detect and compute particle/wall lubrication forces,
+ *          and accumulate to fex[3] once per particle (i.e. local copies
+ *          only involved);
+ *      -> COLLOID_SUM_FORCE_EXT_ONLY
+ *         => all copies agree on fext[3], text[3]
+ *
+ *      -> All particle copies contribute \delta(r - R_i) fext[3] to local
+ *         fluid nodes only via hydro_f_local_add() at position r.
+ *      -> This force may then enter the fluid collision stage.
+ *
+ *
  *  Edinburgh Soft Matter and Statistical Phyiscs Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2010-2021 The University of Edinburgh
+ *  (c) 2010-2022 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)

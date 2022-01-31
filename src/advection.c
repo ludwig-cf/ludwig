@@ -33,7 +33,6 @@
 #include <assert.h>
 #include <stdlib.h>
 
-#include "field_s.h"
 #include "advection_s.h"
 #include "psi_gradients.h"
 #include "hydro.h"

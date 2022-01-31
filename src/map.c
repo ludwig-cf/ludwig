@@ -214,7 +214,7 @@ __host__ int map_memcpy(map_t * map, tdpMemcpyKind flag) {
 __host__
 int map_init_io_info(map_t * obj, int grid[3], int form_in, int form_out) {
 
-  io_info_arg_t args;
+  io_info_args_t args = {};
   size_t sz;
 
   assert(obj);

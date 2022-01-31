@@ -18,7 +18,7 @@
 #include "pe.h"
 #include "runtime.h"
 #include "coords.h"
-#include "model.h"
+#include "lb_data.h"
 #include "map.h"
 #include "wall.h"
 

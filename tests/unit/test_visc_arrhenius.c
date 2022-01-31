@@ -7,7 +7,7 @@
  *  Edinburgh Soft Matter and Statistical Phsyics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2020 The University of Edinburgh
+ *  (c) 2020-2022 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -55,11 +55,12 @@ __host__ int test_visc_arrhenius_suite(void) {
   }
   else {
 
+    field_options_t opts = field_options_ndata_nhalo(1, nhalo);
+
     cs_create(pe, &cs);
     cs_init(cs);
 
-    field_create(pe, cs, 1, "ternary", &phi);
-    field_init(phi, nhalo, NULL);
+    field_create(pe, cs, NULL, "ternary", &opts, &phi);
 
     test_visc_arrhenius_create(pe, cs, phi);
     test_visc_arrhenius_update(pe, cs, phi);
@@ -124,6 +125,7 @@ int test_visc_arrhenius_update(pe_t * pe, cs_t * cs, field_t * phi) {
   visc_arrhenius_param_t param = {eta_minus, eta_plus, phistar};
   visc_arrhenius_t * visc = NULL;
 
+  hydro_options_t hopts = hydro_options_nhalo(0);
   hydro_t * hydro = NULL;
 
   int ifail;
@@ -144,7 +146,7 @@ int test_visc_arrhenius_update(pe_t * pe, cs_t * cs, field_t * phi) {
 
   /* Initialise the hydrodynamic sector and update the viscosity */
 
-  hydro_create(pe, cs, NULL, 0, &hydro);
+  hydro_create(pe, cs, NULL, &hopts, &hydro);
   visc_arrhenius_update(visc, hydro);
   hydro_memcpy(hydro, tdpMemcpyDeviceToHost);
 

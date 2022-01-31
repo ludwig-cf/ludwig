@@ -29,9 +29,8 @@
 #include "timer.h"
 #include "coords.h"
 #include "control.h"
-#include "lb_model_s.h"
 #include "physics.h"
-#include "leesedwards.h"
+#include "model_le.h"
 #include "util.h"
 
 static int le_reproject(lb_t * lb, lees_edw_t * le);

@@ -18,7 +18,6 @@
 #include <assert.h>
 #include <string.h>
 
-#include "field_s.h"
 #include "field_psi_init_rt.h"
 
 int field_init_uniform(field_t * psi, double psi0);

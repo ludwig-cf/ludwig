@@ -21,7 +21,6 @@
 #include "surfactant.h"
 #include "surfactant_rt.h"
 
-#include "field_s.h"
 #include "field_phi_init_rt.h"
 #include "field_psi_init_rt.h"
 
@@ -73,6 +72,7 @@ __host__ int fe_surf_phi_init_rt(pe_t * pe, rt_t * rt, fe_surf_t * fe,
 				  field_t * phi) {
 
   field_phi_info_t param = {0};
+  field_options_t opts = field_options_default();
   field_t * tmp = NULL;
 
   assert(pe);
@@ -85,8 +85,7 @@ __host__ int fe_surf_phi_init_rt(pe_t * pe, rt_t * rt, fe_surf_t * fe,
 
   /* Initialise phi via a temporary scalar field */
 
-  field_create(pe, phi->cs, 1, "tmp", &tmp);
-  field_init(tmp, 0, NULL);
+  field_create(pe, phi->cs, NULL, "tmp", &opts, &tmp);
 
   field_phi_init_rt(pe, rt, param, tmp);
   field_init_combine_insert(phi, tmp, 0);
@@ -106,8 +105,10 @@ __host__ int fe_surf_phi_init_rt(pe_t * pe, rt_t * rt, fe_surf_t * fe,
 
 __host__ int fe_surf_psi_init_rt(pe_t * pe, rt_t * rt, fe_surf_t * fe,
 				  field_t * phi) {
-  field_t * tmp = NULL;
+
+  field_options_t opts = field_options_default();
   field_psi_info_t param = {0};
+  field_t * tmp = NULL;
 
   assert(pe);
   assert(rt);
@@ -116,8 +117,7 @@ __host__ int fe_surf_psi_init_rt(pe_t * pe, rt_t * rt, fe_surf_t * fe,
 
   /* Initialise surfactant via a temporary field */
 
-  field_create(pe, phi->cs, 1, "tmp", &tmp);
-  field_init(tmp, 0, NULL);
+  field_create(pe, phi->cs, NULL, "tmp", &opts, &tmp);
 
   field_psi_init_rt(pe, rt, param, tmp);
   field_init_combine_insert(phi, tmp, 1);

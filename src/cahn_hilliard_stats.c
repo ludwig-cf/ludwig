@@ -18,7 +18,6 @@
 #include <stdlib.h>
 
 #include "phi_cahn_hilliard.h"
-#include "field_s.h"
 #include "util.h"
 #include "util_sum.h"
 

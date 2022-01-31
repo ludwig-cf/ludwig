@@ -22,7 +22,6 @@
 #include "runtime.h"
 #include "fe_ternary.h"
 #include "fe_ternary_rt.h"
-#include "field_s.h"
 #include "field_ternary_init.h"
 
 /****************************************************************************

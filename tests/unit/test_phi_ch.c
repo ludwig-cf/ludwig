@@ -62,6 +62,9 @@ int test_phi_ch_suite(void) {
   physics_t * phys = NULL;
   phi_ch_t * pch = NULL;
 
+  hydro_options_t hopts = hydro_options_default();
+  field_options_t opts = field_options_ndata_nhalo(nf, nhalo);
+
   pe_create(MPI_COMM_WORLD, PE_QUIET, &pe);
   cs_create(pe, &cs);
   cs_nhalo_set(cs, nhalo);
@@ -69,11 +72,10 @@ int test_phi_ch_suite(void) {
   physics_create(pe, &phys);
   lees_edw_create(pe, cs, NULL, &le);
 
-  field_create(pe, cs, nf, "phi", &phi);
-  assert(phi);
-  field_init(phi, nhalo, le);
+  field_create(pe, cs, le, "phi", &opts, &phi);
+  hydro_create(pe, cs, le, &hopts, &hydro);
 
-  hydro_create(pe, cs, le, 1, &hydro);
+  assert(phi);
   assert(hydro);
 
   phi_ch_create(pe, cs, le, NULL, &pch);

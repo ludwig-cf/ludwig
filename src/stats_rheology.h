@@ -7,7 +7,7 @@
  *
  *  $Id: stats_rheology.h,v 1.3 2009-10-14 17:16:01 kevin Exp $
  *
- *  (c) 2009-2017 The University of Edinburgh
+ *  (c) 2009-2022 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -18,7 +18,7 @@
 #define LUDWIG_STATS_RHEOLOGY_H
 
 #include "free_energy.h"
-#include "model.h"
+#include "lb_data.h"
 #include "hydro.h"
 
 typedef struct stats_rheo_s stats_rheo_t;

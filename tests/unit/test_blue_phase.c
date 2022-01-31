@@ -70,10 +70,13 @@ int test_bp_suite(void) {
 
   test_bp_nonfield();
 
-  field_create(pe, cs, NQAB, "q", &fq);
-  field_init(fq, nhalo, le);
-  field_grad_create(pe, fq, 2, &fqgrad);
-  field_grad_set(fqgrad, grad_3d_27pt_fluid_d2, NULL);
+  {
+    field_options_t opts = field_options_ndata_nhalo(NQAB, nhalo);
+    field_create(pe, cs, le, "q", &opts, &fq);
+
+    field_grad_create(pe, fq, 2, &fqgrad);
+    field_grad_set(fqgrad, grad_3d_27pt_fluid_d2, NULL);
+  }
 
   fe_lc_create(pe, cs, le, fq, fqgrad, &fe);
 

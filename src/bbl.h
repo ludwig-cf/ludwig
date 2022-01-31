@@ -15,7 +15,7 @@
 
 #include "coords.h"
 #include "colloids.h"
-#include "model.h"
+#include "lb_data.h"
 #include "wall.h"
 
 typedef struct bbl_s bbl_t;

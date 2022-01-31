@@ -7,7 +7,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2010-2020 The University of Edinburgh
+ *  (c) 2010-2022 The University of Edinburgh
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *
@@ -74,7 +74,7 @@ int do_test_io_info_struct(pe_t * pe, cs_t * cs) {
 
   char stubp[FILENAME_MAX];
   test_io_t data = {2, 1.0};
-  io_info_arg_t args;
+  io_info_args_t args;
   io_info_t * io_info = NULL;
 
   assert(pe);
