@@ -4,7 +4,7 @@
 #
 #  Makefile for documentation
 #
-#  make pdf
+#  make 
 #  make clean (probably the most useful)
 #
 #  should both work.

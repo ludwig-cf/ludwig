@@ -1,22 +1,6 @@
 ##############################################################################
 #
-#  Ludwig input file
-#  Reference.
-#
-#  Lines introduced with # and blank lines are ignored.
-#
-#  The file is made up of a series of (case-sensitive) keyword value
-#  pairs which should be separated by a space:
-#
-#  keyword value
-#
-#  Components of vector values are separated by an underscore, e.g.,
-#  force 0.01_0.00_0.00
-#
-#  If a given keyword does not appear, or is commented out, a default
-#  value will be used.
-#
-#  $Id: input.ref 1365 2011-05-16 13:24:17Z stratford $
+#  Colloids in LC tutorial
 #
 ##############################################################################
 
@@ -78,9 +62,6 @@ viscosity_bulk 0.833333
 isothermal_fluctuations off
 temperature 0.000000002133333
 
-# ghost_modes off
-# force 0.00_0.0_0.0
-
 ##############################################################################
 #
 #  Free energy parameters
@@ -116,66 +97,6 @@ free_energy lc_blue_phase
 
 fd_advection_scheme_order 2
 fd_gradient_calculation 3d_7pt_solid
-
-###############################################################################
-#
-#  Symmetric / Brazovskii
-#
-#  A            symmetric bulk parameter (A < 0 for binary fluid)
-#  B            symmetric bulk parameter (B = -A for binary fluid)
-#  kappa        surface 'penalty' parameter (kappa > 0 for binary fluid)
-#  C            additional brazovskki parameter (C = 0 for binary fluid)
-#
-#  mobility               Order parameter mobility M
-#
-#  phi_initialisation     spinodal or block [spinodal] 
-#  noise        magnitude of initial order parameter noise [default 0.05]
-#  phi0         mean order parameter
-#
-#
-###############################################################################
-
-A -0.0625
-B 0.0625
-K 0.04
-C 0.0
-
-mobility 0.15
-
-noise 0.05
-phi0 0.0
-phi_initialisation    spinodal
-
-###############################################################################
-#
-#  Surfactant free energy; set
-#
-#  In addition to A, B, K, of the symmrtric binary fluid, there are the
-#  extra parameters
-#
-#  surf_kT             bulk surfactant parameter
-#  surf_epsilon        surface term
-#  surf_beta           non-linear term
-#  surf_W              entropy term
-#
-#  surf_mobility_phi   fluid order parameter mobility
-#  surf_mobility_psi   surfactant order parameter mobility
-#  surf_psi_b          initial uniform (background) concentration
-#             
-###############################################################################
-
-surf_A -0.0208333
-surf_B  0.0208333
-surf_kappa 0.12
-
-surf_kT 0.00056587
-surf_epsilon 0.03
-surf_beta 0.0
-surf_W 0.0
-
-surf_mobility_phi 0.15
-surf_mobility_psi 2.0
-surf_psi_b 0.01
 
 ###############################################################################
 #
@@ -227,7 +148,6 @@ lc_kappa1  0.01
 lc_xi      0.7
 
 lc_Gamma   0.3
-lc_active_zeta 0.0
 
 lc_q_init_amplitude 0.2
 lc_q_initialisation nematic
@@ -236,26 +156,8 @@ lc_redshift_update 0
 lc_init_nematic 1.0_0.0_0.0
 
 lc_anchoring_method two
-#lc_wall_anchoring normal
 lc_coll_anchoring normal
-#lc_anchoring_strength_wall 0.006
 lc_anchoring_strength_colloid 0.01
-
-###############################################################################
-#
-#  polar active gel
-#
-###############################################################################
-
-polar_active_a       -0.1
-polar_active_b       +0.1
-polar_active_k       0.01
-polar_active_klc     0.02
-polar_active_zeta    0.0
-polar_active_lambda  0.0
-
-leslie_ericksen_gamma 0.3
-leslie_ericksen_swim  0.0
 
 ###############################################################################
 #
@@ -277,23 +179,7 @@ leslie_ericksen_swim  0.0
 ###############################################################################
 
 colloid_init        from_file
-colloid_type        inactive
 colloid_rho0        1.0
-
-colloid_random_no   1
-colloid_random_dh   0.4
-colloid_random_type default
-
-colloid_one_a0      5.0
-colloid_one_ah      5.0
-colloid_one_r       24.0_24.0_24.0
-colloid_one_isfixedr 0
-
-colloid_random_v    0.0_0.0_0.0
-colloid_random_s    1.0_0.0_0.0
-colloid_random_m    1.0_0.0_0.0
-colloid_random_c    0.0
-colloid_random_h    0.0
 
 # Constant body force on all colloids ("gravity") [default is zero]
 # Uniform magnetic field [default is zero]
@@ -306,8 +192,6 @@ magnetic_b0      0.0_0.0_0.0
 # Colloid-colloid lubrication corrections
 
 lubrication_on 0
-lubrication_normal_cutoff 0.3
-lubrication_tangential_cutoff 0.0
 
 ###############################################################################
 #
@@ -321,12 +205,6 @@ soft_sphere_epsilon 0.0004
 soft_sphere_sigma 0.1
 soft_sphere_nu 1.0
 soft_sphere_cutoff 0.25
-
-# Lennard Jones
-lennard_jones_on 0
-lj_sigma 2.3
-lj_cutoff 4.6
-lj_epsilon 0.0003
 
 ###############################################################################
 #
@@ -350,14 +228,6 @@ lj_epsilon 0.0003
 ###############################################################################
 
 boundary_walls 0_0_0
-boundary_speed_bottom 0.0
-boundary_speed_top    0.0
-boundary_shear_init 0
-boundary_lubrication_rcnormal 0.1
-
-#porous_media_format BINARY
-#porous_media_file   capillary_8_8_32.dat
-#porous_media_type   status_only
 
 ###############################################################################
 #
@@ -397,7 +267,6 @@ config_at_end yes
 default_io_grid 1_1_1
 
 distribution_io_grid 1_1_1
-distribution_io_input_format BINARY
 
 phi_io_grid 1_1_1
 phi_format    BINARY
@@ -424,40 +293,10 @@ colloid_io_format_output ASCII
 
 ###############################################################################
 #
-#  Lees-Edwards planes
-#
-#  These parameters set up a number of equally spaced planes
-#  with constant velocity.
-#
-#  N_LE_plane       the number of planes
-#  LE_plane_vel     the y-component of the plane velocity
-#  LE_init_profile  set the initial velocity profile to be consistent with
-#                   desired shear rate. (Only valid at t = 0). [0|1]
-#
-#  LE_oscillation_period
-#                   Integer > 1, switches on u = u_0 cos(2\pi t/T) where
-#                   u_0 is maximum plane velocity set via LE_plane_vel,
-#                   and T is the oscillation period
-#
-#  LE_time_offset   Integer offset to allow equilibration etc. CARE!
-#                   This must be <= N_start and fixed for given run.
-#                   Default is 0, ie., no offset. 
-#
-###############################################################################
-
-#N_LE_plane 2
-#LE_plane_vel 0.008
-#LE_init_profile 1
-#LE_oscillation_period 0
-#LE_time_offset 0
-
-###############################################################################
-#
 #  Miscellaneous
 #
 #  random_seed  +ve integer is the random number generator seed
 #
 ###############################################################################
 
-#random_seed 7361237
 random_seed 8361435
