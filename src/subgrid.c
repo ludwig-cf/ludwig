@@ -27,9 +27,15 @@
 #include "colloid_sums.h"
 #include "util.h"
 #include "subgrid.h"
+#include "field.h"
 
 static double d_peskin(double);
 static int subgrid_interpolation(colloids_info_t * cinfo, hydro_t * hydro);
+
+/* -----> CHEMOVESICLE V2 */
+static int subgrid_phi_production(colloids_info_t * cinfo, field_t * phi);
+/* <----- */
+
 static const double drange_ = 1.0; /* Max. range of interpolation - 1 */
 
 /*****************************************************************************
@@ -83,6 +89,11 @@ int subgrid_force_from_particles(colloids_info_t * cinfo, hydro_t * hydro,
 	for ( ; p_colloid; p_colloid = p_colloid->next) {
 
           if (p_colloid->s.type != COLLOID_TYPE_SUBGRID) continue;
+
+/* -----> CHEMOVESICLE V2 */
+/* Central particle does not interact with fluid */
+          if (p_colloid->s.iscentre == 1) continue;
+/* <----- */
 
 	  /* Need to translate the colloid position to "local"
 	   * coordinates, so that the correct range of lattice
@@ -198,6 +209,8 @@ int subgrid_update(colloids_info_t * cinfo, hydro_t * hydro, int noise_flag) {
   physics_kt(phys, &kt);
   reta = 1.0/(6.0*pi*eta);
 
+  /* Loop through all edge subgrid particles */ 
+
   for (ic = 0; ic <= ncell[X] + 1; ic++) {
     for (jc = 0; jc <= ncell[Y] + 1; jc++) {
       for (kc = 0; kc <= ncell[Z] + 1; kc++) {
@@ -208,41 +221,133 @@ int subgrid_update(colloids_info_t * cinfo, hydro_t * hydro, int noise_flag) {
 
           if (p_colloid->s.type != COLLOID_TYPE_SUBGRID) continue;
 
-	  drag = reta*(1.0/p_colloid->s.ah - 1.0/p_colloid->s.al);
+	  /* If subrid particle is not central, it is updated normally */
+	  if (p_colloid->s.iscentre == 1) continue;
+  
+  	  drag = reta*(1.0/p_colloid->s.ah - 1.0/p_colloid->s.al);
+  
+  	  if (noise_flag == 0) {
+  	    frand[X] = 0.0; frand[Y] = 0.0; frand[Z] = 0.0;
+  	  }
+  	  else {
+  	    for (ia = 0; ia < 3; ia++) {
+  	      while (1) {
+  	          /* To keep the random correction smaller than 3 sigma.
+  	           * Otherwise, a large thermal fluctuation may cause a
+  	           * numerical problem. */
+  	        util_ranlcg_reap_gaussian(&p_colloid->s.rng, ran);
+  	        if (fabs(ran[0]) < 3.0) {
+  	          frand[ia] = sqrt(2.0*kt*drag)*ran[0];
+  	          break;
+  	        }
+  	        if (fabs(ran[1]) < 3.0) {
+  	          frand[ia] = sqrt(2.0*kt*drag)*ran[1];
+  	          break;
+  	        }
+              }
+            }
+          }
+  
+          for (ia = 0; ia < 3; ia++) {
+            p_colloid->s.v[ia] = p_colloid->fsub[ia] + drag*p_colloid->fex[ia]
+                                   + frand[ia];
+  	    p_colloid->s.dr[ia] = p_colloid->s.v[ia];
+  	  }
+	}
+      }
+    }
+  }
+  return 0;
+}
 
-	  if (noise_flag == 0) {
-	    frand[X] = 0.0; frand[Y] = 0.0; frand[Z] = 0.0;
-	  }
-	  else {
-	    for (ia = 0; ia < 3; ia++) {
-	      while (1) {
-		/* To keep the random correction smaller than 3 sigma.
-		 * Otherwise, a large thermal fluctuation may cause a
-		 * numerical problem. */
-		util_ranlcg_reap_gaussian(&p_colloid->s.rng, ran);
-		if (fabs(ran[0]) < 3.0) {
-		  frand[ia] = sqrt(2.0*kt*drag)*ran[0];
-		  break;
-		}
-		if (fabs(ran[1]) < 3.0) {
-		  frand[ia] = sqrt(2.0*kt*drag)*ran[1];
-		  break;
-		}
+
+/* -----> CHEMOVESICLE V2 */
+/*****************************************************************************
+ *
+*  subgrid_centre_update ! MUST BE CALLED AFTER SUBGRID_UPDATE !
+ *
+ *  This function is responsible for update of position for
+ *  sub-gridscale particles. It takes the place of BBL for
+ *  fully resolved particles.
+ *
+ *****************************************************************************/
+
+int subgrid_centre_update(colloids_info_t * cinfo, hydro_t * hydro, int noise_flag) {
+
+  
+  int ia;
+  int ic, jc, kc, ic2, jc2, kc2;
+  int di[2], dj[2], dk[2];
+  int ncell[3];
+  int nparticles;
+  double centerofmass[3];
+  colloid_t * p_colloid;
+  colloid_t * p_colloid_edge;
+  physics_t * phys = NULL;
+
+  assert(cinfo);
+  assert(hydro);
+
+  if (cinfo->nsubgrid == 0) return 0;
+
+  colloid_sums_halo(cinfo, COLLOID_SUM_SUBGRID);
+
+  colloids_info_ncell(cinfo, ncell);
+
+  /* Loop through all cells (including the halo cells) */
+
+  /* Loop through the remaining central particles */ 
+  /* Loop over all */
+
+  for (ic = 0; ic <= ncell[X] + 1; ic++) {
+    colloids_info_climits(cinfo, X, ic, di);
+    for (jc = 0; jc <= ncell[Y] + 1; jc++) {
+      colloids_info_climits(cinfo, Y , jc, dj);
+      for (kc = 0; kc <= ncell[Z] + 1; kc++) {
+        colloids_info_climits(cinfo, Z, kc, dk);
+		
+        colloids_info_cell_list_head(cinfo, ic, jc, kc, &p_colloid);
+	for (; p_colloid; p_colloid = p_colloid->next) {
+	
+	  /* Filter out non subgrid and edge particles */	
+          if (p_colloid->s.type != COLLOID_TYPE_SUBGRID || p_colloid->s.iscentre == 0) continue;
+	  /* Reset variables */
+	  nparticles = 0;
+	  for (ia = 0; ia < 3; ia++) centerofmass[ia] = 0.0;
+
+	  /* Loop over edge particles */
+
+	  for (ic2 = di[0]; ic2 <= di[1]; ic2++) {
+	    for (jc2 = dj[0]; jc2 <= dj[1]; jc2++) {
+	      for (kc2 = dk[0]; kc2 <= dk[1]; kc2++) {
+
+	        colloids_info_cell_list_head(cinfo, ic2, jc2, kc2, &p_colloid_edge);
+	  		
+	        for (; p_colloid_edge; p_colloid_edge = p_colloid_edge->next) {
+	  	/* Filter out particles from vesicles not centered around the current p_colloid */
+
+	          if ((p_colloid_edge->s.indexcentre == p_colloid->s.index) && (p_colloid_edge->s.iscentre == 0)) {
+	            for (ia = 0; ia < 3; ia ++) {
+	              centerofmass[ia] += p_colloid_edge->s.r[ia];
+	            }
+	            nparticles += 1;	
+	          }
+	        }
 	      }
 	    }
 	  }
 
-	  for (ia = 0; ia < 3; ia++) {
-	    p_colloid->s.v[ia] = p_colloid->fsub[ia] + drag*p_colloid->fex[ia]
-                               + frand[ia];
+	  for (ia = 0; ia < 3; ia ++) {
+	    if (nparticles == 0) pe_fatal(hydro->pe, "No edge particle associated to a central particles (nparticles = %d) \n", nparticles);
+	    centerofmass[ia] = centerofmass[ia] / nparticles;
+	    /* The velocity of the colloid is set to that which makes it go to the center of mass in 1 timestep */
+	    p_colloid->s.v[ia] = centerofmass[ia] - p_colloid->s.r[ia]; 
 	    p_colloid->s.dr[ia] = p_colloid->s.v[ia];
-	  }
+	  }	      
 	}
-	/* Next cell */
       }
     }
   }
-
   return 0;
 }
 
@@ -287,6 +392,9 @@ static int subgrid_interpolation(colloids_info_t * cinfo, hydro_t * hydro) {
 
           if (p_colloid->s.type != COLLOID_TYPE_SUBGRID) continue;
 
+/* -----> CHEMOVESICLE V2 */
+	  if (p_colloid->s.iscentre == 1) continue;
+/* <----- */
 	  p_colloid->fsub[X] = 0.0;
 	  p_colloid->fsub[Y] = 0.0;
 	  p_colloid->fsub[Z] = 0.0;
@@ -306,6 +414,10 @@ static int subgrid_interpolation(colloids_info_t * cinfo, hydro_t * hydro) {
 	for ( ; p_colloid; p_colloid = p_colloid->next) {
 
           if (p_colloid->s.type != COLLOID_TYPE_SUBGRID) continue;
+
+/* -----> CHEMOVESICLE V2 */
+	  if (p_colloid->s.iscentre == 1) continue;
+/* <----- */
 
 	  /* Need to translate the colloid position to "local"
 	   * coordinates, so that the correct range of lattice
@@ -419,3 +531,97 @@ static double d_peskin(double r) {
 
   return delta;
 }
+
+
+/* -----> CHEMOVESICLE V2 */
+/* Any particle with phi_production =/= 0 can produce phi */
+/* TODO: add frequency */
+
+/*****************************************************************************
+ *
+ *  subgrid_phi_production
+ *
+ *  Produce phi with a rate of phi_production at nodes around a subgrid 
+ *  particle of specified index subgridp_index (uses d_peskin with drange = 1)
+ *
+ *****************************************************************************/
+
+int subgrid_phi_production(colloids_info_t * cinfo, field_t * phi) {
+
+  int ic, jc, kc;
+  int i, j, k, i_min, i_max, j_min, j_max, k_min, k_max;
+  int index;
+  int nlocal[3], offset[3];
+  int ncell[3];
+
+  double r0[3], r[3];
+  double dr;
+  colloid_t * p_colloid;
+
+  assert(cinfo);
+
+  cs_nlocal(cinfo->cs, nlocal);
+  cs_nlocal_offset(cinfo->cs, offset);
+  colloids_info_ncell(cinfo, ncell);
+
+  /* And add up the contributions to the velocity from the lattice. */
+
+  for (ic = 0; ic <= ncell[X] + 1; ic++) {
+    for (jc = 0; jc <= ncell[Y] + 1; jc++) {
+      for (kc = 0; kc <= ncell[Z] + 1; kc++) {
+
+	colloids_info_cell_list_head(cinfo, ic, jc, kc, &p_colloid);
+
+	for ( ; p_colloid; p_colloid = p_colloid->next) {
+
+          if (p_colloid->s.type != COLLOID_TYPE_SUBGRID) continue;
+	  if (p_colloid->s.phi_production == 0.0) continue;
+	  /* Need to translate the colloid position to "local"
+	   * coordinates, so that the correct range of lattice
+	   * nodes is found */
+
+	  r0[X] = p_colloid->s.r[X] - 1.0*offset[X];
+	  r0[Y] = p_colloid->s.r[Y] - 1.0*offset[Y];
+	  r0[Z] = p_colloid->s.r[Z] - 1.0*offset[Z];
+
+	  /* Work out which local lattice sites are involved
+	   * and loop around */
+
+	  i_min = imax(1,         (int) floor(r0[X] - 1));
+	  i_max = imin(nlocal[X], (int) ceil (r0[X] + 1));
+	  j_min = imax(1,         (int) floor(r0[Y] - 1));
+	  j_max = imin(nlocal[Y], (int) ceil (r0[Y] + 1));
+	  k_min = imax(1,         (int) floor(r0[Z] - 1));
+	  k_max = imin(nlocal[Z], (int) ceil (r0[Z] + 1));
+
+	  for (i = i_min; i <= i_max; i++) {
+	    for (j = j_min; j <= j_max; j++) {
+	      for (k = k_min; k <= k_max; k++) {
+
+		index = cs_index(cinfo->cs, i, j, k);
+
+		/* Separation between r0 and the coordinate position of
+		 * this site */
+
+		r[X] = r0[X] - 1.0*i;
+		r[Y] = r0[Y] - 1.0*j;
+		r[Z] = r0[Z] - 1.0*k;
+
+		dr = d_peskin(r[X])*d_peskin(r[Y])*d_peskin(r[Z]);
+
+		phi->data[addr_rank1(phi->nsites, 1, index, 0)] += 
+			p_colloid->s.phi_production * dr;
+	      }
+	    }
+	  }
+	  /* Next colloid */
+	}
+	/* Next cell */
+      }
+    }
+  }
+
+  return 0;
+}
+
+

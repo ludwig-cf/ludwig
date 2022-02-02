@@ -1258,6 +1258,38 @@ __host__ int colloids_info_a0max(colloids_info_t * cinfo, double * a0max) {
   return 0;
 }
 
+/*-----> CHEMOVESICLE V2 */
+/*****************************************************************************
+ *
+ *  colloids_info_cutoffmax
+ *
+ *  For the phi/subgrid interaction, find the largest cutoff present and retur *  n. This function should not be called if phi_subgrid_interaction is off.
+ *
+ *****************************************************************************/
+
+__host__ int colloids_info_cutoffmax(colloids_info_t * cinfo, double * cutoffmax) {
+
+  double cutoffmax_local;
+  MPI_Comm comm;
+  colloid_t * pc = NULL;
+
+  assert(cinfo);
+
+  cutoffmax_local = 0.0;
+  pe_mpi_comm(cinfo->pe, &comm);
+
+  /* Make sure lists are up-to-date */
+  colloids_info_update_lists(cinfo);
+
+  colloids_info_local_head(cinfo, &pc);
+  for (; pc; pc = pc->next) cutoffmax_local = dmax(cutoffmax_local, pc->s.cutoff);
+
+  MPI_Allreduce(&cutoffmax_local, cutoffmax, 1, MPI_DOUBLE, MPI_MAX, comm);
+
+  return 0;
+}
+/* <----- */
+
 /*****************************************************************************
  *
  *  colloids_info_ahmax

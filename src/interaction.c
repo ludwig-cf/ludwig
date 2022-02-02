@@ -170,6 +170,9 @@ int interact_statistic_add(interact_t * obj, interact_enum_t it, void * pot,
   return 0;
 }
 
+/* -----> CHEMOVESICLE V2 */
+/* Now calculates PHI<->SUBGRID interaction only when phi_subgrid_on input key is on
+*/
 /*****************************************************************************
  *
  *  interact_compute
@@ -182,9 +185,10 @@ int interact_statistic_add(interact_t * obj, interact_enum_t it, void * pot,
 
 int interact_compute(interact_t * interact, colloids_info_t * cinfo,
 		     map_t * map, psi_t * psi, ewald_t * ewald, field_t * phi,
-			field_t * subgrid_flux) {
+			field_t * subgrid_flux, rt_t * rt) {
 
   int nc;
+  int on;
 
   assert(interact);
   assert(cinfo);
@@ -197,8 +201,12 @@ int interact_compute(interact_t * interact, colloids_info_t * cinfo,
     colloids_update_forces_fluid_gravity(cinfo, map);
     colloids_update_forces_fluid_driven(cinfo, map);
     interact_wall(interact, cinfo);
-    if (phi != NULL) colloids_update_forces_phi(cinfo, phi, subgrid_flux); 
+
+    rt_int_parameter(rt, "phi_subgrid_on", &on);
+    if (on) colloids_update_forces_phi(cinfo, phi, subgrid_flux); 
+
     if (nc > 1) {
+
       interact_bonds(interact, cinfo);
       interact_bonds_harmonic(interact, cinfo);
       interact_pairwise(interact, cinfo);
@@ -605,21 +613,41 @@ int colloids_update_forces_fluid_driven(colloids_info_t * cinfo,
 
 
 int colloids_update_forces_phi(colloids_info_t * cinfo, field_t * phi, field_t * subgrid_flux) {
-  int i, j, k, ic, jc, kc, i_min, i_max, j_min, j_max, k_min, k_max, index, ia;
-  int nlocal[3], offset[3], ncell[3];
-  double u0, delta, cutoff, phi_, rnorm, rsq,u;;
-  double r0[3], r[3], force[3], grad_u[3];
 
+  int nlocal[3], offset[3], ncell[3];
+  int i, j, k, ic, jc, kc;
+  int i_min, i_max, j_min, j_max, k_min, k_max;
+  int index, ia;
+
+  double u0, delta, cutoff, phi_, rnorm, rsq, u;
+  double r0[3], r[3], force[3], grad_u[3];
   colloid_t * pc = NULL;
-  assert(cinfo);
-  assert(phi);
-  assert(subgrid_flux);
+
+/* -----> For book-keeping */
+  int freq = 1000000, timestep;
+  double colloidforce[3], localforce[3], globalforce[3];
+  FILE * fp;
+// time stuff
+  physics_t * phys = NULL;
+  physics_ref(&phys);
+  timestep = physics_control_timestep(phys);
+// global communication stuff */
+  MPI_Comm comm;
+  cs_cart_comm(cinfo->cs, &comm);
+/* <----- */
+
 
   cs_nlocal(cinfo->cs, nlocal);
   cs_nlocal_offset(cinfo->cs, offset);
   colloids_info_ncell(cinfo, ncell);
 
-  /* Initialize subgrid flux to 0 before loop over colloids */
+  assert(cinfo);
+  assert(phi);
+  assert(subgrid_flux);
+
+/* Should I also go through the halo cells ? No because you only calculate the values for the domain lattice */
+
+  /* Initialize subgrid flux to 0 before loop over colloids (halo included?)*/
   for (i = 1; i <= nlocal[X]; i++) {
     for (j = 1; j <= nlocal[Y]; j++) {
       for (k = 1; k <= nlocal[Z]; k++) {
@@ -628,14 +656,19 @@ int colloids_update_forces_phi(colloids_info_t * cinfo, field_t * phi, field_t *
       }
     }
   }
-
+  
   /* Loop through all cells (including the halo cells) */
+
+  localforce[X] = 0.0;
+  localforce[Y] = 0.0;
+  localforce[Z] = 0.0;
+
 
   for (ic = 0; ic <= ncell[X] + 1; ic++) {
     for (jc = 0; jc <= ncell[Y] + 1; jc++) {
       for (kc = 0; kc <= ncell[Z] + 1; kc++) {
         colloids_info_cell_list_head(cinfo, ic, jc, kc, &pc);
-
+	
         /* Loop through all colloids */
         for (; pc; pc = pc->next) {
 
@@ -661,16 +694,16 @@ int colloids_update_forces_phi(colloids_info_t * cinfo, field_t * phi, field_t *
           k_min = imax(1,         (int) floor(r0[Z] - cutoff));
           k_max = imin(nlocal[Z], (int) ceil (r0[Z] + cutoff));
 
-          /* Initialisation of the force on colloid to 0 before the loop */
+          /* Initialisation of the force counter on colloid to 0 before the loop */
 
-          force[X] =0.0;
-          force[Y] =0.0;
-          force[Z] =0.0;
+          colloidforce[X] = 0.0;
+          colloidforce[Y] = 0.0;
+          colloidforce[Z] = 0.0;
 
           for (i = i_min; i <= i_max; i++) {
             for (j = j_min; j <= j_max; j++) {
               for (k = k_min; k <= k_max; k++) {
-
+		
                 index = cs_index(cinfo->cs, i, j, k);
 
                 /* Compute the distance between the colloid and the node  */
@@ -682,6 +715,8 @@ int colloids_update_forces_phi(colloids_info_t * cinfo, field_t * phi, field_t *
                 rsq = r[X]*r[X] + r[Y]*r[Y] + r[Z]*r[Z];
                 rnorm = sqrt(rsq);
 
+		if (rnorm > cutoff) continue;
+					
                 /* Retrieve phi */
                 phi_ = phi->data[addr_rank0(phi->nsites, index)];
 
@@ -693,15 +728,16 @@ int colloids_update_forces_phi(colloids_info_t * cinfo, field_t * phi, field_t *
                 grad_u[Y] = -r[Y]/delta*u;
                 grad_u[Z] = -r[Z]/delta*u;
 
-                /* Store for flux calculation in phi_forcd.c */
+                /* Store for flux calculation in phi_force.c */
                 /* subgrid_flux is variable passed from main */
 
                 subgrid_flux->data[addr_rank0(subgrid_flux->nsites, index)] += u;
                 /* Compute force  */
 		
 		/* !!!!!!!!! Force on the colloid is still using grad_u 
-		instead of the centered difference gradient as for the
+		instead of the centered difference gradient for the
 		force exerted on the fluid !!!!!!!!!!!!!!!*/
+
                 force[X] = phi_*grad_u[X];
                 force[Y] = phi_*grad_u[Y];
                 force[Z] = phi_*grad_u[Z];
@@ -710,14 +746,29 @@ int colloids_update_forces_phi(colloids_info_t * cinfo, field_t * phi, field_t *
                 pc->force[Y] += force[Y];
                 pc->force[Z] += force[Z];
 
+		colloidforce[X] += force[X];
+		colloidforce[Y] += force[Y];
+		colloidforce[Z] += force[Z];
+
                 /* Add reaction of the colloid force to the node */
               }
             }
           }
+	
+	/* Increment the local force with the force on this colloid */
+	for (ia = 0; ia < 3; ia ++) localforce[ia] += colloidforce[ia];
         //Next colloid
         }
       }
     }
+  }
+
+/* For force book-keeping */
+  if (timestep % freq == 0) {
+    MPI_Allreduce(localforce, globalforce, 3, MPI_DOUBLE, MPI_SUM, comm);
+    fp = fopen("force_colloid.txt", "a");
+    fprintf(fp, "%14.7e %14.7e %14.7e\n", globalforce[X], globalforce[Y], globalforce[Z]);
+    fclose(fp);
   }
   //Next cell list
   return 0;

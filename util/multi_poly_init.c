@@ -36,6 +36,7 @@
 #include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <math.h>
 
 #include "../src/colloid.h"
@@ -64,9 +65,13 @@ void grow_one_monomer(cs_t * cs, int * lcgstate, double r1[3], double r2[3],
  *****************************************************************************/
 
 int main(int argc, char ** argv) {
+  
+  int from_file = 1;
+  int without_bonds = 1;
+  int random_positions = 0;
 
-  int ntotal[3] = {36, 36, 36};        /* Total system size (cf. input) */
-  int periodic[3] = {1, 1, 0};         /* 0 = wall, 1 = periodic */
+  int ntotal[3] = {32, 32, 32};        /* Total system size (cf. input) */
+  int periodic[3] = {1, 1, 1};         /* 0 = wall, 1 = periodic */
   int file_format = ASCII;
 
   int n;
@@ -88,8 +93,8 @@ int main(int argc, char ** argv) {
 
   int type  = COLLOID_TYPE_SUBGRID;
 
-  int Npoly = 10;        /* number of polymers */
-  int Lpoly = 30;       /* length of a polymer */
+  int Npoly = 4;        /* number of polymers */
+  int Lpoly = 20;       /* length of a polymer */
   double lbond = 1.0;   /* bond length */
   //CHANGE1
   int inter_type=0; /* interaction type: 0,1,2,3...; put 0 if only one type of interaction is used*/
@@ -116,13 +121,18 @@ int main(int argc, char ** argv) {
   /* Allocate required number of state objects, and set state
      to zero; initialise indices (position set later) */
 
-  nrequest=Npoly*Lpoly;
-
+  if (from_file) {
+    /* Must know number of colloids in advance */
+    nrequest = 61;
+  }
+  else {
+    nrequest=Npoly*Lpoly;
+  }
   state = (colloid_state_t *) calloc(nrequest, sizeof(colloid_state_t));
   assert(state != NULL);
-
-
-  for (n = 0; n < nrequest; n++) {
+  for (int n = 0; n < nrequest; n++) {
+    state[n].isfixedr = 0;
+    state[n].isfixedv = 0;
     state[n].index = 1 + n;
     state[n].rebuild = 1;
     state[n].a0 = a0;
@@ -136,19 +146,66 @@ int main(int argc, char ** argv) {
     state[n].m[Z] = 0.0;
     state[n].type = type;
     if (type == COLLOID_TYPE_SUBGRID) {
-      /* Needs a_L */
       state[n].al= al;
+      /* Needs a_L */
+      state[n].u0 = 0.00001;
+      state[n].delta = 5.0;
+      state[n].cutoff = 5.0;
     }
     state[n].rng = 1 + n;
     //CHANGE1
     state[n].inter_type=inter_type;
   }
 
-  poly_init_random(cs, &lcg, nrequest, state, dh, Lpoly, Npoly, lbond);
+  if (from_file) {
+    int numcol;
+    float pos[3], phi_production;
+    int ni[3];
+    char data[256];
+    char line[256];
+    int iscentre;
+    int indexcentre;
 
-  /* Write out */
+    FILE* file;
+    file = fopen("latticeFullerene.txt", "r");
+
+    while (fgets(line, sizeof(line), file)) {
+      strcpy(data,line);
+      sscanf(data, "%d %f %f %f %d %d %d %d %d %f", &numcol, &pos[0], &pos[1], &pos[2], &ni[0], &ni[1], &ni[2], &iscentre, &indexcentre, &phi_production);
+      numcol = numcol - 1;
+      state[numcol].r[X] = pos[X];
+      state[numcol].r[Y] = pos[Y];
+      state[numcol].r[Z] = pos[Z];
+      state[numcol].phi_production = phi_production;
+      if (without_bonds) {
+        state[numcol].nbonds = 0;
+        state[numcol].bond[0] = 0;
+        state[numcol].bond[1] = 0;
+        state[numcol].bond[2] = 0;
+      }
+      else {
+        state[numcol].nbonds = 3;
+	state[numcol].nangles = 1;
+        state[numcol].bond[0] = ni[X];
+        state[numcol].bond[1] = ni[Y];
+        state[numcol].bond[2] = ni[Z];
+        state[numcol].iscentre = iscentre;
+        state[numcol].indexcentre = indexcentre;
+	if (iscentre == 1) {
+	  state[numcol].nbonds = 0;
+	  state[numcol].u0 = 0;
+	  state[numcol].nangles = 0;
+        }
+      }
+    }
+  fclose(file);
+  }
+
+  if (random_positions) {
+    poly_init_random(cs, &lcg, nrequest, state, dh, Lpoly, Npoly, lbond);
+  }
+
   colloid_init_write_file(nrequest, state, file_format);
-
   free(state);
 
   cs_free(cs);

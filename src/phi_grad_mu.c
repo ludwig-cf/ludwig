@@ -187,6 +187,9 @@ __host__ int phi_grad_mu_external(cs_t * cs, field_t * phi, hydro_t * hydro) {
   return 0;
 }
 
+/* -----> CHEMOVESICLE V2 */
+/* Additional force due to the particle interaction */
+
 /*****************************************************************************
  *
  *  phi_grad_mu_fluid_kernel
@@ -204,10 +207,23 @@ __global__ void phi_grad_mu_fluid_kernel(kernel_ctxt_t * ktx, field_t * phi,
 					field_t * subgrid_flux) {
   int kiterations;
   int kindex;
-
   assert(ktx);
   assert(phi);
   assert(hydro);
+
+/* -----> For book-keeping */
+  double globalforce[3];
+  double localforce[3] = {0,0,0};
+  int freq = 1000000;
+
+  physics_t * phys;
+  FILE * fp;
+
+  physics_ref(&phys);
+  int timestep = physics_control_timestep(phys);
+  MPI_Comm comm;
+  cs_cart_comm(hydro->cs, &comm);
+/* <----- */
 
   kiterations = kernel_iterations(ktx);
 
@@ -235,44 +251,68 @@ __global__ void phi_grad_mu_fluid_kernel(kernel_ctxt_t * ktx, field_t * phi,
     {
       int indexm1 = kernel_coords_index(ktx, ic-1, jc, kc);
       int indexp1 = kernel_coords_index(ktx, ic+1, jc, kc);
+
       fe->func->mu(fe, indexm1, mum1);
       fe->func->mu(fe, indexp1, mup1);
-      um1 = field_scalar(subgrid_flux, indexm1, &um1);
-      up1 = field_scalar(subgrid_flux, indexp1, &up1);
+      field_scalar(subgrid_flux, indexm1, &um1);
+      field_scalar(subgrid_flux, indexp1, &up1);
+
       force[X] = 0.0;
       for (int n = 0; n < phi->nf; n++) {
 	force[X] += -phi0[n]*0.5*(mup1[n] - mum1[n] + up1 - um1);
+	if (timestep == 1) {
+	  localforce[X] -= phi0[n]*0.5*(up1 - um1);
+	}
+	else localforce[X] = 0.0;
       }
+
     }
 
     {
       int indexm1 = kernel_coords_index(ktx, ic, jc-1, kc);
       int indexp1 = kernel_coords_index(ktx, ic, jc+1, kc);
+
       fe->func->mu(fe, indexm1, mum1);
       fe->func->mu(fe, indexp1, mup1);
-      um1 = field_scalar(subgrid_flux, indexm1, &um1);
-      up1 = field_scalar(subgrid_flux, indexp1, &up1);
+      field_scalar(subgrid_flux, indexm1, &um1);
+      field_scalar(subgrid_flux, indexp1, &up1);
+
       force[Y] = 0.0;
       for (int n = 0; n < phi->nf; n++) {
 	force[Y] += -phi0[n]*0.5*(mup1[n] - mum1[n] + up1 - um1);
+	if (timestep == 1) localforce[Y] -= phi0[n]*0.5*(up1 - um1);
+	else localforce[Y] = 0.0;
       }
     }
 
     {
       int indexm1 = kernel_coords_index(ktx, ic, jc, kc-1);
       int indexp1 = kernel_coords_index(ktx, ic, jc, kc+1);
+
       fe->func->mu(fe, indexm1, mum1);
       fe->func->mu(fe, indexp1, mup1);
-      um1 = field_scalar(subgrid_flux, indexm1, &um1);
-      up1 = field_scalar(subgrid_flux, indexp1, &up1);
+      field_scalar(subgrid_flux, indexm1, &um1);
+      field_scalar(subgrid_flux, indexp1, &up1);
+
       force[Z] = 0.0;
       for (int n = 0; n < phi->nf; n++) {
 	force[Z] += -phi0[n]*0.5*(mup1[n] - mum1[n] + up1 - um1);
+	if (timestep == 1) localforce[Z] -= phi0[n]*0.5*(up1 - um1);
+	else localforce[Z] = 0.0;
       }
     }
 
     hydro_f_local_add(hydro, index, force);
   }
+
+  if (timestep % freq == 0) {
+    MPI_Allreduce(localforce, globalforce, 3, MPI_DOUBLE, MPI_SUM, comm);
+    fp = fopen("force_fluid.txt","a");
+    fprintf(fp, "%14.7e, %14.7e, %14.7e\n", globalforce[X], globalforce[Y], 
+					globalforce[Z]);
+    fclose(fp);
+  }
+
   return;
 }
 

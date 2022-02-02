@@ -28,11 +28,15 @@ typedef enum colloid_io_version colloid_io_version_t;
  * unit test consumption. The total number of variables is
  * useful to know to check the ASCII read/write. */
 
+
+/* -----> CHEMOVESICLE V2 */
+/* NPAD_INT 10 = 12 - iscentre - indexcentre */
+/* NPAD_DOUBLE 11 = 15 - u0 - delta - cutoff - phi_production */
+/* <----- */
+
 #define NTOT_VAR (32+48)
-//CHANGE1
-#define NPAD_INT  12
-#define NPAD_DBL  12
-//CHANGE1
+#define NPAD_INT  10
+#define NPAD_DBL  11
 #define NBOND_MAX  3
 
 enum colloid_type_enum {COLLOID_TYPE_DEFAULT = 0,
@@ -64,6 +68,10 @@ struct colloid_state_type {
   int isfixedvxyz[3];   /* Velocity update in specific coordinate directions */
 
   int inter_type;         /* Interaction type of a particle */
+/* -----> CHEMOVESICLE V2 */
+  int iscentre;
+  int indexcentre;
+/* <----- */
 
   /* New integer additions can be immediately before the padding */
   /* This should allow existing binary files to be read correctly */
@@ -103,9 +111,14 @@ struct colloid_state_type {
   double saf;           /* surface area to fluid (finite difference grid) */
 
   double al;            /* Offset parameter used for subgrid particles */
+
+/* -----> CHEMOVESICLE V2 */
   double u0;
   double delta;
   double cutoff;
+  double phi_production;
+/* <----- */
+
   double dpad[NPAD_DBL];/* Again, this pads to 512 bytes to allow
 			 * for future expansion. */
 };

@@ -800,6 +800,12 @@ void ludwig_run(const char * inputfile) {
       wall_set_wall_distributions(ludwig->wall);
 
       subgrid_update(ludwig->collinfo, ludwig->hydro, noise_flag);
+ 
+/* -----> CHEMOVESICLE V2 */
+/* Updates the central particles (iscentre = 1) */
+      subgrid_centre_update(ludwig->collinfo, ludwig->hydro, noise_flag);
+/* <----- */
+
       bounce_back_on_links(ludwig->bbl, ludwig->lb, ludwig->wall,
 			   ludwig->collinfo);
       wall_bbl(ludwig->wall);
@@ -1145,7 +1151,6 @@ static int ludwig_report_momentum(ludwig_t * ludwig) {
   if (wall_present(ludwig->wall) || is_pm) {
     pe_info(pe, "[walls   ] %14.7e %14.7e %14.7e\n", gwall[X], gwall[Y], gwall[Z]);
   }
-
   return 0;
 }
 
@@ -1938,7 +1943,7 @@ static int ludwig_colloids_update_low_freq(ludwig_t * ludwig) {
 
   interact_compute(ludwig->interact, ludwig->collinfo, ludwig->map,
         	     ludwig->psi, ludwig->ewald, ludwig->phi, 
-			ludwig->subgrid_flux);
+			ludwig->subgrid_flux, ludwig->rt);
 
   subgrid_force_from_particles(ludwig->collinfo, ludwig->hydro, ludwig->wall);
 
@@ -2024,7 +2029,7 @@ int ludwig_colloids_update(ludwig_t * ludwig) {
 
   interact_compute(ludwig->interact, ludwig->collinfo, ludwig->map,
 		   ludwig->psi, ludwig->ewald, ludwig->phi, 
-			ludwig->subgrid_flux);
+			ludwig->subgrid_flux, ludwig->rt);
   subgrid_force_from_particles(ludwig->collinfo, ludwig->hydro, ludwig->wall);
 
   TIMER_stop(TIMER_FORCES);

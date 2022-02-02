@@ -71,8 +71,10 @@ int colloids_rt_init_random(pe_t * pe, cs_t * cs, rt_t * rt, wall_t * wall,
 int colloids_rt_state_stub(pe_t * pe, rt_t * rt, colloids_info_t * cinfo,
 			   const char * stub,
 			   colloid_state_t * state);
-int colloids_rt_cell_list_checks(pe_t * pe, cs_t * cs, colloids_info_t ** pinfo,
-				 interact_t * interact);
+/* -----> CHEMOVESICLE V2 */
+/* Now takes in rt */
+int colloids_rt_cell_list_checks(rt_t * rt, pe_t * pe, cs_t * cs, colloids_info_t ** pinfo, interact_t * interact);
+/* <----- */
 
 /*****************************************************************************
  *
@@ -151,16 +153,14 @@ int colloids_init_rt(pe_t * pe, rt_t * rt, cs_t * cs, colloids_info_t ** pinfo,
   pair_lj_cut_init(pe, cs, rt, *interact);
   pair_yukawa_init(pe, cs, rt, *interact);
   bond_fene_init(pe, cs, rt, *interact);
-  //CHANGE1
   bond_harmonic_init(pe, cs, rt, *interact);
   angle_cosine_init(pe, cs, rt, *interact);
-  //CHANGE1
   angle_harmonic_init(pe, cs, rt, *interact);
   angle_dihedral_init(pe, cs, rt, *interact);
 
   pair_ss_cut_ij_init(pe, cs, rt, *interact);
 
-  colloids_rt_cell_list_checks(pe, cs, pinfo, *interact);
+  colloids_rt_cell_list_checks(rt, pe, cs, pinfo, *interact);
   colloids_init_halo_range_check(pe, cs, *pinfo);
   if (nc > 1) interact_range_check(*interact, *pinfo);
 
@@ -587,6 +587,12 @@ int colloids_rt_gravity(pe_t * pe, rt_t * rt, colloids_info_t * cinfo) {
   return 0;
 }
 
+/* -----> CHEMOVESICLE V2 */
+/* Create cell lists such that:
+	wcell[ia] < cutoffmax
+	wcell[ia] < radius of vesicle (3*r0)
+   If conditions impossible given the value of cutoff or size of vesicle, return fatal error
+*/
 /*****************************************************************************
  *
  *  colloids_rt_cell_list_checks
@@ -599,19 +605,22 @@ int colloids_rt_gravity(pe_t * pe, rt_t * rt, colloids_info_t * cinfo) {
  *
  *****************************************************************************/
 
-int colloids_rt_cell_list_checks(pe_t * pe, cs_t * cs,
+int colloids_rt_cell_list_checks(rt_t * rt, pe_t * pe, cs_t * cs,
 				 colloids_info_t ** pinfo,
 				 interact_t * interact) {
   int nc;
   int nlocal[3];
   int nbest[3];
   int nhalo;
+  int onsubgrid, onvesicle;
 
   double a0max, ahmax;  /* maximum radii */
-  double rcmax, hcmax;  /* Interaction ranges */
-  double rmax;          /* Maximum interaction range */
+  double rcmax, hcmax, cutoffmax;  /* Interaction ranges */
+  double rmax, rmax_phi, radius_vesicle;          /* Maximum interaction range */
+  double r0 = 0.0; /*harmonic bond lentgh (to compute radius_vesicle) */
   double wcell[3];      /* Final cell widths */
 
+  assert(rt);
   assert(pe);
   assert(cs);
   assert(pinfo);
@@ -643,20 +652,54 @@ int colloids_rt_cell_list_checks(pe_t * pe, cs_t * cs,
   pe_info(pe, "-----------------------------\n");
   pe_info(pe, "Input radius maximum:        %14.7e\n", a0max);
 
+  if (nc == 1) {
+    rt_int_parameter(rt, "phi_subgrid_on", &onsubgrid);
+  if (onsubgrid) colloids_info_cutoffmax(*pinfo, &cutoffmax); 
+    rmax_phi = cutoffmax;
+    nbest[X] = (int) floor(1.0*nlocal[X] / rmax_phi);
+    nbest[Y] = (int) floor(1.0*nlocal[Y] / rmax_phi);
+    nbest[Z] = (int) floor(1.0*nlocal[Z] / rmax_phi);
+    pe_info(pe, "Subgrid <-> PHI interaction: %14.7e\n", rmax_phi);
+  }
+
   if (nc > 1) {
+       
     /* Interaction case */
     colloids_info_ahmax(*pinfo, &ahmax);
     interact_rcmax(interact, &rcmax);
     interact_hcmax(interact, &hcmax);
     rmax = dmax(2.0*ahmax + hcmax, rcmax);
+
+
+    /* Deal with interaction range of the phi/subgrid interaction
+	and with the center of mass update of central particle */
+
+    rt_int_parameter(rt, "phi_subgrid_on", &onsubgrid);
+    if (onsubgrid) {
+      colloids_info_cutoffmax(*pinfo, &cutoffmax); 
+      rmax_phi = dmax(rmax, cutoffmax);
+      rmax = dmax(rmax, cutoffmax);
+    }
+
+    rt_int_parameter(rt, "vesicle_com", &onvesicle);
+    if (onvesicle) {
+      rt_double_parameter(rt, "bond_harmonic_r0", &r0);
+      if (r0 == 0.0) pe_info(pe, "You specified vesicle_com on but there are no harmonic bonds to create the vesicle\n");
+      else radius_vesicle = 3.0*r0; 
+      rmax = dmax(rmax, radius_vesicle);
+    }
+
     rmax = dmax(rmax, 1.5); /* subgrid particles again */
     nbest[X] = (int) floor(1.0*nlocal[X] / rmax);
     nbest[Y] = (int) floor(1.0*nlocal[Y] / rmax);
     nbest[Z] = (int) floor(1.0*nlocal[Z] / rmax);
 
+    
     pe_info(pe, "Hydrodynamic radius maximum: %14.7e\n", ahmax);
     pe_info(pe, "Surface-surface interaction: %14.7e\n", hcmax);
     pe_info(pe, "Centre-centre interaction:   %14.7e\n", rcmax);
+    if (onsubgrid) pe_info(pe, "Max range of subgrid<->PHI interaction: %14.7e\n", rmax_phi);
+    if (onvesicle) pe_info(pe, "Approximate radius of vesicle: %14.7e\n", radius_vesicle);
   }
 
   /* Transfer colloids to new cell list if required */
@@ -666,6 +709,18 @@ int colloids_rt_cell_list_checks(pe_t * pe, cs_t * cs,
   }
 
   colloids_info_lcell(*pinfo, wcell);
+
+  if (onsubgrid) {
+    for (int ia = 0; ia < 3; ia++) {
+      if (wcell[ia] < cutoffmax) pe_fatal(pe, "The cutoff range of the PHI<-> subgrid interaction is larger than the minimum cell width possible along %d\n", ia);
+    }
+  }
+  if (onvesicle) {
+    for (int ia = 0; ia < 3; ia++) {
+      if (wcell[ia] < radius_vesicle) pe_fatal(pe, "The radius of the vesicle is larger than the minimum cell width possible along %d\n", ia);
+    }
+  }
+
   pe_info(pe, "Final cell list:              %d %d %d\n",
        nbest[X], nbest[Y], nbest[Z]);
   pe_info(pe, "Final cell lengths:          %14.7e %14.7e %14.7e\n",
@@ -674,6 +729,7 @@ int colloids_rt_cell_list_checks(pe_t * pe, cs_t * cs,
 
   return 0;
 }
+/* <----- */
 
 /*****************************************************************************
  *
@@ -1130,6 +1186,9 @@ int angle_dihedral_init(pe_t * pe, cs_t * cs, rt_t * rt, interact_t * interact) 
 
   return 0;
 }
+
+
+
 
 /*****************************************************************************
  *

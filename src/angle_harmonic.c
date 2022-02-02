@@ -168,7 +168,11 @@ int angle_harmonic_compute(colloids_info_t * cinfo, void * self) {
   colloids_info_local_head(cinfo, &pc);
 
   for (; pc; pc = pc->nextlocal) {
+
+/* -----> CHEMOVESICLE V2 */
+/* Not a change per se but a note, nangles is either 0 or 1. It is used to identify nodes at the fringe of a linked structure which are only linked to one other particle. No angle harmonic force can be computed for those */
     if (pc->s.nangles == 0) continue;
+/* <----- */
 
     assert(pc->s.nbonds>1);
 

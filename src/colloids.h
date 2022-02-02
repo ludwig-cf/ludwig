@@ -138,6 +138,11 @@ __host__ int colloids_info_list_local_build(colloids_info_t * cinfo);
 __host__ int colloids_info_climits(colloids_info_t * cinfo, int ia, int ic, int * lim);
 __host__ int colloids_info_a0max(colloids_info_t * cinfo, double * a0max);
 __host__ int colloids_info_ahmax(colloids_info_t * cinfo, double * ahmax);
+
+/* -----> CHEMOVESICLE V2 */
+__host__ int colloids_info_cutoffmax(colloids_info_t * cinfo, double * cutoffmax);
+/* <----- */
+
 __host__ int colloids_info_count_local(colloids_info_t * cinfo, colloid_type_enum_t it,
 			      int * count);
 __host__ int colloids_number_sites(colloids_info_t *cinfo);

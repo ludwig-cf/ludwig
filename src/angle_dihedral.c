@@ -179,6 +179,11 @@ int angle_dihedral_compute(colloids_info_t * cinfo, void * self) {
   colloids_info_local_head(cinfo, &pc);
 
   for (; pc; pc = pc->nextlocal) {
+    
+/*  -----> CHEMOVESICLE V2 */ 
+/*  Added so that the code does not break when some particles don't have springs attached to them while others do */
+    if (pc->s.nbonds == 0) continue;
+/*  <----- */
 
     assert(pc->s.nbonds);
 
@@ -202,6 +207,11 @@ int angle_dihedral_compute(colloids_info_t * cinfo, void * self) {
           assert(pc->bonded[b0]->bonded[b1]->bonded[b2]->s.index == pc->bonded[b0]->bonded[b1]->s.bond[b2]);
 
           if (pc->bonded[b0]->bonded[b1]->bonded[b2]->s.index == pc->bonded[b0]->s.index) continue;
+
+/*  ----> CHEMOVESICLE V2 */
+/* Added so that ALL 4 indices that enter in the calculation of the dihedral force are different */
+          if (pc->bonded[b0]->bonded[b1]->bonded[b2]->s.index == pc->s.index) continue;
+/* <----- */
 
           assert(pc->bonded[b0]->bonded[b1]->bonded[b2]->s.nbonds);
 
@@ -232,7 +242,11 @@ int angle_dihedral_compute(colloids_info_t * cinfo, void * self) {
           nsq = n[X]*n[X] + n[Y]*n[Y] + n[Z]*n[Z];
           nmd = sqrt(nsq);
 
-          cosine = dot_product(m, n) / (mmd*nmd);
+/*  -----> CHEMOVESICLE V2 */
+/* Added because planar configurations sometimes gave absurd value of cosine */
+          cosine = dot_product(m, n) / (mmd*nmd + 0.001);
+/*  <----- */
+
           assert(cosine <= 1.0);
           assert(cosine >= -1.0);
 
