@@ -57,10 +57,10 @@ int test_pair_ss_cut_ij_create(pe_t * pe, cs_t * cs) {
 
   pair_ss_cut_ij_t * obj = NULL;
 
-  double epsilon[2] = {};
-  double sigma[2] = {};
-  double nu[2] = {};
-  double hc[2] = {};
+  double epsilon[3] = {};
+  double sigma[3] = {};
+  double nu[3] = {};
+  double hc[3] = {};
 
   pair_ss_cut_ij_create(pe, cs, 2, epsilon, sigma, nu, hc, &obj);
   assert(obj);
