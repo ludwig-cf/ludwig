@@ -69,7 +69,7 @@
 #include "fe_ternary_rt.h"
 #include "fe_electro.h"
 #include "fe_electro_symmetric.h"
-
+#include "field_phi_init.h"
 /* Dynamics */
 #include "cahn_hilliard.h"
 #include "phi_cahn_hilliard.h"
@@ -133,6 +133,7 @@ struct ludwig_s {
   field_t * p;              /* Vector order parameter */
   field_t * q;              /* Tensor order parameter */
   field_t * subgrid_flux;   /* Phi-subgrid particles interaction field */
+  field_t * mobility_map;   /* Phi-subgrid particles interaction field */
   field_grad_t * phi_grad;  /* Gradients for phi */
   field_grad_t * p_grad;    /* Gradients for p */
   field_grad_t * q_grad;    /* Gradients for q */
@@ -286,6 +287,14 @@ static int ludwig_rt(ludwig_t * ludwig) {
   }
   if (ludwig->fe_ternary) {
     fe_ternary_init_rt(pe, rt, ludwig->fe_ternary, ludwig->phi);
+  }
+
+  if (ludwig->subgrid_flux) {
+    field_phi_init_uniform(ludwig->subgrid_flux, 0.0);
+  }
+
+  if (ludwig->mobility_map) {
+    field_phi_init_uniform(ludwig->mobility_map, 0.0);
   }
 
   /* To be called before wall_rt_init() */
@@ -485,6 +494,7 @@ void ludwig_run(const char * inputfile) {
 
   if (ludwig->phi) field_memcpy(ludwig->phi, tdpMemcpyHostToDevice);
   if (ludwig->subgrid_flux) field_memcpy(ludwig->subgrid_flux, tdpMemcpyHostToDevice);
+  if (ludwig->mobility_map) field_memcpy(ludwig->mobility_map, tdpMemcpyHostToDevice);
   if (ludwig->p)   field_memcpy(ludwig->p, tdpMemcpyHostToDevice);
   if (ludwig->q)   field_memcpy(ludwig->q, tdpMemcpyHostToDevice);
 
@@ -559,6 +569,7 @@ void ludwig_run(const char * inputfile) {
       TIMER_start(TIMER_PHI_HALO);
       field_halo(ludwig->phi);
       field_halo(ludwig->subgrid_flux);
+      field_halo(ludwig->mobility_map);
       TIMER_stop(TIMER_PHI_HALO);
 
       field_grad_compute(ludwig->phi_grad);
@@ -728,12 +739,40 @@ void ludwig_run(const char * inputfile) {
 	ch_solver(ludwig->ch, ludwig->fe, ludwig->phi, ludwig->hydro,
 		  ludwig->map);
       }
+       
 
+/* -----> CHEMOVESICLE V3  
+      int ic = 20;
+      int index;
+      double mobility, mobility0 = 0.5;
+      int nlocal[3];
+      cs_nlocal(ludwig->cs, nlocal);
+      pe_info(ludwig->pe, "\n TIMESTEP = %d\n", step); 
+      if (step > 1) { 
+        for (int jc = 1; jc <= nlocal[Y]; jc++ ) {
+          for (int kc = 1; kc <= nlocal[Z]; kc++) {
+            int index = cs_index(ludwig->cs, ic, jc, kc);
+            field_scalar(ludwig->mobility_map, index, &mobility);
+  	  if (mobility > mobility0) {
+            pe_info(ludwig->pe, "\033[0;34m %.*f", 1, mobility);
+	    continue;
+  	  }
+	  if (mobility < mobility0) {
+            pe_info(ludwig->pe, "\033[0;35m %.*f", 1, mobility);
+	    continue;
+  	  }
+  	  pe_info(ludwig->pe, "\033[0m %.*f", 1, mobility);
+          }
+          printf("\n");
+        }
+      }
+      pe_info(ludwig->pe, "\033[0m");
+*/
       if (ludwig->pch) {
 	phi_cahn_hilliard(ludwig->pch, ludwig->fe, ludwig->phi,
 			  ludwig->hydro, 
 			  ludwig->map, ludwig->noise_phi,
-				ludwig->subgrid_flux);
+			ludwig->subgrid_flux, ludwig->mobility_map);
       }
 
       if (ludwig->p) {
@@ -799,8 +838,9 @@ void ludwig_run(const char * inputfile) {
       TIMER_start(TIMER_BBL);
       wall_set_wall_distributions(ludwig->wall);
 
+      subgrid_phi_production(ludwig->collinfo, ludwig->phi); 
+      subgrid_mobility_map(ludwig->collinfo, ludwig->mobility_map, 1.5);
       subgrid_update(ludwig->collinfo, ludwig->hydro, noise_flag);
- 
 /* -----> CHEMOVESICLE V2 */
 /* Updates the central particles (iscentre = 1) */
       subgrid_centre_update(ludwig->collinfo, ludwig->hydro, noise_flag);
@@ -1251,6 +1291,9 @@ int free_energy_init_rt(ludwig_t * ludwig) {
 
     field_create(pe, cs, nf, "subgrid_flux", &ludwig->subgrid_flux);
     field_init(ludwig->subgrid_flux, nhalo, le);
+
+    field_create(pe, cs, nf, "mobility_map", &ludwig->mobility_map);
+    field_init(ludwig->mobility_map, nhalo, le);
 
     field_grad_create(pe, ludwig->phi, ngrad, &ludwig->phi_grad);
 

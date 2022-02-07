@@ -67,7 +67,7 @@ void grow_one_monomer(cs_t * cs, int * lcgstate, double r1[3], double r2[3],
 int main(int argc, char ** argv) {
   
   int from_file = 1;
-  int without_bonds = 1;
+  int without_bonds = 0;
   int random_positions = 0;
 
   int ntotal[3] = {32, 32, 32};        /* Total system size (cf. input) */
@@ -148,8 +148,8 @@ int main(int argc, char ** argv) {
     if (type == COLLOID_TYPE_SUBGRID) {
       state[n].al= al;
       /* Needs a_L */
-      state[n].u0 = 0.00001;
-      state[n].delta = 5.0;
+      state[n].u0 = 0.0001;
+      state[n].delta = 3.0;
       state[n].cutoff = 5.0;
     }
     state[n].rng = 1 + n;
@@ -159,7 +159,7 @@ int main(int argc, char ** argv) {
 
   if (from_file) {
     int numcol;
-    float pos[3], phi_production;
+    float pos[3], phi_production, localmobility;
     int ni[3];
     char data[256];
     char line[256];
@@ -171,7 +171,7 @@ int main(int argc, char ** argv) {
 
     while (fgets(line, sizeof(line), file)) {
       strcpy(data,line);
-      sscanf(data, "%d %f %f %f %d %d %d %d %d %f", &numcol, &pos[0], &pos[1], &pos[2], &ni[0], &ni[1], &ni[2], &iscentre, &indexcentre, &phi_production);
+      sscanf(data, "%d %f %f %f %d %d %d %d %d %f %f", &numcol, &pos[0], &pos[1], &pos[2], &ni[0], &ni[1], &ni[2], &iscentre, &indexcentre, &phi_production, &localmobility);
       numcol = numcol - 1;
       state[numcol].r[X] = pos[X];
       state[numcol].r[Y] = pos[Y];
@@ -191,6 +191,7 @@ int main(int argc, char ** argv) {
         state[numcol].bond[2] = ni[Z];
         state[numcol].iscentre = iscentre;
         state[numcol].indexcentre = indexcentre;
+        state[numcol].localmobility = localmobility;
 	if (iscentre == 1) {
 	  state[numcol].nbonds = 0;
 	  state[numcol].u0 = 0;

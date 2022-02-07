@@ -31,12 +31,13 @@ typedef enum colloid_io_version colloid_io_version_t;
 
 /* -----> CHEMOVESICLE V2 */
 /* NPAD_INT 10 = 12 - iscentre - indexcentre */
-/* NPAD_DOUBLE 11 = 15 - u0 - delta - cutoff - phi_production */
+/* NPAD_DOUBLE 10 = 15 - u0 - delta - cutoff - phi_production 
+			-localmobility */
 /* <----- */
 
 #define NTOT_VAR (32+48)
 #define NPAD_INT  10
-#define NPAD_DBL  11
+#define NPAD_DBL  10
 #define NBOND_MAX  3
 
 enum colloid_type_enum {COLLOID_TYPE_DEFAULT = 0,
@@ -112,11 +113,12 @@ struct colloid_state_type {
 
   double al;            /* Offset parameter used for subgrid particles */
 
-/* -----> CHEMOVESICLE V2 */
+/* -----> CHEMOVESICLE V2+V3 */
   double u0;
   double delta;
   double cutoff;
   double phi_production;
+  double localmobility;
 /* <----- */
 
   double dpad[NPAD_DBL];/* Again, this pads to 512 bytes to allow

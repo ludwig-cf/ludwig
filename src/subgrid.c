@@ -32,10 +32,6 @@
 static double d_peskin(double);
 static int subgrid_interpolation(colloids_info_t * cinfo, hydro_t * hydro);
 
-/* -----> CHEMOVESICLE V2 */
-static int subgrid_phi_production(colloids_info_t * cinfo, field_t * phi);
-/* <----- */
-
 static const double drange_ = 1.0; /* Max. range of interpolation - 1 */
 
 /*****************************************************************************
@@ -625,3 +621,97 @@ int subgrid_phi_production(colloids_info_t * cinfo, field_t * phi) {
 }
 
 
+/*****************************************************************************
+ *
+ *  subgrid_mobility_map
+ *
+ *  Create mobility map from each colloid "localmobility" attribute  
+ *
+ *****************************************************************************/
+
+int subgrid_mobility_map(colloids_info_t * cinfo, field_t * mobility_map, int range) {
+
+  int ic, jc, kc;
+  int i, j, k, i_min, i_max, j_min, j_max, k_min, k_max;
+  int index;
+  int nlocal[3], offset[3];
+  int ncell[3];
+
+  double r0[3], r[3];
+  double localmobility;
+  double mobility;
+  colloid_t * p_colloid;
+
+  physics_t * phys = NULL;
+  physics_ref(&phys);
+  physics_mobility(phys, &mobility);
+  assert(cinfo);
+
+  cs_nlocal(cinfo->cs, nlocal);
+  cs_nlocal_offset(cinfo->cs, offset);
+  colloids_info_ncell(cinfo, ncell);
+
+  /* Loop through all cells (including the halo cells) and set
+   * the velocity at each particle to zero for this step. */
+
+  for (i = 1; i <= nlocal[X]; i++) {
+    for (j = 1; j <= nlocal[Y]; j++) {
+      for (k = 1; k <= nlocal[Z]; k++) {
+	index = cs_index(cinfo->cs, i, j, k);
+	field_scalar_set(mobility_map, index, mobility);
+      }
+    }
+  }
+
+
+  /* Loop through all cells (including the halo cells) */
+
+  for (ic = 0; ic <= ncell[X] + 1; ic++) {
+    for (jc = 0; jc <= ncell[Y] + 1; jc++) {
+      for (kc = 0; kc <= ncell[Z] + 1; kc++) {
+
+	colloids_info_cell_list_head(cinfo, ic, jc, kc, &p_colloid);
+
+	for ( ; p_colloid; p_colloid = p_colloid->next) {
+
+          if (p_colloid->s.type != COLLOID_TYPE_SUBGRID) continue;
+	  if (p_colloid->s.iscentre == 1) continue;
+
+	  /* Need to translate the colloid position to "local"
+	   * coordinates, so that the correct range of lattice
+	   * nodes is found */
+
+	  r0[X] = p_colloid->s.r[X] - 1.0*offset[X];
+	  r0[Y] = p_colloid->s.r[Y] - 1.0*offset[Y];
+	  r0[Z] = p_colloid->s.r[Z] - 1.0*offset[Z];
+
+	  /* Work out which local lattice sites are involved
+	   * and loop around */
+
+	  i_min = imax(1,         (int) floor(r0[X] - range));
+	  i_max = imin(nlocal[X], (int) ceil (r0[X] + range));
+	  j_min = imax(1,         (int) floor(r0[Y] - range));
+	  j_max = imin(nlocal[Y], (int) ceil (r0[Y] + range));
+	  k_min = imax(1,         (int) floor(r0[Z] - range));
+	  k_max = imin(nlocal[Z], (int) ceil (r0[Z] + range));
+
+	  for (i = i_min; i <= i_max; i++) {
+	    for (j = j_min; j <= j_max; j++) {
+	      for (k = k_min; k <= k_max; k++) {
+
+		index = cs_index(cinfo->cs, i, j, k);
+		localmobility = p_colloid->s.localmobility;
+		field_scalar_set(mobility_map, index, localmobility);
+	      }
+	    }
+	  }
+	  /* Next colloid */
+	}
+
+	/* Next cell */
+      }
+    }
+  }
+
+  return 0;
+}
