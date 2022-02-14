@@ -130,7 +130,7 @@ int bond_harmonic_register(bond_harmonic_t * obj, interact_t * parent) {
 
 /* -----> CHEMOVESICLE V2 */
 /* Vesicle size constraint on cell width is now done by colloids_rt.c */
-  interact_rc_set(parent, INTERACT_BOND_HARMONIC, 2.0*obj->r0);
+  interact_rc_set(parent, INTERACT_BOND_HARMONIC, obj->r0);
 /* <----- */
 
   return 0;
