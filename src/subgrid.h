@@ -23,7 +23,7 @@ int subgrid_update(colloids_info_t * cinfo, hydro_t * hydro, int noise_flag);
 /* -----> CHEMOVESICLE V2 */
 int subgrid_centre_update(colloids_info_t * cinfo, hydro_t * hydro, int noise_flag);
 int subgrid_phi_production(colloids_info_t * cinfo, field_t * phi);
-int subgrid_mobility_map(colloids_info_t * cinfo, field_t * mobility_map, int range);
+int subgrid_mobility_map(colloids_info_t * cinfo, field_t * mobility_map, rt_t * rt);
 /* <----- */
 
 

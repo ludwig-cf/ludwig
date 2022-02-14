@@ -33,6 +33,8 @@
 #include "bond_fene.h"
 //CHANGE1
 #include "bond_harmonic.h"
+#include "bond_harmonic2.h"
+#include "bond_harmonic3.h"
 #include "angle_cosine.h"
 //CHANGE1
 #include "angle_harmonic.h"
@@ -53,6 +55,8 @@ int pair_lj_cut_init(pe_t * pe, cs_t * cs, rt_t * rt, interact_t * inter);
 int bond_fene_init(pe_t * pe, cs_t * cs, rt_t * rt, interact_t * interact);
 //CHANGE1
 int bond_harmonic_init(pe_t * pe, cs_t * cs, rt_t * rt, interact_t * interact);
+int bond_harmonic2_init(pe_t * pe, cs_t * cs, rt_t * rt, interact_t * interact);
+int bond_harmonic3_init(pe_t * pe, cs_t * cs, rt_t * rt, interact_t * interact);
 int angle_cosine_init(pe_t * pe, cs_t * cs, rt_t * rt, interact_t * interact);
 //CHANGE1
 int angle_harmonic_init(pe_t * pe, cs_t * cs, rt_t * rt, interact_t * interact);
@@ -154,6 +158,8 @@ int colloids_init_rt(pe_t * pe, rt_t * rt, cs_t * cs, colloids_info_t ** pinfo,
   pair_yukawa_init(pe, cs, rt, *interact);
   bond_fene_init(pe, cs, rt, *interact);
   bond_harmonic_init(pe, cs, rt, *interact);
+  bond_harmonic2_init(pe, cs, rt, *interact);
+  bond_harmonic3_init(pe, cs, rt, *interact);
   angle_cosine_init(pe, cs, rt, *interact);
   angle_harmonic_init(pe, cs, rt, *interact);
   angle_dihedral_init(pe, cs, rt, *interact);
@@ -655,11 +661,11 @@ int colloids_rt_cell_list_checks(rt_t * rt, pe_t * pe, cs_t * cs,
   if (nc == 1) {
     rt_int_parameter(rt, "phi_subgrid_on", &onsubgrid);
   if (onsubgrid) colloids_info_cutoffmax(*pinfo, &cutoffmax); 
-    rmax_phi = cutoffmax;
+    rmax_phi = cutoffmax + 2;
     nbest[X] = (int) floor(1.0*nlocal[X] / rmax_phi);
     nbest[Y] = (int) floor(1.0*nlocal[Y] / rmax_phi);
     nbest[Z] = (int) floor(1.0*nlocal[Z] / rmax_phi);
-    pe_info(pe, "Subgrid <-> PHI interaction: %14.7e\n", rmax_phi);
+    pe_info(pe, "Subgrid <-> PHI interaction + 2: %14.7e\n", rmax_phi);
   }
 
   if (nc > 1) {
@@ -677,15 +683,14 @@ int colloids_rt_cell_list_checks(rt_t * rt, pe_t * pe, cs_t * cs,
     rt_int_parameter(rt, "phi_subgrid_on", &onsubgrid);
     if (onsubgrid) {
       colloids_info_cutoffmax(*pinfo, &cutoffmax); 
-      rmax_phi = dmax(rmax, cutoffmax);
-      rmax = dmax(rmax, cutoffmax);
+      rmax = dmax(rmax, cutoffmax + 2);
     }
 
     rt_int_parameter(rt, "vesicle_com", &onvesicle);
     if (onvesicle) {
       rt_double_parameter(rt, "bond_harmonic_r0", &r0);
       if (r0 == 0.0) pe_info(pe, "You specified vesicle_com on but there are no harmonic bonds to create the vesicle\n");
-      else radius_vesicle = 3.0*r0; 
+      else radius_vesicle = 5.5*r0; 
       rmax = dmax(rmax, radius_vesicle);
     }
 
@@ -698,7 +703,7 @@ int colloids_rt_cell_list_checks(rt_t * rt, pe_t * pe, cs_t * cs,
     pe_info(pe, "Hydrodynamic radius maximum: %14.7e\n", ahmax);
     pe_info(pe, "Surface-surface interaction: %14.7e\n", hcmax);
     pe_info(pe, "Centre-centre interaction:   %14.7e\n", rcmax);
-    if (onsubgrid) pe_info(pe, "Max range of subgrid<->PHI interaction: %14.7e\n", rmax_phi);
+    if (onsubgrid) pe_info(pe, "Max range of subgrid<->PHI interaction+2: %14.7e\n", cutoffmax+2);
     if (onvesicle) pe_info(pe, "Approximate radius of vesicle: %14.7e\n", radius_vesicle);
   }
 
@@ -712,7 +717,7 @@ int colloids_rt_cell_list_checks(rt_t * rt, pe_t * pe, cs_t * cs,
 
   if (onsubgrid) {
     for (int ia = 0; ia < 3; ia++) {
-      if (wcell[ia] < cutoffmax) pe_fatal(pe, "The cutoff range of the PHI<-> subgrid interaction is larger than the minimum cell width possible along %d\n", ia);
+      if (wcell[ia] < cutoffmax + 2) pe_fatal(pe, "The cutoff range of the PHI<-> subgrid interaction + 2 (needed for discrete difference) is larger than the minimum cell width possible along %d\n", ia);
     }
   }
   if (onvesicle) {
@@ -1076,6 +1081,83 @@ int bond_harmonic_init(pe_t * pe, cs_t * cs, rt_t * rt, interact_t * interact) {
 
   return 0;
 }
+
+/*****************************************************************************
+ *
+ *  bond_harmonic2_init
+ *
+ *****************************************************************************/
+
+int bond_harmonic2_init(pe_t * pe, cs_t * cs, rt_t * rt, interact_t * interact) {
+
+  int n;
+  int on = 0;
+  double kappa;
+  double r0;
+
+  bond_harmonic2_t * harmonic2 = NULL;
+
+  assert(pe);
+  assert(rt);
+  assert(interact);
+
+  rt_int_parameter(rt, "bond_harmonic2_on", &on);
+
+  if (on) {
+    n = rt_double_parameter(rt, "bond_harmonic2_k", &kappa);
+    if (n == 0) pe_fatal(pe, "Must set bond_harmonic2_k in input for harmonic bond\n");
+    n = rt_double_parameter(rt, "bond_harmonic2_r0", &r0);
+    if (n == 0) pe_fatal(pe, "Must set bond_harmonic2_r0 in input for harmonic2 bond\n");
+
+    bond_harmonic2_create(pe, cs,&harmonic2);
+    bond_harmonic2_param_set(harmonic2, kappa, r0);
+    bond_harmonic2_register(harmonic2, interact);
+    bond_harmonic2_info(harmonic2);
+  }
+
+  return 0;
+}
+
+
+
+/*****************************************************************************
+ *
+ *  bond_harmonic3_init
+ *
+ *****************************************************************************/
+
+int bond_harmonic3_init(pe_t * pe, cs_t * cs, rt_t * rt, interact_t * interact) {
+
+  int n;
+  int on = 0;
+  double kappa;
+  double r0;
+
+  bond_harmonic3_t * harmonic3 = NULL;
+
+  assert(pe);
+  assert(rt);
+  assert(interact);
+
+  rt_int_parameter(rt, "bond_harmonic3_on", &on);
+
+  if (on) {
+    n = rt_double_parameter(rt, "bond_harmonic3_k", &kappa);
+    if (n == 0) pe_fatal(pe, "Must set bond_harmonic3_k in input for harmonic bond\n");
+    n = rt_double_parameter(rt, "bond_harmonic3_r0", &r0);
+    if (n == 0) pe_fatal(pe, "Must set bond_harmonic3_r0 in input for harmonic3 bond\n");
+
+    bond_harmonic3_create(pe, cs, &harmonic3);
+    bond_harmonic3_param_set(harmonic3, kappa, r0);
+    bond_harmonic3_register(harmonic3, interact);
+    bond_harmonic3_info(harmonic3);
+  }
+
+  return 0;
+}
+
+
+
 
 /*****************************************************************************
  *

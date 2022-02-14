@@ -48,7 +48,7 @@
 #include "phi_cahn_hilliard.h"
 
 static int phi_ch_flux_mu1(phi_ch_t * pch, fe_t * fes, field_t * mmtarget);
-static int phi_ch_flux_interaction(phi_ch_t * pch, field_t * subgrid_flux, field_t * mmtarget);
+static int phi_ch_flux_interaction(phi_ch_t * pch, field_t * subgrid_potential, field_t * mmtarget);
 static int phi_ch_flux_mu2(phi_ch_t * pch, fe_t * fes);
 static int phi_ch_update_forward_step(phi_ch_t * pch, field_t * phif);
 static int phi_ch_flux_mu_ext(phi_ch_t * pch);
@@ -86,7 +86,7 @@ __global__ void phi_ch_flux_mu1_kernel(kernel_ctxt_t * ktx,
 					field_t * mmtarget);
 
 __global__ void phi_ch_flux_interaction_kernel(kernel_ctxt_t * ktx,
-                                       lees_edw_t * le, field_t * subgrid_flux,
+                                       lees_edw_t * le, field_t * subgrid_potential,
                                        advflux_t * flux, double mobility,
 					field_t * mmtarget);
 
@@ -193,7 +193,7 @@ __host__ int phi_ch_free(phi_ch_t * pch) {
 
 int phi_cahn_hilliard(phi_ch_t * pch, fe_t * fe, field_t * phi,
 		      hydro_t * hydro, map_t * map,
-		      noise_t * noise, field_t * subgrid_flux,
+		      noise_t * noise, field_t * subgrid_potential,
 					field_t * mobility_map) {
   int nf;
   int noise_phi = 0;
@@ -214,7 +214,7 @@ int phi_cahn_hilliard(phi_ch_t * pch, fe_t * fe, field_t * phi,
   if (hydro) {
     hydro_u_halo(hydro); /* Reposition to main to prevent repeat */
     hydro_lees_edwards(hydro); /* Repoistion to main ditto */ 
-    field_halo(subgrid_flux); /* necessary ? */
+    field_halo(subgrid_potential); /* necessary ? */
     advection_x(pch->flux, hydro, phi);
   }
   else {
@@ -228,7 +228,7 @@ int phi_cahn_hilliard(phi_ch_t * pch, fe_t * fe, field_t * phi,
   }
   else {
     phi_ch_flux_mu1(pch, fe, mobility_map);
-    phi_ch_flux_interaction(pch, subgrid_flux, mobility_map);
+    phi_ch_flux_interaction(pch, subgrid_potential, mobility_map);
   }
 
   /* External chemical potential gradient (could switch out if zero) */
@@ -265,7 +265,7 @@ int phi_cahn_hilliard(phi_ch_t * pch, fe_t * fe, field_t * phi,
  *
  *****************************************************************************/
 
-static int phi_ch_flux_interaction(phi_ch_t * pch, field_t * subgrid_flux,
+static int phi_ch_flux_interaction(phi_ch_t * pch, field_t * subgrid_potential,
 					field_t * mobility_map) {
 
   int nlocal[3];
@@ -280,11 +280,11 @@ static int phi_ch_flux_interaction(phi_ch_t * pch, field_t * subgrid_flux,
   kernel_ctxt_t * ctxt = NULL;
 
   assert(pch);
-  assert(subgrid_flux);
+  assert(subgrid_potential);
 
   lees_edw_nlocal(pch->le, nlocal);
   lees_edw_target(pch->le, &letarget);
-  sftarget = subgrid_flux->target;
+  sftarget = subgrid_potential->target;
   mmtarget = mobility_map->target;
 
   physics_ref(&phys);
@@ -324,7 +324,7 @@ static int phi_ch_flux_interaction(phi_ch_t * pch, field_t * subgrid_flux,
  *****************************************************************************/
 
 __global__ void phi_ch_flux_interaction_kernel(kernel_ctxt_t * ktx,
-                                       lees_edw_t * le, field_t * subgrid_flux,
+                                       lees_edw_t * le, field_t * subgrid_potential,
                                        advflux_t * flux, double mobility,
 					field_t * mobility_map) {
   int kindex;
@@ -332,7 +332,7 @@ __global__ void phi_ch_flux_interaction_kernel(kernel_ctxt_t * ktx,
 
   assert(ktx);
   assert(le);
-  assert(subgrid_flux);
+  assert(subgrid_potential);
   assert(flux);
 
   kiterations = kernel_iterations(ktx);
@@ -354,34 +354,34 @@ __global__ void phi_ch_flux_interaction_kernel(kernel_ctxt_t * ktx,
 
     index0 = lees_edw_index(le, ic, jc, kc);
 
-    field_scalar(subgrid_flux, index0, &mu0);
+    field_scalar(subgrid_potential, index0, &mu0);
     field_scalar(mobility_map, index0, &mobility0);
 
     /* x-direction (between ic-1 and ic) */
 
     index1 = lees_edw_index(le, icm1, jc, kc);
-    field_scalar(subgrid_flux, index1, &mu1);
+    field_scalar(subgrid_potential, index1, &mu1);
     field_scalar(mobility_map, index1, &mobility1);
     flux->fw[addr_rank0(flux->nsite, index0)] -= 0.5*(mobility0 + mobility1)*(mu0 - mu1);
 
     /* ...and between ic and ic+1 */
 
     index1 = lees_edw_index(le, icp1, jc, kc);
-    field_scalar(subgrid_flux, index1, &mu1);
+    field_scalar(subgrid_potential, index1, &mu1);
     field_scalar(mobility_map, index1, &mobility1);
     flux->fe[addr_rank0(flux->nsite, index0)] -= 0.5*(mobility0 + mobility1)*(mu1 - mu0);
 
 
     /* y direction */
     index1 = lees_edw_index(le, ic, jc+1, kc);
-    field_scalar(subgrid_flux, index1, &mu1);
+    field_scalar(subgrid_potential, index1, &mu1);
     field_scalar(mobility_map, index1, &mobility1);
     flux->fy[addr_rank0(flux->nsite, index0)] -= 0.5*(mobility0 + mobility1)*(mu1 - mu0);
 
     /* z direction */
 
     index1 = lees_edw_index(le, ic, jc, kc+1);
-    field_scalar(subgrid_flux, index1, &mu1);
+    field_scalar(subgrid_potential, index1, &mu1);
     field_scalar(mobility_map, index1, &mobility1);
     flux->fz[addr_rank0(flux->nsite, index0)] -= 0.5*(mobility0 + mobility1)*(mu1 - mu0);
 

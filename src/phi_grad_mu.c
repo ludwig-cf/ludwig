@@ -26,10 +26,10 @@
 
 __global__ void phi_grad_mu_fluid_kernel(kernel_ctxt_t * ktx, field_t * phi,
 					 fe_t * fe, hydro_t * hydro,
-					field_t * subgrid_flux);
+					field_t * subgrid_potential);
 __global__ void phi_grad_mu_solid_kernel(kernel_ctxt_t * ktx, field_t * phi,
 					 fe_t * fe, hydro_t * hydro,
-					 map_t * map, field_t * subgrid_flux);
+					 map_t * map, field_t * subgrid_potential);
 __global__ void phi_grad_mu_external_kernel(kernel_ctxt_t * ktx, field_t * phi,
 					    double3 grad_mu, hydro_t * hydro);
 
@@ -43,7 +43,7 @@ __global__ void phi_grad_mu_external_kernel(kernel_ctxt_t * ktx, field_t * phi,
  *****************************************************************************/
 
 __host__ int phi_grad_mu_fluid(cs_t * cs, field_t * phi, fe_t * fe,
-			       hydro_t * hydro, field_t * subgrid_flux) {
+			       hydro_t * hydro, field_t * subgrid_potential) {
   int nlocal[3];
   dim3 nblk, ntpb;
 
@@ -58,7 +58,7 @@ __host__ int phi_grad_mu_fluid(cs_t * cs, field_t * phi, fe_t * fe,
 
   cs_nlocal(cs, nlocal);
   fe->func->target(fe, &fe_target);
-  sf_target = subgrid_flux->target;
+  sf_target = subgrid_potential->target;
 
   limits.imin = 1; limits.imax = nlocal[X];
   limits.jmin = 1; limits.jmax = nlocal[Y];
@@ -89,7 +89,7 @@ __host__ int phi_grad_mu_fluid(cs_t * cs, field_t * phi, fe_t * fe,
 
 __host__ int phi_grad_mu_solid(cs_t * cs, field_t * phi, fe_t * fe,
 			       hydro_t * hydro, map_t * map, 
-				field_t * subgrid_flux) {
+				field_t * subgrid_potential) {
   int nlocal[3];
   dim3 nblk, ntpb;
 
@@ -105,7 +105,7 @@ __host__ int phi_grad_mu_solid(cs_t * cs, field_t * phi, fe_t * fe,
 
   cs_nlocal(cs, nlocal);
   fe->func->target(fe, &fe_target);
-  sf_target = subgrid_flux->target;
+  sf_target = subgrid_potential->target;
 
   limits.imin = 1; limits.imax = nlocal[X];
   limits.jmin = 1; limits.jmax = nlocal[Y];
@@ -204,7 +204,7 @@ __host__ int phi_grad_mu_external(cs_t * cs, field_t * phi, hydro_t * hydro) {
 
 __global__ void phi_grad_mu_fluid_kernel(kernel_ctxt_t * ktx, field_t * phi,
 					 fe_t * fe, hydro_t * hydro, 
-					field_t * subgrid_flux) {
+					field_t * subgrid_potential) {
   int kiterations;
   int kindex;
   assert(ktx);
@@ -254,13 +254,13 @@ __global__ void phi_grad_mu_fluid_kernel(kernel_ctxt_t * ktx, field_t * phi,
 
       fe->func->mu(fe, indexm1, mum1);
       fe->func->mu(fe, indexp1, mup1);
-      field_scalar(subgrid_flux, indexm1, &um1);
-      field_scalar(subgrid_flux, indexp1, &up1);
+      field_scalar(subgrid_potential, indexm1, &um1);
+      field_scalar(subgrid_potential, indexp1, &up1);
 
       force[X] = 0.0;
       for (int n = 0; n < phi->nf; n++) {
 	force[X] += -phi0[n]*0.5*(mup1[n] - mum1[n] + up1 - um1);
-	if (timestep == 1) {
+	if (timestep % freq == 0) {
 	  localforce[X] -= phi0[n]*0.5*(up1 - um1);
 	}
 	else localforce[X] = 0.0;
@@ -274,13 +274,13 @@ __global__ void phi_grad_mu_fluid_kernel(kernel_ctxt_t * ktx, field_t * phi,
 
       fe->func->mu(fe, indexm1, mum1);
       fe->func->mu(fe, indexp1, mup1);
-      field_scalar(subgrid_flux, indexm1, &um1);
-      field_scalar(subgrid_flux, indexp1, &up1);
+      field_scalar(subgrid_potential, indexm1, &um1);
+      field_scalar(subgrid_potential, indexp1, &up1);
 
       force[Y] = 0.0;
       for (int n = 0; n < phi->nf; n++) {
 	force[Y] += -phi0[n]*0.5*(mup1[n] - mum1[n] + up1 - um1);
-	if (timestep == 1) localforce[Y] -= phi0[n]*0.5*(up1 - um1);
+	if (timestep % freq == 0) localforce[Y] -= phi0[n]*0.5*(up1 - um1);
 	else localforce[Y] = 0.0;
       }
     }
@@ -291,13 +291,13 @@ __global__ void phi_grad_mu_fluid_kernel(kernel_ctxt_t * ktx, field_t * phi,
 
       fe->func->mu(fe, indexm1, mum1);
       fe->func->mu(fe, indexp1, mup1);
-      field_scalar(subgrid_flux, indexm1, &um1);
-      field_scalar(subgrid_flux, indexp1, &up1);
+      field_scalar(subgrid_potential, indexm1, &um1);
+      field_scalar(subgrid_potential, indexp1, &up1);
 
       force[Z] = 0.0;
       for (int n = 0; n < phi->nf; n++) {
 	force[Z] += -phi0[n]*0.5*(mup1[n] - mum1[n] + up1 - um1);
-	if (timestep == 1) localforce[Z] -= phi0[n]*0.5*(up1 - um1);
+	if (timestep % freq == 0) localforce[Z] -= phi0[n]*0.5*(up1 - um1);
 	else localforce[Z] = 0.0;
       }
     }
@@ -340,7 +340,7 @@ __global__ void phi_grad_mu_fluid_kernel(kernel_ctxt_t * ktx, field_t * phi,
 
 __global__ void phi_grad_mu_solid_kernel(kernel_ctxt_t * ktx, field_t * field,
 					 fe_t * fe, hydro_t * hydro,
-					 map_t * map, field_t * subgrid_flux) {
+					 map_t * map, field_t * subgrid_potential) {
   int kiterations;
   int kindex;
 
@@ -367,7 +367,7 @@ __global__ void phi_grad_mu_solid_kernel(kernel_ctxt_t * ktx, field_t * field,
 
     field_scalar_array(field, index0, phi);
     fe->func->mu(fe, index0, mu);
-    field_scalar(subgrid_flux, index0, &u);
+    field_scalar(subgrid_potential, index0, &u);
 
     /* x-direction */
     {
@@ -383,8 +383,8 @@ __global__ void phi_grad_mu_solid_kernel(kernel_ctxt_t * ktx, field_t * field,
 
       fe->func->mu(fe, indexm1, mum1);
       fe->func->mu(fe, indexp1, mup1);
-      field_scalar(subgrid_flux, indexm1, &um1);
-      field_scalar(subgrid_flux, indexp1, &up1);
+      field_scalar(subgrid_potential, indexm1, &um1);
+      field_scalar(subgrid_potential, indexp1, &up1);
 
       map_status(map, indexm1, &mapm1);
       map_status(map, indexp1, &mapp1);
@@ -421,8 +421,8 @@ __global__ void phi_grad_mu_solid_kernel(kernel_ctxt_t * ktx, field_t * field,
 
       fe->func->mu(fe, indexm1, mum1);
       fe->func->mu(fe, indexp1, mup1);
-      field_scalar(subgrid_flux, indexm1, &um1);
-      field_scalar(subgrid_flux, indexp1, &up1);
+      field_scalar(subgrid_potential, indexm1, &um1);
+      field_scalar(subgrid_potential, indexp1, &up1);
 
       map_status(map, indexm1, &mapm1);
       map_status(map, indexp1, &mapp1);
@@ -459,8 +459,8 @@ __global__ void phi_grad_mu_solid_kernel(kernel_ctxt_t * ktx, field_t * field,
 
       fe->func->mu(fe, indexm1, mum1);
       fe->func->mu(fe, indexp1, mup1);
-      field_scalar(subgrid_flux, indexm1, &um1);
-      field_scalar(subgrid_flux, indexp1, &up1);
+      field_scalar(subgrid_potential, indexm1, &um1);
+      field_scalar(subgrid_potential, indexp1, &up1);
 
       map_status(map, indexm1, &mapm1);
       map_status(map, indexp1, &mapp1);

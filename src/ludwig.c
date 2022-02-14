@@ -132,7 +132,7 @@ struct ludwig_s {
   field_t * phi;            /* Scalar order parameter */
   field_t * p;              /* Vector order parameter */
   field_t * q;              /* Tensor order parameter */
-  field_t * subgrid_flux;   /* Phi-subgrid particles interaction field */
+  field_t * subgrid_potential;   /* Phi-subgrid particles interaction field */
   field_t * mobility_map;   /* Phi-subgrid particles interaction field */
   field_grad_t * phi_grad;  /* Gradients for phi */
   field_grad_t * p_grad;    /* Gradients for p */
@@ -288,15 +288,12 @@ static int ludwig_rt(ludwig_t * ludwig) {
   if (ludwig->fe_ternary) {
     fe_ternary_init_rt(pe, rt, ludwig->fe_ternary, ludwig->phi);
   }
-
-  if (ludwig->subgrid_flux) {
-    field_phi_init_uniform(ludwig->subgrid_flux, 0.0);
+  if (ludwig->subgrid_potential) {
+    field_phi_init_uniform(ludwig->subgrid_potential, 0.0);
   }
-
   if (ludwig->mobility_map) {
     field_phi_init_uniform(ludwig->mobility_map, 0.0);
   }
-
   /* To be called before wall_rt_init() */
   if (ludwig->psi) {
     advection_init_rt(pe, rt);
@@ -493,7 +490,7 @@ void ludwig_run(const char * inputfile) {
   lb_memcpy(ludwig->lb, tdpMemcpyHostToDevice);
 
   if (ludwig->phi) field_memcpy(ludwig->phi, tdpMemcpyHostToDevice);
-  if (ludwig->subgrid_flux) field_memcpy(ludwig->subgrid_flux, tdpMemcpyHostToDevice);
+  if (ludwig->subgrid_potential) field_memcpy(ludwig->subgrid_potential, tdpMemcpyHostToDevice);
   if (ludwig->mobility_map) field_memcpy(ludwig->mobility_map, tdpMemcpyHostToDevice);
   if (ludwig->p)   field_memcpy(ludwig->p, tdpMemcpyHostToDevice);
   if (ludwig->q)   field_memcpy(ludwig->q, tdpMemcpyHostToDevice);
@@ -545,7 +542,6 @@ void ludwig_run(const char * inputfile) {
     }
 
     colloids_info_ntotal(ludwig->collinfo, &ncolloid);
-
     if ((step % ludwig->collinfo->rebuild_freq) == 0) {
       ludwig_colloids_update(ludwig);
     }
@@ -565,10 +561,10 @@ void ludwig_run(const char * inputfile) {
     if (im == 2) phi_lb_to_field(ludwig->phi, ludwig->lb);
 
     if (ludwig->phi) {
-
+      
       TIMER_start(TIMER_PHI_HALO);
       field_halo(ludwig->phi);
-      field_halo(ludwig->subgrid_flux);
+      field_halo(ludwig->subgrid_potential);
       field_halo(ludwig->mobility_map);
       TIMER_stop(TIMER_PHI_HALO);
 
@@ -709,12 +705,11 @@ void ludwig_run(const char * inputfile) {
 	  }
 
 	  /* Force calculation as divergence of stress tensor */
-
           phi_force_calculation(ludwig->pe, ludwig->cs, ludwig->le,
 				ludwig->wall,
                                 ludwig->pth, ludwig->fe, ludwig->map,
                                 ludwig->phi, ludwig->hydro,
-				ludwig->subgrid_flux);
+				ludwig->subgrid_potential);
 
 	  /* Ternary free energy gradmu requires of momentum correction
 	     after force calculation */
@@ -742,13 +737,14 @@ void ludwig_run(const char * inputfile) {
        
 
 /* -----> CHEMOVESICLE V3  
-      int ic = 20;
+      int ic = 30;
       int index;
       double mobility, mobility0 = 0.5;
       int nlocal[3];
       cs_nlocal(ludwig->cs, nlocal);
       pe_info(ludwig->pe, "\n TIMESTEP = %d\n", step); 
       if (step > 1) { 
+      for (int ic = 1; ic < nlocal[X]; ic++){
         for (int jc = 1; jc <= nlocal[Y]; jc++ ) {
           for (int kc = 1; kc <= nlocal[Z]; kc++) {
             int index = cs_index(ludwig->cs, ic, jc, kc);
@@ -766,13 +762,15 @@ void ludwig_run(const char * inputfile) {
           printf("\n");
         }
       }
+      }
       pe_info(ludwig->pe, "\033[0m");
 */
+
       if (ludwig->pch) {
 	phi_cahn_hilliard(ludwig->pch, ludwig->fe, ludwig->phi,
 			  ludwig->hydro, 
 			  ludwig->map, ludwig->noise_phi,
-			ludwig->subgrid_flux, ludwig->mobility_map);
+			ludwig->subgrid_potential, ludwig->mobility_map);
       }
 
       if (ludwig->p) {
@@ -839,8 +837,9 @@ void ludwig_run(const char * inputfile) {
       wall_set_wall_distributions(ludwig->wall);
 
       subgrid_phi_production(ludwig->collinfo, ludwig->phi); 
-      subgrid_mobility_map(ludwig->collinfo, ludwig->mobility_map, 1.5);
+      subgrid_mobility_map(ludwig->collinfo, ludwig->mobility_map, ludwig->rt);
       subgrid_update(ludwig->collinfo, ludwig->hydro, noise_flag);
+
 /* -----> CHEMOVESICLE V2 */
 /* Updates the central particles (iscentre = 1) */
       subgrid_centre_update(ludwig->collinfo, ludwig->hydro, noise_flag);
@@ -1289,8 +1288,8 @@ int free_energy_init_rt(ludwig_t * ludwig) {
     field_create(pe, cs, nf, "phi", &ludwig->phi);
     field_init(ludwig->phi, nhalo, le);
 
-    field_create(pe, cs, nf, "subgrid_flux", &ludwig->subgrid_flux);
-    field_init(ludwig->subgrid_flux, nhalo, le);
+    field_create(pe, cs, nf, "subgrid_potential", &ludwig->subgrid_potential);
+    field_init(ludwig->subgrid_potential, nhalo, le);
 
     field_create(pe, cs, nf, "mobility_map", &ludwig->mobility_map);
     field_init(ludwig->mobility_map, nhalo, le);
@@ -1978,15 +1977,13 @@ static int ludwig_colloids_update_low_freq(ludwig_t * ludwig) {
 
   colloids_info_ntotal(ludwig->collinfo, &ncolloid);
   if (ncolloid == 0) return 0;
-
   colloids_info_position_update(ludwig->collinfo);
   colloids_info_update_cell_list(ludwig->collinfo);
   colloids_halo_state(ludwig->collinfo);
   colloids_info_update_lists(ludwig->collinfo);
-
   interact_compute(ludwig->interact, ludwig->collinfo, ludwig->map,
         	     ludwig->psi, ludwig->ewald, ludwig->phi, 
-			ludwig->subgrid_flux, ludwig->rt);
+			ludwig->subgrid_potential, ludwig->rt);
 
   subgrid_force_from_particles(ludwig->collinfo, ludwig->hydro, ludwig->wall);
 
@@ -2047,7 +2044,7 @@ int ludwig_colloids_update(ludwig_t * ludwig) {
   TIMER_start(TIMER_FREE1);
   if (iconserve && ludwig->phi) {
     field_halo(ludwig->phi);
-    field_halo(ludwig->subgrid_flux);
+    field_halo(ludwig->subgrid_potential);
   }
   if (iconserve && ludwig->psi) psi_halo_rho(ludwig->psi);
   TIMER_stop(TIMER_FREE1);
@@ -2072,7 +2069,7 @@ int ludwig_colloids_update(ludwig_t * ludwig) {
 
   interact_compute(ludwig->interact, ludwig->collinfo, ludwig->map,
 		   ludwig->psi, ludwig->ewald, ludwig->phi, 
-			ludwig->subgrid_flux, ludwig->rt);
+			ludwig->subgrid_potential, ludwig->rt);
   subgrid_force_from_particles(ludwig->collinfo, ludwig->hydro, ludwig->wall);
 
   TIMER_stop(TIMER_FORCES);

@@ -30,15 +30,18 @@ typedef enum colloid_io_version colloid_io_version_t;
 
 
 /* -----> CHEMOVESICLE V2 */
-/* NPAD_INT 10 = 12 - iscentre - indexcentre */
+/* NPAD_INT 2 = 12 - iscentre - indexcentre - NBONDMAX2(3) -nbonds2 - NBONDMAX3 (3) - nbonds3*/
 /* NPAD_DOUBLE 10 = 15 - u0 - delta - cutoff - phi_production 
 			-localmobility */
 /* <----- */
 
 #define NTOT_VAR (32+48)
-#define NPAD_INT  10
-#define NPAD_DBL  10
+#define NPAD_INT  2
+#define NPAD_DBL  9
+
 #define NBOND_MAX  3
+#define NBOND_MAX2  3
+#define NBOND_MAX3  3
 
 enum colloid_type_enum {COLLOID_TYPE_DEFAULT = 0,
 			COLLOID_TYPE_ACTIVE,
@@ -53,6 +56,8 @@ struct colloid_state_type {
   int index;            /* Unique global index for colloid */
   int rebuild;          /* Rebuild flag */
   int nbonds;           /* Number of bonds e.g. fene (to NBOND_MAX) */
+  int nbonds2;           /* Number of bonds e.g. fene (to NBOND_MAX2) */
+  int nbonds3;           /* Number of bonds e.g. fene (to NBOND_MAX3) */
   int nangles;          /* Number of angles, e.g., fene (1 at the moment) */
 
   int isfixedr;         /* Set to 1 for no position update */
@@ -62,6 +67,8 @@ struct colloid_state_type {
 
   int type;             /* Particle type */
   int bond[NBOND_MAX];  /* Bonded neighbours ids (index) */
+  int bond2[NBOND_MAX2];  /* Bonded neighbours ids (index) */
+  int bond3[NBOND_MAX3];  /* Bonded neighbours ids (index) */
 
   int rng;              /* Random number state */
 
@@ -119,6 +126,7 @@ struct colloid_state_type {
   double cutoff;
   double phi_production;
   double localmobility;
+  double localrange;
 /* <----- */
 
   double dpad[NPAD_DBL];/* Again, this pads to 512 bytes to allow

@@ -49,6 +49,8 @@ struct colloid {
   double fex[3];        /* External forces (non-fluid) on particle */
   double tex[3];        /* External torques on particle */
 
+  double centerofmass[3];        /* For vesicles */
+
   /* Pointers */
 
   colloid_link_t * lnk; /* Pointer to the list of links defining surface */
@@ -60,6 +62,8 @@ struct colloid {
   /* Bonded neighbours cf. colloid.h */
 
   colloid_t * bonded[NBOND_MAX];
+  colloid_t * bonded2[NBOND_MAX2];
+  colloid_t * bonded3[NBOND_MAX3];
 };
 
 typedef struct colloids_info_s colloids_info_t;

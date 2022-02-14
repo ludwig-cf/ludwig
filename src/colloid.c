@@ -42,6 +42,8 @@ int colloid_state_read_ascii(colloid_state_t * ps, FILE * fp) {
   nread += fscanf(fp, isformat, &ps->index);
   nread += fscanf(fp, isformat, &ps->rebuild);
   nread += fscanf(fp, isformat, &ps->nbonds);
+  nread += fscanf(fp, isformat, &ps->nbonds2);
+  nread += fscanf(fp, isformat, &ps->nbonds3);
   nread += fscanf(fp, isformat, &ps->nangles);
   nread += fscanf(fp, isformat, &ps->isfixedr);
   nread += fscanf(fp, isformat, &ps->isfixedv);
@@ -52,6 +54,15 @@ int colloid_state_read_ascii(colloid_state_t * ps, FILE * fp) {
   for (n = 0; n < NBOND_MAX; n++) {
     nread += fscanf(fp, isformat, &ps->bond[n]);
   }
+
+  for (n = 0; n < NBOND_MAX2; n++) {
+    nread += fscanf(fp, isformat, &ps->bond2[n]);
+  }
+
+  for (n = 0; n < NBOND_MAX3; n++) {
+    nread += fscanf(fp, isformat, &ps->bond3[n]);
+  }
+
 
   nread += fscanf(fp, isformat, &ps->rng);
 
@@ -103,6 +114,7 @@ int colloid_state_read_ascii(colloid_state_t * ps, FILE * fp) {
   nread += fscanf(fp, sformat, &ps->cutoff);
   nread += fscanf(fp, sformat, &ps->phi_production);
   nread += fscanf(fp, sformat, &ps->localmobility);
+  nread += fscanf(fp, sformat, &ps->localrange);
 /* <----- */
 
   for (n = 0; n < NPAD_DBL; n++) {
@@ -169,6 +181,8 @@ int colloid_state_write_ascii(const colloid_state_t * s, FILE * fp) {
   nwrite += fprintf(fp, isformat, s->index);
   nwrite += fprintf(fp, isformat, s->rebuild);
   nwrite += fprintf(fp, isformat, s->nbonds);
+  nwrite += fprintf(fp, isformat, s->nbonds2);
+  nwrite += fprintf(fp, isformat, s->nbonds3);
   nwrite += fprintf(fp, isformat, s->nangles);
   nwrite += fprintf(fp, isformat, s->isfixedr);
   nwrite += fprintf(fp, isformat, s->isfixedv);
@@ -179,6 +193,15 @@ int colloid_state_write_ascii(const colloid_state_t * s, FILE * fp) {
   for (n = 0; n < NBOND_MAX; n++) {
     nwrite += fprintf(fp, isformat, s->bond[n]);
   }
+
+  for (n = 0; n < NBOND_MAX2; n++) {
+    nwrite += fprintf(fp, isformat, s->bond2[n]);
+  }
+
+  for (n = 0; n < NBOND_MAX3; n++) {
+    nwrite += fprintf(fp, isformat, s->bond3[n]);
+  }
+
 
   nwrite += fprintf(fp, isformat, s->rng);
 
@@ -234,6 +257,7 @@ int colloid_state_write_ascii(const colloid_state_t * s, FILE * fp) {
   nwrite += fprintf(fp, sformat, s->cutoff);
   nwrite += fprintf(fp, sformat, s->phi_production);
   nwrite += fprintf(fp, sformat, s->localmobility);
+  nwrite += fprintf(fp, sformat, s->localrange);
 /* <----- */
 
   for (n = 0; n < NPAD_DBL; n++) {

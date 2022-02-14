@@ -272,6 +272,7 @@ int subgrid_centre_update(colloids_info_t * cinfo, hydro_t * hydro, int noise_fl
 
   
   int ia;
+  int rank;
   int ic, jc, kc, ic2, jc2, kc2;
   int di[2], dj[2], dk[2];
   int ncell[3];
@@ -280,7 +281,6 @@ int subgrid_centre_update(colloids_info_t * cinfo, hydro_t * hydro, int noise_fl
   colloid_t * p_colloid;
   colloid_t * p_colloid_edge;
   physics_t * phys = NULL;
-
   assert(cinfo);
   assert(hydro);
 
@@ -290,16 +290,13 @@ int subgrid_centre_update(colloids_info_t * cinfo, hydro_t * hydro, int noise_fl
 
   colloids_info_ncell(cinfo, ncell);
 
-  /* Loop through all cells (including the halo cells) */
+  /* <-------------------------------Loop over cells+halo and find central--------------------------------> */
 
-  /* Loop through the remaining central particles */ 
-  /* Loop over all */
-
-  for (ic = 0; ic <= ncell[X] + 1; ic++) {
+  for (ic = 1; ic <= ncell[X] + 0; ic++) {
     colloids_info_climits(cinfo, X, ic, di);
-    for (jc = 0; jc <= ncell[Y] + 1; jc++) {
+    for (jc = 1; jc <= ncell[Y] + 0; jc++) {
       colloids_info_climits(cinfo, Y , jc, dj);
-      for (kc = 0; kc <= ncell[Z] + 1; kc++) {
+      for (kc = 1; kc <= ncell[Z] + 0; kc++) {
         colloids_info_climits(cinfo, Z, kc, dk);
 		
         colloids_info_cell_list_head(cinfo, ic, jc, kc, &p_colloid);
@@ -307,11 +304,12 @@ int subgrid_centre_update(colloids_info_t * cinfo, hydro_t * hydro, int noise_fl
 	
 	  /* Filter out non subgrid and edge particles */	
           if (p_colloid->s.type != COLLOID_TYPE_SUBGRID || p_colloid->s.iscentre == 0) continue;
+	  //pe_verbose(hydro->pe,"central index %d\n", p_colloid->s.index );
 	  /* Reset variables */
 	  nparticles = 0;
 	  for (ia = 0; ia < 3; ia++) centerofmass[ia] = 0.0;
 
-	  /* Loop over edge particles */
+	  /*<--------------------------Loop over central-adjacent cells to find edge particles----------------------------> */
 
 	  for (ic2 = di[0]; ic2 <= di[1]; ic2++) {
 	    for (jc2 = dj[0]; jc2 <= dj[1]; jc2++) {
@@ -320,9 +318,10 @@ int subgrid_centre_update(colloids_info_t * cinfo, hydro_t * hydro, int noise_fl
 	        colloids_info_cell_list_head(cinfo, ic2, jc2, kc2, &p_colloid_edge);
 	  		
 	        for (; p_colloid_edge; p_colloid_edge = p_colloid_edge->next) {
-	  	/* Filter out particles from vesicles not centered around the current p_colloid */
-
+		
+	  	/* Filter out particles from vesicles not belonging to the current p_colloid */
 	          if ((p_colloid_edge->s.indexcentre == p_colloid->s.index) && (p_colloid_edge->s.iscentre == 0)) {
+		    
 	            for (ia = 0; ia < 3; ia ++) {
 	              centerofmass[ia] += p_colloid_edge->s.r[ia];
 	            }
@@ -334,16 +333,25 @@ int subgrid_centre_update(colloids_info_t * cinfo, hydro_t * hydro, int noise_fl
 	  }
 
 	  for (ia = 0; ia < 3; ia ++) {
+	    //pe_verbose(hydro->pe, "nparticles = %d\n", nparticles);
 	    if (nparticles == 0) pe_fatal(hydro->pe, "No edge particle associated to a central particles (nparticles = %d) \n", nparticles);
 	    centerofmass[ia] = centerofmass[ia] / nparticles;
+	  }
+	  /*pe_verbose(hydro->pe, "c-o-m %f %f %f\n",
+		centerofmass[X], centerofmass[Y], centerofmass[Z]); */
+	  for (ia = 0; ia < 3; ia ++) {
 	    /* The velocity of the colloid is set to that which makes it go to the center of mass in 1 timestep */
-	    p_colloid->s.v[ia] = centerofmass[ia] - p_colloid->s.r[ia]; 
+
+	    p_colloid->centerofmass[ia] = centerofmass[ia]; 
+	    p_colloid->s.v[ia] = p_colloid->centerofmass[ia] - p_colloid->s.r[ia]; 
 	    p_colloid->s.dr[ia] = p_colloid->s.v[ia];
 	  }	      
 	}
       }
     }
   }
+  
+  colloid_sums_halo(cinfo, COLLOID_SUM_SUBGRID_CENTRAL);
   return 0;
 }
 
@@ -629,8 +637,9 @@ int subgrid_phi_production(colloids_info_t * cinfo, field_t * phi) {
  *
  *****************************************************************************/
 
-int subgrid_mobility_map(colloids_info_t * cinfo, field_t * mobility_map, int range) {
+int subgrid_mobility_map(colloids_info_t * cinfo, field_t * mobility_map, rt_t * rt) {
 
+  int on;
   int ic, jc, kc;
   int i, j, k, i_min, i_max, j_min, j_max, k_min, k_max;
   int index;
@@ -639,6 +648,7 @@ int subgrid_mobility_map(colloids_info_t * cinfo, field_t * mobility_map, int ra
 
   double r0[3], r[3];
   double localmobility;
+  double localrange;
   double mobility;
   colloid_t * p_colloid;
 
@@ -646,13 +656,16 @@ int subgrid_mobility_map(colloids_info_t * cinfo, field_t * mobility_map, int ra
   physics_ref(&phys);
   physics_mobility(phys, &mobility);
   assert(cinfo);
+  assert(rt);
 
   cs_nlocal(cinfo->cs, nlocal);
   cs_nlocal_offset(cinfo->cs, offset);
   colloids_info_ncell(cinfo, ncell);
 
+  rt_int_parameter(rt, "subgrid_mobility_map", &on); 
+  
   /* Loop through all cells (including the halo cells) and set
-   * the velocity at each particle to zero for this step. */
+   * the mobility at each node to default mobiltiy for this step. */
 
   for (i = 1; i <= nlocal[X]; i++) {
     for (j = 1; j <= nlocal[Y]; j++) {
@@ -663,6 +676,7 @@ int subgrid_mobility_map(colloids_info_t * cinfo, field_t * mobility_map, int ra
     }
   }
 
+  if (!on) return 0;
 
   /* Loop through all cells (including the halo cells) */
 
@@ -687,21 +701,28 @@ int subgrid_mobility_map(colloids_info_t * cinfo, field_t * mobility_map, int ra
 
 	  /* Work out which local lattice sites are involved
 	   * and loop around */
+	  
+	  localrange = p_colloid->s.localrange;
+	  localmobility = p_colloid->s.localmobility;
 
-	  i_min = imax(1,         (int) floor(r0[X] - range));
-	  i_max = imin(nlocal[X], (int) ceil (r0[X] + range));
-	  j_min = imax(1,         (int) floor(r0[Y] - range));
-	  j_max = imin(nlocal[Y], (int) ceil (r0[Y] + range));
-	  k_min = imax(1,         (int) floor(r0[Z] - range));
-	  k_max = imin(nlocal[Z], (int) ceil (r0[Z] + range));
+	  i_min = imax(1,         (int) floor(r0[X] - localrange));
+	  i_max = imin(nlocal[X], (int) ceil (r0[X] + localrange));
+	  j_min = imax(1,         (int) floor(r0[Y] - localrange));
+	  j_max = imin(nlocal[Y], (int) ceil (r0[Y] + localrange));
+	  k_min = imax(1,         (int) floor(r0[Z] - localrange));
+	  k_max = imin(nlocal[Z], (int) ceil (r0[Z] + localrange));
+
+	  //pe_verbose(cinfo->pe, "index %d mobility %f range %f\n", p_colloid->s.index,
+	  //				p_colloid->s.localmobility, p_colloid->s.localrange);
 
 	  for (i = i_min; i <= i_max; i++) {
 	    for (j = j_min; j <= j_max; j++) {
 	      for (k = k_min; k <= k_max; k++) {
-
-		index = cs_index(cinfo->cs, i, j, k);
-		localmobility = p_colloid->s.localmobility;
-		field_scalar_set(mobility_map, index, localmobility);
+		double dist = pow(pow(i-r0[X], 2) + pow(j-r0[Y], 2) + pow(k-r0[Z], 2), 0.5);
+		if (dist < localrange) {
+		  index = cs_index(cinfo->cs, i, j, k);
+		  field_scalar_set(mobility_map, index, localmobility);
+		}
 	      }
 	    }
 	  }

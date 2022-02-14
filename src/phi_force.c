@@ -76,7 +76,7 @@ __host__ int phi_force_calculation(pe_t * pe, cs_t * cs, lees_edw_t * le,
 				   wall_t * wall,
 				   pth_t * pth, fe_t * fe, map_t * map,
 				   field_t * phi, hydro_t * hydro,
-					field_t * subgrid_flux) {
+					field_t * subgrid_potential) {
 
   int is_pm;
   int nplanes = 0;
@@ -110,12 +110,12 @@ __host__ int phi_force_calculation(pe_t * pe, cs_t * cs, lees_edw_t * le,
     case PTH_METHOD_GRADMU:
 
       if (wall_present(wall) || is_pm) {
-	phi_grad_mu_solid(cs, phi, fe, hydro, map, subgrid_flux);
+	phi_grad_mu_solid(cs, phi, fe, hydro, map, subgrid_potential);
 	phi_grad_mu_external(cs, phi, hydro);
       }
       else {
 	/* Fluid only  */
-	phi_grad_mu_fluid(cs, phi, fe, hydro, subgrid_flux);
+	phi_grad_mu_fluid(cs, phi, fe, hydro, subgrid_potential);
 	phi_grad_mu_external(cs, phi, hydro);
       }
     break;
@@ -153,7 +153,7 @@ force is now 0.5*(mu(i+1) - mu(i-1) + u(i+) - u(i-1)) with u the interaction  fi
 int phi_force_solid_phi_gradmu(lees_edw_t * le, pth_t * pth,
 			       fe_t * fe, field_t * fphi,
 			       hydro_t * hydro, map_t * map, 
-			       field_t * subgrid_flux) {
+			       field_t * subgrid_potential) {
 
   int ic, jc, kc, icm1, icp1;
   int index0, indexm1, indexp1;
@@ -192,8 +192,8 @@ int phi_force_solid_phi_gradmu(lees_edw_t * le, pth_t * pth,
 
 	fe->func->mu(fe, indexm1, &mum1);
 	fe->func->mu(fe, indexp1, &mup1);
-	field_scalar(subgrid_flux, indexm1, &um1);
-	field_scalar(subgrid_flux, indexp1, &up1);
+	field_scalar(subgrid_potential, indexm1, &um1);
+	field_scalar(subgrid_potential, indexp1, &up1);
 
         map_status(map, index0 - xs, &mapm1);
         map_status(map, index0 + xs, &mapp1);
@@ -204,8 +204,8 @@ int phi_force_solid_phi_gradmu(lees_edw_t * le, pth_t * pth,
 
 	fe->func->mu(fe, index0 - ys, &mum1);
 	fe->func->mu(fe, index0 + ys, &mup1);
-	field_scalar(subgrid_flux, index0 - ys, &um1);
-	field_scalar(subgrid_flux, index0 + ys, &um1);
+	field_scalar(subgrid_potential, index0 - ys, &um1);
+	field_scalar(subgrid_potential, index0 + ys, &um1);
 
         map_status(map, index0 - ys, &mapm1);
         map_status(map, index0 + ys, &mapp1);
@@ -216,8 +216,8 @@ int phi_force_solid_phi_gradmu(lees_edw_t * le, pth_t * pth,
 
 	fe->func->mu(fe, index0 - zs, &mum1);
 	fe->func->mu(fe, index0 + zs, &mup1);
-	field_scalar(subgrid_flux, index0 - zs, &um1);
-	field_scalar(subgrid_flux, index0 + zs, &um1);
+	field_scalar(subgrid_potential, index0 - zs, &um1);
+	field_scalar(subgrid_potential, index0 + zs, &um1);
 
         map_status(map, index0 - zs, &mapm1);
         map_status(map, index0 + zs, &mapp1);

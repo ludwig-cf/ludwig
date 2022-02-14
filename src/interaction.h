@@ -28,6 +28,8 @@ typedef enum interact_enum {
   INTERACT_PAIR = 0,
   INTERACT_BOND,
   INTERACT_BOND_HARMONIC,
+  INTERACT_BOND_HARMONIC2,
+  INTERACT_BOND_HARMONIC3,
   INTERACT_ANGLE,
   INTERACT_ANGLE_HARMONIC,
   INTERACT_ANGLE_DIHEDRAL,
@@ -65,19 +67,29 @@ int interact_range_check(interact_t * obj, colloids_info_t * cinfo);
 int interact_compute(interact_t * interact, colloids_info_t * cinfo,
 		     map_t * map, psi_t * psi, ewald_t * ewald,
 			field_t * phi,
-			field_t * subgrid_flux, rt_t * rt);
+			field_t * subgrid_potential, rt_t * rt);
 /* <----- */
 
 int interact_pairwise(interact_t * interact, colloids_info_t * cinfo);
 int interact_wall(interact_t * interact, colloids_info_t * cinfo);
 int interact_bonds(interact_t * obj, colloids_info_t * cinfo);
 int interact_bonds_harmonic(interact_t * obj, colloids_info_t * cinfo);
+int interact_bonds_harmonic2(interact_t * obj, colloids_info_t * cinfo);
+int interact_bonds_harmonic3(interact_t * obj, colloids_info_t * cinfo);
 int interact_angles(interact_t * obj, colloids_info_t * cinfo);
 int interact_angles_harmonic(interact_t * obj, colloids_info_t * cinfo);
 int interact_angles_dihedral(interact_t * obj, colloids_info_t * cinfo);
-int colloids_update_forces_phi(colloids_info_t * cinfo, field_t * phi, field_t * subgrid_flux);
+
+int colloids_update_discrete_forces_phi(colloids_info_t * cinfo, field_t * phi, field_t * subgrid_potential);
+int colloids_update_analytic_forces_phi(colloids_info_t * cinfo, field_t * phi, field_t * subgrid_potential);
+
 int interact_find_bonds(interact_t * obj, colloids_info_t * cinfo);
+int interact_find_bonds2(interact_t * obj, colloids_info_t * cinfo);
+int interact_find_bonds3(interact_t * obj, colloids_info_t * cinfo);
 int interact_find_bonds_all(interact_t * obj, colloids_info_t * cinfo, int nx);
+int interact_find_bonds_all2(interact_t * obj, colloids_info_t * cinfo, int nx);
+int interact_find_bonds_all3(interact_t * obj, colloids_info_t * cinfo, int nx);
+
 int interact_stats(interact_t * obj, colloids_info_t * cinfo);
 int interact_hcmax(interact_t * obj, double * hcmax);
 int interact_rcmax(interact_t * obj, double * rcmax);

@@ -173,6 +173,7 @@ int interact_statistic_add(interact_t * obj, interact_enum_t it, void * pot,
 /* -----> CHEMOVESICLE V2 */
 /* Now calculates PHI<->SUBGRID interaction only when phi_subgrid_on input key is on
 */
+
 /*****************************************************************************
  *
  *  interact_compute
@@ -185,7 +186,7 @@ int interact_statistic_add(interact_t * obj, interact_enum_t it, void * pot,
 
 int interact_compute(interact_t * interact, colloids_info_t * cinfo,
 		     map_t * map, psi_t * psi, ewald_t * ewald, field_t * phi,
-			field_t * subgrid_flux, rt_t * rt) {
+			field_t * subgrid_potential, rt_t * rt) {
 
   int nc;
   int on;
@@ -203,12 +204,13 @@ int interact_compute(interact_t * interact, colloids_info_t * cinfo,
     interact_wall(interact, cinfo);
 
     rt_int_parameter(rt, "phi_subgrid_on", &on);
-    if (on) colloids_update_forces_phi(cinfo, phi, subgrid_flux); 
+    if (on) colloids_update_discrete_forces_phi(cinfo, phi, subgrid_potential); 
 
     if (nc > 1) {
-
       interact_bonds(interact, cinfo);
       interact_bonds_harmonic(interact, cinfo);
+      interact_bonds_harmonic2(interact, cinfo);
+      interact_bonds_harmonic3(interact, cinfo);
       interact_pairwise(interact, cinfo);
       interact_angles(interact, cinfo);
       interact_angles_harmonic(interact, cinfo);
@@ -224,6 +226,7 @@ int interact_compute(interact_t * interact, colloids_info_t * cinfo,
       pe_info(interact->pe, "\n");
       stats_colloid_velocity_minmax(cinfo);
     }
+    
     colloids_update_forces_ext(cinfo);
   }
 
@@ -334,6 +337,44 @@ int interact_stats(interact_t * obj, colloids_info_t * cinfo) {
 	pe_info(obj->pe, "Bond harmonic potential minimum r is: %14.7e\n", rmin);
 	pe_info(obj->pe, "Bond harmonic potential maximum r is: %14.7e\n", rmax);
 	pe_info(obj->pe, "Bond harmonic potential energy is:    %14.7e\n", v);
+      }
+
+      intr = obj->abstr[INTERACT_BOND_HARMONIC2];
+
+      if (intr) {
+
+	obj->stats[INTERACT_BOND_HARMONIC2](intr, stats);
+
+	rminlocal = stats[INTERACT_STAT_RMINLOCAL];
+	rmaxlocal = stats[INTERACT_STAT_RMAXLOCAL];
+	vlocal = stats[INTERACT_STAT_VLOCAL];
+
+	MPI_Reduce(&rminlocal, &rmin, 1, MPI_DOUBLE, MPI_MIN, 0, comm);
+	MPI_Reduce(&rmaxlocal, &rmax, 1, MPI_DOUBLE, MPI_MAX, 0, comm);
+	MPI_Reduce(&vlocal, &v, 1, MPI_DOUBLE, MPI_SUM, 0, comm);
+
+	pe_info(obj->pe, "Bond harmonic2 potential minimum r is: %14.7e\n", rmin);
+	pe_info(obj->pe, "Bond harmonic2 potential maximum r is: %14.7e\n", rmax);
+	pe_info(obj->pe, "Bond harmonic2 potential energy is:    %14.7e\n", v);
+      }
+
+      intr = obj->abstr[INTERACT_BOND_HARMONIC3];
+
+      if (intr) {
+
+	obj->stats[INTERACT_BOND_HARMONIC3](intr, stats);
+
+	rminlocal = stats[INTERACT_STAT_RMINLOCAL];
+	rmaxlocal = stats[INTERACT_STAT_RMAXLOCAL];
+	vlocal = stats[INTERACT_STAT_VLOCAL];
+
+	MPI_Reduce(&rminlocal, &rmin, 1, MPI_DOUBLE, MPI_MIN, 0, comm);
+	MPI_Reduce(&rmaxlocal, &rmax, 1, MPI_DOUBLE, MPI_MAX, 0, comm);
+	MPI_Reduce(&vlocal, &v, 1, MPI_DOUBLE, MPI_SUM, 0, comm);
+
+	pe_info(obj->pe, "Bond harmonic3 potential minimum r is: %14.7e\n", rmin);
+	pe_info(obj->pe, "Bond harmonic3 potential maximum r is: %14.7e\n", rmax);
+	pe_info(obj->pe, "Bond harmonic3 potential energy is:    %14.7e\n", v);
       }
 
       intr = obj->abstr[INTERACT_ANGLE];
@@ -604,15 +645,272 @@ int colloids_update_forces_fluid_driven(colloids_info_t * cinfo,
 
 
 
+/*****************************************************************************
+ *
+ *  colloids_update_discrete_forces_phi (need 2 more cell width)
+ *
+ *****************************************************************************/
+
+int colloids_update_discrete_forces_phi(colloids_info_t * cinfo, field_t * phi, field_t * subgrid_potential) {
+
+  int nlocal[3], offset[3], ncell[3];
+  int i, j, k, ic, jc, kc;
+  int i_min, i_max, j_min, j_max, k_min, k_max;
+  int index, indexm1, indexp1, ia;
+
+  double u0, delta, cutoff, phi_, rnorm, rsq, u;
+  double r0[3], r[3], force[3], grad_u[3], um1, up1;
+  colloid_t * pc = NULL;
+
+/* -----> For book-keeping */
+  int freq = 10, timestep;
+  double colloidforce[3], localforce[3], globalforce[3];
+  FILE * fp;
+// time stuff
+  physics_t * phys = NULL;
+  physics_ref(&phys);
+  timestep = physics_control_timestep(phys);
+// global communication stuff */
+  MPI_Comm comm;
+  cs_cart_comm(cinfo->cs, &comm);
+/* <----- */
+
+
+  cs_nlocal(cinfo->cs, nlocal);
+  cs_nlocal_offset(cinfo->cs, offset);
+  colloids_info_ncell(cinfo, ncell);
+
+  assert(cinfo);
+  assert(phi);
+  assert(subgrid_potential);
+
+/* Should I also go through the halo cells ? No because you only calculate the values for the domain lattice */
+
+  /* Initialize subgrid flux to 0 before loop over colloids */
+  for (i = 1; i <= nlocal[X]; i++) {
+    for (j = 1; j <= nlocal[Y]; j++) {
+      for (k = 1; k <= nlocal[Z]; k++) {
+        index = cs_index(cinfo->cs, i, j, k);
+        field_scalar_set(subgrid_potential, index, 0);
+      }
+    }
+  }
+  
+  /* Loop through all cells (including the halo cells) */
+
+  localforce[X] = 0.0;
+  localforce[Y] = 0.0;
+  localforce[Z] = 0.0;
+
+
+  for (ic = 0; ic <= ncell[X] + 1; ic++) {
+    for (jc = 0; jc <= ncell[Y] + 1; jc++) {
+      for (kc = 0; kc <= ncell[Z] + 1; kc++) {
+        colloids_info_cell_list_head(cinfo, ic, jc, kc, &pc);
+	
+        /* Loop through all colloids */
+        for (; pc; pc = pc->next) {
+
+          u0 = pc->s.u0;
+          delta = pc->s.delta;
+          cutoff = pc->s.cutoff;
+
+          /* Need to translate the colloid position to "local"
+          * coordinates, so that the correct range of lattice
+          * nodes is found */
+
+          r0[X] = pc->s.r[X] - 1.0*offset[X];
+          r0[Y] = pc->s.r[Y] - 1.0*offset[Y];
+          r0[Z] = pc->s.r[Z] - 1.0*offset[Z];
+
+          /* Work out which local lattice sites are involved
+          * and loop around */
+
+          i_min = imax(1,         (int) floor(r0[X] - cutoff + 1));
+          i_max = imin(nlocal[X], (int) ceil (r0[X] + cutoff + 1));
+          j_min = imax(1,         (int) floor(r0[Y] - cutoff + 1));
+          j_max = imin(nlocal[Y], (int) ceil (r0[Y] + cutoff + 1));
+          k_min = imax(1,         (int) floor(r0[Z] - cutoff + 1));
+          k_max = imin(nlocal[Z], (int) ceil (r0[Z] + cutoff + 1));
+
+          /* Initialisation of the force counter on colloid to 0 before the loop */
+
+          colloidforce[X] = 0.0;
+          colloidforce[Y] = 0.0;
+          colloidforce[Z] = 0.0;
+
+          for (i = i_min; i <= i_max; i++) {
+            for (j = j_min; j <= j_max; j++) {
+              for (k = k_min; k <= k_max; k++) {
+		
+                index = cs_index(cinfo->cs, i, j, k);
+
+                /* Compute the distance between the colloid and the node  */
+
+                r[X] = - r0[X] + 1.0*i;
+                r[Y] = - r0[Y] + 1.0*j;
+                r[Z] = - r0[Z] + 1.0*k;
+
+                rsq = r[X]*r[X] + r[Y]*r[Y] + r[Z]*r[Z];
+                rnorm = sqrt(rsq);
+
+		if (rnorm > cutoff) continue;
+					
+                /* Retrieve phi */
+                phi_ = phi->data[addr_rank0(phi->nsites, index)];
+
+                /* Compute potential and grad of potential (grad_u) */
+                u = u0/(sqrt(2*M_PI*delta))*exp(-0.5*(rsq)/delta);
+                subgrid_potential->data[addr_rank0(subgrid_potential->nsites, index)] += u;
+}
+            }
+          }
+        //Next colloid
+        }
+      }
+    }
+  }
+
+
+  for (ic = 0; ic <= ncell[X] + 1; ic++) {
+    for (jc = 0; jc <= ncell[Y] + 1; jc++) {
+      for (kc = 0; kc <= ncell[Z] + 1; kc++) {
+        colloids_info_cell_list_head(cinfo, ic, jc, kc, &pc);
+	
+        /* Loop through all colloids */
+        for (; pc; pc = pc->next) {
+
+          u0 = pc->s.u0;
+          delta = pc->s.delta;
+          cutoff = pc->s.cutoff;
+
+          /* Need to translate the colloid position to "local"
+          * coordinates, so that the correct range of lattice
+          * nodes is found */
+
+          r0[X] = pc->s.r[X] - 1.0*offset[X];
+          r0[Y] = pc->s.r[Y] - 1.0*offset[Y];
+          r0[Z] = pc->s.r[Z] - 1.0*offset[Z];
+
+          /* Work out which local lattice sites are involved
+          * and loop around */
+
+          i_min = imax(1,         (int) floor(r0[X] - cutoff - 1));
+          i_max = imin(nlocal[X], (int) ceil (r0[X] + cutoff + 1));
+          j_min = imax(1,         (int) floor(r0[Y] - cutoff - 1));
+          j_max = imin(nlocal[Y], (int) ceil (r0[Y] + cutoff + 1));
+          k_min = imax(1,         (int) floor(r0[Z] - cutoff - 1));
+          k_max = imin(nlocal[Z], (int) ceil (r0[Z] + cutoff + 1));
+
+          /* Initialisation of the force counter on colloid to 0 before the loop */
+
+          colloidforce[X] = 0.0;
+          colloidforce[Y] = 0.0;
+          colloidforce[Z] = 0.0;
+
+          for (i = i_min; i <= i_max; i++) {
+            for (j = j_min; j <= j_max; j++) {
+              for (k = k_min; k <= k_max; k++) {
+		
+                index = cs_index(cinfo->cs, i, j, k);
+
+                /* Compute the distance between the colloid and the node  */
+
+                r[X] = - r0[X] + 1.0*i;
+                r[Y] = - r0[Y] + 1.0*j;
+                r[Z] = - r0[Z] + 1.0*k;
+
+                rsq = r[X]*r[X] + r[Y]*r[Y] + r[Z]*r[Z];
+                rnorm = sqrt(rsq);
+
+		if (rnorm > cutoff + 2) continue;
+					
+                /* Retrieve phi */
+                phi_ = phi->data[addr_rank0(phi->nsites, index)];
+
+                /* Compute potential and grad of potential (grad_u) */
+                /* u = u0/(sqrt(2*M_PI*delta))*exp(-0.5*(rsq)/delta);
+                subgrid_potential->data[addr_rank0(subgrid_potential->nsites, index)] += u;
+} */
+ 
+
+		/* Compute gradient of u */
+		/* x direction */
+		{
+		  indexm1 = cs_index(cinfo->cs, i-1, j, k);
+		  indexp1 = cs_index(cinfo->cs, i+1, j, k);
+		  field_scalar(subgrid_potential, indexm1, &um1);
+		  field_scalar(subgrid_potential, indexp1, &up1);
+		  grad_u[X] = 0.5*(up1 - um1);
+		}
+	
+		/* y direction */
+		{
+		  indexm1 = cs_index(cinfo->cs, i, j-1, k);
+		  indexp1 = cs_index(cinfo->cs, i, j+1, k);
+		  field_scalar(subgrid_potential, indexm1, &um1);
+		  field_scalar(subgrid_potential, indexp1, &up1);
+		  grad_u[Y] = 0.5*(up1 - um1);
+		}
+
+	
+		/* z direction */
+		{
+		  indexm1 = cs_index(cinfo->cs, i, j, k-1);
+		  indexp1 = cs_index(cinfo->cs, i, j, k+1);
+		  field_scalar(subgrid_potential, indexm1, &um1);
+		  field_scalar(subgrid_potential, indexp1, &up1);
+		  grad_u[Z] = 0.5*(up1 - um1);
+		}
+
+                /* Compute force  */
+		
+                force[X] = phi_*grad_u[X];
+                force[Y] = phi_*grad_u[Y];
+                force[Z] = phi_*grad_u[Z];
+
+                pc->force[X] += force[X];
+                pc->force[Y] += force[Y];
+                pc->force[Z] += force[Z];
+
+		colloidforce[X] += force[X];
+		colloidforce[Y] += force[Y];
+		colloidforce[Z] += force[Z];
+
+                /* Add reaction of the colloid force to the node */
+              }
+            }
+          }
+	
+	/* Increment the local force with the force on this colloid */
+	for (ia = 0; ia < 3; ia ++) localforce[ia] += colloidforce[ia];
+        //Next colloid
+        }
+      }
+    }
+  }
+
+/* For force book-keeping */
+  if (timestep % freq == 0) {
+    MPI_Allreduce(localforce, globalforce, 3, MPI_DOUBLE, MPI_SUM, comm);
+    fp = fopen("force_colloid.txt", "a");
+    fprintf(fp, "%14.7e %14.7e %14.7e\n", globalforce[X], globalforce[Y], globalforce[Z]);
+    fclose(fp);
+  }
+  //Next cell list
+  return 0;
+}
+
+
 
 /*****************************************************************************
  *
- *  colloids_update_forces_phi
+ *  colloids_update_analytical_forces_phi
  *
  *****************************************************************************/
 
 
-int colloids_update_forces_phi(colloids_info_t * cinfo, field_t * phi, field_t * subgrid_flux) {
+int colloids_update_analytical_forces_phi(colloids_info_t * cinfo, field_t * phi, field_t * subgrid_potential) {
 
   int nlocal[3], offset[3], ncell[3];
   int i, j, k, ic, jc, kc;
@@ -643,16 +941,16 @@ int colloids_update_forces_phi(colloids_info_t * cinfo, field_t * phi, field_t *
 
   assert(cinfo);
   assert(phi);
-  assert(subgrid_flux);
+  assert(subgrid_potential);
 
 /* Should I also go through the halo cells ? No because you only calculate the values for the domain lattice */
 
-  /* Initialize subgrid flux to 0 before loop over colloids (halo included?)*/
+  /* Initialize subgrid flux to 0 before loop over colloids */
   for (i = 1; i <= nlocal[X]; i++) {
     for (j = 1; j <= nlocal[Y]; j++) {
       for (k = 1; k <= nlocal[Z]; k++) {
         index = cs_index(cinfo->cs, i, j, k);
-        field_scalar_set(subgrid_flux, index, 0);
+        field_scalar_set(subgrid_potential, index, 0);
       }
     }
   }
@@ -729,9 +1027,9 @@ int colloids_update_forces_phi(colloids_info_t * cinfo, field_t * phi, field_t *
                 grad_u[Z] = -r[Z]/delta*u;
 
                 /* Store for flux calculation in phi_force.c */
-                /* subgrid_flux is variable passed from main */
+                /* subgrid_potential is variable passed from main */
 
-                subgrid_flux->data[addr_rank0(subgrid_flux->nsites, index)] += u;
+                subgrid_potential->data[addr_rank0(subgrid_potential->nsites, index)] += u;
                 /* Compute force  */
 		
 		/* !!!!!!!!! Force on the colloid is still using grad_u 
@@ -773,9 +1071,6 @@ int colloids_update_forces_phi(colloids_info_t * cinfo, field_t * phi, field_t *
   //Next cell list
   return 0;
 }
-
-
-
 
 
 /*****************************************************************************
@@ -862,6 +1157,48 @@ int interact_bonds_harmonic(interact_t * obj, colloids_info_t * cinfo) {
 
 /*****************************************************************************
  *
+ *  interact_bonds_harmonic2
+ *
+ *****************************************************************************/
+
+int interact_bonds_harmonic2(interact_t * obj, colloids_info_t * cinfo) {
+
+  void * intr = NULL;
+
+  assert(obj);
+  assert(cinfo);
+
+  intr = obj->abstr[INTERACT_BOND_HARMONIC2];
+  if (intr) interact_find_bonds_all2(obj, cinfo, 1);
+  if (intr) obj->compute[INTERACT_BOND_HARMONIC2](cinfo, intr);
+
+  return 0;
+}
+
+
+/*****************************************************************************
+ *
+ *  interact_bonds_harmonic3
+ *
+ *****************************************************************************/
+
+int interact_bonds_harmonic3(interact_t * obj, colloids_info_t * cinfo) {
+
+  void * intr = NULL;
+
+  assert(obj);
+  assert(cinfo);
+
+  intr = obj->abstr[INTERACT_BOND_HARMONIC3];
+  if (intr) interact_find_bonds_all3(obj, cinfo, 1);
+  if (intr) obj->compute[INTERACT_BOND_HARMONIC3](cinfo, intr);
+
+  return 0;
+}
+
+
+/*****************************************************************************
+ *
  *  interact_angles
  *
  *****************************************************************************/
@@ -931,7 +1268,7 @@ int interact_find_bonds(interact_t * obj, colloids_info_t * cinfo) {
   assert(obj);
   assert(cinfo);
 
-  interact_find_bonds_all(obj, cinfo, 0);
+  interact_find_bonds_all(obj, cinfo, 1);
 
   return 0;
 }
@@ -1018,6 +1355,216 @@ int interact_find_bonds_all(interact_t * obj, colloids_info_t * cinfo,
 
   return 0;
 }
+
+/*****************************************************************************
+ *
+ *  interact_find_bonds2
+ *
+ *  For backwards compatability, the case where only local bonds are
+ *  included (nextra = 0).
+ *
+ *****************************************************************************/
+
+int interact_find_bonds2(interact_t * obj, colloids_info_t * cinfo) {
+
+  assert(obj);
+  assert(cinfo);
+
+  interact_find_bonds_all2(obj, cinfo, 1);
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  interact_find_bonds_all2
+ *
+ *  Examine the local colloids and match any bonded interactions
+ *  in terms of pointers.
+ *
+ *  Include nextra cells in each direction into the halo region.
+ *
+ *****************************************************************************/
+
+int interact_find_bonds_all2(interact_t * obj, colloids_info_t * cinfo,
+			    int nextra) {
+
+  int ic1, jc1, kc1, ic2, jc2, kc2;
+  int di[2], dj[2], dk[2];
+  int n1, n2;
+  int ncell[3];
+
+  int nbondfound = 0;
+  int nbondpair = 0;
+
+  colloid_t * pc1;
+  colloid_t * pc2;
+
+  assert(obj);
+  assert(cinfo);
+
+  colloids_info_ncell(cinfo, ncell);
+
+  for (ic1 = 1 - nextra; ic1 <= ncell[X] + nextra; ic1++) {
+    colloids_info_climits(cinfo, X, ic1, di); 
+    for (jc1 = 1 - nextra; jc1 <= ncell[Y] + nextra; jc1++) {
+      colloids_info_climits(cinfo, Y, jc1, dj);
+      for (kc1 = 1 - nextra; kc1 <= ncell[Z] + nextra; kc1++) {
+        colloids_info_climits(cinfo, Z, kc1, dk);
+
+        colloids_info_cell_list_head(cinfo, ic1, jc1, kc1, &pc1);
+        for (; pc1; pc1 = pc1->next) {
+	  //pe_verbose(cinfo->pe, "index = %d nbonds2 = %d \n", pc1->s.index, pc1->s.nbonds2);
+	  if (pc1->s.nbonds2 == 0) continue;
+
+	  for (ic2 = di[0]; ic2 <= di[1]; ic2++) {
+	    for (jc2 = dj[0]; jc2 <= dj[1]; jc2++) {
+	      for (kc2 = dk[0]; kc2 <= dk[1]; kc2++) {
+   
+		colloids_info_cell_list_head(cinfo, ic2, jc2, kc2, &pc2);
+		for (; pc2; pc2 = pc2->next) {
+
+		  if (pc2->s.nbonds2 == 0) continue; 
+                  
+		  for (n1 = 0; n1 < pc1->s.nbonds2; n1++) {
+		    if (pc1->s.bond2[n1] == pc2->s.index) {
+		      nbondfound += 1;
+		      pc1->bonded2[n1] = pc2;
+		      /* And bond is reciprocated */
+		      for (n2 = 0; n2 < pc2->s.nbonds2; n2++) {
+			if (pc2->s.bond2[n2] == pc1->s.index) {
+			  nbondpair += 1;
+			  pc2->bonded2[n2] = pc1;
+			}
+		      }
+		    }
+		  }
+
+		  /* Cell list */
+	        }
+	      }
+	    }
+	  }
+	}
+      }
+    }
+  }
+
+  if (nbondfound != nbondpair) {
+    /* There is a mismatch in the bond information (treat as fatal) */
+    pe_fatal(obj->pe, "Find bonds2: bond not reciprocated\n");
+  }
+
+  return 0;
+}
+
+
+
+/*****************************************************************************
+ *
+ *  interact_find_bonds3
+ *
+ *  For backwards compatability, the case where only local bonds are
+ *  included (nextra = 0).
+ *
+ *****************************************************************************/
+
+int interact_find_bonds3(interact_t * obj, colloids_info_t * cinfo) {
+
+  assert(obj);
+  assert(cinfo);
+
+  interact_find_bonds_all3(obj, cinfo, 1);
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  interact_find_bonds_all3
+ *
+ *  Examine the local colloids and match any bonded interactions
+ *  in terms of pointers.
+ *
+ *  Include nextra cells in each direction into the halo region.
+ *
+ *****************************************************************************/
+
+int interact_find_bonds_all3(interact_t * obj, colloids_info_t * cinfo,
+			    int nextra) {
+
+  int ic1, jc1, kc1, ic2, jc2, kc2;
+  int di[2], dj[2], dk[2];
+  int n1, n2;
+  int ncell[3];
+
+  int nbondfound = 0;
+  int nbondpair = 0;
+
+  colloid_t * pc1;
+  colloid_t * pc2;
+
+  assert(obj);
+  assert(cinfo);
+
+  colloids_info_ncell(cinfo, ncell);
+
+  for (ic1 = 1 - nextra; ic1 <= ncell[X] + nextra; ic1++) {
+    colloids_info_climits(cinfo, X, ic1, di); 
+    for (jc1 = 1 - nextra; jc1 <= ncell[Y] + nextra; jc1++) {
+      colloids_info_climits(cinfo, Y, jc1, dj);
+      for (kc1 = 1 - nextra; kc1 <= ncell[Z] + nextra; kc1++) {
+        colloids_info_climits(cinfo, Z, kc1, dk);
+
+        colloids_info_cell_list_head(cinfo, ic1, jc1, kc1, &pc1);
+        for (; pc1; pc1 = pc1->next) {
+	  //pe_verbose(cinfo->pe, "index = %d nbonds2 = %d \n", pc1->s.index, pc1->s.nbonds2);
+	  if (pc1->s.nbonds3 == 0) continue;
+
+	  for (ic2 = di[0]; ic2 <= di[1]; ic2++) {
+	    for (jc2 = dj[0]; jc2 <= dj[1]; jc2++) {
+	      for (kc2 = dk[0]; kc2 <= dk[1]; kc2++) {
+   
+		colloids_info_cell_list_head(cinfo, ic2, jc2, kc2, &pc2);
+		for (; pc2; pc2 = pc2->next) {
+
+		  if (pc2->s.nbonds3 == 0) continue; 
+                  
+		  for (n1 = 0; n1 < pc1->s.nbonds3; n1++) {
+		    if (pc1->s.bond3[n1] == pc2->s.index) {
+		      nbondfound += 1;
+		      pc1->bonded3[n1] = pc2;
+		      /* And bond is reciprocated */
+		      for (n2 = 0; n2 < pc2->s.nbonds3; n2++) {
+			if (pc2->s.bond3[n2] == pc1->s.index) {
+			  nbondpair += 1;
+			  pc2->bonded3[n2] = pc1;
+			}
+		      }
+		    }
+		  }
+
+		  /* Cell list */
+	        }
+	      }
+	    }
+	  }
+	}
+      }
+    }
+  }
+
+  if (nbondfound != nbondpair) {
+    /* There is a mismatch in the bond information (treat as fatal) */
+    pe_fatal(obj->pe, "Find bonds3: bond not reciprocated\n");
+  }
+
+  return 0;
+}
+
+
+
+
 
 /*****************************************************************************
  *
