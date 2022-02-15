@@ -33,6 +33,7 @@ static int test_colloid_sums_copy(const colloid_t * ref, colloid_t * pc);
 static int test_colloid_sums_edge(pe_t * pe, cs_t * cs, int ncell[3],
 				  const double r0[3]);
 static int test_colloid_sums_move(pe_t * pe);
+static int test_colloid_sums_centerofmass(pe_t * pe);
 static int test_colloid_sums_conservation(pe_t * pe);
 
 int test_colloid_sums_assert(const colloid_t * c1, const colloid_t * c2);
@@ -492,3 +493,81 @@ int test_colloid_sums_conservation(pe_t * pe) {
 
   return 0;
 }
+
+
+
+/*****************************************************************************
+ *
+ *  test_colloid_sums_central_subgrid
+ *
+ *  Here we move the particle across the lattice as a smoke test,
+ *  so success is just getting to the end.
+ *
+ *****************************************************************************/
+
+static int test_colloid_sums_centerofmass(pe_t * pe) {
+
+  int index;
+  int ic, jc, kc;
+  int ntotal[3] = {64, 64, 64};
+  int n, nstep = 100;
+  int ncell[3] = {8, 8, 8};
+  double r0[3] = {56.55, 8.55, 3.0};
+  double centerofmass[3] = {56.55, 8.55, 3.0};
+  double dx;
+
+  cs_t * cs = NULL;
+  colloid_t * pc;
+  colloids_info_t * cinfo = NULL;
+
+  assert(pe);
+
+  cs_create(pe, &cs);
+  cs_ntotal_set(cs, ntotal);
+  cs_init(cs);
+
+  colloids_info_create(pe, cs, ncell, &cinfo);
+  assert(cinfo);
+
+  dx = 1.0*ntotal[X]/nstep;
+
+  index = 1;
+  colloids_info_add_local(cinfo, index, r0, &pc);
+
+  colloids_halo_state(cinfo);
+  colloid_sums_halo(cinfo, COLLOID_SUM_SUBGRID_CENTRAL);
+
+  for (n = 0; n < 2*nstep; n++) {
+
+    /* Move the particle (twice around) */
+
+    for (ic = 0; ic <= ncell[X] + 1; ic++) {
+      for (jc = 0; jc <= ncell[Y] + 1; jc++) {
+	for (kc = 0; kc <= ncell[Z] + 1; kc++) {
+
+	  colloids_info_cell_list_head(cinfo, ic, jc, kc, &pc);
+
+	  while (pc) {
+	    pc->centerofmass[Y] -= dx;
+	    pc->s.r[Y] -= centerofmass[Y];
+	    pc = pc->next;
+	  }
+	  
+	}
+      }
+    }
+
+    colloids_info_update_cell_list(cinfo);
+    colloids_halo_state(cinfo);
+    colloid_sums_halo(cinfo, COLLOID_SUM_SUBGRID_CENTRAL);
+  }
+
+  /* Success */
+
+  colloids_info_free(cinfo);
+  cs_free(cs);
+
+  return 0;
+}
+
+

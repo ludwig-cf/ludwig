@@ -144,7 +144,7 @@ static int test_advection(cs_t * cs, phi_ch_t * pch, field_t * phi, hydro_t * hy
     field_halo(phi);
     /* The map_t argument can be NULL here, as there is no solid;
      * the same is true for noise */
-    phi_cahn_hilliard(pch, NULL, phi, hydro, NULL, NULL, NULL);
+    phi_cahn_hilliard(pch, NULL, phi, hydro, NULL, NULL, NULL, NULL);
   }
 
   /* Exact solution has position: */

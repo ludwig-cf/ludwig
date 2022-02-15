@@ -67,7 +67,6 @@ void grow_one_monomer(cs_t * cs, int * lcgstate, double r1[3], double r2[3],
 int main(int argc, char ** argv) {
   
   int from_file = 1;
-  int without_bonds = 0;
   int random_positions = 0;
 
   int ntotal[3] = {32, 32, 32};        /* Total system size (cf. input) */
@@ -123,7 +122,7 @@ int main(int argc, char ** argv) {
 
   if (from_file) {
     /* Must know number of colloids in advance */
-    nrequest = 61;
+    nrequest = 241;
   }
   else {
     nrequest=Npoly*Lpoly;
@@ -148,9 +147,9 @@ int main(int argc, char ** argv) {
     if (type == COLLOID_TYPE_SUBGRID) {
       state[n].al= al;
       /* Needs a_L */
-      state[n].u0 = 0.0001;
-      state[n].delta = 3.0;
-      state[n].cutoff = 5.0;
+      state[n].u0 = 0.00001;
+      state[n].delta = 2.0;
+      state[n].cutoff = 3.0;
     }
     state[n].rng = 1 + n;
     //CHANGE1
@@ -159,44 +158,58 @@ int main(int argc, char ** argv) {
 
   if (from_file) {
     int numcol;
-    float pos[3], phi_production, localmobility;
+    float pos[3], phi_production, localmobility, localrange;
     int ni[3];
+    int mi[3];
+    int li[3];
+    int nConnec, nConnec2, nConnec3;
     char data[256];
     char line[256];
     int iscentre;
     int indexcentre;
 
     FILE* file;
-    file = fopen("latticeFullerene.txt", "r");
+    file = fopen("latticeHexasphere.txt", "r");
 
     while (fgets(line, sizeof(line), file)) {
       strcpy(data,line);
-      sscanf(data, "%d %f %f %f %d %d %d %d %d %f %f", &numcol, &pos[0], &pos[1], &pos[2], &ni[0], &ni[1], &ni[2], &iscentre, &indexcentre, &phi_production, &localmobility);
+      sscanf(data, "%d %f %f %f %d %d %d %d %d %d %d %d %d %d %d %d %d %d %f %f %f", &numcol, &pos[0], &pos[1], &pos[2], &nConnec, &ni[0], &ni[1], &ni[2], &nConnec2, &mi[0], &mi[1], &mi[2], &nConnec3, &li[0], &li[1], &li[2], &iscentre, &indexcentre, &phi_production, &localrange, &localmobility);
+
       numcol = numcol - 1;
+
       state[numcol].r[X] = pos[X];
       state[numcol].r[Y] = pos[Y];
       state[numcol].r[Z] = pos[Z];
+      printf("%d %d %d %d\n", nConnec, ni[0], ni[1], ni[2]);
+      
+      state[numcol].nbonds = nConnec;
+      state[numcol].bond[0] = ni[X];
+      state[numcol].bond[1] = ni[Y];
+      state[numcol].bond[2] = ni[Z];
+
+      state[numcol].nbonds2 = nConnec2;
+      state[numcol].bond2[0] = mi[0];
+      state[numcol].bond2[1] = mi[1];
+      state[numcol].bond2[2] = mi[2];
+
+      state[numcol].nbonds3 = nConnec3;
+      state[numcol].bond3[0] = li[0];
+      state[numcol].bond3[1] = li[1];
+      state[numcol].bond3[2] = li[2];
+
+      state[numcol].iscentre = iscentre;
+      state[numcol].indexcentre = indexcentre;
+ 
       state[numcol].phi_production = phi_production;
-      if (without_bonds) {
-        state[numcol].nbonds = 0;
-        state[numcol].bond[0] = 0;
-        state[numcol].bond[1] = 0;
-        state[numcol].bond[2] = 0;
-      }
-      else {
-        state[numcol].nbonds = 3;
-	state[numcol].nangles = 1;
-        state[numcol].bond[0] = ni[X];
-        state[numcol].bond[1] = ni[Y];
-        state[numcol].bond[2] = ni[Z];
-        state[numcol].iscentre = iscentre;
-        state[numcol].indexcentre = indexcentre;
-        state[numcol].localmobility = localmobility;
-	if (iscentre == 1) {
-	  state[numcol].nbonds = 0;
-	  state[numcol].u0 = 0;
-	  state[numcol].nangles = 0;
-        }
+      state[numcol].localrange = localrange;
+      state[numcol].localmobility = localmobility;
+      
+      if (nConnec == 0 || nConnec2 == 0 || nConnec == 3) state[numcol].nangles = 0;
+      else state[numcol].nangles = 1;
+
+      if (iscentre == 1) {
+        state[numcol].u0 = 0;
+	state[numcol].nangles = 0;
       }
     }
   fclose(file);
