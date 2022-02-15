@@ -21,9 +21,10 @@ AR = ar
 ARFLAGS = -cr
 LDFLAGS= -ccbin=icpc -arch=sm_70
 
-MPI_HOME     = /lustre/sw/intel/compilers_and_libraries_2017.2.174/linux/mpi
-MPI_INC_PATH = -I$(MPI_HOME)/include64
-MPI_LIB_PATH = -L$(MPI_HOME)/lib64 -lmpi
+# MPI_HOME     = /lustre/sw/intel/compilers_and_libraries_2019.0.117/linux/mpi/intel64
+MPI_HOME     = /lustre/sw/nvidia/hpcsdk-212/Linux_x86_64/21.2/comm_libs/mpi
+MPI_INC_PATH = -I$(MPI_HOME)/include
+MPI_LIB_PATH = -L$(MPI_HOME)/lib -lmpi
 
 LAUNCH_SERIAL_CMD =
 LAUNCH_MPIRUN_CMD = mpirun
