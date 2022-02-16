@@ -432,7 +432,10 @@ __host__ int field_leesedwards(field_t * obj) {
 
   /* At the moment we require some copies for device version ... */
   /* ... here and at the end. */
-  field_memcpy(obj, tdpMemcpyDeviceToHost);
+  {
+    int nplane = lees_edw_nplane_total(obj->le);
+    if (nplane > 0) field_memcpy(obj, tdpMemcpyDeviceToHost);
+  }
 
   if (mpi_cartsz[Y] > 1) {
     /* This has its own routine. */
@@ -485,7 +488,10 @@ __host__ int field_leesedwards(field_t * obj) {
     }
   }
 
-  field_memcpy(obj, tdpMemcpyHostToDevice);
+  {
+    int nplane = lees_edw_nplane_total(obj->le);
+    if (nplane > 0) field_memcpy(obj, tdpMemcpyHostToDevice);
+  }
 
   return 0;
 }
