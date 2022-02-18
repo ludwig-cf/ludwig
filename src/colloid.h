@@ -35,13 +35,13 @@ typedef enum colloid_io_version colloid_io_version_t;
 			-localmobility */
 /* <----- */
 
-#define NTOT_VAR (32+48)
+#define NTOT_VAR (269+48)
 #define NPAD_INT  2
 #define NPAD_DBL  9
 
 #define NBOND_MAX  3
 #define NBOND_MAX2  3
-#define NBOND_MAX3  3
+#define NBOND_MAX3  240
 
 enum colloid_type_enum {COLLOID_TYPE_DEFAULT = 0,
 			COLLOID_TYPE_ACTIVE,
