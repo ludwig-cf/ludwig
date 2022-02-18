@@ -68,6 +68,7 @@ int main(int argc, char ** argv) {
   
   int from_file = 1;
   int random_positions = 0;
+  int central_links = 1;
 
   int ntotal[3] = {32, 32, 32};        /* Total system size (cf. input) */
   int periodic[3] = {1, 1, 1};         /* 0 = wall, 1 = periodic */
@@ -148,8 +149,8 @@ int main(int argc, char ** argv) {
       state[n].al= al;
       /* Needs a_L */
       state[n].u0 = 0.00001;
-      state[n].delta = 2.0;
-      state[n].cutoff = 3.0;
+      state[n].delta = 1.0;
+      state[n].cutoff = 2.0;
     }
     state[n].rng = 1 + n;
     //CHANGE1
@@ -171,6 +172,13 @@ int main(int argc, char ** argv) {
     FILE* file;
     file = fopen("latticeHexasphere.txt", "r");
 
+    if (central_links) {
+      state[0].nbonds3 = 240;
+      for (int ind = 0; ind < 240; ind++) {
+        state[0].bond3[ind] = ind + 2;
+      }
+    }
+
     while (fgets(line, sizeof(line), file)) {
       strcpy(data,line);
       sscanf(data, "%d %f %f %f %d %d %d %d %d %d %d %d %d %d %d %d %d %d %f %f %f", &numcol, &pos[0], &pos[1], &pos[2], &nConnec, &ni[0], &ni[1], &ni[2], &nConnec2, &mi[0], &mi[1], &mi[2], &nConnec3, &li[0], &li[1], &li[2], &iscentre, &indexcentre, &phi_production, &localrange, &localmobility);
@@ -180,7 +188,6 @@ int main(int argc, char ** argv) {
       state[numcol].r[X] = pos[X];
       state[numcol].r[Y] = pos[Y];
       state[numcol].r[Z] = pos[Z];
-      printf("%d %d %d %d\n", nConnec, ni[0], ni[1], ni[2]);
       
       state[numcol].nbonds = nConnec;
       state[numcol].bond[0] = ni[X];
@@ -192,10 +199,16 @@ int main(int argc, char ** argv) {
       state[numcol].bond2[1] = mi[1];
       state[numcol].bond2[2] = mi[2];
 
-      state[numcol].nbonds3 = nConnec3;
-      state[numcol].bond3[0] = li[0];
-      state[numcol].bond3[1] = li[1];
-      state[numcol].bond3[2] = li[2];
+      if (central_links) {
+        if (numcol != 0) {
+	  printf("numcol = %d", numcol);
+          state[numcol].nbonds3 = 1;
+	  state[numcol].bond3[0] = 1;
+	  for (int numbond = 1; numbond < 240; numbond++) {
+            state[numcol].bond3[numbond] = 0;
+	  }
+	}
+      }  
 
       state[numcol].iscentre = iscentre;
       state[numcol].indexcentre = indexcentre;

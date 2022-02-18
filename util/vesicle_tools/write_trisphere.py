@@ -3,21 +3,20 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 NVESICLES = 1
-NATOMS = 241
+NATOMS = 163
 
-icosphere_small_l = 0.1821
-icosphere_large_l = 0.2060
+length = 1.0
 epsilon = 1e-3
 
-BOND_LENGTH = 1.0
+BOND_LENGTH = 2.0
 
-nbonds= 3
-nbonds2 = 3
+nbonds= 6
+nbonds2 = 6
 nbonds3 = 3
 
-XSHIFT = 20
-YSHIFT = 20
-ZSHIFT = 20
+XSHIFT = 25
+YSHIFT = 25
+ZSHIFT = 25
 
 # Additional attributes 
 indices = np.arange(1,NATOMS+1,1,dtype=int)
@@ -75,7 +74,13 @@ def dist(x,y):
 
 
 # Coordinates
-xyz = file_to_array("hexasphere.xyz")
+xyz = file_to_array("trisphere.xyz")
+
+for p0 in xyz.T[:20]:
+  for i, p1 in enumerate(xyz.T):
+    dr = dist(p0, p1)
+    if dr < 0.4: print(i, dr)
+
 
 # Connectivities
 for i in range(NATOMS):
@@ -114,14 +119,10 @@ Connec2 = np.array(Connec2)
 Connec3 = np.array(Connec3)
 
 
+
 # Renormalize distances so that the smallest of the two harmonic bonds has l_0=1
 factor = BOND_LENGTH / icosphere_small_l
 xyz = rescale(xyz, factor)
-
-p0 = xyz.T[0]
-for p in xyz.T:
-  print(dist(p, p0))
-
 
 # For each particle, print adjacent lengths and angle
 angles = []
@@ -142,15 +143,14 @@ for i, p0 in enumerate(xyz.T):
   cosine2 = np.dot(p2-p0, p3-p0)/(dist(p0,p2)*dist(p0,p3)) #angle 023
   cosine3 = np.dot(p1-p0, p3-p0)/(dist(p0,p1)*dist(p0,p3)) #angle 013
    
-  #print(i,"012", np.arccos(cosine1))
-  #print(i,"023", np.arccos(cosine2))
-  #print(i,"013", np.arccos(cosine3))
+  print(i,"012", np.arccos(cosine1))
+  print(i,"023", np.arccos(cosine2))
+  print(i,"013", np.arccos(cosine3))
   angles.append(np.arccos(cosine1))
   angles.append(np.arccos(cosine2))
   angles.append(np.arccos(cosine3))
 
 angles2 = []
-
 # For each particle, print adjacent lengths and angle
 for i, p0 in enumerate(xyz.T):
 
@@ -169,17 +169,17 @@ for i, p0 in enumerate(xyz.T):
   cosine2 = np.dot(p2-p0, p3-p0)/(dist(p0,p2)*dist(p0,p3)) #angle 023
   cosine3 = np.dot(p1-p0, p3-p0)/(dist(p0,p1)*dist(p0,p3)) #angle 013
   
-  #print(i,"012", np.arccos(cosine1))
-  #print(i,"023", np.arccos(cosine2))
-  #print(i,"013", np.arccos(cosine3))
+  print(i,"012", np.arccos(cosine1))
+  print(i,"023", np.arccos(cosine2))
+  print(i,"013", np.arccos(cosine3))
 
   angles2.append(np.arccos(cosine1))
   angles2.append(np.arccos(cosine2))
   angles2.append(np.arccos(cosine3))
 
-#plt.hist(angles)
-#plt.hist(angles2)
-#plt.show()
+plt.hist(angles)
+plt.hist(angles2)
+plt.show()
 
 #Other attributes
 iscentre[0] = 1 #0, NATOMS, etc...
