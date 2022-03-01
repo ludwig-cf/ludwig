@@ -15,6 +15,8 @@
 #ifndef LUDWIG_FIELD_H
 #define LUDWIG_FIELD_H
 
+#include <stdint.h>
+
 #define NVECTOR 3    /* Storage requirement for vector (per site) */
 #define NQAB 5       /* Storage requirement for symmetric, traceless tensor */
 
