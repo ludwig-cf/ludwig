@@ -2,7 +2,10 @@
  *
  *  test_model.c
  *
- *  Unit test for the currently compiled model (D3Q15 or D3Q19).
+ *  Tests for model data: distributions, halos, i/o (pending!).
+ *  PENDING: This is to be merged with test_halo.c under "test_lb_data.c".
+ *  PENDING: Coverage check.
+ *
  *
  *  Edinburgh Soft Matter and Statistical Physics Group
  *  Edinburgh Parallel Computing Centre
@@ -25,7 +28,6 @@
 #include "lb_data.h"
 #include "tests.h"
 
-static void test_model_constants(void);
 static void test_model_velocity_set(void);
 
 int do_test_model_distributions(pe_t * pe, cs_t * cs);
@@ -196,8 +198,6 @@ int test_lb_halo_post_wait(pe_t * pe, cs_t * cs, int ndim, int nvel, int full) {
   assert(pe);
   assert(cs);
 
-  printf("test halo create ndim = %2d nvel = %2d full = %2d\n",
-	 ndim, nvel, full);
   options.ndim = ndim;
   options.nvel = nvel;
   lb_data_create(pe, cs, &options, &lb);
@@ -237,6 +237,7 @@ int test_lb_halo(pe_t * pe) {
     cs_ntotal_set(cs, ntotal);
     cs_init(cs);
 
+    /*test_lb_data_create(pe, cs, 2, 9);*/
     test_lb_halo_post_wait(pe, cs, 2, 9, LB_HALO_OPENMP_REDUCED);
     test_lb_halo_post_wait(pe, cs, 2, 9, LB_HALO_OPENMP_FULL);
 
@@ -254,11 +255,8 @@ int test_lb_halo(pe_t * pe) {
     test_lb_halo_post_wait(pe, cs, 3, 15, LB_HALO_OPENMP_FULL);
     test_lb_halo_post_wait(pe, cs, 3, 19, LB_HALO_OPENMP_REDUCED);
     test_lb_halo_post_wait(pe, cs, 3, 19, LB_HALO_OPENMP_FULL);
-
-    /* TODO: add when NVEL is not fixed...
-     * "3, 27, LB_HALO_OPENMP_REDUCED"
-     * "3, 27, LB_HALO_OPENMP_FULL"
-     */
+    test_lb_halo_post_wait(pe, cs, 3, 27, LB_HALO_OPENMP_REDUCED);
+    test_lb_halo_post_wait(pe, cs, 3, 27, LB_HALO_OPENMP_FULL);
 
     cs_free(cs);
   }
@@ -287,16 +285,13 @@ int test_model_suite(void) {
 
   /* Test model structure (coordinate-independent stuff) */
 
-  test_model_constants();
   test_model_velocity_set();
 
   /* Now test actual distributions */
 
   do_test_model_distributions(pe, cs);
   do_test_model_halo_swap(pe, cs);
-  if (DATA_MODEL == DATA_MODEL_AOS && NSIMDVL == 1) {
-    do_test_model_reduced_halo_swap(pe, cs);
-  }
+  do_test_model_reduced_halo_swap(pe, cs);
   do_test_lb_model_io(pe, cs);
 
   pe_info(pe, "PASS     ./unit/test_model\n");
@@ -308,65 +303,18 @@ int test_model_suite(void) {
 
 /*****************************************************************************
  *
- *  test_model_constants
- *
- *  Check the various constants associated with the reduced halo swap.
- *
- *****************************************************************************/
-
-static void test_model_constants(void) {
-
-#ifdef TEST_TO_BE_REMOVED_WITH_GLOBAL_SYMBOLS
-  int i, k, p;
-
-  for (i = 0; i < CVXBLOCK; i++) {
-    for (k = 0; k < xblocklen_cv[i]; k++) {
-      p = xdisp_fwd_cv[i] + k;
-      test_assert(p >= 0 && p < NVEL);
-      test_assert(cv[p][X] == +1);
-      p = xdisp_bwd_cv[i] + k;
-      test_assert(p >= 0 && p < NVEL);
-      test_assert(cv[p][X] == -1);
-    }
-  }
-
-  for (i = 0; i < CVYBLOCK; i++) {
-    for (k = 0; k < yblocklen_cv[i]; k++) {
-      p = ydisp_fwd_cv[i] + k;
-      test_assert(p >= 0 && p < NVEL);
-      test_assert(cv[p][Y] == +1);
-      p = ydisp_bwd_cv[i] + k;
-      test_assert(p >= 0 && p < NVEL);
-      test_assert(cv[p][Y] == -1);
-    }
-  }
-
-  for (i = 0; i < CVZBLOCK; i++) {
-    for (k = 0; k < zblocklen_cv[i]; k++) {
-      p = zdisp_fwd_cv[i] + k;
-      test_assert(p >= 0 && p < NVEL);
-      test_assert(cv[p][Z] == +1);
-      p = zdisp_bwd_cv[i] + k;
-      test_assert(p >= 0 && p < NVEL);
-      test_assert(cv[p][Z] == -1);
-    }
-  }
-#endif
-  return;
-}
-
-/*****************************************************************************
- *
  *  test_model_velocity_set
  *
- *  Check the velocities, kinetic projector, tables of eigenvectors
- *  etc etc are all consistent for the current model.
+ *  Some residual older tests which remain relevant.
  *
  *****************************************************************************/
 
 static void test_model_velocity_set(void) {
 
   test_assert(NHYDRO == (1 + NDIM + NDIM*(NDIM+1)/2));
+
+  printf("Compiled model NDIM %2d NVEL %2d\n", NDIM, NVEL);
+  printf("sizeof(lb_collide_param_t) %ld bytes\n", sizeof(lb_collide_param_t));
 
   return;
 }
@@ -458,7 +406,6 @@ int do_test_model_halo_swap(pe_t * pe, cs_t * cs) {
   options.nvel = NVEL;
   options.ndist = ndist;
   lb_data_create(pe, cs, &options, &lb);
-  assert(lb);
 
   cs_nlocal(cs, nlocal);
 
@@ -543,7 +490,7 @@ int do_test_model_reduced_halo_swap(pe_t * pe, cs_t * cs) {
   int i, j, k, p;
   int icdt, jcdt, kcdt;
   int index, nlocal[3];
-  int n, ndist = 2;
+  int n, ndist = 1;
   const int nextra = 1;
 
   double f_expect;
@@ -558,9 +505,9 @@ int do_test_model_reduced_halo_swap(pe_t * pe, cs_t * cs) {
   options.ndim = NDIM;
   options.nvel = NVEL;
   options.ndist = ndist;
+  options.halo = LB_HALO_OPENMP_REDUCED;
   lb_data_create(pe, cs, &options, &lb);
   assert(lb);
-  lb_halo_set(lb, LB_HALO_REDUCED);
 
   cs_nlocal(cs, nlocal);
 
@@ -580,7 +527,7 @@ int do_test_model_reduced_halo_swap(pe_t * pe, cs_t * cs) {
     }
   }
 
-  lb_halo_via_struct(lb);
+  lb_halo(lb);
 
   /* Now check that the interior sites are unchanged */
 
