@@ -38,6 +38,7 @@ int lb_model_is_available(int nvel) {
   available += (nvel == NVEL_D2Q9);
   available += (nvel == NVEL_D3Q15);
   available += (nvel == NVEL_D3Q19);
+  available += (nvel == NVEL_D3Q27);
 
   return available;
 }
