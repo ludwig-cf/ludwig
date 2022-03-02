@@ -1457,9 +1457,9 @@ int hydro_halo_create(const hydro_t * hydro, hydro_halo_t * h) {
       nbr[X] = coords[X] + h->cv[p][X];
       nbr[Y] = coords[Y] + h->cv[p][Y];
       nbr[Z] = coords[Z] + h->cv[p][Z];
-      out[X] = (!periods[X] && (nbr[X] < 0 || nbr[X] > dims[X]));
-      out[Y] = (!periods[Y] && (nbr[Y] < 0 || nbr[Y] > dims[Y]));
-      out[Z] = (!periods[Z] && (nbr[Z] < 0 || nbr[Z] > dims[Z]));
+      out[X] = (!periods[X] && (nbr[X] < 0 || nbr[X] > dims[X] - 1));
+      out[Y] = (!periods[Y] && (nbr[Y] < 0 || nbr[Y] > dims[Y] - 1));
+      out[Z] = (!periods[Z] && (nbr[Z] < 0 || nbr[Z] > dims[Z] - 1));
 
       if (out[X] || out[Y] || out[Z]) {
 	h->nbrrank[i][j][k] = MPI_PROC_NULL;
