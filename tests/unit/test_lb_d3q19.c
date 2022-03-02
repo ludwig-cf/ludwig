@@ -69,6 +69,8 @@ __host__ int test_lb_d3q19_create(void) {
   assert(model.na);
   assert(model.ma);
 
+  assert(fabs(model.cs2 - 1.0/3.0) < DBL_EPSILON);
+
   lb_model_free(&model);
 
   assert(model.nvel == 0);
