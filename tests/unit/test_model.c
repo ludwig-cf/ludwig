@@ -237,7 +237,6 @@ int test_lb_halo(pe_t * pe) {
     cs_ntotal_set(cs, ntotal);
     cs_init(cs);
 
-    /*test_lb_data_create(pe, cs, 2, 9);*/
     test_lb_halo_post_wait(pe, cs, 2, 9, LB_HALO_OPENMP_REDUCED);
     test_lb_halo_post_wait(pe, cs, 2, 9, LB_HALO_OPENMP_FULL);
 

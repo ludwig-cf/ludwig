@@ -28,8 +28,8 @@
 #include "tests.h"
 
 int test_lb_halo1(pe_t * pe, cs_t * cs, int ndim, int nvel);
-int do_test_halo_null(pe_t * pe, cs_t * cs, lb_data_options_t opts);
-int do_test_halo(pe_t * pe, cs_t * cs, int dim, lb_data_options_t opts);
+int do_test_halo_null(pe_t * pe, cs_t * cs, const lb_data_options_t * opts);
+int do_test_halo(pe_t * pe, cs_t * cs, int dim, const lb_data_options_t * opts);
 
 /*****************************************************************************
  *
@@ -46,9 +46,11 @@ int test_halo_suite(void) {
   cs_create(pe, &cs);
   cs_init(cs);
 
-  /* Use a 2d system for test_lb_halo1(pe, cs, 2,  9); */
+  /* Use a 2d system for ndim = 2, nvel = 9 */
   test_lb_halo1(pe, cs, 3, 15);
+  pe_info(pe, "PASS     ./unit/test_halo 15\n");
   test_lb_halo1(pe, cs, 3, 19);
+  pe_info(pe, "PASS     ./unit/test_halo 19\n");
   test_lb_halo1(pe, cs, 3, 27);
 
   pe_info(pe, "PASS     ./unit/test_halo\n");
@@ -73,31 +75,31 @@ int test_lb_halo1(pe_t * pe, cs_t * cs, int ndim, int nvel) {
   opts.ndist = 1;
   opts.halo  = LB_HALO_TARGET;
 
-  do_test_halo_null(pe, cs, opts);
-  do_test_halo(pe, cs, X, opts);
-  do_test_halo(pe, cs, Y, opts);
-  do_test_halo(pe, cs, Z, opts);
+  do_test_halo_null(pe, cs, &opts);
+  do_test_halo(pe, cs, X, &opts);
+  do_test_halo(pe, cs, Y, &opts);
+  do_test_halo(pe, cs, Z, &opts);
 
   opts.ndist = 1;
   opts.halo  = LB_HALO_OPENMP_FULL;
 
-  do_test_halo_null(pe, cs, opts);
-  do_test_halo(pe, cs, X, opts);
-  do_test_halo(pe, cs, Y, opts);
-  do_test_halo(pe, cs, Z, opts);
+  do_test_halo_null(pe, cs, &opts);
+  do_test_halo(pe, cs, X, &opts);
+  do_test_halo(pe, cs, Y, &opts);
+  do_test_halo(pe, cs, Z, &opts);
 
   opts.ndist = 1;
   opts.halo  = LB_HALO_OPENMP_REDUCED;
 
-  do_test_halo_null(pe, cs, opts);
+  do_test_halo_null(pe, cs, &opts);
 
   opts.ndist = 2;
   opts.halo = LB_HALO_TARGET;
 
-  do_test_halo_null(pe, cs, opts);
-  do_test_halo(pe, cs, X, opts);
-  do_test_halo(pe, cs, Y, opts);
-  do_test_halo(pe, cs, Z, opts);
+  do_test_halo_null(pe, cs, &opts);
+  do_test_halo(pe, cs, X, &opts);
+  do_test_halo(pe, cs, Y, &opts);
+  do_test_halo(pe, cs, Z, &opts);
 
   return 0;
 }
@@ -111,7 +113,7 @@ int test_lb_halo1(pe_t * pe, cs_t * cs, int ndim, int nvel) {
  *
  *****************************************************************************/
 
-int do_test_halo_null(pe_t * pe, cs_t * cs, lb_data_options_t opts) {
+int do_test_halo_null(pe_t * pe, cs_t * cs, const lb_data_options_t * opts) {
 
   int nlocal[3], n[3];
   int index, nd, p;
@@ -123,11 +125,12 @@ int do_test_halo_null(pe_t * pe, cs_t * cs, lb_data_options_t opts) {
 
   assert(pe);
   assert(cs);
+  assert(opts);
 
   cs_nhalo(cs, &nhalo);
   nextra = nhalo - 1;
 
-  lb_data_create(pe, cs, &opts, &lb);
+  lb_data_create(pe, cs, opts, &lb);
 
   cs_nlocal(cs, nlocal);
 
@@ -208,7 +211,7 @@ int do_test_halo_null(pe_t * pe, cs_t * cs, lb_data_options_t opts) {
  *
  *****************************************************************************/
 
-int do_test_halo(pe_t * pe, cs_t * cs, int dim, lb_data_options_t opts) {
+int do_test_halo(pe_t * pe, cs_t * cs, int dim, const lb_data_options_t * opts) {
 
   int nhalo;
   int nlocal[3], n[3];
@@ -226,8 +229,9 @@ int do_test_halo(pe_t * pe, cs_t * cs, int dim, lb_data_options_t opts) {
   assert(pe);
   assert(cs);
   assert(dim == X || dim == Y || dim == Z);
+  assert(opts);
 
-  lb_data_create(pe, cs, &opts, &lb);
+  lb_data_create(pe, cs, opts, &lb);
 
   cs_nhalo(cs, &nhalo);
   nextra = nhalo;
