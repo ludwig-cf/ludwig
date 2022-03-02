@@ -41,8 +41,13 @@ __host__ int test_lb_bc_inflow_rhou_suite(void) {
   cs_init(cs);
 
   test_lb_bc_inflow_rhou_create(pe, cs);
-  test_lb_bc_inflow_rhou_update(pe, cs, NVEL);
-  test_lb_bc_inflow_rhou_impose(pe, cs, NVEL);
+  /* Need to check (2, 9) in 2d system */
+  test_lb_bc_inflow_rhou_update(pe, cs, 15);
+  test_lb_bc_inflow_rhou_impose(pe, cs, 15);
+  test_lb_bc_inflow_rhou_update(pe, cs, 19);
+  test_lb_bc_inflow_rhou_impose(pe, cs, 19);
+  test_lb_bc_inflow_rhou_update(pe, cs, 27);
+  test_lb_bc_inflow_rhou_impose(pe, cs, 27);
 
   pe_info(pe, "PASS     ./unit/test_lb_bc_inflow_rhou\n");
 
@@ -209,6 +214,8 @@ __host__ int test_lb_bc_inflow_rhou_impose(pe_t * pe, cs_t * cs, int nvel) {
 
   lb_bc_inflow_rhou_create(pe, cs, &options, &inflow);
   hydro_create(pe, cs, NULL, &hopts, &hydro);
+
+  lb_options.nvel = nvel;
   lb_data_create(pe, cs, &lb_options, &lb);
 
   /* Set the relevant domain values (rho only here) */
