@@ -406,7 +406,6 @@ static int le_displace_and_interpolate_parallel(lb_t * lb, lees_edw_t * le) {
   int nhalo;
   int ind0, ind1, ind2, index;
   int n, nplane, plane;
-  int p;
   int ntotal[3];
   int nlocal[3];
   int offset[3];
@@ -585,7 +584,7 @@ static int le_displace_and_interpolate_parallel(lb_t * lb, lees_edw_t * le) {
 	index = lees_edw_index(le, ic, jc, kc);
 
 	for (n = 0; n < ndist; n++) {
-	  for (p = 1; p < lb->model.nvel; p++) {
+	  for (int p = 1; p < lb->model.nvel; p++) {
 	    if (lb->model.cv[p][X] != -1) continue;
 	    int ijkp = LB_ADDR(lb->nsite, ndist, lb->model.nvel, index, n, p);
 	    send_buff[ndata++] = lb->f[ijkp];
