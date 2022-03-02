@@ -2,13 +2,13 @@
  *
  *  test_lb_model.c
  *
- *  Tests that all model should pass.
+ *  Tests that all models should pass.
  *
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2021 The University of Edinburgh
+ *  (c) 2021-2022 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -127,7 +127,7 @@ int test_lb_model_cv(const lb_model_t * model) {
     ifail += (sum[X] + sum[Y] + sum[Z]);
   }
 
-  /* Check cv[p][] = -cv[NVEL-p][] (p != 0)  */
+  /* Check cv[p][] = -cv[nvel-p][] (p != 0)  */
 
   for (int p = 1; p < model->nvel; p++) {
     assert(model->cv[p][X] == -model->cv[model->nvel-p][X]);
