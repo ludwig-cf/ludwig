@@ -2,13 +2,13 @@
  *
  *  lb_d3q27.c
  *
- *  D3Q27 definition. Not yet complete.
+ *  D3Q27 definition.
  *
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2021 The University of Edinburgh
+ *  (c) 2021-2022 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
