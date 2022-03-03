@@ -310,6 +310,7 @@ static int lb_model_param_init(lb_t * lb) {
 
   assert(lb);
   assert(lb->param);
+  assert(lb->model.nvel <= 27); /* Currently largest model supported */
 
   lb->param->nsite = lb->nsite;
   lb->param->ndist = lb->ndist;

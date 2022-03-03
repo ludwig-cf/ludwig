@@ -47,7 +47,7 @@ typedef struct lb_data_s lb_t;
 
 struct lb_collide_param_s {
   int8_t isghost;                      /* switch for ghost modes */
-  int8_t cv[NVEL][3];
+  int8_t cv[27][3];
   int nsite;
   int ndist;
   int nvel;
@@ -56,11 +56,11 @@ struct lb_collide_param_s {
   double var_shear;
   double eta_bulk;
   double var_bulk;
-  double rna[NVEL];                    /* reciprocal of normaliser[p] */
-  double rtau[NVEL];
-  double wv[NVEL];
-  double ma[NVEL][NVEL];
-  double mi[NVEL][NVEL];
+  double rna[27];                    /* reciprocal of normaliser[p] */
+  double rtau[27];
+  double wv[27];
+  double ma[27][27];
+  double mi[27][27];
 };
 
 /* Halo */
