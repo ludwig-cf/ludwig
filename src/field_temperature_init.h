@@ -16,15 +16,16 @@
 #define LUDWIG_FIELD_TEMPERATURE_INIT_H
 
 #include "field.h"
-#include "map.h"
+
 typedef struct field_temperature_info_s field_temperature_info_t;
 
 struct field_temperature_info_s {
   double T0;            /* should be set to zero in input file */
-  double Tc;
+  double Tc;            
+  double Tj1;
+  double Tj2;
 };
 
 int field_temperature_init_uniform(field_t * temperature, double T0);
-int field_temperature_init_solid(field_t * temperature, map_t * map, double Tc);
 int field_temperature_init_drop(field_t * temperature, double xi, double radius, double phistar);
 #endif

@@ -32,11 +32,12 @@
  *
  *****************************************************************************/
 
-int field_temperature_init_rt(pe_t * pe, rt_t * rt, field_temperature_info_t param, field_t * temperature, map_t * map) {
+int field_temperature_init_rt(pe_t * pe, rt_t * rt, field_t * temperature) {
 
   int p;
   char value[BUFSIZ];
   double Tc;
+  int janus_on = 0;
 
   assert(pe);
   assert(rt);
@@ -45,6 +46,8 @@ int field_temperature_init_rt(pe_t * pe, rt_t * rt, field_temperature_info_t par
   p = rt_string_parameter(rt, "temperature_initialisation", value, BUFSIZ);
 
   /* Has to be zero everywhere (because initialization of the free energy is done at T = 0... because temperature field is initialized after the free energy) */
+
+  /* <------------------- FLUID -----------------------> */
 
   if (p != 0 && strcmp(value, "uniform") == 0) {
     int ihave_T0;
@@ -74,12 +77,41 @@ int field_temperature_init_rt(pe_t * pe, rt_t * rt, field_temperature_info_t par
     field_temperature_init_drop(temperature, xi, radius, phistar);
   }
 
-  /* Set temperature of the colloid (order matter because it overwrites
-	temperature at colloid nodes */
-  
-  rt_double_parameter(rt, "colloid_temperature", &Tc);
-  pe_info(pe, "Initialising colloid temperature to %14.7e\n", Tc);
-  field_temperature_init_solid(temperature, map, Tc);
 
+  /* <------------------- SOLID ------------------------> */
+
+  /* Runtime exception for solid temperature but no actual 
+	assignement of temperature field. This is done in heat_equation.c */
+
+/*
+  rt_int_parameter(rt, "janus_colloid_on", &janus_on);
+  
+  if (janus_on) {
+    double jangle;
+    int isjangle = 0, is_Tj1 = 0, is_Tj2 = 0;
+    double Tj1, Tj2;
+
+    isjangle = rt_double_parameter(rt, "jangle", &jangle);
+    is_Tj1 = rt_double_parameter(rt, "colloid_temperature1", &Tj1);
+    is_Tj2 = rt_double_parameter(rt, "colloid_temperature2", &Tj2);
+
+    if (isjangle == 0.0 || is_Tj1 == 0.0 || is_Tj2 == 0.0) pe_fatal(pe,         "Please specifiy jangle, Tj1 and Tj2 in order to use Janus colloids\n");
+    pe_info(pe, "\n");
+    pe_info(pe, "Colloid is JANUS type:       yes\n");
+    pe_info(pe, "Janus angle (jangle):         %14.7e\n", jangle);
+    pe_info(pe, "Temperature on each side:         %14.7e %14.7e\n",
+        Tj1, Tj2);
+  }
+
+  else {
+    int is_Tc = 0;
+    double Tc;
+
+    is_Tc = rt_double_parameter(rt, "colloid_temperature", &Tc);
+    if (is_Tc == 0) pe_fatal(pe, "Please specify the colloid temperature\n");
+
+    pe_info(pe, "Initialising colloid temperature to %14.7e\n", Tc);
+  }
+*/
   return 0;
 }
