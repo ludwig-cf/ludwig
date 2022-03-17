@@ -33,7 +33,7 @@
 int fe_symmetric_oft_init_rt(pe_t * pe, rt_t * rt, fe_symm_oft_t * fe) {
 
   int old_keys = 0;
-  double sigma;
+  double sigma, lambda;
   double xi;
   fe_symm_oft_param_t param = {};
 
@@ -46,119 +46,87 @@ int fe_symmetric_oft_init_rt(pe_t * pe, rt_t * rt, fe_symm_oft_t * fe) {
 
   /* Parameters */
 
-  old_keys += rt_double_parameter(rt, "A", &param.a);
-  old_keys += rt_double_parameter(rt, "A0", &param.a0);
-  old_keys += rt_double_parameter(rt, "B", &param.b);
-  old_keys += rt_double_parameter(rt, "K", &param.kappa);
-  old_keys += rt_double_parameter(rt, "K0", &param.kappa0);
-  old_keys += rt_double_parameter(rt, "lambda", &param.lambda);
-  old_keys += rt_double_parameter(rt, "entropy", &param.entropy);
+  /* Updated parameters (now the preferred names) */
+  int have_symm = 0;
+  int have_wetting = 0;
+  int have_theta = 0;
+  double theta = 0.0; /* If present, to be angle in degrees */
 
-  if (old_keys) {
 
+/* <-------------- CHECK SYMM PARAMETERS -------------------> */
+  have_symm += rt_double_parameter(rt, "symmetric_oft_a0",     &param.a0);
+  have_symm += rt_double_parameter(rt, "symmetric_oft_a",     &param.a);
+  have_symm += rt_double_parameter(rt, "symmetric_oft_b",     &param.b);
+  have_symm += rt_double_parameter(rt, "symmetric_oft_kappa0", &param.kappa0);
+  have_symm += rt_double_parameter(rt, "symmetric_oft_kappa", &param.kappa);
+  have_symm += rt_double_parameter(rt, "symmetric_oft_lambda", &param.lambda);
+  have_symm += rt_double_parameter(rt, "symmetric_oft_entropy", &param.entropy);
+  if (have_symm) {
+      /* must have all parameters */
+    rt_key_required(rt, "symmetric_oft_a0",     RT_FATAL);
+    rt_key_required(rt, "symmetric_oft_a",     RT_FATAL);
+    rt_key_required(rt, "symmetric_oft_b",     RT_FATAL);
+    rt_key_required(rt, "symmetric_oft_kappa0", RT_FATAL);
+    rt_key_required(rt, "symmetric_oft_kappa", RT_FATAL);
+    rt_key_required(rt, "symmetric_oft_lambda", RT_FATAL);
+    rt_key_required(rt, "symmetric_oft_entropy", RT_FATAL);
+    param.lambda = lambda;
+  }
+
+
+/* <-------------- CHECK WETTING PARAMETERS -------------------> */
+  /* Uniform wetting */
+  have_wetting += rt_double_parameter(rt, "symmetric_oft_c", &param.c);
+  have_wetting += rt_double_parameter(rt, "symmetric_oft_h", &param.h);
+  have_theta   += rt_double_parameter(rt, "symmetric_oft_theta", &theta);
+
+  if (have_theta) {
+    /* Set appropriate H = h sqrt(kappa B), C = 0 */
+    double h = 0.0; /* dimensionless "small" h */
+    fe_symm_theta_to_h(theta, &h);
+    param.c = 0.0;
+    param.h = h*sqrt(param.kappa*param.b);
+    {
+	/* Sign of h will reflect sign of cos(theta) as input */
+      PI_DOUBLE(pi);
+      if (cos(pi*theta/180.0) < 0.0) param.h = -param.h;
+    }
+  }
+  if (have_wetting && have_theta) {
+    /* Please have one or the other; not both. */
+    pe_info(pe, "Both symmetric_theta and symmetric[ch] are present.\n");
+    pe_info(pe, "Please use symmetric_theta (only) or, one or both of\n"
+         "symmetric_c / symmetric_h for uniform wetting\n");
+    pe_fatal(pe, "Please check and try again.\n");
+  }
+
+
+/* <-------------- REPORT -------------------> */
   pe_info(pe, "Parameters:\n");
-  pe_info(pe, "Bulk parameter A0      = %12.5e\n", param.a0);
+  pe_info(pe, "Bulk parameter A0     = %12.5e\n", param.a0);
   pe_info(pe, "Bulk parameter A      = %12.5e\n", param.a);
   pe_info(pe, "Bulk parameter B      = %12.5e\n", param.b);
-  pe_info(pe, "Surface penalty K0 = %12.5e\n", param.kappa0);
-  pe_info(pe, "Surface penalty K = %12.5e\n", param.kappa);
-  pe_info(pe, "Thermal diffusivity = %12.5e\n", param.lambda);
+  pe_info(pe, "Surface penalty kappa0 = %12.5e\n", param.kappa0);
+  pe_info(pe, "Surface penalty kappa = %12.5e\n", param.kappa);
+  pe_info(pe, "Thermal diffusivity  = %12.5e\n", param.lambda);
   pe_info(pe, "Entropy = %12.5e\n", param.entropy);
-
-  fe_symm_oft_param_set(fe, param); 
-
+  fe_symm_oft_param_set(fe, param);
   fe_symm_oft_interfacial_tension(fe, &sigma);
   fe_symm_oft_interfacial_width(fe, &xi);
+  pe_info(pe, "Surface tension       = %12.5e\n", sigma);
+  pe_info(pe, "Interfacial width     = %12.5e\n", xi);
 
-  pe_info(pe, "Surface tension at Temperature = 0 %12.5e\n", sigma);
-  pe_info(pe, "Interfacial width at Temperature = 0 %12.5e\n", xi);
-
-  }
-  else {
-
-    /* Updated parameters (now the preferred names) */
-    int have_symm = 0;
-    int have_wetting = 0;
-    int have_theta = 0;
-    double theta = 0.0; /* If present, to be angle in degrees */
-
-    have_symm += rt_double_parameter(rt, "symmetric_oft_a0",     &param.a0);
-    have_symm += rt_double_parameter(rt, "symmetric_oft_a",     &param.a);
-    have_symm += rt_double_parameter(rt, "symmetric_oft_b",     &param.b);
-    have_symm += rt_double_parameter(rt, "symmetric_oft_kappa0", &param.kappa0);
-    have_symm += rt_double_parameter(rt, "symmetric_oft_kappa", &param.kappa);
-    have_symm += rt_double_parameter(rt, "symmetric_oft_lambda", &param.lambda);
-    have_symm += rt_double_parameter(rt, "symmetric_oft_entropy", &param.entropy);
-
-    if (have_symm) {
-      /* must have all parameters */
-      rt_key_required(rt, "symmetric_oft_a0",     RT_FATAL);
-      rt_key_required(rt, "symmetric_oft_a",     RT_FATAL);
-      rt_key_required(rt, "symmetric_oft_b",     RT_FATAL);
-      rt_key_required(rt, "symmetric_oft_kappa0", RT_FATAL);
-      rt_key_required(rt, "symmetric_oft_kappa", RT_FATAL);
-      rt_key_required(rt, "symmetric_oft_lambda", RT_FATAL);
-      rt_key_required(rt, "symmetric_oft_entropy", RT_FATAL);
-    }
-
-    /* Uniform wetting */
-    have_wetting += rt_double_parameter(rt, "symmetric_oft_c", &param.c);
-    have_wetting += rt_double_parameter(rt, "symmetric_oft_h", &param.h);
-    have_theta   += rt_double_parameter(rt, "symmetric_oft_theta", &theta);
-
-    if (have_theta) {
-      /* Set appropriate H = h sqrt(kappa B), C = 0 */
-      double h = 0.0; /* dimensionless "small" h */
-      fe_symm_theta_to_h(theta, &h);
-      param.c = 0.0;
-      param.h = h*sqrt(param.kappa*param.b);
-      {
-	/* Sign of h will reflect sign of cos(theta) as input */
-	PI_DOUBLE(pi);
-	if (cos(pi*theta/180.0) < 0.0) param.h = -param.h;
-      }
-    }
-
-    if (have_wetting && have_theta) {
-      /* Please have one or the other; not both. */
-      pe_info(pe, "Both symmetric_theta and symmetric[ch] are present.\n");
-      pe_info(pe, "Please use symmetric_theta (only) or, one or both of\n"
-	          "symmetric_c / symmetric_h for uniform wetting\n");
-      pe_fatal(pe, "Please check and try again.\n");
-    }
-
-    /* Report */
-
-    pe_info(pe, "Parameters:\n");
-    pe_info(pe, "Bulk parameter A0     = %12.5e\n", param.a0);
-    pe_info(pe, "Bulk parameter A      = %12.5e\n", param.a);
-    pe_info(pe, "Bulk parameter B      = %12.5e\n", param.b);
-    pe_info(pe, "Surface penalty kappa0 = %12.5e\n", param.kappa0);
-    pe_info(pe, "Surface penalty kappa = %12.5e\n", param.kappa);
-    pe_info(pe, "Thermal diffusivity  = %12.5e\n", param.lambda);
-    pe_info(pe, "Entropy = %12.5e\n", param.entropy);
-
-    fe_symm_oft_param_set(fe, param);
-
-    fe_symm_oft_interfacial_tension(fe, &sigma);
-    fe_symm_oft_interfacial_width(fe, &xi);
-
-    pe_info(pe, "Surface tension       = %12.5e\n", sigma);
-    pe_info(pe, "Interfacial width     = %12.5e\n", xi);
-
-    if (have_wetting || have_theta) {
-      double costheta = 0.0;
-      double mytheta  = 0.0;
-      PI_DOUBLE(pi);
-      double h = param.h/sqrt(param.kappa*param.b); /* Small h */
-      fe_symm_h_to_costheta(h, &costheta);
-      mytheta = 180.0*acos(costheta)/pi;
-      pe_info(pe, "Surface parameter C      = %12.5e\n", param.c);
-      pe_info(pe, "Surface parameter H      = %12.5e\n", param.h);
-      pe_info(pe, "Dimensionless h          = %12.5e\n", h);
-      pe_info(pe, "Uniform wetting angle    = %12.5e degrees\n", mytheta);
-    }
-
+  if (have_wetting || have_theta) {
+    double costheta = 0.0;
+    double mytheta  = 0.0;
+    PI_DOUBLE(pi);
+    double h = param.h/sqrt(param.kappa*param.b); /* Small h */
+    fe_symm_h_to_costheta(h, &costheta);
+    mytheta = 180.0*acos(costheta)/pi;
+    pe_info(pe, "Surface parameter C      = %12.5e\n", param.c);
+    pe_info(pe, "Surface parameter H      = %12.5e\n", param.h);
+    pe_info(pe, "Dimensionless h          = %12.5e\n", h);
+    pe_info(pe, "Uniform wetting angle    = %12.5e degrees\n", mytheta);
   }
 
   /* Initialise */
@@ -203,21 +171,14 @@ int fe_symmetric_oft_phi_init_rt(pe_t * pe, rt_t * rt, fe_symm_oft_t * fe,
  *****************************************************************************/
 
 __host__
-int fe_symmetric_oft_temperature_init_rt(pe_t * pe, rt_t * rt, fe_symm_oft_t * fe, field_t * temperature, map_t * map) {
-
-  physics_t * phys = NULL;
-  field_temperature_info_t param = {0};
+int fe_symmetric_oft_temperature_init_rt(pe_t * pe, rt_t * rt, fe_symm_oft_t * fe, field_t * temperature) {
 
   assert(pe);
   assert(rt);
   assert(fe);
   assert(temperature);
-  assert(map);
  
-  physics_ref(&phys);
-  physics_T0(phys, &param.T0);
-  physics_Tc(phys, &param.Tc);
-  field_temperature_init_rt(pe, rt, param, temperature, map);
+  field_temperature_init_rt(pe, rt, temperature);
 
   return 0;
 }

@@ -23,7 +23,7 @@
 int fe_symmetric_oft_init_rt(pe_t * pe, rt_t * rt, fe_symm_oft_t * fe);
 int fe_symmetric_oft_phi_init_rt(pe_t * pe, rt_t * rt, fe_symm_oft_t * fe, 
 field_t * phi);
-int fe_symmetric_oft_temperature_init_rt(pe_t * pe, rt_t * rt, fe_symm_oft_t * fe, field_t * temperature, map_t * map);
+int fe_symmetric_oft_temperature_init_rt(pe_t * pe, rt_t * rt, fe_symm_oft_t * fe, field_t * temperature);
 
 //conservation phi correction
 int field_sum_phi_init_rt(field_t * field, map_t * map);
