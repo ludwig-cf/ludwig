@@ -22,10 +22,6 @@ __host__ int physics_free(physics_t * phys);
 
 __host__ int physics_rho0_set(physics_t * phys, double rho0);
 __host__ int physics_phi0_set(physics_t * phys, double phi0);
-//OFT
-__host__ int physics_T0_set(physics_t * phys, double T0);
-__host__ int physics_Tc_set(physics_t * phys, double Tc);
-//OFT
 __host__ int physics_eta_shear_set(physics_t * phys, double eta);
 __host__ int physics_eta_bulk_set(physics_t * phys, double zeta);
 __host__ int physics_kt_set(physics_t * phys, double kt);
@@ -47,10 +43,6 @@ __host__ int physics_grad_mu_set(physics_t * phys, double gm[3]);
 __host__ __device__ int physics_ref(physics_t ** ref);
 __host__ __device__ int physics_rho0(physics_t * phys, double * rho);
 __host__ __device__ int physics_phi0(physics_t * phys, double * phi0);
-//OFT
-__host__ __device__ int physics_T0(physics_t * phys, double * T0);
-__host__ __device__ int physics_Tc(physics_t * phys, double * Tc);
-//OFT
 __host__ __device__ int physics_eta_shear(physics_t * phys, double * eta);
 __host__ __device__ int physics_eta_bulk(physics_t * phys, double * zeta);
 __host__ __device__ int physics_kt(physics_t * phys, double * kt);
