@@ -22,6 +22,7 @@
 #include "hydro.h"
 #include "map.h"
 #include "noise.h"
+#include "colloids.h"
 
 typedef struct heq_s heq_t;
 typedef struct heq_info_s heq_info_t;
@@ -44,8 +45,8 @@ __host__ int heq_create(pe_t * pe, cs_t * cs, lees_edw_t * le,
 			   heq_t ** heq);
 __host__ int heq_free(heq_t * heq);
 
-__host__ int heat_equation(heq_t * heq, fe_t * fe, field_t * temperature,
+__host__ int heat_equation(heq_t * heq, field_t * temperature,
 			       hydro_t * hydro, map_t * map,
-			       noise_t * noise);
+			       colloids_info_t * cinfo);
 
 #endif

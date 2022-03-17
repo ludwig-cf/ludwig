@@ -297,9 +297,10 @@ static int ludwig_rt(ludwig_t * ludwig) {
   if (ludwig->fe_symm) {
     fe_symmetric_phi_init_rt(pe, rt, ludwig->fe_symm, ludwig->phi);
   }
-// OFT ---> This part must be done after colloid init since it uses map
-/* Initialisation of the symmetric_oft done below... because we need map */
-// <--- OFT
+  if (ludwig->fe_symm_oft) {
+    fe_symmetric_oft_phi_init_rt(pe, rt, ludwig->fe_symm_oft, ludwig->phi);
+    fe_symmetric_oft_temperature_init_rt(pe, rt, ludwig->fe_symm_oft, ludwig->temperature);
+  }
   if (ludwig->fe_braz) {
     fe_brazovskii_phi_init_rt(pe, rt, ludwig->fe_braz, ludwig->phi);
   }
@@ -320,13 +321,6 @@ static int ludwig_rt(ludwig_t * ludwig) {
   wall_rt_init(pe, cs, rt, ludwig->lb, ludwig->map, &ludwig->wall);
   colloids_init_rt(pe, rt, cs, &ludwig->collinfo, &ludwig->cio,
 		   &ludwig->interact, ludwig->wall, ludwig->map);
-// OFT --->
-  if (ludwig->fe_symm_oft) {
-    fe_symmetric_oft_phi_init_rt(pe, rt, ludwig->fe_symm_oft, ludwig->phi);
-    fe_symmetric_oft_temperature_init_rt(pe, rt, ludwig->fe_symm_oft, ludwig->temperature, ludwig->map);
-  }
-// <--- OFT
-
   colloids_init_ewald_rt(pe, rt, cs, ludwig->collinfo, &ludwig->ewald);
 
   bbl_create(pe, ludwig->cs, ludwig->lb, &ludwig->bbl);
@@ -366,7 +360,7 @@ static int ludwig_rt(ludwig_t * ludwig) {
     if (ludwig->temperature) {
       sprintf(filename, "%stemperature-%8.8d", subdirectory, ntstep);
       pe_info(pe, "files(s) %s\n", filename);
-      field_io_info(ludwig->phi, &iohandler);
+      field_io_info(ludwig->temperature, &iohandler);
       io_read_data(iohandler, filename, ludwig->temperature);
     }
 //OFT
@@ -530,7 +524,7 @@ void ludwig_run(const char * inputfile) {
 
   if (ludwig->phi) field_memcpy(ludwig->phi, tdpMemcpyHostToDevice);
 //OFT
-  if (ludwig->temperature) field_memcpy(ludwig->phi, tdpMemcpyHostToDevice);
+  if (ludwig->temperature) field_memcpy(ludwig->temperature, tdpMemcpyHostToDevice);
 
 //OFT
   if (ludwig->p)   field_memcpy(ludwig->p, tdpMemcpyHostToDevice);
@@ -791,10 +785,9 @@ void ludwig_run(const char * inputfile) {
 // OFT TODO: give temperature its own noise, for now noise should not be used  */
 
       if (ludwig->heq) {
-
-	heat_equation(ludwig->heq, ludwig->fe, ludwig->temperature,
+	heat_equation(ludwig->heq, ludwig->temperature,
 			  ludwig->hydro,
-			  ludwig->map, ludwig->noise_phi);
+			  ludwig->map, ludwig->collinfo);
       }
       if (ludwig->pch) {
 	phi_cahn_hilliard(ludwig->pch, ludwig->fe, ludwig->phi,
@@ -1102,7 +1095,7 @@ void ludwig_run(const char * inputfile) {
     }
 //OFT
     if (ludwig->temperature) {
-      field_io_info(ludwig->phi, &iohandler);
+      field_io_info(ludwig->temperature, &iohandler);
       pe_info(ludwig->pe, "Writing temperature file at step %d!\n", step);
       sprintf(filename,"%stemperature-%8.8d", subdirectory, step);
       io_write_data(iohandler, filename, ludwig->temperature);
@@ -1355,7 +1348,7 @@ int free_energy_init_rt(ludwig_t * ludwig) {
     pe_info(pe, "\n");
     pe_info(pe, "Using Cahn-Hilliard finite difference solver.\n");
 
-    rt_double_parameter(rt, "lambda", &value);
+    rt_double_parameter(rt, "symmetric_oft_lambda", &value);
     physics_lambda_set(ludwig->phys, value);
     pe_info(pe, "Thermal diffusivity lambda            = %12.5e\n", value);
 

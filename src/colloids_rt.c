@@ -449,6 +449,10 @@ int colloids_rt_state_stub(pe_t * pe, rt_t * rt, colloids_info_t * cinfo,
   nrt = rt_int_parameter(rt, key, &state->isfixeds);
   if (nrt) pe_info(pe, format_i1, key, state->isfixeds);
 
+  sprintf(key, "%s_%s", stub, "janus_colloid_on");
+  nrt = rt_int_parameter(rt, key, &state->isjanus);
+  if (nrt) pe_info(pe, format_i1, key, state->isjanus);
+
   sprintf(key, "%s_%s", stub, "type");
   nrt = rt_string_parameter(rt, key, value, BUFSIZ);
 
@@ -524,6 +528,19 @@ int colloids_rt_state_stub(pe_t * pe, rt_t * rt, colloids_info_t * cinfo,
   sprintf(key, "%s_%s", stub, "epsilon");
   nrt = rt_double_parameter(rt, key, &state->epsilon);
   if (nrt) pe_info(pe, format_e1, key, state->epsilon);
+
+  /* JANUS OFT */
+  sprintf(key, "%s_%s", stub, "Tj1");
+  nrt = rt_double_parameter(rt, key, &state->Tj1);
+  if (nrt) pe_info(pe, format_e1, key, state->Tj1);
+
+  sprintf(key, "%s_%s", stub, "Tj2");
+  nrt = rt_double_parameter(rt, key, &state->Tj2);
+  if (nrt) pe_info(pe, format_e1, key, state->Tj2);
+
+  sprintf(key, "%s_%s", stub, "jangle");
+  nrt = rt_double_parameter(rt, key, &state->jangle);
+  if (nrt) pe_info(pe, format_e1, key, state->jangle);
 
   return 0;
 }
