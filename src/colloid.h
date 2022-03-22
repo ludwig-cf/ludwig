@@ -30,13 +30,13 @@ typedef enum colloid_io_version colloid_io_version_t;
 
 
 /* -----> CHEMOVESICLE V2 */
-/* NPAD_INT 2 = 12 - iscentre - indexcentre - NBONDMAX2(3) -nbonds2 - NBONDMAX3 (3) - nbonds3*/
+/* NPAD_INT 2 = 12 - iscentre - indexcentre - ishole - NBONDMAX2(3) -nbonds2 - NBONDMAX3 (3) - nbonds3*/
 /* NPAD_DOUBLE 10 = 15 - u0 - delta - cutoff - phi_production 
 			-localmobility */
 /* <----- */
 
 #define NTOT_VAR (269+48)
-#define NPAD_INT  2
+#define NPAD_INT  1
 #define NPAD_DBL  9
 
 #define NBOND_MAX  3
@@ -79,6 +79,7 @@ struct colloid_state_type {
 /* -----> CHEMOVESICLE V2 */
   int iscentre;
   int indexcentre;
+  int ishole;
 /* <----- */
 
   /* New integer additions can be immediately before the padding */

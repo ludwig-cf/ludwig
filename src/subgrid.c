@@ -216,9 +216,8 @@ int subgrid_update(colloids_info_t * cinfo, hydro_t * hydro, int noise_flag) {
 	for ( ; p_colloid; p_colloid = p_colloid->next) {
 
           if (p_colloid->s.type != COLLOID_TYPE_SUBGRID) continue;
-
 	  /* If subrid particle is not central, it is updated normally */
-	  if (p_colloid->s.iscentre == 1) continue;
+	  //if (p_colloid->s.iscentre == 1) continue;
   
   	  drag = reta*(1.0/p_colloid->s.ah - 1.0/p_colloid->s.al);
   
@@ -245,7 +244,7 @@ int subgrid_update(colloids_info_t * cinfo, hydro_t * hydro, int noise_flag) {
           }
   
           for (ia = 0; ia < 3; ia++) {
-            p_colloid->s.v[ia] = p_colloid->fsub[ia] + drag*p_colloid->fex[ia]
+	    p_colloid->s.v[ia] = p_colloid->fsub[ia] + drag*p_colloid->fex[ia]
                                    + frand[ia];
   	    p_colloid->s.dr[ia] = p_colloid->s.v[ia];
   	  }
@@ -260,7 +259,7 @@ int subgrid_update(colloids_info_t * cinfo, hydro_t * hydro, int noise_flag) {
 /* -----> CHEMOVESICLE V2 */
 /*****************************************************************************
  *
-*  subgrid_centre_update ! MUST BE CALLED AFTER SUBGRID_UPDATE !
+*  subgrid_centre_update  ! MUST BE CALLED AFTER SUBGRID_UPDATE !
  *
  *  This function is responsible for update of position for
  *  sub-gridscale particles. It takes the place of BBL for
@@ -276,84 +275,132 @@ int subgrid_centre_update(colloids_info_t * cinfo, hydro_t * hydro, int noise_fl
   int ic, jc, kc, ic2, jc2, kc2;
   int di[2], dj[2], dk[2];
   int ncell[3];
-  int nparticles;
-  double centerofmass[3];
+  int nparticles, ntotal[3];
+  int timestep, freq = 100;
+  double centerofmass[3] = {0. , 0. , 0.}, dr[3] = {0., 0., 0.};
+  double rvesicle = 10.055, r_edge[3];
+
+  MPI_Comm comm;
+  MPI_Status status;
+  cs_cart_comm(cinfo->cs, &comm);
+
+
   colloid_t * p_colloid;
   colloid_t * p_colloid_edge;
   physics_t * phys = NULL;
+  physics_ref(&phys);
+  timestep = physics_control_timestep(phys);
   assert(cinfo);
   assert(hydro);
 
   if (cinfo->nsubgrid == 0) return 0;
 
   colloid_sums_halo(cinfo, COLLOID_SUM_SUBGRID);
-
   colloids_info_ncell(cinfo, ncell);
+  cs_ntotal(cinfo->cs, ntotal);
 
-  /* <-------------------------------Loop over cells+halo and find central--------------------------------> */
+  /* <-------------------------------Loop over local domain to find central--------------------------------> */
 
-  for (ic = 1; ic <= ncell[X] + 0; ic++) {
+  for (ic = 1; ic <= ncell[X]; ic++) {
     colloids_info_climits(cinfo, X, ic, di);
-    for (jc = 1; jc <= ncell[Y] + 0; jc++) {
+    for (jc = 1; jc <= ncell[Y]; jc++) {
       colloids_info_climits(cinfo, Y , jc, dj);
-      for (kc = 1; kc <= ncell[Z] + 0; kc++) {
+      for (kc = 1; kc <= ncell[Z]; kc++) {
         colloids_info_climits(cinfo, Z, kc, dk);
-		
+
         colloids_info_cell_list_head(cinfo, ic, jc, kc, &p_colloid);
 	for (; p_colloid; p_colloid = p_colloid->next) {
-	
 	  /* Filter out non subgrid and edge particles */	
-          if (p_colloid->s.type != COLLOID_TYPE_SUBGRID || p_colloid->s.iscentre == 0) continue;
-	  //pe_verbose(hydro->pe,"central index %d\n", p_colloid->s.index );
-	  /* Reset variables */
-	  nparticles = 0;
+          if (p_colloid->s.type != COLLOID_TYPE_SUBGRID) continue;
+          if (p_colloid->s.iscentre != 1) continue;
+   	    
 	  for (ia = 0; ia < 3; ia++) centerofmass[ia] = 0.0;
+	  for (ia = 0; ia < 3; ia++) r_edge[ia] = 0.0;
+	  nparticles = 0;
+    	  /*<--------------------------Loop over central-adjacent cells to find edge particles----------------------------> */
+    	  for (ic2 = di[0]; ic2 <= di[1]; ic2++) {
+    	    for (jc2 = dj[0]; jc2 <= dj[1]; jc2++) {
+    	      for (kc2 = dk[0]; kc2 <= dk[1]; kc2++) {
+      
+                colloids_info_cell_list_head(cinfo, ic2, jc2, kc2, &p_colloid_edge);
 
-	  /*<--------------------------Loop over central-adjacent cells to find edge particles----------------------------> */
-
-	  for (ic2 = di[0]; ic2 <= di[1]; ic2++) {
-	    for (jc2 = dj[0]; jc2 <= dj[1]; jc2++) {
-	      for (kc2 = dk[0]; kc2 <= dk[1]; kc2++) {
-
-	        colloids_info_cell_list_head(cinfo, ic2, jc2, kc2, &p_colloid_edge);
-	  		
-	        for (; p_colloid_edge; p_colloid_edge = p_colloid_edge->next) {
-		
-	  	/* Filter out particles from vesicles not belonging to the current p_colloid */
-	          if ((p_colloid_edge->s.indexcentre == p_colloid->s.index) && (p_colloid_edge->s.iscentre == 0)) {
-		    
-	            for (ia = 0; ia < 3; ia ++) {
-	              centerofmass[ia] += p_colloid_edge->s.r[ia];
-	            }
-	            nparticles += 1;	
-	          }
-	        }
-	      }
-	    }
+    	        for (; p_colloid_edge; p_colloid_edge = p_colloid_edge->next) {
+    	          /* Filter out particles from vesicles not belonging to the current p_colloid */
+    	          if ((p_colloid_edge->s.indexcentre == p_colloid->s.index) && (p_colloid_edge->s.iscentre == 0)) {
+		    nparticles += 1;
+		    cs_minimum_distance(cinfo->cs, p_colloid->s.r, p_colloid_edge->s.r, r_edge);
+    	            for (ia = 0; ia < 3; ia ++) {
+		      centerofmass[ia] += p_colloid->s.r[ia] + r_edge[ia];
+		    }
+    	          }
+    	        }
+    	      }
+    	    }
 	  }
 
-	  for (ia = 0; ia < 3; ia ++) {
-	    //pe_verbose(hydro->pe, "nparticles = %d\n", nparticles);
-	    if (nparticles == 0) pe_fatal(hydro->pe, "No edge particle associated to a central particles (nparticles = %d) \n", nparticles);
-	    centerofmass[ia] = centerofmass[ia] / nparticles;
-	  }
-	  /*pe_verbose(hydro->pe, "c-o-m %f %f %f\n",
-		centerofmass[X], centerofmass[Y], centerofmass[Z]); */
-	  for (ia = 0; ia < 3; ia ++) {
-	    /* The velocity of the colloid is set to that which makes it go to the center of mass in 1 timestep */
+	  for (ia = 0; ia < 3; ia++) {
+	    centerofmass[ia] = centerofmass[ia] /nparticles;
+	    p_colloid->centerofmass[ia] = centerofmass[ia];
 
-	    p_colloid->centerofmass[ia] = centerofmass[ia]; 
-	    p_colloid->s.v[ia] = p_colloid->centerofmass[ia] - p_colloid->s.r[ia]; 
-	    p_colloid->s.dr[ia] = p_colloid->s.v[ia];
-	  }	      
+            p_colloid->s.v[ia] = centerofmass[ia] - p_colloid->s.r[ia]; 
+	    dr[ia] = centerofmass[ia] - p_colloid->s.r[ia];
+
+            p_colloid->s.dr[ia] = p_colloid->s.v[ia];
+	  }
+	  if (timestep % freq == 0){
+	  //pe_verbose(cinfo->pe, "centerofmass = %14.7e\n", centerofmass[Z]);
+	  //pe_verbose(cinfo->pe, "position z = %14.7e\n", p_colloid->s.r[Z]);
+	  //pe_verbose(cinfo->pe, "dr z = %14.7e\n", dr[Z]);
+	  }
 	}
       }
     }
   }
-  
-  colloid_sums_halo(cinfo, COLLOID_SUM_SUBGRID_CENTRAL);
+
+/* Communicate the dr to all processes */
+  int count, myid, realrank = 150;
+
+  MPI_Barrier(comm); 
+  MPI_Comm_size(comm, &count);
+  MPI_Comm_rank(comm, &myid);
+
+  if (centerofmass[X] + centerofmass[Y] + centerofmass[Z] != 0.0) {
+    realrank = myid;
+  }
+
+  if (myid == realrank) {
+    // If we are the process that found the real central particle, send centerofmass to everyone
+    int i;
+    for (i = 0; i < count; i++) {
+      if (i != realrank) {
+        MPI_Send(dr, 3, MPI_DOUBLE, i, 0, comm);
+      }
+    }
+  } 
+
+  if (myid != realrank) {
+    // If we are a receiver process, receive centerofmass
+    MPI_Recv(dr, 3, MPI_DOUBLE, MPI_ANY_SOURCE, 0, comm, &status);
+  }
+
+  for (ic = 0; ic <= ncell[X] + 1; ic++) {
+    for (jc = 0; jc <= ncell[Y] + 1; jc++) {
+      for (kc = 0; kc <= ncell[Z] + 1; kc++) {
+		
+        colloids_info_cell_list_head(cinfo, ic, jc, kc, &p_colloid);
+	for (; p_colloid; p_colloid = p_colloid->next) {
+          if (p_colloid->s.type != COLLOID_TYPE_SUBGRID) continue;
+          if (p_colloid->s.iscentre != 1) continue;
+
+	  for (ia = 0; ia < 3; ia ++) p_colloid->s.dr[ia] = dr[ia];
+	}
+      }
+    }
+  }
+
   return 0;
 }
+
 
 /*****************************************************************************
  *
@@ -629,38 +676,45 @@ int subgrid_phi_production(colloids_info_t * cinfo, field_t * phi) {
 }
 
 
+
 /*****************************************************************************
  *
- *  subgrid_mobility_map
- *
- *  Create mobility map from each colloid "localmobility" attribute  
+ *  subgrid_mobility_map  ! MUST BE CALLED AFTER SUBGRID_UPDATE !
  *
  *****************************************************************************/
 
 int subgrid_mobility_map(colloids_info_t * cinfo, field_t * mobility_map, rt_t * rt) {
 
-  int on;
-  int ic, jc, kc;
-  int i, j, k, i_min, i_max, j_min, j_max, k_min, k_max;
-  int index;
-  int nlocal[3], offset[3];
-  int ncell[3];
+  
+  int ia, i, j, k, on;
+  int rank, index;
+  int ic, jc, kc, ic2, jc2, kc2;
+  int di[2], dj[2], dk[2];
+  int ncell[3], offset[3], nlocal[3];
 
-  double r0[3], r[3];
-  double localmobility;
-  double localrange;
-  double mobility;
+  double m[3] = {0., 0., 0.}, r_edge[3] = {0., 0., 0.};
+  double rcentre[3], r0centre[3], r[3];
+  double rnorm, mnorm, rsq, mobility;
+  double rvesicle = 10.055;  
+  double cosalpha, alpha, gaussalpha;
+
+  MPI_Comm comm;
+  MPI_Status status;
+  cs_cart_comm(cinfo->cs, &comm);
+
   colloid_t * p_colloid;
-
+  colloid_t * p_colloid_edge;
   physics_t * phys = NULL;
+
+
   physics_ref(&phys);
   physics_mobility(phys, &mobility);
-  assert(cinfo);
-  assert(rt);
-
-  cs_nlocal(cinfo->cs, nlocal);
-  cs_nlocal_offset(cinfo->cs, offset);
   colloids_info_ncell(cinfo, ncell);
+  cs_nlocal_offset(cinfo->cs, offset);
+  cs_nlocal(cinfo->cs, nlocal);
+  
+  if (cinfo->nsubgrid == 0) return 0;
+  assert(cinfo);
 
   rt_int_parameter(rt, "subgrid_mobility_map", &on); 
   
@@ -678,61 +732,196 @@ int subgrid_mobility_map(colloids_info_t * cinfo, field_t * mobility_map, rt_t *
 
   if (!on) return 0;
 
-  /* Loop through all cells (including the halo cells) */
+// Calculate  m
 
-  for (ic = 0; ic <= ncell[X] + 1; ic++) {
-    for (jc = 0; jc <= ncell[Y] + 1; jc++) {
-      for (kc = 0; kc <= ncell[Z] + 1; kc++) {
+  /* Find central particle */
+  for (ic = 1; ic <= ncell[X] + 0; ic++) {
+    colloids_info_climits(cinfo, X, ic, di);
+    for (jc = 1; jc <= ncell[Y] + 0; jc++) {
+      colloids_info_climits(cinfo, Y , jc, dj);
+      for (kc = 1; kc <= ncell[Z] + 0; kc++) {
+        colloids_info_climits(cinfo, Z, kc, dk);
+        colloids_info_cell_list_head(cinfo, ic, jc, kc, &p_colloid);
 
-	colloids_info_cell_list_head(cinfo, ic, jc, kc, &p_colloid);
-
-	for ( ; p_colloid; p_colloid = p_colloid->next) {
-
+	for (; p_colloid; p_colloid = p_colloid->next) {
+	  /* Filter out non subgrid and edge particles */	
           if (p_colloid->s.type != COLLOID_TYPE_SUBGRID) continue;
-	  if (p_colloid->s.iscentre == 1) continue;
+          if (p_colloid->s.iscentre != 1) continue;
+   	    
+	  /* Find associated hole particle */
+    	  for (ic2 = di[0]; ic2 <= di[1]; ic2++) {
+    	    for (jc2 = dj[0]; jc2 <= dj[1]; jc2++) {
+    	      for (kc2 = dk[0]; kc2 <= dk[1]; kc2++) {
+      
+                colloids_info_cell_list_head(cinfo, ic2, jc2, kc2, &p_colloid_edge);
 
-	  /* Need to translate the colloid position to "local"
-	   * coordinates, so that the correct range of lattice
-	   * nodes is found */
+    	        for (; p_colloid_edge; p_colloid_edge = p_colloid_edge->next) {
+    	          /* Filter out edge particles from other vesicles */
+    	          if (p_colloid_edge->s.indexcentre != p_colloid->s.index) continue;
+		  if (p_colloid_edge->s.ishole != 1) continue;
+		  
+		  cs_minimum_distance(cinfo->cs, p_colloid->s.r, p_colloid_edge->s.r, m);
+		  
+		  mnorm = sqrt(m[X]*m[X] + m[Y]*m[Y] + m[Z]*m[Z]);
 
-	  r0[X] = p_colloid->s.r[X] - 1.0*offset[X];
-	  r0[Y] = p_colloid->s.r[Y] - 1.0*offset[Y];
-	  r0[Z] = p_colloid->s.r[Z] - 1.0*offset[Z];
-
-	  /* Work out which local lattice sites are involved
-	   * and loop around */
-	  
-	  localrange = p_colloid->s.localrange;
-	  localmobility = p_colloid->s.localmobility;
-
-	  i_min = imax(1,         (int) floor(r0[X] - localrange));
-	  i_max = imin(nlocal[X], (int) ceil (r0[X] + localrange));
-	  j_min = imax(1,         (int) floor(r0[Y] - localrange));
-	  j_max = imin(nlocal[Y], (int) ceil (r0[Y] + localrange));
-	  k_min = imax(1,         (int) floor(r0[Z] - localrange));
-	  k_max = imin(nlocal[Z], (int) ceil (r0[Z] + localrange));
-
-	  //pe_verbose(cinfo->pe, "index %d mobility %f range %f\n", p_colloid->s.index,
-	  //				p_colloid->s.localmobility, p_colloid->s.localrange);
-
-	  for (i = i_min; i <= i_max; i++) {
-	    for (j = j_min; j <= j_max; j++) {
-	      for (k = k_min; k <= k_max; k++) {
-		double dist = pow(pow(i-r0[X], 2) + pow(j-r0[Y], 2) + pow(k-r0[Z], 2), 0.5);
-		if (dist < localrange) {
-		  index = cs_index(cinfo->cs, i, j, k);
-		  field_scalar_set(mobility_map, index, localmobility);
-		}
-	      }
-	    }
+		  m[X] /= mnorm;
+		  m[Y] /= mnorm;
+		  m[Z] /= mnorm;
+		  //pe_verbose(cinfo->pe, "%f %f %f \n", m[X], m[Y], m[Z]);
+		  break;
+    	        }
+    	      }
+    	    }
 	  }
-	  /* Next colloid */
 	}
-
-	/* Next cell */
       }
     }
   }
+
+// Calculate rcentre with halo extrapoloation
+
+  /* Loop over all edges in the domain */
+  for (ic = 1; ic <= ncell[X] + 0; ic++) {
+    colloids_info_climits(cinfo, X, ic, di);
+    for (jc = 1; jc <= ncell[Y] + 0; jc++) {
+      colloids_info_climits(cinfo, Y , jc, dj);
+      for (kc = 1; kc <= ncell[Z] + 0; kc++) {
+        colloids_info_climits(cinfo, Z, kc, dk);
+        colloids_info_cell_list_head(cinfo, ic, jc, kc, &p_colloid_edge);
+
+	for (; p_colloid_edge; p_colloid_edge = p_colloid_edge->next) {
+	  /* Filter out non subgrid and edge particles */	
+          if (p_colloid_edge->s.type != COLLOID_TYPE_SUBGRID) continue;
+          if (p_colloid_edge->s.iscentre == 1) continue;
+   	    
+	  /* Find centre particle */
+    	  for (ic2 = di[0]; ic2 <= di[1]; ic2++) {
+    	    for (jc2 = dj[0]; jc2 <= dj[1]; jc2++) {
+    	      for (kc2 = dk[0]; kc2 <= dk[1]; kc2++) {
+      
+                colloids_info_cell_list_head(cinfo, ic2, jc2, kc2, &p_colloid);
+
+    	        for (; p_colloid; p_colloid = p_colloid->next) {
+    	          /* Filter out edge particles from other vesicles */
+    	          if (p_colloid->s.iscentre == 0) continue;
+		  cs_minimum_distance(cinfo->cs, p_colloid_edge->s.r, p_colloid->s.r, r_edge);
+		  for (ia = 0; ia < 3; ia ++) p_colloid_edge->centerofmass[ia] = p_colloid_edge->s.r[ia] + r_edge[ia]; 
+    	        }
+    	      }
+    	    }
+	  }
+	}
+      }
+    }
+  }
+
+// Comm m
+
+/* Communicate m to all processes */
+  int count, myid, realrank = 150;
+
+  MPI_Barrier(comm); 
+  MPI_Comm_size(comm, &count);
+  MPI_Comm_rank(comm, &myid);
+
+  if ((m[X] != 0.0) || (m[Y] != 0) || (m[Z] != 0)) {
+    realrank = myid;
+  }
+
+  if (myid == realrank) {
+    for (int i = 0; i < count; i++) {
+      if (i != realrank) {
+        MPI_Send(m, 3, MPI_DOUBLE, i, 0, comm);
+      }
+    }
+  } 
+
+  if (myid != realrank) {
+    // If we are a receiver process, receive centerofmass
+    MPI_Recv(m, 3, MPI_DOUBLE, MPI_ANY_SOURCE, 0, comm, &status);
+  }
+
+  for (ic = 1; ic <= ncell[X]; ic++) {
+    for (jc = 1; jc <= ncell[Y]; jc++) {
+      for (kc = 1; kc <= ncell[Z]; kc++) {
+		
+        colloids_info_cell_list_head(cinfo, ic, jc, kc, &p_colloid);
+	for (; p_colloid; p_colloid = p_colloid->next) {
+          if (p_colloid->s.type != COLLOID_TYPE_SUBGRID) continue;
+	  //pe_verbose(cinfo->pe, "%f %f %f \n", m[X], m[Y], m[Z]);
+	  for (ia = 0; ia < 3; ia ++) p_colloid->s.m[ia] = m[ia];
+	}
+      }
+    }
+  }
+
+// Assign mobility
+  for (ic = 1; ic <= ncell[X] + 0; ic++) {
+    colloids_info_climits(cinfo, X, ic, di);
+    for (jc = 1; jc <= ncell[Y] + 0; jc++) {
+      colloids_info_climits(cinfo, Y , jc, dj);
+      for (kc = 1; kc <= ncell[Z] + 0; kc++) {
+        colloids_info_climits(cinfo, Z, kc, dk);
+        colloids_info_cell_list_head(cinfo, ic, jc, kc, &p_colloid);
+	
+	// Get central position and orientation from any subgrid coll in the domain
+	for (; p_colloid; p_colloid = p_colloid->next) {
+	   
+	  r0centre[X] = p_colloid->centerofmass[X] - offset[X];
+	  r0centre[Y] = p_colloid->centerofmass[Y] - offset[Y];
+	  r0centre[Z] = p_colloid->centerofmass[Z] - offset[Z];
+
+	  m[X] = p_colloid->s.m[X];	  
+	  m[Y] = p_colloid->s.m[Y];	  
+	  m[Z] = p_colloid->s.m[Z];	  
+	  break; 
+	}
+      }
+    }
+  }
+
+  for (ic = 1; ic <= ncell[X] + 0; ic++) {
+    colloids_info_climits(cinfo, X, ic, di);
+    for (jc = 1; jc <= ncell[Y] + 0; jc++) {
+      colloids_info_climits(cinfo, Y , jc, dj);
+      for (kc = 1; kc <= ncell[Z] + 0; kc++) {
+        colloids_info_climits(cinfo, Z, kc, dk);
+        colloids_info_cell_list_head(cinfo, ic, jc, kc, &p_colloid);
+
+	for (; p_colloid; p_colloid = p_colloid->next) {
+
+	  for (i = 1; i <= nlocal[X]; i++) {
+	    for (j = 1; j <= nlocal[Y]; j++) {
+	      for (k = 1; k <= nlocal[Z]; k++) {
+	     
+	        index = cs_index(cinfo->cs, i, j, k); 
+	        /* Compute the distance between centre and node */
+	        r[X] = - r0centre[X] + 1.0*i;	    
+	        r[Y] = - r0centre[Y] + 1.0*j;	    
+	        r[Z] = - r0centre[Z] + 1.0*k;	    
+	      
+	        rsq = r[X]*r[X] + r[Y]*r[Y] + r[Z]*r[Z];
+	        rnorm = sqrt(rsq);
+
+	        if (rnorm <= rvesicle + 2 && rnorm >= rvesicle - 2) {
+	          field_scalar_set(mobility_map, index, 0.0);
+		  
+		  cosalpha = (r[X]*m[X] + r[Y]*m[Y] + r[Z]*m[Z]) / rnorm;
+		  alpha = acos(cosalpha);
+		  if (alpha >= -1.0 && alpha <= 1.0) {
+		    gaussalpha = exp((-alpha/0.3)*(alpha/0.3))*0.5;
+		    field_scalar_set(mobility_map, index, gaussalpha);
+		  }
+	        }
+	      }
+	    }
+	  }
+	}	
+	  //pe_verbose(cinfo->pe, "n = %d colloid index %d has centerofmass = %14.7e and orientation = %f %f %f\n", p_colloid->s.index, p_colloid->centerofmass[Z], p_colloid->s.m[X], p_colloid->s.m[Y], p_colloid->s.m[Z]);
+      }
+    }
+  }
+
 
   return 0;
 }

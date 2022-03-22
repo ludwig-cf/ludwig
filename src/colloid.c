@@ -77,6 +77,7 @@ int colloid_state_read_ascii(colloid_state_t * ps, FILE * fp) {
 /* -----> CHEMOVESICLE V2 */
   nread += fscanf(fp, isformat, &ps->iscentre);
   nread += fscanf(fp, isformat, &ps->indexcentre);
+  nread += fscanf(fp, isformat, &ps->ishole);
 /* <----- */
 
   for (n = 0; n < NPAD_INT; n++) {
@@ -221,6 +222,7 @@ int colloid_state_write_ascii(const colloid_state_t * s, FILE * fp) {
 /* Attributes of edge/central vesicles */
   nwrite += fprintf(fp, isformat, s->iscentre);
   nwrite += fprintf(fp, isformat, s->indexcentre);
+  nwrite += fprintf(fp, isformat, s->ishole);
 /* <----- */
 
   for (n = 0; n < NPAD_INT; n++) {
@@ -234,6 +236,7 @@ int colloid_state_write_ascii(const colloid_state_t * s, FILE * fp) {
   nwrite += fprintf(fp, vformat, s->w[0], s->w[1], s->w[2]);
   nwrite += fprintf(fp, vformat, s->s[0], s->s[1], s->s[2]);
   nwrite += fprintf(fp, vformat, s->m[0], s->m[1], s->m[2]);
+  printf("%f %f %f\n", s->m[0], s->m[1], s->m[2]);
   nwrite += fprintf(fp, sformat, s->b1);
   nwrite += fprintf(fp, sformat, s->b2);
   nwrite += fprintf(fp, sformat, s->c);
