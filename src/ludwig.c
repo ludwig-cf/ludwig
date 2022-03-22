@@ -259,6 +259,7 @@ static int ludwig_rt(ludwig_t * ludwig) {
   /* All the same I/O grid  */
 
   if (ludwig->phi) field_init_io_info(ludwig->phi, io_grid, form, form);
+  if (ludwig->mobility_map) field_init_io_info(ludwig->mobility_map, io_grid, form, form);
   if (ludwig->p) field_init_io_info(ludwig->p, io_grid, form, form);
   if (ludwig->q) field_init_io_info(ludwig->q, io_grid, form, form);
 
@@ -837,13 +838,9 @@ void ludwig_run(const char * inputfile) {
       wall_set_wall_distributions(ludwig->wall);
 
       subgrid_phi_production(ludwig->collinfo, ludwig->phi); 
-      subgrid_mobility_map(ludwig->collinfo, ludwig->mobility_map, ludwig->rt);
       subgrid_update(ludwig->collinfo, ludwig->hydro, noise_flag);
-
-/* -----> CHEMOVESICLE V2 */
-/* Updates the central particles (iscentre = 1) */
       subgrid_centre_update(ludwig->collinfo, ludwig->hydro, noise_flag);
-/* <----- */
+      subgrid_mobility_map(ludwig->collinfo, ludwig->mobility_map, ludwig->rt);
 
       bounce_back_on_links(ludwig->bbl, ludwig->lb, ludwig->wall,
 			   ludwig->collinfo);
@@ -901,6 +898,15 @@ void ludwig_run(const char * inputfile) {
       }
     }
 
+    if (is_mobility_output_step() || is_config_step()) {
+
+      if (ludwig->mobility_map) {
+	field_io_info(ludwig->mobility_map, &iohandler);
+	pe_info(ludwig->pe, "Writing mobility file at step %d!\n", step);
+	sprintf(filename,"%smobility_map-%8.8d", subdirectory, step);
+	io_write_data(iohandler, filename, ludwig->mobility_map);
+      }
+    } 
     if (is_phi_output_step() || is_config_step()) {
 
       if (ludwig->phi) {
@@ -1058,6 +1064,13 @@ void ludwig_run(const char * inputfile) {
       pe_info(ludwig->pe, "Writing phi file at step %d!\n", step);
       sprintf(filename,"%sphi-%8.8d", subdirectory, step);
       io_write_data(iohandler, filename, ludwig->phi);
+    }
+
+    if (ludwig->mobility_map) {
+      field_io_info(ludwig->mobility_map, &iohandler);
+      pe_info(ludwig->pe, "Writing mobility map file at step %d!\n", step);
+      sprintf(filename, "%smobility_map-%8.8d", subdirectory, step);
+      io_write_data(iohandler, filename, ludwig->mobility_map);
     }
 
     if (ludwig->q) {
