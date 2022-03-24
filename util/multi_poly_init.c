@@ -144,11 +144,14 @@ int main(int argc, char ** argv) {
     state[n].m[X] = 1.0;
     state[n].m[Y] = 0.0;
     state[n].m[Z] = 0.0;
+    state[n].n[X] = 0.0;
+    state[n].n[Y] = 1.0;
+    state[n].n[Z] = 0.0;
     state[n].type = type;
     if (type == COLLOID_TYPE_SUBGRID) {
       state[n].al= al;
       /* Needs a_L */
-      state[n].u0 = 0.00001;
+      state[n].u0 = 0.0001;
       state[n].delta = 1.0;
       state[n].cutoff = 2.0;
     }
@@ -166,7 +169,7 @@ int main(int argc, char ** argv) {
     int nConnec, nConnec2, nConnec3;
     char data[256];
     char line[256];
-    int iscentre;
+    int iscentre, ishole;
     int indexcentre;
 
     FILE* file;
@@ -181,7 +184,7 @@ int main(int argc, char ** argv) {
 
     while (fgets(line, sizeof(line), file)) {
       strcpy(data,line);
-      sscanf(data, "%d %f %f %f %d %d %d %d %d %d %d %d %d %d %d %d %d %d %f %f %f", &numcol, &pos[0], &pos[1], &pos[2], &nConnec, &ni[0], &ni[1], &ni[2], &nConnec2, &mi[0], &mi[1], &mi[2], &nConnec3, &li[0], &li[1], &li[2], &iscentre, &indexcentre, &phi_production, &localrange, &localmobility);
+      sscanf(data, "%d %f %f %f %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %f %f %f", &numcol, &pos[0], &pos[1], &pos[2], &nConnec, &ni[0], &ni[1], &ni[2], &nConnec2, &mi[0], &mi[1], &mi[2], &nConnec3, &li[0], &li[1], &li[2], &iscentre, &ishole, &indexcentre, &phi_production, &localrange, &localmobility);
 
       numcol = numcol - 1;
 
@@ -201,7 +204,6 @@ int main(int argc, char ** argv) {
 
       if (central_links) {
         if (numcol != 0) {
-	  printf("numcol = %d", numcol);
           state[numcol].nbonds3 = 1;
 	  state[numcol].bond3[0] = 1;
 	  for (int numbond = 1; numbond < 240; numbond++) {
@@ -211,6 +213,7 @@ int main(int argc, char ** argv) {
       }  
 
       state[numcol].iscentre = iscentre;
+      state[numcol].ishole = ishole;
       state[numcol].indexcentre = indexcentre;
  
       state[numcol].phi_production = phi_production;

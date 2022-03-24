@@ -9,15 +9,15 @@ icosphere_small_l = 0.1821
 icosphere_large_l = 0.2060
 epsilon = 1e-3
 
-BOND_LENGTH = 1.0
+BOND_LENGTH = 3.0
 
 nbonds= 3
 nbonds2 = 3
 nbonds3 = 3
 
-XSHIFT = 20
-YSHIFT = 20
-ZSHIFT = 20
+XSHIFT = 40
+YSHIFT = 40
+ZSHIFT = 40
 
 # Additional attributes 
 indices = np.arange(1,NATOMS+1,1,dtype=int)
@@ -29,13 +29,14 @@ Connec = np.zeros((NATOMS, nbonds), dtype = int)
 Connec2 = np.zeros((NATOMS, nbonds2), dtype = int)
 Connec3 = np.zeros((NATOMS, nbonds3), dtype = int)
 iscentre = np.zeros((NATOMS*NVESICLES), dtype = int)
+ishole = np.zeros((NATOMS*NVESICLES), dtype = int)
 indexcentre = np.zeros((NATOMS*NVESICLES), dtype = int)
 phi_production = np.zeros((NATOMS*NVESICLES))
 localmobility = np.zeros((NATOMS*NVESICLES))
 localrange = np.zeros((NATOMS*NVESICLES))
 
-localrange[::] = 1.1*BOND_LENGTH
-localrange[-1] = 2.0*BOND_LENGTH
+localrange[::] = 1.42*BOND_LENGTH #localrange > sqrt(2) * BOND_LENGTH
+localrange[-1] = 3.5*BOND_LENGTH
 
 def file_to_array(filename):
   x, y, z = [], [], []
@@ -118,79 +119,17 @@ Connec3 = np.array(Connec3)
 factor = BOND_LENGTH / icosphere_small_l
 xyz = rescale(xyz, factor)
 
-p0 = xyz.T[0]
-for p in xyz.T:
-  print(dist(p, p0))
-
-
-# For each particle, print adjacent lengths and angle
-angles = []
-for i, p0 in enumerate(xyz.T):
-
-  #neighbours distance
-  if (Connec[i][0] == 0): p1 = p0
-  else: p1 = xyz.T[Connec[i][0] - 1]
-
-  if (Connec[i][1] == 0): p2 = p0
-  else: p2 = xyz.T[Connec[i][1] - 1]
-
-  if (Connec[i][2] == 0): p3 = p0
-  else: p3 = xyz.T[Connec[i][2] - 1]
-
-  #neighbours angle
-  cosine1 = np.dot(p1-p0, p2-p0)/(dist(p0,p1)*dist(p0,p2)) #angle 012
-  cosine2 = np.dot(p2-p0, p3-p0)/(dist(p0,p2)*dist(p0,p3)) #angle 023
-  cosine3 = np.dot(p1-p0, p3-p0)/(dist(p0,p1)*dist(p0,p3)) #angle 013
-   
-  #print(i,"012", np.arccos(cosine1))
-  #print(i,"023", np.arccos(cosine2))
-  #print(i,"013", np.arccos(cosine3))
-  angles.append(np.arccos(cosine1))
-  angles.append(np.arccos(cosine2))
-  angles.append(np.arccos(cosine3))
-
-angles2 = []
-
-# For each particle, print adjacent lengths and angle
-for i, p0 in enumerate(xyz.T):
-
-  #neighbours distance
-  if (Connec2[i][0] == 0): p1 = p0
-  else: p1 = xyz.T[Connec2[i][0] - 1]
-
-  if (Connec2[i][1] == 0): p2 = p0
-  else: p2 = xyz.T[Connec2[i][1] - 1]
-
-  if (Connec2[i][2] == 0): p3 = p0
-  else: p3 = xyz.T[Connec2[i][2] - 1]
-
-  #neighbours angle
-  cosine1 = np.dot(p1-p0, p2-p0)/(dist(p0,p1)*dist(p0,p2)) #angle 012
-  cosine2 = np.dot(p2-p0, p3-p0)/(dist(p0,p2)*dist(p0,p3)) #angle 023
-  cosine3 = np.dot(p1-p0, p3-p0)/(dist(p0,p1)*dist(p0,p3)) #angle 013
-  
-  #print(i,"012", np.arccos(cosine1))
-  #print(i,"023", np.arccos(cosine2))
-  #print(i,"013", np.arccos(cosine3))
-
-  angles2.append(np.arccos(cosine1))
-  angles2.append(np.arccos(cosine2))
-  angles2.append(np.arccos(cosine3))
-
-#plt.hist(angles)
-#plt.hist(angles2)
-#plt.show()
-
 #Other attributes
 iscentre[0] = 1 #0, NATOMS, etc...
+ishole[240] = 1 #0, NATOMS, etc...
 indexcentre[0:NATOMS + 1] = 1 #(0, NATOMS-1), (NATOMS, 2*NATOMS), etc..
 phi_production[0] = 0.01
 localmobility[::] = 0.0
-localmobility[-1] = 0.5
+localmobility[-1] = 0.9
 
 xyz[0, :] += XSHIFT
 xyz[1, :] += YSHIFT
 xyz[2, :] += ZSHIFT
 
-table = np.column_stack((indices, xyz.T, nConnec, Connec, nConnec2, Connec2, nConnec3, Connec3, iscentre.T, indexcentre.T, phi_production.T, localrange.T, localmobility.T))
-np.savetxt("latticeHexasphere.txt", table, fmt = '%3d     %3f %3f %3f      %3d %3d %3d %3d     %3d %3d %3d %3d     %3d %3d %3d %3d     %3d %3d      %3f     %3f %3f ')
+table = np.column_stack((indices, xyz.T, nConnec, Connec, nConnec2, Connec2, nConnec3, Connec3, iscentre.T, ishole.T, indexcentre.T, phi_production.T, localrange.T, localmobility.T))
+np.savetxt("latticeHexasphere.txt", table, fmt = '%3d     %3f %3f %3f      %3d %3d %3d %3d     %3d %3d %3d %3d     %3d %3d %3d %3d     %3d %3d %3d      %3f     %3f %3f ')

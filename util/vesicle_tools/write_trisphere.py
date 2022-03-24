@@ -34,7 +34,7 @@ localmobility = np.zeros((NATOMS*NVESICLES))
 localrange = np.zeros((NATOMS*NVESICLES))
 
 localrange[::] = 1.1*BOND_LENGTH
-localrange[-1] = 2.0*BOND_LENGTH
+localrange[-1] = 1.1*BOND_LENGTH
 
 def file_to_array(filename):
   x, y, z = [], [], []
@@ -186,7 +186,7 @@ iscentre[0] = 1 #0, NATOMS, etc...
 indexcentre[0:NATOMS + 1] = 1 #(0, NATOMS-1), (NATOMS, 2*NATOMS), etc..
 phi_production[0] = 0.01
 localmobility[::] = 0.0
-localmobility[-1] = 0.5
+localmobility[-1] = 0.0
 
 xyz[0, :] += XSHIFT
 xyz[1, :] += YSHIFT
