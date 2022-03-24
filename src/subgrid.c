@@ -692,9 +692,9 @@ int subgrid_mobility_map(colloids_info_t * cinfo, field_t * mobility_map, rt_t *
   int di[2], dj[2], dk[2];
   int ncell[3], offset[3], nlocal[3];
 
-  double m[3] = {0., 0., 0.}, r_edge[3] = {0., 0., 0.};
+  double m[3] = {0., 0., 0.}, n[3] = {0., 0., 0.}, r_edge[3] = {0., 0., 0.};
   double rcentre[3], r0centre[3], r[3];
-  double rnorm, mnorm, rsq, mobility;
+  double rnorm, mnorm, nnorm, rsq, mobility;
   double rvesicle = 10.055;  
   double cosalpha, alpha, gaussalpha;
 
@@ -778,6 +778,48 @@ int subgrid_mobility_map(colloids_info_t * cinfo, field_t * mobility_map, rt_t *
     }
   }
 
+  /* Find central particle */
+  for (ic = 1; ic <= ncell[X] + 0; ic++) {
+    colloids_info_climits(cinfo, X, ic, di);
+    for (jc = 1; jc <= ncell[Y] + 0; jc++) {
+      colloids_info_climits(cinfo, Y , jc, dj);
+      for (kc = 1; kc <= ncell[Z] + 0; kc++) {
+        colloids_info_climits(cinfo, Z, kc, dk);
+        colloids_info_cell_list_head(cinfo, ic, jc, kc, &p_colloid);
+
+	for (; p_colloid; p_colloid = p_colloid->next) {
+	  /* Filter out non subgrid and edge particles */	
+          if (p_colloid->s.type != COLLOID_TYPE_SUBGRID) continue;
+          if (p_colloid->s.iscentre != 1) continue;
+   	    
+	  /* Find orthogonal particle */
+    	  for (ic2 = di[0]; ic2 <= di[1]; ic2++) {
+    	    for (jc2 = dj[0]; jc2 <= dj[1]; jc2++) {
+    	      for (kc2 = dk[0]; kc2 <= dk[1]; kc2++) {
+      
+                colloids_info_cell_list_head(cinfo, ic2, jc2, kc2, &p_colloid_edge);
+
+    	        for (; p_colloid_edge; p_colloid_edge = p_colloid_edge->next) {
+    	          /* Filter out edge particles from other vesicles */
+    	          if (p_colloid_edge->s.indexcentre != p_colloid->s.index) continue;
+		  if (p_colloid_edge->s.index != 27) continue;
+		  
+		  cs_minimum_distance(cinfo->cs, p_colloid->s.r, p_colloid_edge->s.r, n);
+		  
+		  nnorm = sqrt(n[X]*n[X] + n[Y]*n[Y] + n[Z]*n[Z]);
+
+		  n[X] /= nnorm;
+		  n[Y] /= nnorm;
+		  n[Z] /= nnorm;
+		  break;
+    	        }
+    	      }
+    	    }
+	  }
+	}
+      }
+    }
+  }
 // Calculate rcentre with halo extrapoloation
 
   /* Loop over all edges in the domain */
@@ -848,12 +890,53 @@ int subgrid_mobility_map(colloids_info_t * cinfo, field_t * mobility_map, rt_t *
         colloids_info_cell_list_head(cinfo, ic, jc, kc, &p_colloid);
 	for (; p_colloid; p_colloid = p_colloid->next) {
           if (p_colloid->s.type != COLLOID_TYPE_SUBGRID) continue;
-	  //pe_verbose(cinfo->pe, "%f %f %f \n", m[X], m[Y], m[Z]);
-	  for (ia = 0; ia < 3; ia ++) p_colloid->s.m[ia] = m[ia];
+	  for (ia = 0; ia < 3; ia ++) {
+	    p_colloid->s.m[ia] = m[ia];
+	  }
 	}
       }
     }
   }
+
+/* Communicate n to all processes */
+  realrank = 150;
+
+  MPI_Barrier(comm); 
+  MPI_Comm_size(comm, &count);
+  MPI_Comm_rank(comm, &myid);
+
+  if ((n[X] != 0.0) || (n[Y] != 0) || (n[Z] != 0)) {
+    realrank = myid;
+  }
+
+  if (myid == realrank) {
+    for (int i = 0; i < count; i++) {
+      if (i != realrank) {
+        MPI_Send(n, 3, MPI_DOUBLE, i, 0, comm);
+      }
+    }
+  } 
+
+  if (myid != realrank) {
+    // If we are a receiver process, receive centerofmass
+    MPI_Recv(n, 3, MPI_DOUBLE, MPI_ANY_SOURCE, 0, comm, &status);
+  }
+
+  for (ic = 1; ic <= ncell[X]; ic++) {
+    for (jc = 1; jc <= ncell[Y]; jc++) {
+      for (kc = 1; kc <= ncell[Z]; kc++) {
+		
+        colloids_info_cell_list_head(cinfo, ic, jc, kc, &p_colloid);
+	for (; p_colloid; p_colloid = p_colloid->next) {
+          if (p_colloid->s.type != COLLOID_TYPE_SUBGRID) continue;
+	  for (ia = 0; ia < 3; ia ++) {
+	    p_colloid->s.n[ia] = n[ia];
+	  }
+	}
+      }
+    }
+  }
+
 
 // Assign mobility
   for (ic = 1; ic <= ncell[X] + 0; ic++) {

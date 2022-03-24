@@ -32,12 +32,12 @@ typedef enum colloid_io_version colloid_io_version_t;
 /* -----> CHEMOVESICLE V2 */
 /* NPAD_INT 2 = 12 - iscentre - indexcentre - ishole - NBONDMAX2(3) -nbonds2 - NBONDMAX3 (3) - nbonds3*/
 /* NPAD_DOUBLE 10 = 15 - u0 - delta - cutoff - phi_production 
-			-localmobility */
+			-localmobility - localrange - n[3]*/
 /* <----- */
 
 #define NTOT_VAR (269+48)
 #define NPAD_INT  1
-#define NPAD_DBL  9
+#define NPAD_DBL  6
 
 #define NBOND_MAX  3
 #define NBOND_MAX2  3
@@ -95,7 +95,8 @@ struct colloid_state_type {
   double v[3];          /* Velocity */
   double w[3];          /* Angular velocity omega */
   double s[3];          /* Magnetic dipole, or spin */
-  double m[3];          /* Current direction of motion vector (squirmer) */
+  double m[3];          /* Vesicle orientation */
+  double n[3];          /* Vesicle secondary orientation */
   double b1;	        /* squirmer active parameter b1 */
   double b2;            /* squirmer active parameter b2 */
   double c;             /* Wetting free energy parameter C */
