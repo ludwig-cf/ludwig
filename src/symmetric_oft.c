@@ -245,15 +245,15 @@ int fe_symm_oft_param(fe_symm_oft_t * fe, fe_symm_oft_param_t * values) {
 __host__ __device__
 int fe_symm_oft_interfacial_tension(fe_symm_oft_t * fe, double * sigma) {
 
-  double a0, b, kappa0;
+  double a0, b0, kappa0;
 
   assert(fe);
 
   a0 = fe->param->a0;
-  b = fe->param->b;
+  b0 = fe->param->b0;
   kappa0 = fe->param->kappa0;
 
-  *sigma = sqrt(-8.0*kappa0*a0*a0*a0/(9.0*b*b));
+  *sigma = sqrt(-8.0*kappa0*a0*a0*a0/(9.0*b0*b0));
 
   return 0;
 }
@@ -330,6 +330,7 @@ int fe_symm_oft_mu(fe_symm_oft_t * fe, int index, double * mu) {
   double delsq;
   double temperature;
   double A;
+  double B;
   double Kappa;
   
   phi = fe->phi->data[addr_rank0(fe->phi->nsites, index)];
@@ -337,9 +338,10 @@ int fe_symm_oft_mu(fe_symm_oft_t * fe, int index, double * mu) {
   temperature = fe->temperature->data[addr_rank0(fe->temperature->nsites, index)];
 
   A = fe->param->a0 + fe->param->a*temperature; 
+  B = fe->param->b0 + fe->param->b*temperature; 
   Kappa = fe->param->kappa0 + fe->param->kappa*temperature; 
 
-  *mu = A*phi + fe->param->b*phi*phi*phi - Kappa*delsq;
+  *mu = A*phi + B*phi*phi*phi - Kappa*delsq;
 
   return 0;
 }
@@ -363,6 +365,7 @@ int fe_symm_oft_str(fe_symm_oft_t * fe, int index,  double s[3][3]) {
   double entropy;
   double kappa0, kappa, kappaoft;
   double a0, a, aoft;
+  double b0, b, boft;
   double phi, temperature;
   double delsq_phi;
   double grad_phi[3];
@@ -375,7 +378,10 @@ int fe_symm_oft_str(fe_symm_oft_t * fe, int index,  double s[3][3]) {
   kappa = fe->param->kappa;
   a0 = fe->param->a0;
   a = fe->param->a;
-  
+  b0 = fe->param->b0;
+  b = fe->param->b;
+
+ 
   field_scalar(fe->phi, index, &phi);
   field_scalar(fe->temperature, index, &temperature);
   field_grad_scalar_grad(fe->dphi, index, grad_phi);
@@ -383,6 +389,7 @@ int fe_symm_oft_str(fe_symm_oft_t * fe, int index,  double s[3][3]) {
 
   kappaoft = kappa0 + kappa*temperature;
   aoft = a0 + a*temperature;
+  boft = b0 + b*temperature;
   
   /* TODO: entropy must be derived from Gibbs-Duhem and changed here */
   entropy = fe->param->entropy;
@@ -402,7 +409,7 @@ int fe_symm_oft_str(fe_symm_oft_t * fe, int index,  double s[3][3]) {
   }
 
 //Chemical stress (same as in symmetric.c)
-  p0 = 0.5*aoft*phi*phi + 0.75*fe->param->b*phi*phi*phi*phi
+  p0 = 0.5*aoft*phi*phi + 0.75*boft*phi*phi*phi*phi
     - kappaoft*phi*delsq_phi - 0.5*kappaoft*dot_product(grad_phi, grad_phi);
 
   for (ia = 0; ia < 3; ia++) {

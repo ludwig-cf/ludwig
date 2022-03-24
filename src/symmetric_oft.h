@@ -40,6 +40,7 @@ struct fe_symm_oft_s {
 struct fe_symm_oft_param_s {
   double a;			    /* A(T) = a0 + a*T */ 
   double a0; 
+  double b0;
   double b;
   double kappa;			    /* K(T) = kappa0 + kappa*T */ 
   double kappa0;

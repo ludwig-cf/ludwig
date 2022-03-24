@@ -56,6 +56,7 @@ int fe_symmetric_oft_init_rt(pe_t * pe, rt_t * rt, fe_symm_oft_t * fe) {
 /* <-------------- CHECK SYMM PARAMETERS -------------------> */
   have_symm += rt_double_parameter(rt, "symmetric_oft_a0",     &param.a0);
   have_symm += rt_double_parameter(rt, "symmetric_oft_a",     &param.a);
+  have_symm += rt_double_parameter(rt, "symmetric_oft_b0",     &param.b0);
   have_symm += rt_double_parameter(rt, "symmetric_oft_b",     &param.b);
   have_symm += rt_double_parameter(rt, "symmetric_oft_kappa0", &param.kappa0);
   have_symm += rt_double_parameter(rt, "symmetric_oft_kappa", &param.kappa);
@@ -65,6 +66,7 @@ int fe_symmetric_oft_init_rt(pe_t * pe, rt_t * rt, fe_symm_oft_t * fe) {
       /* must have all parameters */
     rt_key_required(rt, "symmetric_oft_a0",     RT_FATAL);
     rt_key_required(rt, "symmetric_oft_a",     RT_FATAL);
+    rt_key_required(rt, "symmetric_oft_b0",     RT_FATAL);
     rt_key_required(rt, "symmetric_oft_b",     RT_FATAL);
     rt_key_required(rt, "symmetric_oft_kappa0", RT_FATAL);
     rt_key_required(rt, "symmetric_oft_kappa", RT_FATAL);
@@ -105,6 +107,7 @@ int fe_symmetric_oft_init_rt(pe_t * pe, rt_t * rt, fe_symm_oft_t * fe) {
   pe_info(pe, "Parameters:\n");
   pe_info(pe, "Bulk parameter A0     = %12.5e\n", param.a0);
   pe_info(pe, "Bulk parameter A      = %12.5e\n", param.a);
+  pe_info(pe, "Bulk parameter B0      = %12.5e\n", param.b0);
   pe_info(pe, "Bulk parameter B      = %12.5e\n", param.b);
   pe_info(pe, "Surface penalty kappa0 = %12.5e\n", param.kappa0);
   pe_info(pe, "Surface penalty kappa = %12.5e\n", param.kappa);
