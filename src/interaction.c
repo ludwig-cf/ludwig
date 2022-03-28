@@ -663,7 +663,7 @@ int colloids_update_discrete_forces_phi(colloids_info_t * cinfo, field_t * phi, 
   colloid_t * pc = NULL;
 
 /* -----> For book-keeping */
-  int freq = 10, timestep;
+  int freq = 1000000, timestep;
   double colloidforce[3], localforce[3], globalforce[3];
   FILE * fp;
 // time stuff
