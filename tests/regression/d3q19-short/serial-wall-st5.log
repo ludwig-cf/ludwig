@@ -1,0 +1,163 @@
+Welcome to Ludwig v0.15.0 (Serial version running on 1 process)
+Start time: Sat Apr  2 20:13:41 2022
+
+Compiler:
+  name:           Clang 13.1.6
+  version-string: 13.1.6 (clang-1316.0.21.2)
+
+Note assertions via standard C assert() are on.
+
+Target thread model: None.
+
+Read 25 user parameters from serial-wall-st5.inp
+
+No free energy selected
+
+System details
+--------------
+System size:    24 24 24
+Decomposition:  1 1 1
+Local domain:   24 24 24
+Periodic:       0 0 0
+Halo nhalo:     1
+Reorder:        true
+Initialised:    1
+
+System properties
+----------------
+Mean fluid density:           1.00000e+00
+Shear viscosity               1.00000e-01
+Bulk viscosity                1.00000e-01
+Temperature                   0.00000e+00
+External body force density   0.00000e+00  0.00000e+00  0.00000e+00
+External E-field amplitude    0.00000e+00  0.00000e+00  0.00000e+00
+External E-field frequency    0.00000e+00
+External magnetic field       0.00000e+00  0.00000e+00  0.00000e+00
+
+Lattice Boltzmann distributions
+-------------------------------
+Model:            d3q19  
+SIMD vector len:  1
+Number of sets:   1
+Halo type:        full
+Input format:     binary
+Output format:    binary
+I/O grid:         1 1 1
+
+Lattice Boltzmann collision
+---------------------------
+Relaxation time scheme:   M10
+Hydrodynamic modes:       on
+Ghost modes:              on
+Isothermal fluctuations:  off
+Shear relaxation time:    8.00000e-01
+Bulk relaxation time:     8.00000e-01
+Ghost relaxation time:    1.00000e+00
+[User   ] Random number seed: 8361235
+
+Hydrodynamics
+-------------
+Hydrodynamics: on
+
+Boundary walls
+--------------
+Boundary walls:                  X Y Z
+Boundary speed u_x (bottom):     0.0000000e+00
+Boundary speed u_x (top):        0.0000000e+00
+Boundary normal lubrication rc:  0.0000000e+00
+Wall boundary links allocated:   16992
+Memory (total, bytes):           271872
+Boundary shear initialise:       0
+
+Colloid information
+-------------------
+
+Colloid I/O settings
+--------------------
+Decomposition:                1  1  1
+Number of files:              1
+Input format:                 ascii
+Output format:                ascii
+Single file read flag:        0
+
+Requested one colloid via input:
+colloid_one_a0                2.3000000e+00
+colloid_one_ah                2.3000000e+00
+colloid_one_r                 3.0000000e+00  1.2500000e+01  1.2500000e+01
+colloid_one_v                 0.0000000e+00  0.0000000e+00  0.0000000e+00
+
+Initialised 1 colloid
+
+Wall-colloid soft-sphere potential
+----------------------------------
+epsilon:                   1.0000000e-03
+sigma:                     1.0000000e-01
+exponent nu:               2.0000000e+00
+cut off hc (wall-surface)  5.0000000e-01
+
+Colloid cell list information
+-----------------------------
+Input radius maximum:         2.3000000e+00
+Final cell list:              8 8 8
+Final cell lengths:           3.0000000e+00  3.0000000e+00  3.0000000e+00
+
+Sedimentation force on:       yes
+Sedimentation force:         -1.0000000e-03  0.0000000e+00  0.0000000e+00
+
+Initial conditions.
+
+Scalars - total mean variance min max
+[rho]       13776.00  1.00000000000  2.2204460e-16  1.00000000000  1.00000000000
+
+Momentum - x y z
+[total   ]  0.0000000e+00  0.0000000e+00  0.0000000e+00
+[fluid   ]  0.0000000e+00  0.0000000e+00  0.0000000e+00
+[colloids]  0.0000000e+00  0.0000000e+00  0.0000000e+00
+[walls   ]  0.0000000e+00  0.0000000e+00  0.0000000e+00
+
+Starting time step loop.
+
+Particle statistics:
+Wall potential minimum h is:  2.0037974e-01
+Wall potential energy is:     1.6111411e-04
+
+Colloid velocities - x y z
+[minimum ]  6.0667740e-05  3.8982092e-18  4.4175480e-18
+[maximum ]  6.0667740e-05  3.8982092e-18  4.4175480e-18
+
+Scalars - total mean variance min max
+[rho]       13776.00  1.00000000000  2.4273028e-11  0.99987097316  1.00002663247
+
+Momentum - x y z
+[total   ]  4.9460956e-13  6.7014322e-15  2.1248064e-14
+[fluid   ]  8.8394048e-03 -1.6157561e-13  7.2809814e-14
+[colloids]  3.1708202e-03  3.2805819e-16  2.9260438e-16
+[walls   ] -1.2010225e-02  1.6794899e-13 -5.1854354e-14
+
+Velocity - x y z
+[minimum ] -8.5205736e-06 -2.9745063e-05 -2.9745063e-05
+[maximum ]  4.3807348e-05  2.9745063e-05  2.9745063e-05
+
+Completed cycle 10
+
+Timer resolution: 1e-06 second
+
+Timer statistics
+             Section:       tmin       tmax      total
+               Total:      0.195      0.195      0.195   0.194830 (1 call)
+      Time step loop:      0.016      0.017      0.169   0.016875 (10 calls)
+         Propagation:      0.003      0.004      0.035   0.003459 (10 calls)
+    Propagtn (krnl) :      0.003      0.004      0.035   0.003452 (10 calls)
+           Collision:      0.007      0.008      0.075   0.007523 (10 calls)
+   Collision (krnl) :      0.007      0.008      0.075   0.007515 (10 calls)
+       Lattice halos:      0.001      0.001      0.022   0.001118 (20 calls)
+       phi gradients:      0.000      0.000      0.000   0.000001 (10 calls)
+              Forces:      0.000      0.000      0.001   0.000103 (10 calls)
+             Rebuild:      0.000      0.001      0.004   0.000412 (10 calls)
+                 BBL:      0.003      0.003      0.027   0.002731 (10 calls)
+      Particle halos:      0.000      0.000      0.000   0.000023 (10 calls)
+   Force calculation:      0.000      0.000      0.000   0.000001 (10 calls)
+          phi update:      0.000      0.000      0.000   0.000000 (10 calls)
+               Free1:      0.000      0.007      0.007   0.000248 (30 calls)
+End time: Sat Apr  2 20:13:41 2022
+Ludwig finished normally.

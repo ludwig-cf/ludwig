@@ -1,6 +1,12 @@
 
 ### Changes
 
+version 0.16.0
+
+- Reinstated the boundary (wall) - colloid soft sphere potential.
+  See https://ludwig.epcc.ed.ac.uk/inputs/colloid.html
+  Thanks to Rishish Mishra for spotting this problem.
+
 version 0.15.0
 
 - Active stress implementation is updated to conform to the documented

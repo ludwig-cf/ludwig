@@ -7,7 +7,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2014-2021 The University of Edinburgh
+ *  (c) 2014-2022 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -32,6 +32,7 @@
 #include "pair_yukawa.h"
 #include "bond_fene.h"
 #include "angle_cosine.h"
+#include "wall_ss_cut.h"
 
 #include "colloids_halo.h"
 #include "colloids_init.h"
@@ -47,8 +48,10 @@ int pair_yukawa_init(pe_t * pe, cs_t * cs, rt_t * rt, interact_t * inter);
 int pair_lj_cut_init(pe_t * pe, cs_t * cs, rt_t * rt, interact_t * inter);
 int bond_fene_init(pe_t * pe, cs_t * cs, rt_t * rt, interact_t * interact);
 int angle_cosine_init(pe_t * pe, cs_t * cs, rt_t * rt, interact_t * interact);
-
 int pair_ss_cut_ij_init(pe_t * pe, cs_t * cs, rt_t * rt, interact_t * intrct);
+
+int wall_ss_cut_init(pe_t * pe, cs_t * cs, rt_t * rt, wall_t * wall,
+		     interact_t * inter);
 
 int colloids_rt_dynamics(cs_t * cs, colloids_info_t * cinfo, wall_t * wall,
 			 map_t * map, const lb_model_t * model);
@@ -145,6 +148,8 @@ int colloids_init_rt(pe_t * pe, rt_t * rt, cs_t * cs, colloids_info_t ** pinfo,
   angle_cosine_init(pe, cs, rt, *interact);
 
   pair_ss_cut_ij_init(pe, cs, rt, *interact);
+
+  wall_ss_cut_init(pe, cs, rt, wall, *interact);
 
   colloids_rt_cell_list_checks(pe, cs, pinfo, *interact);
   colloids_init_halo_range_check(pe, cs, *pinfo);
@@ -756,17 +761,12 @@ int pair_ss_cut_init(pe_t * pe, cs_t * cs, rt_t * rt, interact_t * inter) {
   double epsilon ;
   double sigma;
   int nu;
-  double kt;
   double cutoff;
 
-  physics_t * phys = NULL;
   pair_ss_cut_t * pair = NULL;
 
   assert(pe);
   assert(rt);
-
-  physics_ref(&phys);
-  physics_kt(phys, &kt);
 
   rt_int_parameter(rt, "soft_sphere_on", &on);
 
@@ -1070,4 +1070,47 @@ int colloids_init_halo_range_check(pe_t * pe, cs_t * cs,
   }
 
   return ifail;
+}
+
+/*****************************************************************************
+ *
+ *  wall_ss_cut_init
+ *
+ *****************************************************************************/
+
+int wall_ss_cut_init(pe_t * pe, cs_t * cs, rt_t * rt, wall_t * wall,
+		     interact_t * interact) {
+
+  int have_wall_ss_cut = 0;
+
+  assert(pe);
+  assert(cs);
+  assert(rt);
+
+  have_wall_ss_cut = rt_switch(rt, "wall_ss_cut_on");
+
+  if (have_wall_ss_cut) {
+
+    wall_ss_cut_t * wall_ss_cut = NULL;
+    wall_ss_cut_options_t opts = {};
+
+    rt_key_required(rt, "wall_ss_cut_epsilon", RT_FATAL);
+    rt_key_required(rt, "wall_ss_cut_sigma", RT_FATAL);
+    rt_key_required(rt, "wall_ss_cut_nu", RT_FATAL);
+    rt_key_required(rt, "wall_ss_cut_hc", RT_FATAL);
+
+    rt_double_parameter(rt, "wall_ss_cut_epsilon", &opts.epsilon);
+    rt_double_parameter(rt, "wall_ss_cut_sigma", &opts.sigma);
+    rt_double_parameter(rt, "wall_ss_cut_nu", &opts.nu);
+    rt_double_parameter(rt, "wall_ss_cut_hc", &opts.hc);
+
+    if (opts.nu <= 0) pe_fatal(pe, "Please ensure wall_ss_cut_nu is +ve\n");
+    if (opts.hc <= 0) pe_fatal(pe, "Please ensure wall_ss_cut_hc is +ve\n");
+
+    wall_ss_cut_create(pe, cs, wall, &opts, &wall_ss_cut);
+    wall_ss_cut_register(wall_ss_cut, interact);
+    wall_ss_cut_info(wall_ss_cut);
+  }
+
+  return 0;
 }

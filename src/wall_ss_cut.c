@@ -23,7 +23,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2010-2016 The University of Edinburgh
+ *  (c) 2010-2022 The University of Edinburgh
  *  Juho Lintuvuori (juho.lintuvuori@u-psud.fr)
  *
  *****************************************************************************/
@@ -47,7 +47,7 @@ struct wall_ss_cut_s {
   double hc;             /* cut-off */
   double vlocal;         /* local contribution to energy */
   double hminlocal;      /* local nearest separation */
-  double rminlocal;      /* local min centre-centre separation */
+  double rminlocal;      /* local min wall-centre separation */
 };
 
 /*****************************************************************************
@@ -57,12 +57,15 @@ struct wall_ss_cut_s {
  *****************************************************************************/
 
 int wall_ss_cut_create(pe_t * pe, cs_t * cs, wall_t * wall,
+		       const wall_ss_cut_options_t * opts,
 		       wall_ss_cut_t ** pobj) {
 
   wall_ss_cut_t * obj = NULL;
 
   assert(pe);
   assert(cs);
+  assert(wall);
+  assert(opts);
   assert(pobj);
 
   obj = (wall_ss_cut_t *) calloc(1, sizeof(wall_ss_cut_t));
@@ -72,6 +75,11 @@ int wall_ss_cut_create(pe_t * pe, cs_t * cs, wall_t * wall,
   obj->pe = pe;
   obj->cs = cs;
   obj->wall = wall;
+
+  obj->epsilon = opts->epsilon;
+  obj->sigma = opts->sigma;
+  obj->nu = opts->nu;
+  obj->hc = opts->hc;
 
   *pobj = obj;
 
@@ -95,24 +103,6 @@ int wall_ss_cut_free(wall_ss_cut_t * obj) {
 
 /*****************************************************************************
  *
- *  wall_ss_cut_param_set
- *
- *****************************************************************************/
-
-int wall_ss_cut_param_set(wall_ss_cut_t * obj, double epsilon, double sigma,
-			  int nu, double hc) {
-  assert(obj);
-
-  obj->epsilon = epsilon;
-  obj->sigma = sigma;
-  obj->nu = nu;
-  obj->hc = hc;
-
-  return 0;
-}
-
-/*****************************************************************************
- *
  *  wall_ss_cut_info
  *
  *****************************************************************************/
@@ -126,11 +116,12 @@ int wall_ss_cut_info(wall_ss_cut_t * obj) {
   physics_kt(phys, &kt);
 
   pe_info(obj->pe, "\n");
-  pe_info(obj->pe, "Soft sphere for wall potential\n");
+  pe_info(obj->pe, "Wall-colloid soft-sphere potential\n");
+  pe_info(obj->pe, "----------------------------------\n");
   pe_info(obj->pe, "epsilon:                  %14.7e\n", obj->epsilon);
   pe_info(obj->pe, "sigma:                    %14.7e\n", obj->sigma);
   pe_info(obj->pe, "exponent nu:              %14.7e\n", obj->nu);
-  pe_info(obj->pe, "cut off (surface-surface) %14.7e\n", obj->hc);
+  pe_info(obj->pe, "cut off hc (wall-surface) %14.7e\n", obj->hc);
   if (kt > 0.0) {
     pe_info(obj->pe, "epsilon / kT              %14.7e\n", obj->epsilon/kt);
   }
@@ -166,23 +157,11 @@ int wall_ss_cut_compute(colloids_info_t * cinfo, void * obj) {
 
   wall_ss_cut_t * self = (wall_ss_cut_t *) obj;
   
-  int ic1, jc1, kc1;
-  int ncell[3];
-  int ia;
-  int iswall[3];
-  
-  double r;                             /* centre-centre sepration */
-  double h;                             /* surface-surface separation */
-  double rh;                            /* reciprocal h */
-  double rsigma;                        /* reciproal sigma */
-  double vcut;                          /* potential at cut off */
-  double dvcut;                         /* derivative at cut off */
-  double forcewall[3];                  /* force on the wall for accounting purposes */
+  double forcewall[3] = {};             /* force on the wall for accounting */
   double lmin[3];
   double ltot[3];
-  double f;
 
-  colloid_t * pc1;
+  colloid_t * pc = NULL;
   
   assert(cinfo);
   assert(self);
@@ -194,65 +173,49 @@ int wall_ss_cut_compute(colloids_info_t * cinfo, void * obj) {
   self->hminlocal = dmax(ltot[X], dmax(ltot[Y], ltot[Z]));
   self->rminlocal = self->hminlocal;
 
-  rsigma = 1.0/self->sigma;
-  vcut = self->epsilon*pow(self->sigma/self->hc, self->nu);
-  dvcut = -self->epsilon*self->nu*rsigma*pow(self->sigma/self->hc, self->nu+1);
+  colloids_info_local_head(cinfo, &pc);
 
-  forcewall[X] = 0.0;
-  forcewall[Y] = 0.0;
-  forcewall[Z] = 0.0;
+  for (; pc; pc = pc->nextlocal) {
 
-  wall_present_dim(self->wall, iswall);
-  colloids_info_ncell(cinfo, ncell);
+    for (int ia = 0; ia < 3; ia++) {
 
-  for (ic1 = 1; ic1 <= ncell[X]; ic1++) {
-    for (jc1 = 1; jc1 <= ncell[Y]; jc1++) {
-      for (kc1 = 1; kc1 <= ncell[Z]; kc1++) {
-	
-        colloids_info_cell_list_head(cinfo, ic1, jc1, kc1, &pc1);
-        for (; pc1; pc1 = pc1->next) {
+      double f = 0.0;
+      double r = 0.0;                       /* wall-centre sepration */
+      double h = 0.0;                       /* wall-surface separation */
 
-	  for (ia = 0; ia < 3; ia++) {
-	    if (iswall[ia]) {
+      if (self->wall->param->isboundary[ia] == 0) continue;
 	      
-	      f = 0.0;
-	      /* lower wall */
-	      r = pc1->s.r[ia] - lmin[ia];
-	      if (r < self->rminlocal) self->rminlocal = r;
+      /* lower wall */
+      r = pc->s.r[ia] - lmin[ia];
+      h = r - pc->s.ah;
+
+      if (h < self->hminlocal) self->hminlocal = h;
+      if (r < self->rminlocal) self->rminlocal = r;
 	      
-	      h = r - pc1->s.ah;
-	      assert(h > 0.0);
-	      if (h < self->hminlocal) self->hminlocal = h;
-	      
-	      if (h < self->hc) {
-		rh = 1.0/h;
-		self->vlocal += self->epsilon*pow(rh*self->sigma, self->nu)
-		  - vcut - (h - self->hc)*dvcut;
-		f = -(-self->epsilon*self->nu*rsigma
-		      *pow(rh*self->sigma, self->nu+1) - dvcut);
-	      }
-	      
-	      /*upper wall*/
-	      r = lmin[ia] + ltot[ia] - pc1->s.r[ia];
-	      if (r < self->rminlocal) self->rminlocal = r;
-	      
-	      h = r - pc1->s.ah;
-	      assert(h > 0.0);
-	      if (h < self->hminlocal) self->hminlocal = h;
-	      
-	      if (h < self->hc) {
-		rh = 1.0/h;
-		self->vlocal += self->epsilon*pow(rh*self->sigma, self->nu)
-		  - vcut - (h - self->hc)*dvcut;
-		f -= -(-self->epsilon*self->nu*rsigma
-		       *pow(rh*self->sigma, self->nu+1) - dvcut);
-	      }
-	      pc1->force[ia] += f;
-	      forcewall[ia] -= f;
-	    }
-	  }
-	}
+      if (h < self->hc) {
+	double v = 0.0;
+	double fl = 0.0;
+	wall_ss_cut_single(self, h, &fl, &v);
+	self->vlocal += v;
+	f += fl;
       }
+	      
+      /* upper wall */
+      r = lmin[ia] + ltot[ia] - pc->s.r[ia];
+      h = r - pc->s.ah;
+
+      if (r < self->rminlocal) self->rminlocal = r;
+      if (h < self->hminlocal) self->hminlocal = h;
+	      
+      if (h < self->hc) {
+	double v = 0.0;
+	double fu = 0.0;
+	wall_ss_cut_single(self, h, &fu, &v);
+	self->vlocal += v;
+	f -= fu;            /* upper wall gives -ve (repulsive) force */
+      }
+      pc->force[ia] += f;
+      forcewall[ia] -= f;
     }
   }
 
