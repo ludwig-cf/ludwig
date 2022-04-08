@@ -73,7 +73,6 @@ int test_lb_prop_suite(void) {
 
 int do_test_velocity(pe_t * pe, cs_t * cs, int ndist, lb_halo_enum_t halo) {
 
-  int ndevice;
   int nlocal[3];
   int ic, jc, kc, index, p;
   int nd;
@@ -89,6 +88,8 @@ int do_test_velocity(pe_t * pe, cs_t * cs, int ndist, lb_halo_enum_t halo) {
   options.ndim = NDIM;
   options.nvel = NVEL;
   options.ndist = ndist;
+  options.halo  = halo;
+
   lb_data_create(pe, cs, &options, &lb);
   assert(lb);
 
@@ -112,15 +113,10 @@ int do_test_velocity(pe_t * pe, cs_t * cs, int ndist, lb_halo_enum_t halo) {
     }
   }
 
-  tdpGetDeviceCount(&ndevice);
-  if (ndevice > 0 && halo == LB_HALO_HOST) {
-    lb_halo_swap(lb, halo);
-    lb_memcpy(lb, tdpMemcpyHostToDevice);
-  }
-  else {
-    lb_memcpy(lb, tdpMemcpyHostToDevice);
-    lb_halo_swap(lb, halo);
-  }
+  /* Halo swap, and make sure values are on device */
+
+  lb_memcpy(lb, tdpMemcpyHostToDevice);
+  lb_halo(lb);
 
   lb_propagation(lb);
   lb_memcpy(lb, tdpMemcpyDeviceToHost);
@@ -162,7 +158,6 @@ int do_test_velocity(pe_t * pe, cs_t * cs, int ndist, lb_halo_enum_t halo) {
 int do_test_source_destination(pe_t * pe, cs_t * cs, int ndist,
 			       lb_halo_enum_t halo) {
 
-  int ndevice;
   int nlocal[3], offset[3];
   int ntotal[3];
   int ic, jc, kc, index, p;
@@ -180,7 +175,9 @@ int do_test_source_destination(pe_t * pe, cs_t * cs, int ndist,
 
   options.ndim = NDIM;
   options.nvel = NVEL;
+  options.halo = halo;
   options.ndist = ndist;
+
   lb_data_create(pe, cs, &options, &lb);
   assert(lb);
 
@@ -210,15 +207,10 @@ int do_test_source_destination(pe_t * pe, cs_t * cs, int ndist,
     }
   }
 
-  tdpGetDeviceCount(&ndevice);
-  if (ndevice > 0 && halo == LB_HALO_HOST) {
-    lb_halo_swap(lb, halo);
-    lb_memcpy(lb, tdpMemcpyHostToDevice);
-  }
-  else {
-    lb_memcpy(lb, tdpMemcpyHostToDevice);
-    lb_halo_swap(lb, halo);
-  }
+  /* Initial values update to device */
+  lb_memcpy(lb, tdpMemcpyHostToDevice);
+  lb_halo(lb);
+
   lb_propagation(lb);
   lb_memcpy(lb, tdpMemcpyDeviceToHost);
 
