@@ -1,6 +1,12 @@
 
 ### Changes
 
+- Improved host halo swaps are available.
+  The implementation of the reduced distribution halo has been replaced
+  with one that will work in all circumstances for a single distribution.
+  See https://ludwig.epcc.ed.ac.uk/inputs/index.html Parallelism for details.
+  No user action is required if you are not interested.
+
 version 0.15.0
 
 - Active stress implementation is updated to conform to the documented
