@@ -48,9 +48,6 @@ temperature 3.3333e-4
 free_energy fe_electro
 
 fd_advection_scheme_order 3
-fd_gradient_calculation 3d_7pt_fluid
-fd_phi_fluctuations 0
-
 fd_force_divergence 0
 
 ###############################################################################
@@ -68,7 +65,6 @@ electric_e0 0.0_0.01_0.0
 ###############################################################################
 
 colloid_init        input_one
-colloid_type        inactive
 colloid_rho0        6.0
 
 colloid_one_a0	    3.75
@@ -106,10 +102,6 @@ soft_sphere_cutoff 0.25
 ###############################################################################
 
 boundary_walls 0_0_0
-boundary_speed_bottom 0.0
-boundary_speed_top    0.0
-boundary_shear_init 0
-boundary_lubrication_rcnormal 0.0
 
 ###############################################################################
 #
@@ -131,9 +123,6 @@ colloid_io_freq 1000
 colloid_io_grid 1_1_1
 colloid_io_format_input  ASCII
 colloid_io_format_output ASCII
-
-qs_dir_io_grid 1_1_1
-qs_dir_format BINARY
 
 ###############################################################################
 #

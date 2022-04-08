@@ -1,11 +1,19 @@
 
 ### Changes
 
+version 0.16.0
+
 - Improved host halo swaps are available.
   The implementation of the reduced distribution halo has been replaced
   with one that will work in all circumstances for a single distribution.
   See https://ludwig.epcc.ed.ac.uk/inputs/index.html Parallelism for details.
   No user action is required if you are not interested.
+
+- Reinstated the boundary (wall) - colloid soft sphere potential.
+  See https://ludwig.epcc.ed.ac.uk/inputs/colloid.html
+  Thanks to Rishish Mishra for spotting this problem.
+
+- Various minor updates.
 
 version 0.15.0
 

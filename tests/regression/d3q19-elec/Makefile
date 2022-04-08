@@ -17,10 +17,24 @@ endif
 SER=${LAUNCH_SERIAL_CMD}
 PAR=${LAUNCH_MPIRUN_CMD} ${MPIRUN_NTASK_FLAG} ${MPIRUN_NTASKS}
 
+SOURCES = $(wildcard *.inp)
+LOGS    = ${SOURCES:.inp=.new}
+
 test:
-	@echo "TEST --> regression tests d3q19-elec"
-	inputs='serial*inp'; \
-	for file in $$inputs; do ../../test.sh $$file "${SER}" "${PAR}"; done
+	$(MAKE) -s clean
+	$(MAKE) -s logs
+	@echo End of tests.
+
+# Run a test
+
+%.new:  %.inp
+	../../test.sh $< "${SER}" "${PAR}"
+
+logs:	$(LOGS)
+
+# Rule to ensure restart test runs in correct order
+
+serial-rest-ec2.new:    serial-rest-ec1.new
 
 clean:
 	rm -f *new test-diff*

@@ -651,7 +651,11 @@ __host__ int hydro_lees_edwards(hydro_t * obj) {
   cs_cartsz(obj->cs, mpi_cartsz);
 
   /* All on host at the moment, so copy here and copy back at end */
-  hydro_memcpy(obj, tdpMemcpyDeviceToHost);
+
+  {
+    int nplane = lees_edw_nplane_total(obj->le);
+    if (nplane > 0) hydro_memcpy(obj, tdpMemcpyDeviceToHost);
+  }
 
   if (mpi_cartsz[Y] > 1) {
     hydro_lees_edwards_parallel(obj);
@@ -701,7 +705,10 @@ __host__ int hydro_lees_edwards(hydro_t * obj) {
     }
   }
 
-  hydro_memcpy(obj, tdpMemcpyHostToDevice);
+  {
+    int nplane = lees_edw_nplane_total(obj->le);
+    if (nplane > 0) hydro_memcpy(obj, tdpMemcpyHostToDevice);
+  }
 
   return 0;
 }

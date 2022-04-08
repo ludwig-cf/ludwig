@@ -2,11 +2,15 @@
  *
  *  colloid_sums.h
  *
+ *  Adding a new type of message:
+ *    Enter a new tag in the colloid_sum_enum_type
+ *    before COLLOID_SUM_MAX, and increment the later
+ *    (the tags must be in order).
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2010-2021 The University of Edinburgh
+ *  (c) 2010-2022 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)

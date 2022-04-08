@@ -2,8 +2,6 @@
 #
 #  Poiseuille flow tutorial
 #
-#  Momentum statistics should tally with some flow.
-#
 ##############################################################################
 
 N_cycles 10000

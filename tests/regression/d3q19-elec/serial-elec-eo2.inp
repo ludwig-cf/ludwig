@@ -49,9 +49,6 @@ electric_e0 0.0_3.0e-2_0.0
 free_energy fe_electro
 
 fd_advection_scheme_order 3
-fd_gradient_calculation 3d_7pt_fluid
-fd_phi_fluctuations 0
-fd_phi_fluctuations_seed 17
 fd_force_divergence 0
 
 ###############################################################################
@@ -61,7 +58,6 @@ fd_force_divergence 0
 ###############################################################################
 
 colloid_init        none
-colloid_gravity  0.0_0.0_0.0
 
 ###############################################################################
 #
@@ -72,7 +68,6 @@ colloid_gravity  0.0_0.0_0.0
 boundary_walls 1_0_0
 boundary_speed_bottom 0.0
 boundary_speed_top    0.0
-boundary_shear_init 0
 boundary_lubrication_rcnormal 0.0
 
 ###############################################################################
@@ -88,7 +83,8 @@ config_at_end no
 default_io_grid 1_1_1
 
 distribution_io_grid 1_1_1
-distribution_io_input_format BINARY
+
+stats_vel_print_vol_flux      yes
 
 ###############################################################################
 #
@@ -115,7 +111,6 @@ electrokinetics_eunit   1.0
 electrokinetics_epsilon 3300.0
 electrokinetics_init    gouy_chapman
 electrokinetics_init_rho_el 	0.00
-electrokinetics_init_delta_el 	0.01
 electrokinetics_init_sigma 	0.0125
 
 electrokinetics_rel_tol  1e-07

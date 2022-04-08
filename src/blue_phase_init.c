@@ -1416,6 +1416,8 @@ static int rotate_inplace(const rotation_t * rot, double r[3]) {
  *  Uses the current free energy parameters
  *     q0 (P=2pi/q0)
  *
+ *  See also P. Ribiere, S. Pirkl, P. Oswald, Phys. Rev. A 44, 8198--8209 (1991). 
+ *
  *****************************************************************************/
 
 int blue_phase_cf1_init(cs_t * cs, fe_lc_param_t * param, field_t * fq,
@@ -1520,6 +1522,8 @@ int blue_phase_cf1_init(cs_t * cs, fe_lc_param_t * param, field_t * fq,
  *
  *  Uses the current free energy parameters
  *     q0 (pitch = 2pi/q0)
+ *
+ *  See also P. Ribiere, S. Pirkl, P. Oswald, Phys. Rev. A 44, 8198--8209 (1991). 
  *
  *****************************************************************************/
 

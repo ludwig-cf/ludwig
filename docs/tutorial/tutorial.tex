@@ -67,13 +67,6 @@
 
 \begin{document}
 
-
-\setcounter{page}{1}
-
-% We're not including the table of contents just at the moment
-%\tableofcontents
-
-\newpage
 \lstset{style=terminalverbatim}
 
 \setcounter{page}{1}
@@ -175,21 +168,25 @@ $ make
 
 The following section outlines the configuration and compilation 
 procedure. The configuration step is based on the GNU Compiler Collection gcc.
-
 \begin{enumerate}
-\item Go to the top level directory \texttt{/ludwig}: \\
+\item Go to the top level directory \texttt{/ludwig}:
 \begin{lstlisting}
 $ cd ludwig
 \end{lstlisting}
 \item Copy the (parallel) configuration file \texttt{lunix-mpicc-default.mk}
 to top level directory 
-and rename to \texttt{config.mk} (both steps exectued below at once): \\
+and rename to \texttt{config.mk} (both steps exectued below at once):
 \begin{lstlisting}
 $ cp config/unix-mpicc-default.mk ./config.mk
 \end{lstlisting}
 Note that you may need to specify the correct path to the MPI wrapper compiler
 in this file (assumed to be \texttt{mpicc}).
-\item Issue \texttt{make} in the top level directory: \\
+
+For production runs you may want to use thie compiler flag below instead of the default one:
+\begin{lstlisting}
+CFLAGS  = -O3 -g -DNDEBUG -DNSIMDVL=4
+\end{lstlisting}
+\item Issue \texttt{make} in the top level directory:
 \begin{lstlisting}
 $ make 
 \end{lstlisting}
@@ -199,13 +196,15 @@ which can lead to a considerable speedup
 \begin{lstlisting}
 $ make -j 4
 \end{lstlisting} 
-If you want a serial build, use the conifguation file
-\texttt{config/unix-gcc-default.mk} and include the extra step
+If you want a serial build, clean your directory tree with
+\begin{lstlisting}
+$ make clean
+\end{lstlisting}
+use the conifguation file
+\texttt{config/unix-gcc-default.mk} and include the extra keyword \texttt{serial}:
 \begin{lstlisting}
 $ make serial
-$ make
 \end{lstlisting}
-
 \end{enumerate}
 
 \section{Tutorial Test Exercises}
@@ -226,17 +225,11 @@ for each run.
 \begin{lstlisting}
 $ mpirun -np 4 ./Ludwig.exe input
 \end{lstlisting}
-
 \item You should now see statistics being reported on your standard output and 
 output files being created with names of the form \texttt{vel-XXXXXXXX.001-001}. 
 These files contain the components of the velocity vectors in Cartesian coordinates at each lattice point in the simulation. 
-\item The first step to the post-processing of the data is to compile the \texttt{extract.c} 
-routine in \texttt{/util}. This requires the \texttt{Ludwig} code to be compiled in serial 
-(see section \ref{configbuild}). Compile with 
-\begin{lstlisting}
-$ make extract 
-\end{lstlisting} 
-and copy the executable \texttt{extract} into your working directory.
+\item The first step to the post-processing is to get hold of the \texttt{extract} executable in \texttt{/util},
+which is created during the main compilation of \texttt{Ludwig}, and copy it into your tutorial working directory. 
 \item Post-process the raw data by issuing 
 \begin{lstlisting}
 $ ./extract -a -i meta_file_name data_file_name_stub
@@ -244,8 +237,7 @@ $ ./extract -a -i meta_file_name data_file_name_stub
 replacing the filenames with those of the present case (i.e. \texttt{vel.001-001.meta} and e.g. \texttt{vel-00010000}).
 The command line options '\texttt{-a}' and '\texttt{-i}' give output in ASCII format and a lattice index 
 for easy visualisation in \texttt{gnuplot}.
-
-\item You should now see files named \texttt{vel-XXXXXXXX}.  The first three columns of these ASCII files are the spatial lattice indices followed by the Cartesian components of the velocity vectors.\\
+\item You should now see files named \texttt{vel-XXXXXXXX}. The first three columns of these ASCII files are the spatial lattice indices followed by the Cartesian components of the velocity vectors.
 \item To plot the velocity profile of the system, you can plot the $y$-component of the velocity against 
 the spatial $x$-coordinate on the lattice with the command:
 \begin{lstlisting}
@@ -256,7 +248,6 @@ By plotting the data in each file, you should be able to see the velocity profil
 In the directory \texttt{/docs/tutorial/test1} a reference file of the final 
 output at time step $10,000$ can be found, in addition to a file containing the standard output of the code.
 \end{enumerate} 
-
 \begin{figure}[h]
 \begin{center}
 \includegraphics[width=0.8\linewidth]{velProf.png}
@@ -286,28 +277,23 @@ $ mpirun -np 8 ./Ludwig.exe input
 in this case two sets of output files are being created, one containing the velocity and 
 the other compositional order parameter ($\phi$) data at each lattice point in the simulation. 
 In this example, these data are in binary format.
-\item It should be possible to use the same exectuable \texttt{extract} from the previous 
-example for the  post-processing. Alternatively, compile with 
+\item You are able to use the same exectuable \texttt{extract} from the previous 
+example for the  post-processing with different arguments and the \texttt{-k} flag to produce
+files in VTK-format:
 \begin{lstlisting}
-make extract
-\end{lstlisting} 
-and copy the executable \texttt{extract} into your working directory.
-Remember that this requires the \texttt{Ludwig} code to be compiled in serial 
-(see section \ref{configbuild}).
-\item A python script \texttt{extract.py}
-can be used for convenient post-processing of multiple raw data files and time steps.
- Edit \texttt{extract.py} and set:
-\begin{enumerate}
-\item \texttt{nstart=1000}, \texttt{nint=1000} and \texttt{nend=10000} to set the range and 
-increments of the velocity data
-to be processed.
-\item \texttt{vel=1} for velocity post-processing, 
-\item \texttt{phi=1} for $\phi$ post-processing,
-\item The other flags should be set to zero. 
-\end{enumerate}
-\item Issue the command:
+$ ./extract -k vel.001-001.meta vel-00010000.001-001
+$ ./extract -k phi.001-001.meta phi-00010000.001-001
+\end{lstlisting}
+\item A bash script like this one below can be used for convenient post-processing of multiple 
+raw data files and time steps (with appropriate start, increment and end in the \texttt{for} loop):
 \begin{lstlisting}
-$ python extract.py
+#!/bin/bash
+for i in `seq 1000 1000 10000`;
+do
+  tstep=$(printf "%08d" $i)
+  ./extract -k vel.001-001.meta vel-${tstep}.001-001  
+  ./extract -k phi.001-001.meta phi-${tstep}.001-001
+done
 \end{lstlisting}
 \item You should now see files with the extension \texttt{.vtk} corresponding to the velocity 
 and $\phi$ data ready to be visualised using ParaView.
@@ -382,7 +368,6 @@ The example illustrates the post-processing procedure for a colloidal system in 
 demonstrating the ways to visualise liquid crystals in ParaView. 
 As before, the code should be compiled in parallel and the executable 
 \texttt{Ludwig.exe} should be copied into your working directory.
-
 \begin{enumerate}
 \item Copy the input file \texttt{input} located in the directory 
 \texttt{/docs/tutorial/test3} to your working directory. We see in this input file that 
@@ -390,7 +375,6 @@ there are many more parameters
 than in the previous examples. Specifically, we note that \texttt{colloid\_cell\_min} 
 must be set if colloids are present and must be at least $2r + \delta$ where $r$ is colloid 
 radius and $\delta$ - here set to 0.5 - catches any colloid-colloid interactions. This is shown for our example - where this value is set to 8.0 - in Fig. \ref{fig:colloid_int}.
-
  \begin{figure}[H]
 \begin{center}
 \includegraphics[width=0.5\linewidth]{colloidInit.png}
@@ -398,7 +382,6 @@ radius and $\delta$ - here set to 0.5 - catches any colloid-colloid interactions
   \label{fig:colloid_int}
   \end{center}
 \end{figure}
-
 \item The following steps outline the preliminary stages required in order to initialise the colloidal system and for the visualisation of colloids. Firstly, and as before, compile the \texttt{Ludwig} code in serial (see section \ref{configbuild}) and go to the directory \texttt{ludwig/util}. There you should see the files \texttt{colloid\_init.c} and \texttt{extract\_colloid.c}. These are the files required for the initialisation and post-processing of colloids, respectively.
 \item In the file, \texttt{colloid\_init.c} set the flags for:
 \begin{enumerate}
@@ -410,45 +393,50 @@ radius and $\delta$ - here set to 0.5 - catches any colloid-colloid interactions
 \item \texttt{vf = 0.02} \\ this sets the volume fraction of colloids to 2\%, for our system of size 32$^2$ with colloids of radius 3.5, this will result in 3 colloids,
 \item \texttt{dh = 0.5} \\ to set the grace distance for interactions (note that this means that one colloid plus this distance is less than \texttt{colloid\_cell\_min} which was set in the input file.
 \end{enumerate}
-\item Now issue: \\
+\item Now issue
 \begin{lstlisting}
 $ make colloid_init
 $ ./colloid_init
 \end{lstlisting}
 this produces a file \texttt{config.cds.init.001-001}, which you have to copy into your working directory.
-
 \item Next, run the code in your working directory by issuing the command:
 \begin{lstlisting}
 $ mpirun -np 8 ./Ludwig.exe input
 \end{lstlisting}
-
-\item In the file, \texttt{extract\_colloids.c} set:
+\item An \texttt{extract\_colloids} executable is produced in \texttt{/util} during the main compilation of \texttt{Ludwig}. 
+For our problem we need to set potentially different parameters. In the file, \texttt{extract\_colloids.c} set:
 \begin{enumerate}
 \item The system size, \texttt{NX},  \texttt{NY},  \texttt{NZ} all = 32,
-\item \texttt{iread\_ascii = 1} \\ since the output is in ASCII,
+\item \texttt{iread\_ascii = 1} \\ since the output is in ASCII format,
 \item \texttt{cds\_with\_v  = 1} \\ which will output the positions and velocity data of the colloids,
 \end{enumerate}
-\item Now issue: \\
+\item Now issue
 \begin{lstlisting}
 $ make extract_colloids
 \end{lstlisting}
 and copy the executable \texttt{extract\_colloids} into your working directory.
 \item For the post-processing of other data either copy the existing executable \texttt{extract} from 
 previous examples or compile in \texttt{/util} in the usual manner.
-Remember that this requires the \texttt{Ludwig} code to be compiled in serial 
-(see section \ref{configbuild}).
-
-\item Copy the script \texttt{extract.py} as well into your working directory and set:
-\begin{enumerate}
-\item \texttt{vel = 1}, \\ to visualise the velocity field,
-\item \texttt{q = 1}, \\ since there are liquid crystals present,
-\item \texttt{colcds = 0} and 
-\item \texttt{colcdsvel = 1} so that the colloid position and velocity data are both available.
-\end{enumerate}
-
-\item Run the post-processing routine as before using the python script. 
+\item Run the post-processing routines as before using different arguments:
+\begin{lstlisting}
+$ ./extract -k vel.001-001.meta vel-00010000.001-001
+$ ./extract -k -s -d q.001-001.meta q-00010000.001-001
+$ ./extract_colloids config.cds00010000 1 col-cdsvel-00010000.csv
+\end{lstlisting}
+The \texttt{-s} and \texttt{-d} flags produce scalar order parameter and director field output.
 \texttt{.csv} files with the colloid data should 
 be seen in addition to the \texttt{.vtk} files for the velocity, order parameter and director field.
+\item Again, a bash script like this one below can be used for convenient post-processing of multiple raw data files and time steps (with appropriate start, increment and end in the \texttt{for} loop):
+\begin{lstlisting}
+#!/bin/bash
+for i in `seq 1000 1000 10000`;
+do
+  tstep=$(printf "%08d" $i)
+  ./extract -k vel.001-001.meta vel-${tstep}.001-001  
+  ./extract -k -s -d q.001-001.meta q-${tstep}.001-001
+  ./extract_colloids config.cds${tstep} 1 col-cdsvel-${tstep}.csv
+done
+\end{lstlisting}
 \item The system can now be visualised, again using ParaView:
 \begin{enumerate}
 \item The liquid crystal, scalar order parameter can be visualised by opening the files: 
