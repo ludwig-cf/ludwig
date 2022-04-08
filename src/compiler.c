@@ -109,7 +109,8 @@ int compiler_id(compiler_info_t * compiler) {
   compiler->major = __GNUC__;
   compiler->minor = __GNUC_MINOR__;
   compiler->patchlevel = __GNUC_PATCHLEVEL__;
-  strncpy(compiler->version, __VERSION__, 1 + strnlen(__VERSION__, BUFSIZ-1));
+  strncpy(compiler->version, __VERSION__, 1 + strlen(__VERSION__));
+  /*strncpy(compiler->version, __VERSION__, 1 + strnlen(__VERSION__, BUFSIZ-1));*/
   sprintf(compiler->name, "%s", "Gnu");
   ierr = 0;
 
