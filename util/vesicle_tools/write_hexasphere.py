@@ -2,22 +2,33 @@ import csv
 import numpy as np
 import matplotlib.pyplot as plt
 
+plot = False
+
 NVESICLES = 1
 NATOMS = 241
+
+RADIUS0 = 5.2796821
+RADIUS = 10.0
 
 icosphere_small_l = 0.1821
 icosphere_large_l = 0.2060
 epsilon = 1e-3
 
-BOND_LENGTH = 3.0
+# Choose bond length
+BOND_LENGTH = 1.0
+
+# or choose vesicle radius
+BOND_LENGTH = RADIUS / RADIUS0
+
+print(str(BOND_LENGTH) + "\n" + str(BOND_LENGTH*icosphere_large_l/icosphere_small_l) + "\n" + str(BOND_LENGTH*RADIUS0))
 
 nbonds= 3
 nbonds2 = 3
 nbonds3 = 3
 
-XSHIFT = 40
-YSHIFT = 40
-ZSHIFT = 40
+XSHIFT = 25
+YSHIFT = 25
+ZSHIFT = 25
 
 # Additional attributes 
 indices = np.arange(1,NATOMS+1,1,dtype=int)
@@ -133,3 +144,14 @@ xyz[2, :] += ZSHIFT
 
 table = np.column_stack((indices, xyz.T, nConnec, Connec, nConnec2, Connec2, nConnec3, Connec3, iscentre.T, ishole.T, indexcentre.T, phi_production.T, localrange.T, localmobility.T))
 np.savetxt("latticeHexasphere.txt", table, fmt = '%3d     %3f %3f %3f      %3d %3d %3d %3d     %3d %3d %3d %3d     %3d %3d %3d %3d     %3d %3d %3d      %3f     %3f %3f ')
+
+if plot:
+  dists = []
+  coord0 = xyz[:,0]
+  for coord in xyz.T[1::]:
+    dist = np.sqrt(np.sum((coord0 - coord)**2 ))
+    dists.append(dist)
+
+  print(np.mean(dists), np.max(dists), np.min(dists))
+
+

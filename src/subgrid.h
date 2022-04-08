@@ -26,6 +26,7 @@ int subgrid_centre_update2(colloids_info_t * cinfo, hydro_t * hydro, int noise_f
 int subgrid_phi_production(colloids_info_t * cinfo, field_t * phi);
 int subgrid_mobility_map(colloids_info_t * cinfo, field_t * mobility_map, rt_t * rt);
 int subgrid_mobility_map2(colloids_info_t * cinfo, field_t * mobility_map, rt_t * rt);
+int subgrid_mobility_map3(colloids_info_t * cinfo, field_t * mobility_map, rt_t * rt);
 /* <----- */
 
 

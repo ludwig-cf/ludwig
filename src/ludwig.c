@@ -839,7 +839,7 @@ void ludwig_run(const char * inputfile) {
 
       subgrid_phi_production(ludwig->collinfo, ludwig->phi); 
       subgrid_update(ludwig->collinfo, ludwig->hydro, noise_flag);
-      subgrid_centre_update(ludwig->collinfo, ludwig->hydro, noise_flag);
+      //subgrid_centre_update(ludwig->collinfo, ludwig->hydro, noise_flag);
       subgrid_mobility_map(ludwig->collinfo, ludwig->mobility_map, ludwig->rt);
 
       bounce_back_on_links(ludwig->bbl, ludwig->lb, ludwig->wall,
