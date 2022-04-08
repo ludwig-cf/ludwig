@@ -2079,7 +2079,7 @@ int ludwig_colloids_update(ludwig_t * ludwig) {
     lb_halo(ludwig->lb);
   }
   else {
-    lb_halo_swap(ludwig->lb, LB_HALO_HOST);
+    lb_halo_swap(ludwig->lb, LB_HALO_OPENMP_FULL);
   }
 
   TIMER_stop(TIMER_HALO_LATTICE);

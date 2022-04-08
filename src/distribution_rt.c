@@ -75,9 +75,6 @@ int lb_ndist_rt(rt_t * rt) {
  *  Some old keys are trapped with advice before accepting new keys.
  *
  *  Miscellaneous input keys
- *
- *  "lb_reduced_halo"
- *
  *  I/O
  *
  *  If no options at all are specfied in the input, io_options_t information
@@ -133,7 +130,6 @@ int lb_run_time(pe_t * pe, cs_t * cs, rt_t * rt, lb_t ** lb) {
  *
  *  Input key                         default
  *  -----------------------------------------
- *  "reduced_halo"                    "no"
  *  "distribution_io_grid"            {1,1,1}
  *  "distribution_io_format_input"    "binary" 
  *
@@ -146,7 +142,6 @@ int lb_run_time(pe_t * pe, cs_t * cs, rt_t * rt, lb_t ** lb) {
 int lb_run_time_prev(pe_t * pe, cs_t * cs, rt_t * rt, lb_t ** lb) {
 
   int ndist;
-  int nreduced;
   int io_grid[3] = {1, 1, 1};
   char string[FILENAME_MAX] = "";
   char memory = ' ';
@@ -165,9 +160,43 @@ int lb_run_time_prev(pe_t * pe, cs_t * cs, rt_t * rt, lb_t ** lb) {
   assert(rt);
   assert(lb);
 
-  nreduced = 0;
-  rt_string_parameter(rt,"reduced_halo", string, FILENAME_MAX);
-  if (strcmp(string, "yes") == 0) nreduced = 1;
+  /* Number of distributions */
+
+  ndist = lb_ndist_rt(rt);
+  assert(ndist == 1 || ndist == 2);
+
+  /* Halo options */
+
+  options.ndim  = NDIM;
+  options.nvel  = NVEL;
+  options.ndist = ndist;
+
+  /* Halo options */
+  {
+    char htype[BUFSIZ] = {};
+    int havetype = rt_string_parameter(rt, "lb_halo_scheme", htype, BUFSIZ);
+    if (strcmp(htype, "lb_halo_target") == 0) {
+      options.halo = LB_HALO_TARGET;
+    }
+    else if (strcmp(htype, "lb_halo_openmp_full") == 0) {
+      options.halo = LB_HALO_OPENMP_FULL;
+    }
+    else if (strcmp(htype, "lb_halo_openmp_reduced") == 0) {
+      options.halo = LB_HALO_OPENMP_REDUCED;
+    }
+    else if (havetype) {
+      pe_fatal(pe, "lb_halo_scheme not recognised\n");
+    }
+
+    options.reportimbalance = rt_switch(rt, "lb_halo_report_imbalance");
+
+    if (lb_data_options_valid(&options) == 0) {
+      pe_fatal(pe, "lb_data_options are invalid. Please check halo.\n");
+    }
+  }
+
+
+  /* I//O Grid */
 
   rt_int_parameter_vector(rt, "distribution_io_grid", io_grid);
 
@@ -179,9 +208,6 @@ int lb_run_time_prev(pe_t * pe, cs_t * cs, rt_t * rt, lb_t ** lb) {
   /* TODO: r -> "AOS" or "SOA" or "AOSOA" */
   if (DATA_MODEL == DATA_MODEL_SOA) memory = 'R';
 
-  ndist = lb_ndist_rt(rt);
-  assert(ndist == 1 || ndist == 2);
-
   pe_info(pe, "\n");
   pe_info(pe, "Lattice Boltzmann distributions\n");
   pe_info(pe, "-------------------------------\n");
@@ -189,7 +215,19 @@ int lb_run_time_prev(pe_t * pe, cs_t * cs, rt_t * rt, lb_t ** lb) {
   pe_info(pe, "Model:            d%dq%d %c\n", NDIM, NVEL, memory);
   pe_info(pe, "SIMD vector len:  %d\n", NSIMDVL);
   pe_info(pe, "Number of sets:   %d\n", ndist);
-  pe_info(pe, "Halo type:        %s\n", (nreduced == 1) ? "reduced" : "full");
+
+  if (options.halo == LB_HALO_TARGET) { 
+    pe_info(pe, "Halo type:        %s\n", "lb_halo_target (full halo)");
+  }
+  if (options.halo == LB_HALO_OPENMP_FULL) {
+    pe_info(pe, "Halo type:        %s\n", "lb_halo_openmp_full (host)");
+  }
+  if (options.halo == LB_HALO_OPENMP_REDUCED) {
+    pe_info(pe, "Halo type:        %s\n", "lb_halo_openmp_reduced (host)");
+  }
+  if (options.reportimbalance) {
+    pe_info(pe, "Imbalance time:   %s\n", "reported");
+  }
 
   if (strcmp("BINARY_SERIAL", string) == 0) {
     pe_info(pe, "Input format:     binary single serial file\n");
@@ -245,46 +283,6 @@ int lb_run_time_prev(pe_t * pe, cs_t * cs, rt_t * rt, lb_t ** lb) {
 
   /* Initialise */
 
-  options.ndim  = NDIM;
-  options.nvel  = NVEL;
-  options.ndist = ndist;
-
-  /* Halo options */
-  if (nreduced == 1) options.halo = LB_HALO_REDUCED;
-  {
-    char htype[BUFSIZ] = {};
-    int havetype = rt_string_parameter(rt, "lb_halo_scheme", htype, BUFSIZ);
-    if (strcmp(htype, "lb_halo_host") == 0) {
-      options.halo = LB_HALO_HOST;
-    }
-    else if (strcmp(htype, "lb_halo_target") == 0) {
-      options.halo = LB_HALO_TARGET;
-    }
-    else if (strcmp(htype, "lb_halo_full") == 0) {
-      options.halo = LB_HALO_FULL;
-    }
-    else if (strcmp(htype, "lb_halo_reduced") == 0) {
-      options.halo = LB_HALO_REDUCED;
-    }
-    else if (strcmp(htype, "lb_halo_openmp_full") == 0) {
-      options.halo = LB_HALO_OPENMP_FULL;
-    }
-    else if (strcmp(htype, "lb_halo_openmp_reduced") == 0) {
-      options.halo = LB_HALO_OPENMP_REDUCED;
-    }
-    else if (havetype) {
-      pe_fatal(pe, "lb_halo_scheme not recognised\n");
-    }
-    if (havetype) {
-      pe_info(pe, "Halo scheme:      %s\n", htype);
-    }
-
-    options.reportimbalance = rt_switch(rt, "lb_halo_report_imbalance");
-    if (options.reportimbalance) {
-      pe_info(pe, "Imbalance time:   %s\n", "reported");
-    }
-  }
-  
   lb_data_create(pe, cs, &options, lb);
 
   /* distribution i/o */
