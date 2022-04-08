@@ -7,7 +7,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2018 The University of Edinburgh
+ *  (c) 2018-2022 The University of Edinburgh
  *
  *  Contributing authors:
  *  Alan Gray (alang@epcc.ed.ac.uk)
@@ -38,12 +38,12 @@
 __host__ tdpError_t tdpDeviceSetCacheConfig(tdpFuncCache cacheConfig);
 __host__ tdpError_t tdpGetDeviceProperties(struct tdpDeviceProp * prop, int);
 __host__ tdpError_t tdpSetDevice(int device);
+__host__ tdpError_t tdpDeviceSynchronize(void);
 
 __host__ __device__ tdpError_t tdpDeviceGetAttribute(int * value,
 						     tdpDeviceAttr attr,
 						     int device);
 __host__ __device__ tdpError_t tdpDeviceGetCacheConfig(tdpFuncCache * cache);
-__host__ __device__ tdpError_t tdpDeviceSynchronize(void);
 __host__ __device__ tdpError_t tdpGetDevice(int * device);
 __host__ __device__ tdpError_t tdpGetDeviceCount(int * count);
 
