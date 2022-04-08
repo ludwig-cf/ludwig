@@ -43,6 +43,7 @@ struct physics_s {
   double b0[3];        /* External magnetic field */
   double fgravity[3];  /* Gravitational force (on objects) */
   double mobility;     /* Order parameter mobility (binary fluid) */
+  double rvesicle;     /* Radius of the vesicle */
 
   int t_start;         /* Start time step requested */
   int nsteps;          /* Number of time steps requested by user */
@@ -555,6 +556,40 @@ __host__ int physics_mobility_set(physics_t * phys, double mobility) {
 
   return 0;
 }
+
+
+/*****************************************************************************
+ *
+ *  physics_rvesicle
+ *
+ *****************************************************************************/
+
+__host__ __device__ int physics_rvesicle(physics_t * phys, double * rvesicle) {
+
+  assert(phys);
+  assert(rvesicle);
+
+  *rvesicle = phys->rvesicle;
+ 
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  physics_rvesicle_set
+ *
+ *****************************************************************************/
+
+__host__ int physics_rvesicle_set(physics_t * phys, double rvesicle) {
+
+  assert(rvesicle);
+
+  phys->rvesicle = rvesicle;
+
+  return 0;
+}
+
+
 
 /*****************************************************************************
  *

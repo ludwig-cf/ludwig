@@ -695,7 +695,7 @@ int subgrid_mobility_map(colloids_info_t * cinfo, field_t * mobility_map, rt_t *
   double r[3], rcentre[3], rhole[3], rortho[3], rcentre_local[3], rsq;
   double rnorm, mnorm, nnorm, mobility;
   double cosalpha, alpha, gaussalpha;
-  double rvesicle = 8.0;  
+  double rvesicle;  
 
   MPI_Comm comm;
   MPI_Status status;
@@ -706,6 +706,7 @@ int subgrid_mobility_map(colloids_info_t * cinfo, field_t * mobility_map, rt_t *
 
   physics_ref(&phys);
   physics_mobility(phys, &mobility);
+  physics_rvesicle(phys, &rvesicle);
 
   cs_nlocal_offset(cinfo->cs, offset);
   cs_nlocal(cinfo->cs, nlocal);

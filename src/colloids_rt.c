@@ -626,6 +626,9 @@ int colloids_rt_cell_list_checks(rt_t * rt, pe_t * pe, cs_t * cs,
   double r0 = 0.0; /*harmonic bond lentgh (to compute radius_vesicle) */
   double wcell[3];      /* Final cell widths */
 
+  physics_t * phys = NULL;
+  physics_ref(&phys);
+
   assert(rt);
   assert(pe);
   assert(cs);
@@ -688,9 +691,8 @@ int colloids_rt_cell_list_checks(rt_t * rt, pe_t * pe, cs_t * cs,
 
     rt_int_parameter(rt, "vesicle_com", &onvesicle);
     if (onvesicle) {
-      rt_double_parameter(rt, "bond_harmonic_r0", &r0);
-      if (r0 == 0.0) pe_info(pe, "You specified vesicle_com on but there are no harmonic bonds to create the vesicle\n");
-      else radius_vesicle = 5.5*r0; 
+      rt_double_parameter(rt, "radius_vesicle", &radius_vesicle);
+      physics_rvesicle_set(phys, radius_vesicle);
       rmax = dmax(rmax, radius_vesicle);
     }
 
