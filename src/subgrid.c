@@ -739,6 +739,7 @@ int subgrid_mobility_map(colloids_info_t * cinfo, field_t * mobility_map, rt_t *
   colloids_info_local_head(cinfo, &pc);
 
   for ( ; pc; pc = pc->nextlocal) {
+    if (pc->s.indexcentre != 1) continue;
     if (pc->s.iscentre == 1) {
       centrefound = 1;
       rcentre[0] = pc->s.r[0];
@@ -829,6 +830,213 @@ int subgrid_mobility_map(colloids_info_t * cinfo, field_t * mobility_map, rt_t *
 
   colloids_info_all_head(cinfo, &pc);
   for ( ; pc; pc = pc->nextall) {
+    if (pc->s.indexcentre != 1) continue;
+    for (int ia = 0; ia < 3; ia++) {
+      pc->s.m[ia] = m[ia];
+      pc->s.n[ia] = n[ia];
+      pc->centerofmass[ia] = rcentre[ia];
+    }
+  }
+ 
+// Assign mobility
+
+  rcentre_local[X] = rcentre[X] - offset[X];
+  rcentre_local[Y] = rcentre[Y] - offset[Y];
+  rcentre_local[Z] = rcentre[Z] - offset[Z];
+ 
+  //pe_verbose(cinfo->pe,"rcentre local = %f %f %f\n", rcentre_local[X], rcentre_local[Y], rcentre_local[Z]);
+
+  for (i = 1; i <= nlocal[X] + 0; i++) {
+    for (j = 1; j <= nlocal[Y] + 0; j++) {
+      for (k = 1; k <= nlocal[Z] + 0; k++) {
+
+        index = cs_index(cinfo->cs, i, j, k); 
+	
+        ijk[0] = i;
+	ijk[1] = j;
+	ijk[2] = k;
+
+        cs_minimum_distance(cinfo->cs, rcentre_local, ijk , r);
+
+	rsq = r[X]*r[X] + r[Y]*r[Y] + r[Z]*r[Z];
+	rnorm = sqrt(rsq);
+
+	if (rnorm <= rvesicle + 1 && rnorm >= rvesicle - 1) {
+	  field_scalar_set(mobility_map, index, 0.0);
+          cosalpha = (r[X]*m[X] + r[Y]*m[Y] + r[Z]*m[Z]) / rnorm;
+          alpha = acos(cosalpha);
+
+          //if (alpha >= -1.0 && alpha <= 1.0) {
+          //  gaussalpha = exp(-0.5*(alpha/0.6)*(alpha/0.6))*mobility;
+	  //  field_scalar_set(mobility_map, index, gaussalpha);
+	  //}
+          if (alpha >= -0.5 && alpha <= 0.5) {
+            field_scalar_set(mobility_map, index, mobility);
+          }
+	}
+      }
+    }
+  }
+  return 0;
+}
+
+
+
+/*****************************************************************************
+ *
+ *  subgrid_mobility_map_vesicle2  ! MUST BE CALLED AFTER SUBGRID_UPDATE !
+ *  TODO: fuse finding m and n and rcentre as well as their broadcasting ?
+ *  TODO: realrank is a variable that can be set when calculating m 
+ *
+ *****************************************************************************/
+
+int subgrid_mobility_map_vesicle2(colloids_info_t * cinfo, field_t * mobility_map, rt_t * rt) {
+
+  int ia, i, j, k, on, index;
+  int nlocal[3], offset[3];
+  int my_id, id, totnum_ids, hole_id = -1, ortho_id = -1, centre_id = -1;
+  int centrefound = 0, holefound = 0, orthofound = 0;
+
+  double m[3] = {0., 0., 0.}, n[3] = {0., 0., 0.}, ijk[3];
+  double r[3], rcentre[3], rhole[3], rortho[3], rcentre_local[3], rsq;
+  double rnorm, mnorm, nnorm, mobility;
+  double cosalpha, alpha, gaussalpha;
+  double rvesicle;  
+
+  MPI_Comm comm;
+  MPI_Status status;
+  cs_cart_comm(cinfo->cs, &comm);
+
+  colloid_t * pc;
+  physics_t * phys = NULL;
+
+  physics_ref(&phys);
+  physics_mobility(phys, &mobility);
+  physics_rvesicle(phys, &rvesicle);
+
+  cs_nlocal_offset(cinfo->cs, offset);
+  cs_nlocal(cinfo->cs, nlocal);
+
+  MPI_Comm_rank(comm, &my_id);
+  MPI_Comm_size(comm, &totnum_ids);
+  
+  if (cinfo->nsubgrid == 0) return 0;
+  assert(cinfo);
+
+  rt_int_parameter(rt, "subgrid_mobility_map", &on); 
+  
+  /* Loop through all cells (including the halo cells) and set
+   * the mobility at each node to default mobiltiy for this step. */
+/*
+  for (i = 1; i <= nlocal[X]; i++) {
+    for (j = 1; j <= nlocal[Y]; j++) {
+      for (k = 1; k <= nlocal[Z]; k++) {
+	index = cs_index(cinfo->cs, i, j, k);
+	field_scalar_set(mobility_map, index, mobility);
+      }
+    }
+  }
+*/
+  if (!on) return 0;
+
+
+/* Find central particle */
+
+  colloids_info_local_head(cinfo, &pc);
+
+  for ( ; pc; pc = pc->nextlocal) {
+    if (pc->s.indexcentre != 242) continue;
+    if (pc->s.iscentre == 1) {
+      centrefound = 1;
+      rcentre[0] = pc->s.r[0];
+      rcentre[1] = pc->s.r[1];
+      rcentre[2] = pc->s.r[2];
+      MPI_Comm_rank(comm, &centre_id);
+    }
+
+    if (pc->s.ishole == 1) {
+      holefound = 1;
+      rhole[0] = pc->s.r[0];
+      rhole[1] = pc->s.r[1];
+      rhole[2] = pc->s.r[2];
+      MPI_Comm_rank(comm, &hole_id);
+    }
+/*
+    if (pc->s.index == 27) {
+      orthofound = 1;
+      rortho[0] = pc->s.r[0]; 
+      rortho[1] = pc->s.r[1]; 
+      rortho[2] = pc->s.r[2]; 
+      MPI_Comm_rank(comm, &ortho_id);
+    }
+*/
+  }
+  //pe_verbose(cinfo->pe, "I am process %d centrefound = %d, holefound = %d, orthofound = %d\n", my_id, centrefound, holefound, orthofound);
+
+  MPI_Barrier(comm);
+
+  if (centrefound == 1) {
+    //pe_verbose(cinfo->pe, "sending rcentre = %f %f %f\n", rcentre[0], rcentre[1], rcentre[2]);
+    for (int id = 0; id < totnum_ids; id++) {
+      if (my_id == id) continue;
+      MPI_Send(rcentre, 3, MPI_DOUBLE, id, 0, comm);
+    }
+  } 
+  MPI_Barrier(comm);
+  if (centrefound != 1) {
+    MPI_Recv(rcentre, 3, MPI_DOUBLE, MPI_ANY_SOURCE, 0, comm, MPI_STATUS_IGNORE);
+    //pe_verbose(cinfo->pe, "receiving rcentre = %f %f %f\n", rcentre[0], rcentre[1], rcentre[2]);
+  }
+
+  MPI_Barrier(comm);
+
+  if (holefound == 1) {
+    //pe_verbose(cinfo->pe, "sending rhole = %f %f %f\n", rhole[0], rhole[1], rhole[2]);
+    for (int id = 0; id < totnum_ids; id++) {
+      if (my_id == id) continue;
+      MPI_Send(rhole, 3, MPI_DOUBLE, id, 0, comm);
+    }
+  }
+  MPI_Barrier(comm);
+  if (holefound != 1) {
+    MPI_Recv(rhole, 3, MPI_DOUBLE, MPI_ANY_SOURCE, 0, comm, MPI_STATUS_IGNORE);
+    //pe_verbose(cinfo->pe, "receiving rhole = %f %f %f\n", rhole[0], rhole[1], rhole[2]);
+  }
+
+/*
+  MPI_Barrier(comm);
+  if (orthofound == 1) {
+    for (int id = 0; id < totnum_ids; id++) {
+      if (my_id == id) continue;
+      MPI_Send(rortho, 3, MPI_DOUBLE, id, 0, comm);
+    }
+  }
+  MPI_Barrier(comm);
+  if (orthofound != 1) {
+    MPI_Recv(rortho, 3, MPI_DOUBLE, MPI_ANY_SOURCE, 0, comm, MPI_STATUS_IGNORE);
+  }
+*/
+  MPI_Barrier(comm);
+  //pe_verbose(cinfo->pe, "rcentre = %f %f %f rhole = %f %f %f\n", rcentre[X], rcentre[Y], rcentre[Z], rhole[X], rhole[Y], rhole[Z]);
+
+  cs_minimum_distance(cinfo->cs, rcentre, rhole, m);
+  cs_minimum_distance(cinfo->cs, rcentre, rortho, n);
+    
+  mnorm = sqrt(m[0]*m[0] + m[1]*m[1] + m[2]*m[2]);
+  nnorm = sqrt(n[0]*n[0] + n[1]*n[1] + n[2]*n[2]);
+  //pe_verbose(cinfo->pe, "n = %f %f %f\n", n[X], n[Y], n[Z]);
+  //pe_verbose(cinfo->pe, "m = %f %f %f\n", m[X], m[Y], m[Z]);
+
+  for (int ia = 0; ia < 3; ia++) {
+    m[ia] /= mnorm;
+    n[ia] /= nnorm;
+  }
+
+  //pe_verbose(cinfo->pe, "rortho = %f %f %f, m = %f %f %f n = %f %f %f\n", my_id, rortho[X], rortho[Y], rortho[Z], m[0], m[1], m[2], n[0], n[1], n[2]);
+
+  colloids_info_all_head(cinfo, &pc);
+  for ( ; pc; pc = pc->nextall) {
+    if (pc->s.indexcentre != 242) continue;
     for (int ia = 0; ia < 3; ia++) {
       pc->s.m[ia] = m[ia];
       pc->s.n[ia] = n[ia];
