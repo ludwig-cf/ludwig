@@ -8,7 +8,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2010-2021 The University of Edinburgh
+ *  (c) 2010-2022 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -186,6 +186,15 @@ int lb_run_time_prev(pe_t * pe, cs_t * cs, rt_t * rt, lb_t ** lb) {
     }
     else if (havetype) {
       pe_fatal(pe, "lb_halo_scheme not recognised\n");
+    }
+
+    /* I'm going to trap this silently here - which is slightly
+     * better than having the wrong halo. I avoid a message so
+     * not as to disrupt the regression tests. */
+    {
+      int ndevice = 0;
+      tdpGetDeviceCount(&ndevice);
+      if (ndevice > 0) options.halo = LB_HALO_TARGET;
     }
 
     options.reportimbalance = rt_switch(rt, "lb_halo_report_imbalance");
