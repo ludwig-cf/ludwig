@@ -261,7 +261,6 @@ __host__ int distribution_stats_momentum(lb_t * lb, map_t * map, int root,
 
   kernel_ctxt_free(ctxt);
   tdpFree(sum_d);
-  /*printf("Affter mpi: %14.7e %14.7e %14.7e\n", gm[X], gm[Y], gm[Z]);*/
 
   return 0;
 }

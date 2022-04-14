@@ -7,7 +7,7 @@
  *  Edinburgh Soft Matter and Statistical Phyiscs Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2021 The University of Edinburgh
+ *  (c) 2021-2022 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -110,7 +110,6 @@ int compiler_id(compiler_info_t * compiler) {
   compiler->minor = __GNUC_MINOR__;
   compiler->patchlevel = __GNUC_PATCHLEVEL__;
   strncpy(compiler->version, __VERSION__, 1 + strlen(__VERSION__));
-  /*strncpy(compiler->version, __VERSION__, 1 + strnlen(__VERSION__, BUFSIZ-1));*/
   sprintf(compiler->name, "%s", "Gnu");
   ierr = 0;
 
