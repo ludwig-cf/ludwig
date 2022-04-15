@@ -199,8 +199,10 @@ __host__ int lb_memcpy(lb_t * lb, tdpMemcpyKind flag) {
 
     switch (flag) {
     case tdpMemcpyHostToDevice:
-      tdpMemcpy(&lb->target->ndist, &lb->ndist, sizeof(int), flag); 
-      tdpMemcpy(&lb->target->nsite, &lb->nsite, sizeof(int), flag); 
+      tdpMemcpy(&lb->target->ndim,  &lb->ndim,  sizeof(int), flag);
+      tdpMemcpy(&lb->target->nvel,  &lb->nvel,  sizeof(int), flag);
+      tdpMemcpy(&lb->target->ndist, &lb->ndist, sizeof(int), flag);
+      tdpMemcpy(&lb->target->nsite, &lb->nsite, sizeof(int), flag);
       tdpMemcpy(tmpf, lb->f, nsz, flag);
       break;
     case tdpMemcpyDeviceToHost:
