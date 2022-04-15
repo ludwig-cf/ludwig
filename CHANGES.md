@@ -1,6 +1,10 @@
 
 ### Changes
 
+version 0.16.1
+
+- And get the version number right!
+
 version 0.16.0
 
 - Improved host halo swaps are available.
