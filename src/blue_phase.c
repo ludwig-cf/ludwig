@@ -22,7 +22,6 @@
 
 #include "util.h"
 #include "physics.h"
-#include "field_s.h"
 #include "blue_phase.h"
 
 static __constant__ fe_lc_param_t const_param;
@@ -105,9 +104,13 @@ __host__ int fe_lc_create(pe_t * pe, cs_t * cs, lees_edw_t * le,
   /* Additional active stress field "p" */
 
   cs_nhalo(fe->cs, &nhalo);
-  field_create(fe->pe, fe->cs, 3, "Active P", &fe->p);
-  field_init(fe->p, nhalo, le);
-  field_grad_create(fe->pe, fe->p, 2, &fe->dp);
+
+  {
+    /* Active P 3-vector */
+    field_options_t opts = field_options_ndata_nhalo(3, nhalo);
+    field_create(pe, cs, le, "Active P", &opts, &fe->p);
+    field_grad_create(pe, fe->p, 2, &fe->dp);
+  }
 
   /* free energy interface functions */
   fe->super.func = &fe_hvt;

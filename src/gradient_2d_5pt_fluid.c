@@ -31,7 +31,6 @@
 
 #include "pe.h"
 #include "coords.h"
-#include "field_s.h"
 #include "leesedwards.h"
 #include "wall.h"
 #include "gradient_2d_5pt_fluid.h"

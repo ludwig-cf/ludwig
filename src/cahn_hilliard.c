@@ -29,7 +29,6 @@
 #include <stdlib.h>
 #include <math.h>
 
-#include "field_s.h"
 #include "advection_s.h"
 #include "advection_bcs.h"
 #include "coords_s.h"

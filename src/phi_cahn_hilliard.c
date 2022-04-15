@@ -28,7 +28,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2010-2021 The University of Edinburgh
+ *  (c) 2010-2022 The University of Edinburgh
  *
  *  Contributions:
  *  Thanks to Markus Gross, who helped to validate the noise implementation.
@@ -40,7 +40,6 @@
 #include <stdlib.h>
 #include <math.h>
 
-#include "field_s.h"
 #include "physics.h"
 #include "advection_s.h"
 #include "advection_bcs.h"
@@ -121,8 +120,8 @@ __host__ int phi_ch_create(pe_t * pe, cs_t * cs, lees_edw_t * le,
   advflux_le_create(pe, cs, le, 1, &obj->flux);
 
   if (obj->info.conserve) {
-    field_create(pe, cs, 1, "compensated sum", &obj->csum);
-    field_init(obj->csum, 0, NULL);
+    field_options_t opts = field_options_ndata_nhalo(1, 0);
+    field_create(pe, cs, NULL, "compensated sum", &opts, &obj->csum);
   }
 
   pe_retain(pe);
@@ -1088,7 +1087,7 @@ static int phi_ch_subtract_sum_phi_after_forward_step(phi_ch_t * pch, field_t * 
   kernel_info_t limits;
   kernel_ctxt_t * ctxt = NULL;
 
-  phi_correct_t local = {};
+  phi_correct_t local = {0};
   phi_correct_t * local_d = NULL;
 
   assert(pch);
@@ -1119,7 +1118,7 @@ static int phi_ch_subtract_sum_phi_after_forward_step(phi_ch_t * pch, field_t * 
 
   {
     MPI_Comm comm = MPI_COMM_NULL;
-    phi_correct_t global = {};
+    phi_correct_t global = {0};
 
     cs_cart_comm(pch->cs, &comm);
 
@@ -1170,7 +1169,7 @@ __global__ void phi_ch_csum_kernel(kernel_ctxt_t * ktx, lees_edw_t *le,
 
   for_simt_parallel(kindex, kiterations, 1) {
 
-    kahan_t phi = {};
+    kahan_t phi = {0};
 
     ic = kernel_coords_ic(ktx, kindex);
     jc = kernel_coords_jc(ktx, kindex);

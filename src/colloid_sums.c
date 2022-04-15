@@ -4,11 +4,21 @@
  *
  *  Communication for sums over colloid links.
  *
+ *  Adding a new type of message:
+ *    1. Add a tag in colloid_sums.h e.g., COLLOID_SUM_NEW
+ *    2. Add a new message load/unload routine colloid_sum_m<ordinal>
+ *       which must have the same prototype;
+ *    3. Add the message size (bytes) to the array "msize_[]" so
+ *       that msize_[COLLOID_SUM_NEW] = sizeof(message);
+ *    4. Add a line in colloid_sums_process() to set the relevant
+ *       function pointer.
+ *    5. Write a test for colloids_sums_halo(cinfo, COLLOID_SUM_NEW)!
+ *
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2010-2021 The University of Edinburgh
+ *  (c) 2010-2022 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)

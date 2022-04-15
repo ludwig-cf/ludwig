@@ -7,7 +7,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2010-2021 The University of Edinburgh
+ *  (c) 2010-2022 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -429,7 +429,7 @@ int colloid_io_write_buffer_binary(FILE * fp, int nc, colloid_state_t * buf) {
 int colloid_io_read(colloid_io_t * cio, const char * filename) {
 
   int    ngroup;
-  char   filename_io[FILENAME_MAX] = {};
+  char   filename_io[FILENAME_MAX] = {0};
   FILE * fp_state;
 
   assert(cio->f_header_read);

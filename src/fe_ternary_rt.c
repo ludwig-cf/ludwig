@@ -7,7 +7,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group
  *  and Edinburgh Parallel Computing Centre
  *
- *  (c) 2019-2021 The University of Edinburgh
+ *  (c) 2019-2022 The University of Edinburgh
  *
  *  Contributing authors:
  *  Shan Chen (shan.chen@epfl.ch)
@@ -22,7 +22,6 @@
 #include "runtime.h"
 #include "fe_ternary.h"
 #include "fe_ternary_rt.h"
-#include "field_s.h"
 #include "field_ternary_init.h"
 
 /****************************************************************************
@@ -111,7 +110,7 @@ __host__ int fe_ternary_init_rt(pe_t * pe, rt_t * rt, fe_ternary_t * fe,
 
   if (p != 0 && strcmp(value, "2d_double_emulsion") == 0) {
 
-    fti_block_t param = {};
+    fti_block_t param = {0};
 
     /* Default parameters (historically to give roughly equal areas) */
     param.xf1 = 0.2;
@@ -140,7 +139,7 @@ __host__ int fe_ternary_init_rt(pe_t * pe, rt_t * rt, fe_ternary_t * fe,
 
   if (p != 0 && strcmp(value, "2d_tee") == 0) {
 
-    fti_block_t param = {};
+    fti_block_t param = {0};
 
     /* Default parameters (roughly equal area) */
 
@@ -161,7 +160,7 @@ __host__ int fe_ternary_init_rt(pe_t * pe, rt_t * rt, fe_ternary_t * fe,
 
   if (p != 0 && strcmp(value, "2d_lens") == 0) {
 
-    fti_drop_t drop = {};
+    fti_drop_t drop = {0};
 
     /* No defaults */ 
     rt_key_required(rt, "ternary_2d_lens_centre", RT_FATAL);
@@ -175,8 +174,8 @@ __host__ int fe_ternary_init_rt(pe_t * pe, rt_t * rt, fe_ternary_t * fe,
 
   if (p != 0 && strcmp(value, "2d_double_drop") == 0) {
 
-    fti_drop_t drop1 = {};
-    fti_drop_t drop2 = {};
+    fti_drop_t drop1 = {0};
+    fti_drop_t drop2 = {0};
 
     /* No defaults */
     rt_key_required(rt, "ternary_2d_drop1_centre", RT_FATAL);

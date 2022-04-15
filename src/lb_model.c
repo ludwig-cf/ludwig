@@ -8,7 +8,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2021 The University of Edinburgh
+ *  (c) 2021-2022 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -38,6 +38,7 @@ int lb_model_is_available(int nvel) {
   available += (nvel == NVEL_D2Q9);
   available += (nvel == NVEL_D3Q15);
   available += (nvel == NVEL_D3Q19);
+  available += (nvel == NVEL_D3Q27);
 
   return available;
 }
@@ -111,7 +112,7 @@ int lb_model_free(lb_model_t * model) {
   if (model->cv) free(model->cv);
   if (model->wv) free(model->wv);
 
-  *model = (lb_model_t) {};
+  *model = (lb_model_t) {0};
 
   return 0;
 }

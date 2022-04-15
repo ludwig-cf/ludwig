@@ -18,7 +18,7 @@
 #define LUDWIG_LB_BC_OPEN_H
 
 #include "hydro.h"
-#include "model.h"
+#include "lb_data.h"
 
 typedef struct lb_bc_open_vtable_s lb_bc_open_vtable_t;
 typedef struct lb_bc_open_s        lb_bc_open_t;

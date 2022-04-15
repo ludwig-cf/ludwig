@@ -11,7 +11,7 @@
  *       Not to be confused with wall initialisations, which update
  *       the map status, but are separate (see wall_rt.c).
  *
- *  (c) 2021 The University of Edinburgh
+ *  (c) 2021-2022 The University of Edinburgh
  *
  *  Contributing authors:
  *    Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -79,7 +79,7 @@ int map_init_rt(pe_t * pe, cs_t * cs, rt_t * rt, map_t ** map) {
        * access to C, H, that is, ndata = 2 */
       /* Colloids plus porous media is a non-feature at this time. */
 
-      map_options_t options = {};
+      map_options_t options = {0};
       options.ndata = 2;
 
       map_init_options_parse(pe, cs, rt, &options);
@@ -323,7 +323,7 @@ __host__ int map_init_option_acell(pe_t * pe, cs_t * cs, rt_t * rt) {
   }
   else {
     /* Check (and possibly fail) */
-    int ntotal[3] = {};
+    int ntotal[3] = {0};
     cs_ntotal(cs, ntotal);
 
     if (acell < 1) pe_fatal(pe, "acell must be positive\n");

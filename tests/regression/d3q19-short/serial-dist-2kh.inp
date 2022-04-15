@@ -14,7 +14,8 @@ N_cycles 10
 
 size 64_64_1
 grid 2_2_1
-reduced_halo yes
+
+lb_halo_scheme      lb_halo_openmp_reduced (host)
 
 ##############################################################################
 #

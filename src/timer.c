@@ -10,7 +10,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2010-2021 The University of Edinburgh
+ *  (c) 2010-2022 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -44,9 +44,21 @@ static const char * timer_name[] = {"Total",
 				    "Collision",
 				    "Collision (krnl) ",
 				    "Lattice halos",
+				    "-> imbalance",
+				    "-> irecv",
+				    "-> pack",
+				    "-> isend",
+				    "-> waitall",
+				    "-> unpack",
 				    "phi gradients",
 				    "phi grad (krnl) ",
 				    "phi halos",
+				    "-> imbalance",
+				    "-> irecv",
+				    "-> pack",
+				    "-> isend",
+				    "-> waitall",
+				    "-> unpack",
 				    "Lees Edwards BC",
 				    "I/O",
 				    "Forces",
@@ -63,6 +75,12 @@ static const char * timer_name[] = {"Total",
 				    "Phi force (krnl) ",
 				    "phi update",
 				    "Velocity Halo ",
+				    "-> imbalance",
+				    "-> irecv",
+				    "-> pack",
+				    "-> isend",
+				    "-> waitall",
+				    "-> unpack",
 				    "BE mol field (krnl) ",
 				    "BP BE update (krnl) ",
 				    "Advectn (krnl) ",
@@ -74,7 +92,7 @@ static const char * timer_name[] = {"Total",
 				    "Lap timer (no report)",
 				    "Free1",
 				    "Free2",
-                                    "Free3"
+                                    "Free3", "Free4", "Free5", "Free6"
 };
 
 
@@ -235,7 +253,7 @@ __host__ int timekeeper_create(pe_t * pe, const timekeeper_options_t * opts,
   assert(opts);
   assert(tk);
 
-  *tk = (timekeeper_t) {};
+  *tk = (timekeeper_t) {0};
   tk->pe = pe;
   tk->options = *opts;
 
@@ -260,7 +278,7 @@ __host__ int timekeeper_step(timekeeper_t * tk) {
     if (tk->timestep % tk->options.lap_report_freq == 0) {
       /* Recell strctime from pe_time() has a new line */
       pe_t * pe = tk->pe;
-      char strctime[BUFSIZ] = {};
+      char strctime[BUFSIZ] = {0};
       pe_time(strctime, BUFSIZ);
       pe_info(pe, "\nLap time at step %9d is: %8.3f seconds at %s",
 	      tk->timestep, timer_lapse(TIMER_LAP), strctime);
@@ -280,7 +298,7 @@ __host__ int timekeeper_free(timekeeper_t * tk) {
 
   assert(tk);
 
-  *tk = (timekeeper_t) {};
+  *tk = (timekeeper_t) {0};
 
   return 0;
 }

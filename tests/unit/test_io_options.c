@@ -8,7 +8,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2020 The University of Edinburgh
+ *  (c) 2020-2022 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -111,7 +111,7 @@ __host__ int test_io_options_record_format_valid(void) {
 
 __host__ int test_io_options_metadata_version_valid(void) {
 
-  io_options_t opts = {};
+  io_options_t opts = io_options_default();
   int isvalid = 0;
 
   /* Wrong */

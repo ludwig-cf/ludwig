@@ -8,7 +8,7 @@
  *  Edinburgh Parallel Computing Centre
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
- *  (c) 2010-2021 The University of Edinburgh
+ *  (c) 2010-2022 The University of Edinburgh
  *
  *****************************************************************************/
 
@@ -75,6 +75,7 @@ __host__ int tests_create() {
   test_lb_d2q9_suite();
   test_lb_d3q15_suite();
   test_lb_d3q19_suite();
+  test_lb_d3q27_suite();
   test_lb_model_suite();
   test_lb_bc_inflow_opts_suite();
   test_lb_bc_inflow_rhou_suite();
@@ -104,6 +105,7 @@ __host__ int tests_create() {
   test_util_sum_suite();
   test_visc_arrhenius_suite();
   test_wall_suite();
+  test_wall_ss_cut_suite();
 
   test_fe_surfactant1_suite();
   test_fe_symmetric_suite();

@@ -6,6 +6,8 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
+ *  (c) 2021-2022 The University of Edinburgh
+ *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *
@@ -91,21 +93,23 @@ __host__ int test_lb_bc_outflow_rhou_create(pe_t * pe, cs_t * cs) {
 
 __host__ int test_lb_bc_outflow_rhou_update(pe_t * pe, cs_t * cs, int nvel) {
 
-  int nlocal[3] = {};
-  int ntotal[3] = {};
-  int noffset[3] = {};
+  int nlocal[3] = {0};
+  int ntotal[3] = {0};
+  int noffset[3] = {0};
 
   lb_bc_outflow_opts_t options = {.nvel = nvel,
                                   .flow = {0, 1, 0},
 				  .rho0 = 2.0};
   lb_bc_outflow_rhou_t * outflow = NULL;
+
+  hydro_options_t hopts = hydro_options_default();
   hydro_t * hydro = NULL;
 
   assert(pe);
   assert(cs);
 
   lb_bc_outflow_rhou_create(pe, cs, &options, &outflow);
-  hydro_create(pe, cs, NULL, 1, &hydro);
+  hydro_create(pe, cs, NULL, &hopts, &hydro);
 
   /* The rho0 is fixed and comes from options.rho0, so just run update */
 
@@ -149,16 +153,18 @@ __host__ int test_lb_bc_outflow_rhou_impose(pe_t * pe, cs_t * cs, int nvel) {
 
   int ierr = 0;
 
-  int nlocal[3] = {};
-  int ntotal[3] = {};
-  int noffset[3] = {};
+  int nlocal[3] = {0};
+  int ntotal[3] = {0};
+  int noffset[3] = {0};
 
   lb_bc_outflow_opts_t options = {.nvel = nvel,
                                   .flow = {0, 0, 1},
                                   .rho0 = 3.0};
   lb_bc_outflow_rhou_t * outflow = NULL;
-  hydro_t * hydro = NULL;
   lb_t * lb = NULL;
+
+  hydro_options_t hopts = hydro_options_default();
+  hydro_t * hydro = NULL;
 
   double u0[3] = {0.0, 0.0, 0.01}; /* Domain outflow in z-direction */
 
@@ -166,9 +172,15 @@ __host__ int test_lb_bc_outflow_rhou_impose(pe_t * pe, cs_t * cs, int nvel) {
   assert(cs);
 
   lb_bc_outflow_rhou_create(pe, cs, &options, &outflow);
-  hydro_create(pe, cs, NULL, 1, &hydro);
-  lb_create(pe, cs, &lb);
-  lb_init(lb);
+  hydro_create(pe, cs, NULL, &hopts, &hydro);
+
+  {
+    lb_data_options_t opts = lb_data_options_default();
+    opts.ndim = NDIM;
+    opts.nvel = nvel;
+    lb_data_create(pe, cs, &opts, &lb);
+  }
+
 
   /* Set some outflow velocities in the domain */
 

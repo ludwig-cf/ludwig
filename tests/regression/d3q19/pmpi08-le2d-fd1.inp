@@ -42,7 +42,6 @@ free_energy symmetric
 A -0.0625
 B 0.0625
 K 0.04
-C 0.000
 
 phi0 0.0
 phi_initialisation    spinodal
@@ -65,7 +64,6 @@ colloid_init        no_colloids
 #
 ###############################################################################
 
-boundary_walls_on no
 periodicity 1_1_1
 
 ###############################################################################

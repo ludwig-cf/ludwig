@@ -7,7 +7,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2013-2017 The University of Edinburgh
+ *  (c) 2013-2022 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -110,7 +110,7 @@ static int test_build_links_model_c1(pe_t * pe, cs_t * cs, int nvel,
   int ncell[3] = {2, 2, 2};
 
   map_t * map = NULL;
-  lb_model_t model = {};
+  lb_model_t model = {0};
   colloid_t * pc = NULL;
   colloids_info_t * cinfo = NULL;
 
@@ -173,7 +173,7 @@ static int test_build_links_model_c2(pe_t * pe, cs_t * cs, int nvel,
   int ncell[3] = {4, 4, 4};
 
   map_t * map = NULL;
-  lb_model_t model = {};
+  lb_model_t model = {0};
   colloid_t * pc = NULL;
   colloids_info_t * cinfo = NULL;
 
@@ -246,7 +246,7 @@ static int test_build_rebuild_c1(pe_t * pe, cs_t * cs, int nvel,
   int ncell[3] = {2, 2, 2};
 
   map_t * map = NULL;
-  lb_model_t model = {};
+  lb_model_t model = {0};
   colloid_t * pc = NULL;
   colloids_info_t * cinfo = NULL;
 

@@ -29,7 +29,6 @@
 #include "pe.h"
 #include "coords.h"
 #include "kernel.h"
-#include "field_s.h"
 #include "gradient_3d_ternary_solid.h"
 
 typedef struct solid_s {

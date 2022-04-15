@@ -5,7 +5,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2009-2016 The University of Edinburgh
+ *  (c) 2009-2022 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -17,7 +17,7 @@
 #define PHI_LB_COUPLER_H
 
 #include "field.h"
-#include "model.h"
+#include "lb_data.h"
 
 __host__ int phi_lb_to_field(field_t * phi, lb_t * lb);
 __host__ int phi_lb_from_field(field_t * phi, lb_t * lb);

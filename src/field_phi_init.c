@@ -20,7 +20,6 @@
 
 #include "noise.h"
 #include "util.h"
-#include "field_s.h"
 #include "field_phi_init.h"
 
 /*****************************************************************************

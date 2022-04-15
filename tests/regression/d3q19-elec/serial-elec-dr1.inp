@@ -49,8 +49,6 @@ free_energy fe_electro_symmetric
 
 fd_advection_scheme_order 3
 fd_gradient_calculation 3d_7pt_fluid
-fd_phi_fluctuations 0
-
 fd_force_divergence 1
 
 ###############################################################################
@@ -74,11 +72,9 @@ fd_force_divergence 1
 A -0.001
 B 0.001
 K 0.003
-C 0.0
 
 mobility 1.0
 
-noise 0.0
 phi0 0.0
 phi_initialisation    drop
 phi_init_drop_radius  20.0
@@ -100,8 +96,6 @@ electric_e0 0.0_0.75_0.0
 ###############################################################################
 
 colloid_init        no_colloids
-colloid_gravity  0.0_0.0_0.0
-magnetic_b0      0.0_0.0_0.0
 
 ###############################################################################
 #
@@ -110,10 +104,6 @@ magnetic_b0      0.0_0.0_0.0
 ###############################################################################
 
 boundary_walls 0_0_0
-boundary_speed_bottom 0.0
-boundary_speed_top    0.0
-boundary_shear_init 0
-boundary_lubrication_rcnormal 0.0
 
 ###############################################################################
 #

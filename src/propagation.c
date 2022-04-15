@@ -22,7 +22,6 @@
 #include "coords_s.h"
 #include "kernel.h"
 #include "propagation.h"
-#include "lb_model_s.h"
 #include "timer.h"
 
 __host__ int lb_propagation_driver(lb_t * lb);

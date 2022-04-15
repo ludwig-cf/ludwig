@@ -22,7 +22,6 @@
 #include <string.h>
 
 #include "kernel.h"
-#include "lb_model_s.h"
 #include "physics.h"
 #include "util.h"
 #include "wall.h"

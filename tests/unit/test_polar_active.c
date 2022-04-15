@@ -58,6 +58,8 @@ int test_polar_active_suite(void) {
   field_grad_t * fpgrad = NULL;
   fe_polar_t * fe = NULL;
 
+  field_options_t opts = field_options_ndata_nhalo(nf, nhalo);
+
   tdpGetDeviceCount(&ndevice);
 
   pe_create(MPI_COMM_WORLD, PE_QUIET, &pe);
@@ -74,8 +76,7 @@ int test_polar_active_suite(void) {
   cs_init(cs);
   lees_edw_create(pe, cs, NULL, &le);
 
-  field_create(pe, cs, nf, "p", &fp);
-  field_init(fp, nhalo, le);
+  field_create(pe, cs, le, "p", &opts, &fp);
   field_grad_create(pe, fp, 2, &fpgrad);
   field_grad_set(fpgrad, grad_2d_5pt_fluid_d2, NULL);
 

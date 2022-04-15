@@ -6,7 +6,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2021 The University of Edinburgh
+ *  (c) 2021-2022 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -58,7 +58,7 @@ __host__ int test_lb_d3q19_suite(void) {
 
 __host__ int test_lb_d3q19_create(void) {
 
-  lb_model_t model = {};
+  lb_model_t model = {0};
 
   lb_d3q19_create(&model);
 
@@ -68,6 +68,8 @@ __host__ int test_lb_d3q19_create(void) {
   assert(model.wv);
   assert(model.na);
   assert(model.ma);
+
+  assert(fabs(model.cs2 - 1.0/3.0) < DBL_EPSILON);
 
   lb_model_free(&model);
 

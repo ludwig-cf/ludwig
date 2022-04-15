@@ -66,7 +66,6 @@ N_cycles 2560
 
 size 64_64_1
 grid 2_2_1
-reduced_halo yes
 
 ##############################################################################
 #
@@ -78,6 +77,7 @@ viscosity 0.000128
 
 isothermal_fluctuations off
 lb_relaxation_scheme    m10
+lb_halo_scheme          lb_halo_openmp_reduced
 
 ##############################################################################
 #

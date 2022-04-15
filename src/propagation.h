@@ -16,7 +16,7 @@
 #ifndef LUDWIG_LB_PROPAGATION_H
 #define LUDWIG_LB_PROPAGATION_H
 
-#include "model.h"
+#include "lb_data.h"
 
 __host__ int lb_propagation(lb_t * lb);
 

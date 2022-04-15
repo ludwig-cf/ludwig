@@ -7,7 +7,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2010-2021 Ths University of Edinburgh
+ *  (c) 2010-2022 Ths University of Edinburgh
  *
  *  Contributing authors: 
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -22,12 +22,13 @@
 #include "coords.h"
 #include "kernel.h"
 #include "memory.h"
-#include "lb_model_s.h"
 #include "propagation.h"
 #include "tests.h"
 
-__host__ int do_test_velocity(pe_t * pe, cs_t * cs, lb_halo_enum_t halo);
-__host__ int do_test_source_destination(pe_t * pe, cs_t * cs, lb_halo_enum_t halo);
+__host__ int do_test_velocity(pe_t * pe, cs_t * cs, int ndist,
+			      lb_halo_enum_t halo);
+__host__ int do_test_source_destination(pe_t * pe, cs_t * cs, int ndist,
+					lb_halo_enum_t halo);
 
 /*****************************************************************************
  *
@@ -44,19 +45,15 @@ int test_lb_prop_suite(void) {
   cs_create(pe, &cs);
   cs_init(cs);
 
-  if (NSIMDVL == 1 && DATA_MODEL == DATA_MODEL_AOS) {
-    do_test_velocity(pe, cs, LB_HALO_FULL);
-    do_test_velocity(pe, cs, LB_HALO_REDUCED);
+  do_test_velocity(pe, cs, 1, LB_HALO_TARGET);
+  do_test_velocity(pe, cs, 2, LB_HALO_TARGET);
+  do_test_velocity(pe, cs, 1, LB_HALO_OPENMP_FULL);
+  do_test_velocity(pe, cs, 1, LB_HALO_OPENMP_REDUCED);
 
-    do_test_source_destination(pe, cs, LB_HALO_FULL);
-    do_test_source_destination(pe, cs, LB_HALO_REDUCED);
-  }
-
-  do_test_velocity(pe, cs, LB_HALO_HOST);
-  do_test_source_destination(pe, cs, LB_HALO_HOST);
-
-  do_test_velocity(pe, cs, LB_HALO_TARGET);
-  do_test_source_destination(pe, cs, LB_HALO_TARGET);
+  do_test_source_destination(pe, cs, 1, LB_HALO_TARGET);
+  do_test_source_destination(pe, cs, 2, LB_HALO_TARGET);
+  do_test_source_destination(pe, cs, 1, LB_HALO_OPENMP_FULL);
+  do_test_source_destination(pe, cs, 1, LB_HALO_OPENMP_REDUCED);
 
   pe_info(pe, "PASS     ./unit/test_prop\n");
   cs_free(cs);
@@ -74,25 +71,27 @@ int test_lb_prop_suite(void) {
  *
  *****************************************************************************/
 
-int do_test_velocity(pe_t * pe, cs_t * cs, lb_halo_enum_t halo) {
+int do_test_velocity(pe_t * pe, cs_t * cs, int ndist, lb_halo_enum_t halo) {
 
-  int ndevice;
   int nlocal[3];
   int ic, jc, kc, index, p;
   int nd;
-  int ndist = 2;
   double f_actual;
 
+  lb_data_options_t options = lb_data_options_default();
   lb_t * lb = NULL;
 
   assert(pe);
   assert(cs);
+  assert(ndist == 1 || ndist == 2);
 
-  lb_create(pe, cs, &lb);
+  options.ndim = NDIM;
+  options.nvel = NVEL;
+  options.ndist = ndist;
+  options.halo  = halo;
+
+  lb_data_create(pe, cs, &options, &lb);
   assert(lb);
-
-  lb_ndist_set(lb, ndist);
-  lb_init(lb);
 
   cs_nlocal(cs, nlocal);
 
@@ -114,15 +113,10 @@ int do_test_velocity(pe_t * pe, cs_t * cs, lb_halo_enum_t halo) {
     }
   }
 
-  tdpGetDeviceCount(&ndevice);
-  if (ndevice > 0 && halo == LB_HALO_HOST) {
-    lb_halo_swap(lb, halo);
-    lb_memcpy(lb, tdpMemcpyHostToDevice);
-  }
-  else {
-    lb_memcpy(lb, tdpMemcpyHostToDevice);
-    lb_halo_swap(lb, halo);
-  }
+  /* Halo swap, and make sure values are on device */
+
+  lb_memcpy(lb, tdpMemcpyHostToDevice);
+  lb_halo(lb);
 
   lb_propagation(lb);
   lb_memcpy(lb, tdpMemcpyDeviceToHost);
@@ -161,27 +155,31 @@ int do_test_velocity(pe_t * pe, cs_t * cs, lb_halo_enum_t halo) {
  *  
  *****************************************************************************/
 
-int do_test_source_destination(pe_t * pe, cs_t * cs, lb_halo_enum_t halo) {
+int do_test_source_destination(pe_t * pe, cs_t * cs, int ndist,
+			       lb_halo_enum_t halo) {
 
-  int ndevice;
   int nlocal[3], offset[3];
   int ntotal[3];
   int ic, jc, kc, index, p;
   int nd;
-  int ndist = 2;
   int isource, jsource, ksource;
   double f_actual, f_expect;
   double ltot[3];
 
+  lb_data_options_t options = lb_data_options_default();
   lb_t * lb = NULL;
 
   assert(pe);
   assert(cs);
+  assert(ndist == 1 || ndist == 2);
 
-  lb_create(pe, cs, &lb);
+  options.ndim = NDIM;
+  options.nvel = NVEL;
+  options.halo = halo;
+  options.ndist = ndist;
+
+  lb_data_create(pe, cs, &options, &lb);
   assert(lb);
-  lb_ndist_set(lb, ndist);
-  lb_init(lb);
 
   cs_ltot(cs, ltot);
   cs_ntotal(cs, ntotal);
@@ -209,15 +207,10 @@ int do_test_source_destination(pe_t * pe, cs_t * cs, lb_halo_enum_t halo) {
     }
   }
 
-  tdpGetDeviceCount(&ndevice);
-  if (ndevice > 0 && halo == LB_HALO_HOST) {
-    lb_halo_swap(lb, halo);
-    lb_memcpy(lb, tdpMemcpyHostToDevice);
-  }
-  else {
-    lb_memcpy(lb, tdpMemcpyHostToDevice);
-    lb_halo_swap(lb, halo);
-  }
+  /* Initial values update to device */
+  lb_memcpy(lb, tdpMemcpyHostToDevice);
+  lb_halo(lb);
+
   lb_propagation(lb);
   lb_memcpy(lb, tdpMemcpyDeviceToHost);
 

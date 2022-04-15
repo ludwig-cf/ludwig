@@ -20,7 +20,6 @@
 
 #include "pe.h"
 #include "coords.h"
-#include "field_s.h"
 #include "advection_s.h"
 #include "leslie_ericksen.h"
 

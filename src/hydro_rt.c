@@ -5,7 +5,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2018 The University of Edinburgh
+ *  (c) 2018-2022 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -58,18 +58,19 @@ int hydro_rt(pe_t * pe, rt_t * rt, cs_t * cs, lees_edw_t * le,
  *
  *  hydro_do_init
  *
- *  Note that input format is really irrelevant for velocity, as it
- *  is never read from file.
+ *  Some work on the I/O options is required:
+ *    - should be specified as part of the options.
+ *  Halo options should be extended to include density.
  *
  *****************************************************************************/
 
 static int hydro_do_init(pe_t * pe, rt_t * rt, cs_t * cs, lees_edw_t * le,
 			 hydro_t ** phydro) {
 
+  hydro_options_t opts = hydro_options_default();
   hydro_t * obj = NULL;
 
   char value[BUFSIZ] = "";
-  int nhcomm = 1; /* Always create with halo width one */
   int io_grid[3] = {1, 1, 1};
   int io_format_in  = IO_FORMAT_DEFAULT;
   int io_format_out = IO_FORMAT_DEFAULT;
@@ -77,7 +78,28 @@ static int hydro_do_init(pe_t * pe, rt_t * rt, cs_t * cs, lees_edw_t * le,
   assert(rt);
   assert(phydro);
 
-  hydro_create(pe, cs, le, nhcomm, &obj);
+  if (rt_string_parameter(rt, "hydro_halo_scheme", value, BUFSIZ)) {
+    /* The output is only provided if the key is present to
+     * prevent the regression tests getting upset. */
+    if (strcmp(value, "hydro_u_halo_target") == 0) {
+      /* Should be the default */
+      opts.haloscheme = HYDRO_U_HALO_TARGET;
+      pe_info(pe, "Hydro halo:    %s\n", "hydro_u_halo_target");
+    }
+    else if (strcmp(value, "hydro_u_halo_openmp") == 0) {
+      opts.haloscheme = HYDRO_U_HALO_OPENMP;
+      pe_info(pe, "Hydro halo:    %s\n", "hydro_u_halo_openmp");    
+    }
+    else if (strcmp(value, "hydro_u_halo_host") == 0) {
+      opts.haloscheme = HYDRO_U_HALO_HOST;
+      pe_info(pe, "Hydro halo:    %s\n", "hydro_u_halo_host");
+    }
+    else {
+      pe_fatal(pe, "hydro_halo_scheme is present but not recongnised\n");
+    }
+  }
+
+  hydro_create(pe, cs, le, &opts, &obj);
   assert(obj);
 
   rt_int_parameter_vector(rt, "default_io_grid", io_grid);

@@ -18,7 +18,7 @@
  *  Edinburgh Soft Matter and Statistical Phsyics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2021 The University of Edinburgh
+ *  (c) 2021-2022 The University of Edinburgh
  *
  *****************************************************************************/
 
@@ -138,9 +138,9 @@ __host__ int lb_bc_outflow_init_link(lb_bc_outflow_rhou_t * outflow,
 				     link_init_enum_t init, int id) {
 
   cs_t * cs = NULL;
-  int noffset[3] = {};
-  int ntotal[3] = {};
-  int nlocal[3] = {};
+  int noffset[3] = {0};
+  int ntotal[3] = {0};
+  int nlocal[3] = {0};
   int nlink = 0;
 
   assert(outflow);
@@ -155,7 +155,7 @@ __host__ int lb_bc_outflow_init_link(lb_bc_outflow_rhou_t * outflow,
   if (noffset[id] + nlocal[id] == ntotal[id]) {
     int nmin[3]   = {1, 1, 1};
 
-    lb_model_t model = {};
+    lb_model_t model = {0};
     lb_model_create(outflow->options.nvel, &model);
 
     nmin[id] = nlocal[id]; /* Only rightmost edge in the relevant direction */
@@ -235,9 +235,9 @@ __host__ int lb_bc_outflow_rhou_update(lb_bc_outflow_rhou_t * outflow,
 
   cs_t * cs = NULL;
   int id = -1;
-  int nlocal[3] = {};
-  int ntotal[3] = {};
-  int noffset[3] = {};
+  int nlocal[3] = {0};
+  int ntotal[3] = {0};
+  int noffset[3] = {0};
 
   assert(outflow);
   assert(hydro);
@@ -267,7 +267,7 @@ __host__ int lb_bc_outflow_rhou_update(lb_bc_outflow_rhou_t * outflow,
 
 	  int index0 = cs_index(cs, ic + idx, jc + jdy, kc + kdz);
 	  int index1 = cs_index(cs, ic, jc, kc);
-	  double u[3] = {};
+	  double u[3] = {0};
 
 	  hydro_rho_set(hydro, index0, outflow->options.rho0);
 	  hydro_u(hydro, index1, u);
@@ -294,9 +294,9 @@ __host__ int lb_bc_outflow_rhou_update(lb_bc_outflow_rhou_t * outflow,
 __host__ int lb_bc_outflow_rhou_halo_update(lb_bc_outflow_rhou_t * outflow,
 					    hydro_t * hydro) {
   cs_t * cs = NULL;
-  int noffset[3] = {};
-  int ntotal[3] = {};
-  int nlocal[3]  = {};
+  int noffset[3] = {0};
+  int ntotal[3] = {0};
+  int nlocal[3]  = {0};
 
   const int tag = 12348;
 
@@ -314,10 +314,10 @@ __host__ int lb_bc_outflow_rhou_halo_update(lb_bc_outflow_rhou_t * outflow,
   if (noffset[X] + nlocal[X] == ntotal[X]) {
 
     MPI_Comm comm = MPI_COMM_NULL;
-    MPI_Request req[8] = {};
-    double *buf[8] = {};
-    int ngbr[8] = {};
-    int count[8] = {};      /* Data items */
+    MPI_Request req[8] = {0};
+    double *buf[8] = {0};
+    int ngbr[8] = {0};
+    int count[8] = {0};     /* Data items */
     int nhalo = 1;          /* Only ever one if distributions are involved. */
 
     /* Recv from ... */
@@ -364,7 +364,7 @@ __host__ int lb_bc_outflow_rhou_halo_update(lb_bc_outflow_rhou_t * outflow,
       int m = 4 + ms;
       int ib = 0;
       int nhm1 = nhalo-1;
-      cs_limits_t lim = {};
+      cs_limits_t lim = {0};
 
       if (m == 4) { /* send to Y-1,Z */
         lim.jmin = 1;                lim.jmax = nhalo;
@@ -388,7 +388,7 @@ __host__ int lb_bc_outflow_rhou_halo_update(lb_bc_outflow_rhou_t * outflow,
         for (int kc = lim.kmin; kc <= lim.kmax; kc++) {
           int index = cs_index(cs, ic, jc, kc);
           double rho = 0.0;
-          double u[3] = {};
+          double u[3] = {0};
           hydro_rho(hydro, index, &rho);
           hydro_u(hydro, index, u);
           buf[m][ib++] = rho;
@@ -405,7 +405,7 @@ __host__ int lb_bc_outflow_rhou_halo_update(lb_bc_outflow_rhou_t * outflow,
     /* Process */
     for (int ms = 0; ms < 8; ms++) {
       int m = -1;
-      MPI_Status status = {};
+      MPI_Status status = {0};
 
       MPI_Waitany(8, req, &m, &status);
       if (m == MPI_UNDEFINED) continue;
@@ -419,7 +419,7 @@ __host__ int lb_bc_outflow_rhou_halo_update(lb_bc_outflow_rhou_t * outflow,
       else {
         /* Recv has arrived: unpack to correct destination */
         int ib = 0;
-        cs_limits_t lim = {};
+        cs_limits_t lim = {0};
 
         if (m == 0) { /* recv from Y+1,Z */
           lim.jmin = nlocal[Y] + 1;    lim.jmax = nlocal[Y] + nhalo;
@@ -443,7 +443,7 @@ __host__ int lb_bc_outflow_rhou_halo_update(lb_bc_outflow_rhou_t * outflow,
           for (int kc = lim.kmin; kc <= lim.kmax; kc++) {
             int index = cs_index(cs, ic, jc, kc);
             double rho = 0.0;
-            double u[3] = {};
+            double u[3] = {0};
             rho  = buf[m][ib++];
             u[X] = buf[m][ib++];
             u[Y] = buf[m][ib++];
@@ -499,7 +499,7 @@ __host__ int lb_bc_outflow_rhou_impose(lb_bc_outflow_rhou_t * outflow,
     int8_t p  = outflow->linkp[n];
 
     double rho  = 0.0;
-    double u[3] = {};
+    double u[3] = {0};
 
     hydro_rho(hydro, index, &rho);
     hydro_u(hydro, index, u);

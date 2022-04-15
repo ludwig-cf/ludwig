@@ -11,10 +11,10 @@
  *  The output should be capillary.dat      [for human consumption]
  *                       capillary.001-001  [for initial input to run]
  *
- *  (c) 2008-2021 The University of Edinburgh
- *
  *  Edinburgh Soft Matter and Statistcal Physics Group and
  *  Edinburgh Parallel Computing Centre
+ *
+ *  (c) 2008-2022 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -225,8 +225,8 @@ int main(int argc, char ** argv) {
     map_init_status_wall(map, X);
 
     {
-      int nlocal[3] = {};
-      int noffset[3] = {};
+      int nlocal[3] = {0};
+      int noffset[3] = {0};
       cs_nlocal(cs, nlocal);
       cs_nlocal_offset(cs, noffset);
       if (noffset[X] == 0) {
@@ -318,7 +318,7 @@ int map_special_cross(map_t * map) {
 
   const int w = 5;
   const int w_arm = 4;
-  int nlocal[3] = {};
+  int nlocal[3] = {0};
   int x0, x1, j0, j1;
 
   cs_t * cs = NULL;
@@ -398,7 +398,7 @@ int map_special_cross(map_t * map) {
 int map_xwall_obstacles(map_t * map, double sigma) {
 
   cs_t * cs = NULL;
-  int nlocal[3] = {};
+  int nlocal[3] = {0};
 
   int obst_start[2*obstacle_number][3];
   int obst_stop[2*obstacle_number][3];
@@ -536,7 +536,7 @@ int capillary_write_ascii_serial(pe_t * pe, cs_t * cs, map_t * map) {
 
   const char * filename = "capillary.dat";
 
-  int nlocal[3] = {};
+  int nlocal[3] = {0};
   FILE * fp = NULL;
 
   assert(pe);

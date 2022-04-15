@@ -1,9 +1,16 @@
-Welcome to Ludwig v0.5.48 (Serial version running on 1 process)
+Welcome to Ludwig v0.15.0 (Serial version running on 1 process)
+Start time: Wed Jan 12 12:46:04 2022
 
-The SVN revision details are: 2982
+Compiler:
+  name:           Gnu 11.2.0
+  version-string: 11.2.0
+
 Note assertions via standard C assert() are on.
 
-Read 41 user parameters from serial-elec-gc2.inp
+Target thread model: OpenMP.
+OpenMP threads: 1; maximum number of threads: 8.
+
+Read 30 user parameters from serial-elec-gc2.inp
 
 System details
 --------------
@@ -63,6 +70,7 @@ I/O grid:         1 1 1
 
 Lattice Boltzmann collision
 ---------------------------
+Relaxation time scheme:   M10
 Hydrodynamic modes:       on
 Ghost modes:              on
 Isothermal fluctuations:  off
@@ -72,9 +80,9 @@ Ghost relaxation time:    1.00000e+00
 
 Porous media
 ------------
-Porous media file requested:  map-elec-gc2
-Porous media file type:       status_only
-Porous media format (serial): BINARY
+Porous media file stub:       capillary
+Porous media file data items: 0
+Porous media format (serial): binary
 Porous media io grid:         1 1 1
 [User   ] Random number seed: 8361235
 
@@ -92,6 +100,7 @@ Porous Media
 ------------
 Wall boundary links allocated:   160
 Memory (total, bytes):           2560
+
 Arranging initial charge neutrality.
 
 Initial conditions.
@@ -101,11 +110,11 @@ Scalars - total mean variance min max
 [psi]  0.0000000e+00  0.0000000e+00  0.0000000e+00
 [rho]  1.9920000e+00  1.0000000e-03  3.1250000e-02
 [rho]  1.9920000e+00  0.0000000e+00  2.0080645e-03
-[elc] -1.2878587e-14 -1.0080645e-03  3.1250000e-02
+[elc] -2.3203661e-14 -1.0080645e-03  3.1250000e-02
 
 Momentum - x y z
-[total   ]  1.3766766e-14  0.0000000e+00  0.0000000e+00
-[fluid   ]  1.3766766e-14  0.0000000e+00  0.0000000e+00
+[total   ]  0.0000000e+00  0.0000000e+00  0.0000000e+00
+[fluid   ]  0.0000000e+00  0.0000000e+00  0.0000000e+00
 [walls   ]  0.0000000e+00  0.0000000e+00  0.0000000e+00
 
 Starting time step loop.
@@ -113,17 +122,17 @@ Starting time step loop.
 
 Scalars - total mean variance min max
 [rho]         992.00  1.00000000000  1.5210055e-14  0.99999998294  1.00000011145
-[psi] -1.4122037e-12 -1.5210888e+00  2.9128003e+00
+[psi]  1.1990409e-14 -1.5210888e+00  2.9128003e+00
 [rho]  1.9920000e+00  8.2093661e-04  3.1250000e-02
 [rho]  1.9920000e+00  0.0000000e+00  2.4098347e-03
-[elc]  4.9960036e-16 -1.5888981e-03  3.1250000e-02
+[elc] -1.4988011e-14 -1.5888981e-03  3.1250000e-02
 
 Free energy density - timestep total fluid
 [fed]            100 -2.4613216884e-02 -2.2373587017e-02
 
 Momentum - x y z
-[total   ] -1.1102230e-15  3.3306691e-16  0.0000000e+00
-[fluid   ] -1.4899193e-13  3.3306691e-16  0.0000000e+00
+[total   ] -6.6613381e-16  3.1225023e-17  0.0000000e+00
+[fluid   ] -1.4854784e-13  3.1225023e-17  0.0000000e+00
 [walls   ]  1.4788171e-13  0.0000000e+00  0.0000000e+00
 
 Velocity - x y z
@@ -137,18 +146,19 @@ Timer resolution: 1e-06 second
 
 Timer statistics
              Section:       tmin       tmax      total
-               Total:      3.383      3.383      3.383   3.382850 (1 call)
-      Time step loop:      0.031      0.045      3.380   0.033796 (100 calls)
-         Propagation:      0.001      0.001      0.069   0.000694 (100 calls)
-    Propagtn (krnl) :      0.001      0.001      0.069   0.000692 (100 calls)
-           Collision:      0.001      0.002      0.123   0.001227 (100 calls)
-   Collision (krnl) :      0.001      0.002      0.123   0.001225 (100 calls)
-       Lattice halos:      0.000      0.001      0.073   0.000183 (400 calls)
-       phi gradients:      0.000      0.000      0.000   0.000001 (100 calls)
-                 BBL:      0.000      0.000      0.002   0.000022 (100 calls)
-   Force calculation:      0.000      0.000      0.015   0.000073 (200 calls)
+               Total:      2.751      2.751      2.751   2.750747 (1 call)
+      Time step loop:      0.027      0.029      2.746   0.027462 (100 calls)
+         Propagation:      0.001      0.001      0.061   0.000605 (100 calls)
+    Propagtn (krnl) :      0.001      0.001      0.060   0.000604 (100 calls)
+           Collision:      0.001      0.001      0.120   0.001200 (100 calls)
+   Collision (krnl) :      0.001      0.001      0.120   0.001198 (100 calls)
+       Lattice halos:      0.000      0.001      0.066   0.000165 (400 calls)
+       phi gradients:      0.000      0.000      0.000   0.000000 (100 calls)
+                 BBL:      0.000      0.000      0.002   0.000024 (100 calls)
+   Force calculation:      0.000      0.000      0.013   0.000067 (200 calls)
           phi update:      0.000      0.000      0.000   0.000000 (100 calls)
-    Poisson equation:      0.027      0.039      2.927   0.029268 (100 calls)
-       Nernst Planck:      0.001      0.003      0.161   0.001611 (100 calls)
-               Free1:      0.000      0.001      0.001   0.000007 (100 calls)
+    Poisson equation:      0.023      0.025      2.338   0.023377 (100 calls)
+       Nernst Planck:      0.001      0.002      0.137   0.001366 (100 calls)
+               Free1:      0.000      0.001      0.001   0.000009 (100 calls)
+End time: Wed Jan 12 12:46:06 2022
 Ludwig finished normally.

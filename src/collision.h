@@ -5,7 +5,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2010-2020 The University of Edinburgh
+ *  (c) 2010-2022 The University of Edinburgh
  *
  *  Contributing authors:
  *    Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -20,7 +20,7 @@
 #include "hydro.h"
 #include "map.h"
 #include "noise.h"
-#include "model.h"
+#include "lb_data.h"
 #include "free_energy.h"
 #include "visc.h"
 

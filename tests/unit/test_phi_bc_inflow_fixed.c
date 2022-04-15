@@ -2,6 +2,14 @@
  *
  *  test_phi_bc_inflow_fixed.c
  *
+ *  Edinburgh Soft Matter and Statistical Physics Group and
+ *  Edinburgh Parallel Computing Centre
+ *
+ *  (c) 2022 The University of Edinburgh
+ *
+ *  Contributing authors:
+ *  Kevin Stratford (kevin@epcc.ed.ac.uk)
+ *
  *****************************************************************************/
 
 #include <assert.h>
@@ -77,16 +85,17 @@ __host__ int test_phi_bc_inflow_fixed_create(pe_t * pe, cs_t * cs) {
 
 __host__ int test_phi_bc_inflow_fixed_update(pe_t * pe, cs_t * cs) {
 
-  int noffset[3] = {};
+  int noffset[3] = {0};
   phi_bc_inflow_opts_t options = {.phi0 = 999.999, .flow = {1,0,0}};
   phi_bc_inflow_fixed_t * inflow = NULL;
+
   field_t * phi = NULL;
+  field_options_t opts = field_options_ndata_nhalo(1, 1);
 
   assert(pe);
   assert(cs);
 
-  field_create(pe, cs, 1, "phi", &phi);
-  field_init(phi, 1, NULL);
+  field_create(pe, cs, NULL, "phi", &opts, &phi);
   assert(phi);
   
   phi_bc_inflow_fixed_create(pe, cs, &options, &inflow);
@@ -101,7 +110,7 @@ __host__ int test_phi_bc_inflow_fixed_update(pe_t * pe, cs_t * cs) {
   if (noffset[X] == 0) {
     /* Check x-inflow region */
     int nhalo = 0;
-    int nlocal[3] = {};
+    int nlocal[3] = {0};
 
     cs_nhalo(cs, &nhalo);
     cs_nlocal(cs, nlocal);

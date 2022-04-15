@@ -31,8 +31,9 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
+ *  (c) 2010-2022 The University of Edinburgh
+ *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
- *  (c) 2010-2021 The University of Edinburgh
  *
  *****************************************************************************/
 
@@ -836,7 +837,7 @@ static int rt_look_up_key(rt_t * rt, const char * key, char * value) {
 int rt_key_required(rt_t * rt, const char * key, rt_enum_t level) {
 
   int ierr = 0;
-  char value[NKEY_LENGTH] = {};
+  char value[NKEY_LENGTH] = {0};
 
   assert(rt);
   assert(key);

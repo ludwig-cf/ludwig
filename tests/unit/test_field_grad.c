@@ -24,7 +24,6 @@
 #include "pe.h"
 #include "coords.h"
 #include "leesedwards.h"
-#include "field_s.h"
 #include "field_grad.h"
 #include "tests.h"
 
@@ -80,6 +79,7 @@ int do_test1(pe_t * pe) {
   lees_edw_t * le = NULL;
   field_t * field = NULL;
   field_grad_t * gradient = NULL;
+  field_options_t opts = field_options_ndata_nhalo(nfref, 1);
 
   assert(pe);
 
@@ -87,9 +87,7 @@ int do_test1(pe_t * pe) {
   cs_init(cs);
   lees_edw_create(pe, cs, NULL, &le);
 
-  field_create(pe, cs, nfref, "scalar-field-test", &field);
-  assert(field);
-  field_init(field, 0, le);
+  field_create(pe, cs, le, "scalar-field-test", &opts, &field);
 
   field_grad_create(pe, field, 4, &gradient);
   assert(gradient);
@@ -137,6 +135,7 @@ static int do_test3(pe_t * pe) {
   lees_edw_t * le = NULL;
   field_t * field = NULL;
   field_grad_t * gradient = NULL;
+  field_options_t opts = field_options_ndata_nhalo(nf, 0);
 
   assert(pe);
 
@@ -144,9 +143,7 @@ static int do_test3(pe_t * pe) {
   cs_init(cs);
   lees_edw_create(pe, cs, NULL, &le);
 
-  field_create(pe, cs, nf, "vector-field-test", &field);
-  assert(field);
-  field_init(field, 0, le);
+  field_create(pe, cs, le, "vector-field-test", &opts, &field);
 
   field_grad_create(pe, field, 4, &gradient);
   assert(gradient);
@@ -191,6 +188,7 @@ static int do_test5(pe_t * pe) {
   lees_edw_t * le = NULL;
   field_t * field = NULL;
   field_grad_t * gradient = NULL;
+  field_options_t opts = field_options_ndata_nhalo(nf, 0);
 
   assert(pe);
 
@@ -198,9 +196,7 @@ static int do_test5(pe_t * pe) {
   cs_init(cs);
   lees_edw_create(pe, cs, NULL, &le);
 
-  field_create(pe, cs, nf, "tensor-field-test", &field);
-  assert(field);
-  field_init(field, 0, le);
+  field_create(pe, cs, le, "tensor-field-test", &opts, &field);
 
   field_grad_create(pe, field, 4, &gradient);
   assert(gradient);
@@ -256,6 +252,7 @@ int do_test_dab(pe_t * pe) {
   lees_edw_t * le = NULL;
   field_t * field = NULL;
   field_grad_t * gradient = NULL;
+  field_options_t opts = field_options_ndata_nhalo(nf, 0);
 
   assert(pe);
 
@@ -263,9 +260,7 @@ int do_test_dab(pe_t * pe) {
   cs_init(cs);
   lees_edw_create(pe, cs, NULL, &le);
 
-  field_create(pe, cs, nf, "dab-field-test", &field);
-  assert(field);
-  field_init(field, 0, le);
+  field_create(pe, cs, NULL, "dab-field-test", &opts, &field);
 
   field_grad_create(pe, field, 3, &gradient);
   assert(gradient);

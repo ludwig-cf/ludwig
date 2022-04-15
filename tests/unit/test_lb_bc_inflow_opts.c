@@ -6,7 +6,7 @@
  *  Edinburgh Solft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2021 The University of Edinburgh
+ *  (c) 2021-2022 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -129,7 +129,7 @@ __host__ int test_lb_bc_inflow_opts_valid(void) {
   }
   
   {
-    lb_bc_inflow_opts_t options = {}; /* Not valid */
+    lb_bc_inflow_opts_t options = {0}; /* Not valid */
 
     ierr = lb_bc_inflow_opts_valid(options);
     assert(ierr == 0);

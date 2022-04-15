@@ -14,7 +14,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and 
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2021 The University of Edinburgh
+ *  (c) 2021-2022 The University of Edinburgh
  *
  ****************************************************************************/
 
@@ -89,8 +89,8 @@ __host__ int phi_bc_inflow_fixed_update(phi_bc_inflow_fixed_t * inflow,
 					field_t * phi) {
   int id = -1;
   int nhalo = 0;
-  int nlocal[3] = {};
-  int noffset[3] = {};
+  int nlocal[3] = {0};
+  int noffset[3] = {0};
   cs_t * cs = NULL;
 
   assert(inflow);
