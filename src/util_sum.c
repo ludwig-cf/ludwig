@@ -177,10 +177,10 @@ __host__ __device__ void klein_add(klein_t * sum, klein_t val) {
 __host__ int kahan_mpi_datatype(MPI_Datatype * type) {
 
   int blocklengths[3] = {1, 1, 1};
-  MPI_Aint displacements[4] = {};
+  MPI_Aint displacements[4] = {0};
   MPI_Datatype types[3] = {MPI_INT, MPI_DOUBLE, MPI_DOUBLE}; 
 
-  kahan_t sum = {};
+  kahan_t sum = {0};
 
   assert(type);
 
@@ -252,10 +252,10 @@ __host__ int klein_mpi_datatype(MPI_Datatype * type) {
 
   int ierr = 0;
   int blocklengths[4] = {1, 1, 1, 1};
-  MPI_Aint displacements[5] = {};
+  MPI_Aint displacements[5] = {0};
   MPI_Datatype types[4] = {MPI_INT, MPI_DOUBLE, MPI_DOUBLE, MPI_DOUBLE}; 
 
-  klein_t sum = {};
+  klein_t sum = {0};
 
   assert(type);
 

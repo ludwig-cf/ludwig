@@ -11,7 +11,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2010-2021 The University of Edinburgh
+ *  (c) 2010-2022 The University of Edinburgh
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *
@@ -204,7 +204,7 @@ __host__ int distribution_stats_momentum(lb_t * lb, map_t * map, int root,
 
   /* Device memory for stats */
 
-  kahan_t sum[3] = {};
+  kahan_t sum[3] = {0};
   kahan_t * sum_d = NULL;
 
   tdpAssert(tdpMalloc((void **) &sum_d, 3*sizeof(kahan_t)));
@@ -233,7 +233,7 @@ __host__ int distribution_stats_momentum(lb_t * lb, map_t * map, int root,
   {
     MPI_Datatype dt = MPI_DATATYPE_NULL;
     MPI_Op op = MPI_OP_NULL;
-    kahan_t gmlocal[3] = {};
+    kahan_t gmlocal[3] = {0};
 
     kahan_mpi_datatype(&dt);
     kahan_mpi_op_sum(&op);

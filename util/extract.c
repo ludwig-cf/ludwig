@@ -47,7 +47,7 @@
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *  Oliver Henrich  (oliver.henrich@strath.ac.uk)
  *
- *  (c) 2011-2020 The University of Edinburgh
+ *  (c) 2011-2022 The University of Edinburgh
  *
  ****************************************************************************/
 
@@ -310,7 +310,7 @@ int extract_driver(const char * filename, metadata_v1_t * meta, int version) {
     /* Write a single file with the final section */
 
     {
-      char tmp[FILENAME_MAX/2] = {}; /* Avoid potential buffer overflow */
+      char tmp[FILENAME_MAX/2] = {0}; /* Avoid potential buffer overflow */
       strncpy(tmp, meta->stub,
 	      FILENAME_MAX/2 - strnlen(meta->stub, FILENAME_MAX/2-1) - 1);
       snprintf(io_data, sizeof(io_data), "%s-%8.8d", tmp, ntime);

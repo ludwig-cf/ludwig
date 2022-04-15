@@ -10,7 +10,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2021 The University of Edinburgh
+ *  (c) 2021-2022 The University of Edinburgh
  *
  *  Contributing authors
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -133,7 +133,7 @@ __host__ int phi_grad_mu_external(cs_t * cs, field_t * phi, hydro_t * hydro) {
   int nlocal[3];
   int is_grad_mu = 0;     /* Short circuit the kernel if not required. */
   dim3 nblk, ntpb;
-  double3 grad_mu = {};
+  double3 grad_mu = {0};
 
   kernel_info_t limits;
   kernel_ctxt_t * ctxt = NULL;
@@ -146,7 +146,7 @@ __host__ int phi_grad_mu_external(cs_t * cs, field_t * phi, hydro_t * hydro) {
 
   {
     physics_t * phys = NULL;
-    double mu[3] = {};
+    double mu[3] = {0};
 
     physics_ref(&phys);
     physics_grad_mu(phys, mu);
@@ -213,7 +213,7 @@ __global__ void phi_grad_mu_fluid_kernel(kernel_ctxt_t * ktx, field_t * phi,
     /* NVECTOR is max size of order parameter field as need fixed array[] */
     assert(phi->nf <= NVECTOR);
 
-    double force[3] = {};
+    double force[3] = {0};
     double mum1[NVECTOR + 1]; /* Ugly gotcha: extra chemical potential */
     double mup1[NVECTOR + 1]; /* may exist, but not required ... */
     double phi0[NVECTOR];     /* E.g., in ternary implementation. */
@@ -302,9 +302,9 @@ __global__ void phi_grad_mu_solid_kernel(kernel_ctxt_t * ktx, field_t * field,
     int kc     = kernel_coords_kc(ktx, kindex);
     int index0 = kernel_coords_index(ktx, ic, jc, kc);
 
-    double force[3]      = {};
-    double phi[NVECTOR]  = {};
-    double mu[NVECTOR+1] = {};
+    double force[3]      = {0};
+    double phi[NVECTOR]  = {0};
+    double mu[NVECTOR+1] = {0};
 
     field_scalar_array(field, index0, phi);
     fe->func->mu(fe, index0, mu);
@@ -316,8 +316,8 @@ __global__ void phi_grad_mu_solid_kernel(kernel_ctxt_t * ktx, field_t * field,
       int mapm1   = MAP_FLUID;
       int mapp1   = MAP_FLUID;
 
-      double mum1[NVECTOR+1] = {};
-      double mup1[NVECTOR+1] = {};
+      double mum1[NVECTOR+1] = {0};
+      double mup1[NVECTOR+1] = {0};
 
       fe->func->mu(fe, indexm1, mum1);
       fe->func->mu(fe, indexp1, mup1);
@@ -348,8 +348,8 @@ __global__ void phi_grad_mu_solid_kernel(kernel_ctxt_t * ktx, field_t * field,
       int mapm1   = MAP_FLUID;
       int mapp1   = MAP_FLUID;
 
-      double mum1[NVECTOR+1] = {};
-      double mup1[NVECTOR+1] = {};
+      double mum1[NVECTOR+1] = {0};
+      double mup1[NVECTOR+1] = {0};
 
       fe->func->mu(fe, indexm1, mum1);
       fe->func->mu(fe, indexp1, mup1);
@@ -380,8 +380,8 @@ __global__ void phi_grad_mu_solid_kernel(kernel_ctxt_t * ktx, field_t * field,
       int mapm1   = MAP_FLUID;
       int mapp1   = MAP_FLUID;
 
-      double mum1[NVECTOR+1] = {};
-      double mup1[NVECTOR+1] = {};
+      double mum1[NVECTOR+1] = {0};
+      double mup1[NVECTOR+1] = {0};
 
       fe->func->mu(fe, indexm1, mum1);
       fe->func->mu(fe, indexp1, mup1);
@@ -440,7 +440,7 @@ __global__ void phi_grad_mu_external_kernel(kernel_ctxt_t * ktx, field_t * phi,
     int kc    = kernel_coords_kc(ktx, kindex);
     int index = kernel_coords_index(ktx, ic, jc, kc);
 
-    double force[3] = {};
+    double force[3] = {0};
     double phi0 = phi->data[addr_rank1(phi->nsites, 1, index, 0)];
 
     force[X] = -phi0*grad_mu.x;

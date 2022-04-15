@@ -9,7 +9,7 @@
  *  Edinburgh Soft Matter and Staticial Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2021 The University of Edinburgh
+ *  (c) 2021-2022 The University of Edinburgh
  *
  *  Contributing authors:
  *  Oliver Henrich (o.henrich@strath.ac.uk)
@@ -136,7 +136,7 @@ int stats_colloid_force_split_output(colloids_info_t * cinfo, int timestep) {
 
   if (pe_mpi_rank(pe) > 0) {
     /* Send to root: a count, and a data buffer */
-    MPI_Request req[2] = {};
+    MPI_Request req[2] = {0};
 
     MPI_Isend(&count, 1, MPI_INT, 0, 211129, comm, req + 0);
     MPI_Isend(buf, count*sz, MPI_CHAR, 0, 211130, comm, req + 1);
@@ -147,7 +147,7 @@ int stats_colloid_force_split_output(colloids_info_t * cinfo, int timestep) {
 
     /* Root: output own, then those for everyone else */
 
-    char filename[BUFSIZ] = {};
+    char filename[BUFSIZ] = {0};
     FILE * fp = NULL;
 
     sprintf(filename, "colloid-diag-%8.8d.dat", timestep);
@@ -235,7 +235,7 @@ int stat_diagnostic_write(colloid_diagnostic_t * array, int count,
 
 int colloid_force_from_pth(colloid_t * pc, pth_t * pth, double f[3]) {
 
-  lb_model_t model = {};
+  lb_model_t model = {0};
 
   assert(pc);
   assert(pth);
@@ -315,7 +315,7 @@ int stat_colloids_force(colloids_info_t * cinfo, pth_t * pth, int contrib) {
 
 int stat_stress_compute(pth_t * pth, fe_t * fe, fe_lc_str_ft stress) {
 
-  int nlocal[3] = {};
+  int nlocal[3] = {0};
   int nextra = 2; /* Kludge: Must be liquid crystal */
 
   assert(pth);
@@ -327,7 +327,7 @@ int stat_stress_compute(pth_t * pth, fe_t * fe, fe_lc_str_ft stress) {
     for (int jc = 1 - nextra; jc <= nlocal[Y] + nextra; jc++) {
       for (int kc = 1 - nextra; kc <= nlocal[Z] + nextra; kc++) {
 
-	double sth[3][3] = {};
+	double sth[3][3] = {0};
 
 	int index = cs_index(pth->cs, ic, jc, kc);
 	stress((fe_lc_t  *) fe, index, sth);

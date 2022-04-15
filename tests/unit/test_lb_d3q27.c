@@ -51,7 +51,7 @@ __host__ int test_lb_d3q27_suite(void) {
 
 __host__ int test_lb_d3q27_create(void) {
 
-  lb_model_t model = {};
+  lb_model_t model = {0};
 
   lb_d3q27_create(&model);
 

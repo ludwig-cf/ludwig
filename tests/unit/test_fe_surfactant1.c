@@ -182,7 +182,6 @@ __host__ int test_fe_surf_fed(pe_t * pe, cs_t * cs, field_t * phi) {
   int index = 0;
   double psi, phisq, phipsi[2];
   double fed, fedref;
-  double dphiref[2][3];
 
   field_grad_t * dphi = NULL;
   fe_surf_t * fe = NULL;
@@ -218,12 +217,15 @@ __host__ int test_fe_surf_fed(pe_t * pe, cs_t * cs, field_t * phi) {
 
   /* Interface: gradient in phi */
 
-  dphiref[0][X] = 0.1; dphiref[0][Y] = 0.0; dphiref[0][Z] = 0.0;
-  field_grad_pair_grad_set(dphi, index, dphiref);
+  {
+    const double dphiref[2][3] = {{0.1,0.0,0.0}, {0.0,0.0,0.0}};
 
-  fe_surf_fed(fe, index, &fed);
-  fedref += 0.5*(pref.kappa - pref.epsilon*psi)*dphiref[0][X]*dphiref[0][X];
-  assert(fabs(fed - fedref) < TEST_DOUBLE_TOLERANCE);
+    field_grad_pair_grad_set(dphi, index, dphiref);
+
+    fe_surf_fed(fe, index, &fed);
+    fedref += 0.5*(pref.kappa - pref.epsilon*psi)*dphiref[0][X]*dphiref[0][X];
+    assert(fabs(fed - fedref) < TEST_DOUBLE_TOLERANCE);
+  }
 
   fe_surf_free(fe);
   field_grad_free(dphi);
@@ -242,7 +244,7 @@ __host__ int test_fe_surf_mu(pe_t * pe, cs_t * cs, field_t * phi) {
   int index = 1;
   double psi, phisq;
   double phipsi[2];
-  double dpref[2][3], dsq[2];
+  double dsq[2];
   double muref, mu[2];
 
   field_grad_t * dphi = NULL;
@@ -269,41 +271,43 @@ __host__ int test_fe_surf_mu(pe_t * pe, cs_t * cs, field_t * phi) {
   test_assert(fabs(mu[1] - muref) < TEST_DOUBLE_TOLERANCE);
 
   /* Gradients phi */
-  dpref[0][X] = 0.0; dpref[0][Y] = 0.1; dpref[0][Z] = 0.0;
-  dpref[1][X] = 0.0; dpref[1][Y] = 0.0; dpref[1][Z] = 0.0;
-  dsq[0] = 0.0; dsq[1] = 0.0;
+  {
+    const double dpref[2][3] = {{0.0,0.1,0.0}, {0.0,0.0,0.0}};
+    dsq[0] = 0.0; dsq[1] = 0.0;
 
-  field_grad_pair_grad_set(dphi, index, dpref);
-  field_grad_pair_delsq_set(dphi, index, dsq);
+    field_grad_pair_grad_set(dphi, index, dpref);
+    field_grad_pair_delsq_set(dphi, index, dsq);
 
-  fe_surf_mu(fe, index, mu);
+    fe_surf_mu(fe, index, mu);
 
-  muref = (pref.a + pref.b*phisq + pref.w*psi)*phipsi[0];
-  test_assert(fabs(mu[0] - muref) < TEST_DOUBLE_TOLERANCE);
+    muref = (pref.a + pref.b*phisq + pref.w*psi)*phipsi[0];
+    test_assert(fabs(mu[0] - muref) < TEST_DOUBLE_TOLERANCE);
 
 
-  muref = pref.kt*(log(psi) - log(1.0-psi)) + 0.5*pref.w*phisq
-        - 0.5*pref.epsilon*dpref[0][Y]*dpref[0][Y];
-  test_assert(fabs(mu[1] - muref) < TEST_DOUBLE_TOLERANCE);
+    muref = pref.kt*(log(psi) - log(1.0-psi)) + 0.5*pref.w*phisq
+      - 0.5*pref.epsilon*dpref[0][Y]*dpref[0][Y];
+    test_assert(fabs(mu[1] - muref) < TEST_DOUBLE_TOLERANCE);
+  }
 
   /* Gradients phi, psi */
-  dpref[0][X] = 0.0; dpref[0][Y] = 0.1; dpref[0][Z] = 0.0;
-  dpref[1][X] = 0.2; dpref[1][Y] = 0.3; dpref[1][Z] = 0.0;
-  dsq[0] = 0.0; dsq[1] = 0.0;
+  {
+    const double dpref[2][3] = {{0.0,0.1,0.0}, {0.2,0.3,0.0}};
+    dsq[0] = 0.0; dsq[1] = 0.0;
 
-  field_grad_pair_grad_set(dphi, index, dpref);
-  field_grad_pair_delsq_set(dphi, index, dsq);
+    field_grad_pair_grad_set(dphi, index, dpref);
+    field_grad_pair_delsq_set(dphi, index, dsq);
 
-  fe_surf_mu(fe, index, mu);
+    fe_surf_mu(fe, index, mu);
 
-  muref = (pref.a + pref.b*phisq + pref.w*psi)*phipsi[0]
-        + pref.epsilon*dpref[0][Y]*dpref[1][Y];
-  test_assert(fabs(mu[0] - muref) < TEST_DOUBLE_TOLERANCE);
+    muref = (pref.a + pref.b*phisq + pref.w*psi)*phipsi[0]
+      + pref.epsilon*dpref[0][Y]*dpref[1][Y];
+    test_assert(fabs(mu[0] - muref) < TEST_DOUBLE_TOLERANCE);
 
 
-  muref = pref.kt*(log(psi) - log(1.0-psi)) + 0.5*pref.w*phisq
-    - 0.5*pref.epsilon*dpref[0][Y]*dpref[0][Y];
-  test_assert(fabs(mu[1] - muref) < TEST_DOUBLE_TOLERANCE);  
+    muref = pref.kt*(log(psi) - log(1.0-psi)) + 0.5*pref.w*phisq
+      - 0.5*pref.epsilon*dpref[0][Y]*dpref[0][Y];
+    test_assert(fabs(mu[1] - muref) < TEST_DOUBLE_TOLERANCE);
+  }
 
   fe_surf_free(fe);
   field_grad_free(dphi);

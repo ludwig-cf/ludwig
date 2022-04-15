@@ -8,7 +8,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2012-2021 The University of Edinburgh
+ *  (c) 2012-2022 The University of Edinburgh
  *
  *  Contributing authors:
  *  Juho Lituvuori  (juho.lintuvuori@u-bordeaux.fr)
@@ -598,7 +598,7 @@ int fe_lc_droplet_str_symm(fe_lc_droplet_t * fe, int index, double sth[3][3]){
 
   {
     double phi = 0.0;
-    double sa[3][3] = {};
+    double sa[3][3] = {0};
 
     field_scalar(fe->symm->phi, index, &phi);
     fe_lc_droplet_active_stress(fe->param, phi, q, sa);

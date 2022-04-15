@@ -157,7 +157,7 @@ int wall_ss_cut_compute(colloids_info_t * cinfo, void * obj) {
 
   wall_ss_cut_t * self = (wall_ss_cut_t *) obj;
   
-  double forcewall[3] = {};             /* force on the wall for accounting */
+  double forcewall[3] = {0};        /* force on the wall for accounting */
   double lmin[3];
   double ltot[3];
 

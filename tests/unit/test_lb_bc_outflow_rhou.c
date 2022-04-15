@@ -6,7 +6,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2021 The University of Edinburgh
+ *  (c) 2021-2022 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -93,9 +93,9 @@ __host__ int test_lb_bc_outflow_rhou_create(pe_t * pe, cs_t * cs) {
 
 __host__ int test_lb_bc_outflow_rhou_update(pe_t * pe, cs_t * cs, int nvel) {
 
-  int nlocal[3] = {};
-  int ntotal[3] = {};
-  int noffset[3] = {};
+  int nlocal[3] = {0};
+  int ntotal[3] = {0};
+  int noffset[3] = {0};
 
   lb_bc_outflow_opts_t options = {.nvel = nvel,
                                   .flow = {0, 1, 0},
@@ -153,9 +153,9 @@ __host__ int test_lb_bc_outflow_rhou_impose(pe_t * pe, cs_t * cs, int nvel) {
 
   int ierr = 0;
 
-  int nlocal[3] = {};
-  int ntotal[3] = {};
-  int noffset[3] = {};
+  int nlocal[3] = {0};
+  int ntotal[3] = {0};
+  int noffset[3] = {0};
 
   lb_bc_outflow_opts_t options = {.nvel = nvel,
                                   .flow = {0, 0, 1},

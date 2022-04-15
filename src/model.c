@@ -89,7 +89,7 @@ int lb_data_create(pe_t * pe, cs_t * cs, const lb_data_options_t * options,
   {
     /* Allocate storage following cs specification */
     int nhalo = 1;
-    int nlocal[3] = {};
+    int nlocal[3] = {0};
     cs_nhalo(cs, &nhalo);
     cs_nlocal(cs, nlocal);
 
@@ -358,7 +358,7 @@ __host__ int lb_init_rest_f(lb_t * lb, double rho0) {
   for (ic = 1; ic <= nlocal[X]; ic++) {
     for (jc = 1; jc <= nlocal[Y]; jc++) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
-	double u0[3] = {};
+	double u0[3] = {0};
 
 	index = cs_index(lb->cs, ic, jc, kc);
 	lb_1st_moment_equilib_set(lb, index, rho0, u0);
@@ -1116,15 +1116,15 @@ int lb_halo_create(const lb_t * lb, lb_halo_t * h, lb_halo_enum_t scheme) {
 
   /* Determine look-up table of ranks of neighbouring processes */
   {
-    int dims[3] = {};
-    int periods[3] = {};
-    int coords[3] = {};
+    int dims[3] = {0};
+    int periods[3] = {0};
+    int coords[3] = {0};
 
     MPI_Cart_get(h->comm, 3, dims, periods, coords);
 
     for (int p = 0; p < h->map.nvel; p++) {
-      int nbr[3] = {};
-      int out[3] = {};  /* Out-of-range is erroneous for non-perioidic dims */
+      int nbr[3] = {0};
+      int out[3] = {0};  /* Out-of-range is erroneous for non-perioidic dims */
       int i = 1 + h->map.cv[p][X];
       int j = 1 + h->map.cv[p][Y];
       int k = 1 + h->map.cv[p][Z];

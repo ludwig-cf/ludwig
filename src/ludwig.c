@@ -1282,7 +1282,7 @@ int free_energy_init_rt(ludwig_t * ludwig) {
 	   strcmp(description, "symmetric_noise") == 0) {
 
     int use_stress_relaxation;
-    phi_ch_info_t ch_options = {};
+    phi_ch_info_t ch_options = {0};
     fe_symm_t * fe = NULL;
 
     /* Symmetric free energy via finite difference */
@@ -1405,7 +1405,7 @@ int free_energy_init_rt(ludwig_t * ludwig) {
 
     /* Brazovskii (always finite difference). */
 
-    phi_ch_info_t ch_options = {};
+    phi_ch_info_t ch_options = {0};
     fe_brazovskii_t * fe = NULL;
     nf = 1;      /* 1 scalar order parameter */
     nhalo = 3;   /* Required for stress diveregnce. */
@@ -1452,7 +1452,7 @@ int free_energy_init_rt(ludwig_t * ludwig) {
   else if (strcmp(description, "surfactant") == 0) {
 
     fe_surf_param_t param;
-    ch_info_t options = {};
+    ch_info_t options = {0};
     fe_surf_t * fe = NULL;
 
     nf = 2;       /* Composition, surfactant: "phi" and "psi" */
@@ -1511,7 +1511,7 @@ int free_energy_init_rt(ludwig_t * ludwig) {
   else if (strcmp(description, "ternary") == 0) {
 
     fe_ternary_param_t param = {0};
-    ch_info_t options = {};
+    ch_info_t options = {0};
     fe_ternary_t * fe = NULL;
 
     nf = 2;       /* Composition, ternary: "phi" and "psi" */
@@ -1672,7 +1672,7 @@ int free_energy_init_rt(ludwig_t * ludwig) {
   }
   else if(strcmp(description, "lc_droplet") == 0) {
 
-    phi_ch_info_t ch_options = {};
+    phi_ch_info_t ch_options = {0};
     fe_symm_t * symm = NULL;
     fe_lc_t * lc = NULL;
     fe_lc_droplet_t * fe = NULL;
@@ -1818,7 +1818,7 @@ int free_energy_init_rt(ludwig_t * ludwig) {
   }
   else if(strcmp(description, "fe_electro_symmetric") == 0) {
 
-    phi_ch_info_t ch_options = {};
+    phi_ch_info_t ch_options = {0};
     fe_symm_t * fe_symm = NULL;
     fe_electro_t * fe_elec = NULL;
     fe_es_t * fes = NULL;
@@ -2174,7 +2174,7 @@ int io_replace_values(field_t * field, map_t * map, int map_id, double value) {
 
 __host__ int ludwig_timekeeper_init(ludwig_t * ludwig) {
 
-  timekeeper_options_t opts = {};
+  timekeeper_options_t opts = {0};
 
   assert(ludwig);
 

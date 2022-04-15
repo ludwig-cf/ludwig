@@ -49,12 +49,12 @@ static  int test_model_is_domain(cs_t * cs, int ic, int jc, int kc);
 int64_t lb_data_index(lb_t * lb, int ic, int jc, int kc, int p) {
 
   int64_t index = INT64_MIN;
-  int64_t nall[3] = {};
-  int64_t nstr[3] = {};
+  int64_t nall[3] = {0};
+  int64_t nstr[3] = {0};
   int64_t pstr    = 0;
 
-  int ntotal[3] = {};
-  int offset[3] = {};
+  int ntotal[3] = {0};
+  int offset[3] = {0};
   int nhalo = 0;
 
   assert(lb);
@@ -105,7 +105,7 @@ int64_t lb_data_index(lb_t * lb, int ic, int jc, int kc, int p) {
 
 int util_lb_data_check_set(lb_t * lb) {
 
-  int nlocal[3] = {};
+  int nlocal[3] = {0};
 
   assert(lb);
 
@@ -139,7 +139,7 @@ int util_lb_data_check(lb_t * lb, int full) {
   int ifail = 0;
   int nh = 1;
   int nhk = nh;
-  int nlocal[3] = {};
+  int nlocal[3] = {0};
 
   assert(lb);
 
@@ -205,7 +205,7 @@ int test_lb_halo_post_wait(pe_t * pe, cs_t * cs, int ndim, int nvel, int full) {
   util_lb_data_check_set(lb);
 
   {
-    lb_halo_t h = {};
+    lb_halo_t h = {0};
     lb_halo_create(lb, &h, LB_HALO_OPENMP_FULL);
     lb_halo_post(lb, &h);
     lb_halo_wait(lb, &h);

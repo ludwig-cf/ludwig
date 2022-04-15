@@ -14,7 +14,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2012-2021 The University of Edinburgh
+ *  (c) 2012-2022 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -284,7 +284,7 @@ __host__ __device__ int field_nf(field_t * obj, int * nf) {
 __host__ int field_init_io_info(field_t * obj, int grid[3], int form_in,
 				int form_out) {
 
-  io_info_args_t args = {};
+  io_info_args_t args = io_info_args_default();
 
   assert(obj);
   assert(obj->info == NULL);
@@ -1094,7 +1094,7 @@ int field_halo_dequeue_recv(field_t * field, const field_halo_t * h, int ireq) {
 
 int field_halo_create(const field_t * field, field_halo_t * h) {
 
-  int nlocal[3] = {};
+  int nlocal[3] = {0};
   int nhalo = 0;
 
   assert(field);
@@ -1120,15 +1120,15 @@ int field_halo_create(const field_t * field, field_halo_t * h) {
   /* Ranks of Cartesian neighbours */
 
   {
-    int dims[3] = {};
-    int periods[3] = {};
-    int coords[3] = {};
+    int dims[3] = {0};
+    int periods[3] = {0};
+    int coords[3] = {0};
 
     MPI_Cart_get(h->comm, 3, dims, periods, coords);
 
     for (int p = 0; p < h->nvel; p++) {
-      int nbr[3] = {};
-      int out[3] = {};  /* Out-of-range is erroneous for non-perioidic dims */
+      int nbr[3] = {0};
+      int out[3] = {0};  /* Out-of-range is erroneous for non-perioidic dims */
       int i = 1 + h->cv[p][X];
       int j = 1 + h->cv[p][Y];
       int k = 1 + h->cv[p][Z];

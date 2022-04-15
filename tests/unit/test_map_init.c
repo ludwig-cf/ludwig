@@ -4,7 +4,10 @@
  *
  *  Test of map initialisations is relevant.
  *
- *  (c) 2021 The University of Edinburgh
+ *  Edinburgh Soft Matter and Statistical Physics Group and
+ *  Edinburgh Parallel Comuting Centre
+ *
+ *  (c) 2021-2022 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -85,8 +88,8 @@ int test_map_init_status_wall(pe_t * pe) {
 
 int test_map_init_status_wall_x(pe_t * pe, cs_t * cs) {
 
-  int ntotal[3]  = {};
-  int noffset[3] = {};
+  int ntotal[3]  = {0};
+  int noffset[3] = {0};
 
   assert(pe);
   assert(cs);
@@ -145,9 +148,9 @@ int test_map_init_status_wall_x(pe_t * pe, cs_t * cs) {
 
 int test_map_init_status_wall_y(pe_t * pe, cs_t * cs) {
 
-  int ntotal[3] = {};
-  int nlocal[3] = {};
-  int noffset[3] = {};
+  int ntotal[3] = {0};
+  int nlocal[3] = {0};
+  int noffset[3] = {0};
 
   assert(pe);
   assert(cs);
@@ -192,9 +195,9 @@ int test_map_init_status_wall_y(pe_t * pe, cs_t * cs) {
 
 int test_map_init_status_wall_z(pe_t * pe, cs_t * cs) {
 
-  int ntotal[3] = {};
-  int nlocal[3] = {};
-  int noffset[3] = {};
+  int ntotal[3] = {0};
+  int nlocal[3] = {0};
+  int noffset[3] = {0};
 
   assert(pe);
   assert(cs);
@@ -267,8 +270,8 @@ int test_map_init_status_circle_odd(pe_t * pe) {
   {
     /* All the edges at least should be solid (no 'leaks') */
 
-    int noffset[3] = {};
-    int nlocal[3] = {};
+    int noffset[3] = {0};
+    int nlocal[3] = {0};
     int status1 = -1;
     int status2 = -1;
 

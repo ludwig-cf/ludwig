@@ -8,7 +8,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2021 The University of Edinburgh
+ *  (c) 2021-2022 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -39,8 +39,8 @@ __host__ int phi_bc_open_rt(pe_t * pe, rt_t * rt, cs_t * cs,
 			    phi_bc_open_t ** inflow,
 			    phi_bc_open_t ** outflow) {
 
-  int have_bc = 0;  /* inflow/outflow required? */
-  int flow[3] = {}; /* flow direction (one only, or none) */
+  int have_bc = 0;   /* inflow/outflow required? */
+  int flow[3] = {0}; /* flow direction (one only, or none) */
 
   assert(pe);
   assert(cs);
@@ -51,8 +51,8 @@ __host__ int phi_bc_open_rt(pe_t * pe, rt_t * rt, cs_t * cs,
   have_bc = rt_switch(rt, "phi_bc_open");
 
   if (have_bc) {
-    int wall[3] = {};
-    int periodic[3] = {};
+    int wall[3] = {0};
+    int periodic[3] = {0};
 
     /* Take flow direction from non-wall direction */
 
@@ -77,7 +77,7 @@ __host__ int phi_bc_open_rt(pe_t * pe, rt_t * rt, cs_t * cs,
   /* Inflow */
 
   if (have_bc) {
-    char intype[BUFSIZ] = {};
+    char intype[BUFSIZ] = {0};
     double phib = -999.999;
 
     rt_string_parameter(rt, "phi_bc_inflow_type", intype, BUFSIZ);
@@ -117,7 +117,7 @@ __host__ int phi_bc_open_rt(pe_t * pe, rt_t * rt, cs_t * cs,
 
   if (have_bc) {
 
-    char outtype[BUFSIZ] = {};
+    char outtype[BUFSIZ] = {0};
 
     rt_string_parameter(rt, "phi_bc_outflow_type", outtype, BUFSIZ);
 

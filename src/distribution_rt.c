@@ -8,7 +8,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2010-2021 The University of Edinburgh
+ *  (c) 2010-2022 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -60,7 +60,7 @@ int lb_ndist_rt(rt_t * rt) {
 
   {
     /* The only exception ... */
-    char description[BUFSIZ] = {};
+    char description[BUFSIZ] = {0};
     rt_string_parameter(rt, "free_energy", description, BUFSIZ);
     if (strcmp(description, "symmetric_lb") == 0) ndist = 2;
   }
@@ -173,7 +173,7 @@ int lb_run_time_prev(pe_t * pe, cs_t * cs, rt_t * rt, lb_t ** lb) {
 
   /* Halo options */
   {
-    char htype[BUFSIZ] = {};
+    char htype[BUFSIZ] = {0};
     int havetype = rt_string_parameter(rt, "lb_halo_scheme", htype, BUFSIZ);
     if (strcmp(htype, "lb_halo_target") == 0) {
       options.halo = LB_HALO_TARGET;
@@ -287,7 +287,7 @@ int lb_run_time_prev(pe_t * pe, cs_t * cs, rt_t * rt, lb_t ** lb) {
 
   /* distribution i/o */
   {
-    io_info_args_t tmp = {};
+    io_info_args_t tmp = io_info_args_default();
     tmp.grid[X] = io_grid[X];
     tmp.grid[Y] = io_grid[Y];
     tmp.grid[Z] = io_grid[Z];
@@ -339,7 +339,7 @@ int lb_rt_initial_conditions(pe_t * pe, rt_t * rt, lb_t * lb,
     double u0 = 0.0;
     double delta = 0.0;
     double kappa = 0.0;
-    kh_2d_param_t kh = {};
+    kh_2d_param_t kh = {0};
 
     rt_key_required(rt, "2d_kelvin_helmholtz_u0", RT_FATAL);
     rt_key_required(rt, "2d_kelvin_helmholtz_delta", RT_FATAL);

@@ -814,10 +814,10 @@ int pair_ss_cut_ij_init(pe_t * pe, cs_t * cs, rt_t * rt, interact_t * intrct) {
   if (ison) {
     int ntypes = 0;
     int nsymm  = 0;
-    double epsilon[BUFSIZ] = {};
-    double sigma[BUFSIZ] = {};
-    double nu[BUFSIZ] = {};
-    double hc[BUFSIZ] = {};
+    double epsilon[BUFSIZ] = {0};
+    double sigma[BUFSIZ] = {0};
+    double nu[BUFSIZ] = {0};
+    double hc[BUFSIZ] = {0};
     pair_ss_cut_ij_t * pair = NULL;
 
     rt_key_required(rt, "pair_ss_cut_ij_ntypes",  RT_FATAL);
@@ -1092,7 +1092,7 @@ int wall_ss_cut_init(pe_t * pe, cs_t * cs, rt_t * rt, wall_t * wall,
   if (have_wall_ss_cut) {
 
     wall_ss_cut_t * wall_ss_cut = NULL;
-    wall_ss_cut_options_t opts = {};
+    wall_ss_cut_options_t opts = {0};
 
     rt_key_required(rt, "wall_ss_cut_epsilon", RT_FATAL);
     rt_key_required(rt, "wall_ss_cut_sigma", RT_FATAL);

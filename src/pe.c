@@ -15,7 +15,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2010-2021 The University of Edinburgh
+ *  (c) 2010-2022 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -130,7 +130,7 @@ __host__ int pe_free(pe_t * pe) {
   if (pe->nref <= 0) {
     MPI_Comm_free(&pe->comm);
     if (pe->unquiet) {
-      char strctime[BUFSIZ] = {};
+      char strctime[BUFSIZ] = {0};
       pe_time(strctime, BUFSIZ);
       pe_info(pe, "End time: %s", strctime);
       pe_info(pe, "Ludwig finished normally.\n");
@@ -161,14 +161,14 @@ __host__ int pe_message(pe_t * pe) {
        (pe->mpi_size == 1) ? "" : "es");
 
   {
-    char strctime[BUFSIZ] = {};
+    char strctime[BUFSIZ] = {0};
     pe_time(strctime, BUFSIZ);
     pe_info(pe, "Start time: %s\n", strctime); /* Extra \n ! */
   }
 
   if (pe->mpi_rank == 0) {
 
-    compiler_info_t compiler = {};
+    compiler_info_t compiler = {0};
 
     compiler_id(&compiler);
 
@@ -375,7 +375,7 @@ __host__ int pe_time(char * str, int bufsiz) {
   strncpy(str, strdefault, strnlen(strdefault, bufsiz-1));
 
   if (now != (time_t) -1) {
-    char buf[BUFSIZ] = {};
+    char buf[BUFSIZ] = {0};
     char * c_time = ctime_r(&now, buf);
     if (c_time != NULL) {
       strncpy(str, buf, strnlen(buf, bufsiz-1));

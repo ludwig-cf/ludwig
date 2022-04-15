@@ -32,7 +32,7 @@ int lb_d3q27_create(lb_model_t * model) {
 
   assert(model);
 
-  *model = (lb_model_t) {};
+  *model = (lb_model_t) {0};
 
   model->ndim = 3;
   model->nvel = NVEL_D3Q27;

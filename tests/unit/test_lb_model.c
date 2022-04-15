@@ -78,7 +78,7 @@ int test_lb_model_nhydro(void) {
 
 int test_lb_model_create(int nvel) {
 
-  lb_model_t model = {};
+  lb_model_t model = {0};
 
   lb_model_create(nvel, &model);
 
@@ -114,7 +114,7 @@ int test_lb_model_cv(const lb_model_t * model) {
   /* Check \sum_p cv_pa = 0 */
 
   {
-    int8_t sum[3] = {};
+    int8_t sum[3] = {0};
 
     for (int p = 0; p < model->nvel; p++) {
       sum[X] += model->cv[p][X];
@@ -155,7 +155,7 @@ int test_lb_model_wv(const lb_model_t * model) {
 
   {
     double sumwv = 0.0;
-    double sumcv[3] = {};
+    double sumcv[3] = {0};
 
     for (int p = 0; p < model->nvel; p++) {
       sumwv    += model->wv[p];

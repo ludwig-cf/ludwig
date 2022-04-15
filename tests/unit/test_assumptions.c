@@ -42,7 +42,7 @@ int test_macro_abuse(void);
 int test_assumptions_suite(void) {
 
   double pi;
-  char s0[BUFSIZ] = {};
+  char s0[BUFSIZ] = {0};
   char s1[BUFSIZ] = {0};
   PI_DOUBLE(pi_);
 
