@@ -7,7 +7,7 @@
  *  Edinburgh Soft Matter and Statistical Phsyics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2019 The University of Edinburgh
+ *  (c) 2019-2022 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -127,7 +127,7 @@ __host__ int test_fe_ternary_fed(pe_t * pe, cs_t * cs, field_t * phi) {
 
   int index = 1;
   double phi0[2] = {-0.3, 0.7};
-  double grad[2][3] = {{0.1, -0.2, 0.3}, {-0.4, 0.5, -0.7}};
+  const double grad[2][3] = {{0.1, -0.2, 0.3}, {-0.4, 0.5, -0.7}};
   double fed;
 
   assert(pe);
@@ -169,7 +169,7 @@ __host__ int test_fe_ternary_mu(pe_t * pe, cs_t * cs, field_t * phi) {
 
   int index = 1;
   double phi0[2] = {-0.3, 0.7};
-  double d2phi[2] = {0.1, 0.4};
+  const double d2phi[2] = {0.1, 0.4};
   double mu[3];
 
   assert(pe);
@@ -216,7 +216,7 @@ __host__ int test_fe_ternary_str(pe_t * pe, cs_t * cs, field_t * phi) {
   int index = 1;
   double phi0[2] = {-0.3, 0.7};
   double d2phi[2] = {0.1, 0.4};
-  double grad[2][3] = {{0.1, -0.2, 0.3}, {-0.4, 0.5, -0.7}};
+  const double grad[2][3] = {{0.1, -0.2, 0.3}, {-0.4, 0.5, -0.7}};
   double s[3][3];
 
   assert(pe);

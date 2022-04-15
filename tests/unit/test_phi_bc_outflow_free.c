@@ -2,6 +2,14 @@
  *
  *  test_phi_bc_outflow_free.c
  *
+ *  Edinburgh Soft Matter and Statistical Physics Group and
+ *  Edinburgh Parallel Computing Centre
+ *
+ *  (c) 2022 The University of Edinburgh
+ *
+ *  Contributing authors:
+ *  Kevin Stratford (kevin@epcc.ed.ac.uk)
+ *
  *****************************************************************************/
 
 #include <assert.h>
@@ -77,9 +85,9 @@ __host__ int test_phi_bc_outflow_free_create(pe_t * pe, cs_t * cs) {
 __host__ int test_phi_bc_outflow_free_update(pe_t * pe, cs_t * cs) {
 
   int nhalo = -1;
-  int nlocal[3] = {};
-  int ntotal[3] = {};
-  int noffset[3] = {};
+  int nlocal[3] = {0};
+  int ntotal[3] = {0};
+  int noffset[3] = {0};
   
   phi_bc_outflow_opts_t options = {.flow = {1,0,0}};
   phi_bc_outflow_free_t * outflow = NULL;

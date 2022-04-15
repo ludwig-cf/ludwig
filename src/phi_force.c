@@ -18,7 +18,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2011-2021 The University of Edinburgh
+ *  (c) 2011-2022 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -246,7 +246,7 @@ __host__ int phi_force_external_chemical_potential(cs_t * cs, field_t * phi,
 
   {
     int is_gradmu = 0;
-    double gradmu[3] = {};
+    double gradmu[3] = {0};
     physics_t * phys = NULL;
 
     physics_ref(&phys);

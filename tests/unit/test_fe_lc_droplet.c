@@ -5,7 +5,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2021 The University of Edinburgh
+ *  (c) 2021-2022 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -65,8 +65,8 @@ __host__ int test_fe_lc_droplet_active_stress(pe_t * pe) {
     double phi   = 1.0;
     fe_lc_droplet_param_t fp = {.zeta0 = zeta0, .zeta1 = zeta1};
 
-    double q[3][3] = {};
-    double s[3][3] = {};
+    double q[3][3] = {0};
+    double s[3][3] = {0};
 
     fe_lc_droplet_active_stress(&fp, phi, q, s);
 
@@ -92,7 +92,7 @@ __host__ int test_fe_lc_droplet_active_stress(pe_t * pe) {
     fe_lc_droplet_param_t fp = {.zeta0 = zeta0, .zeta1 = zeta1};
 
     double q[3][3] = { {1., 2., 3.,}, {2., 4., 5.}, {3., 5., -3.} };
-    double s[3][3] = {};
+    double s[3][3] = {0};
 
     fe_lc_droplet_active_stress(&fp, phi, q, s);
 
@@ -117,7 +117,7 @@ __host__ int test_fe_lc_droplet_active_stress(pe_t * pe) {
     fe_lc_droplet_param_t fp = {.zeta0 = zeta0, .zeta1 = zeta1};
 
     double q[3][3] = { {1., 1., 1.,}, {1., 1., 1.}, {1., 1., 1.} };
-    double s[3][3] = {};
+    double s[3][3] = {0};
 
     double phi     = -1.0;
 

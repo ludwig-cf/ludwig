@@ -50,5 +50,7 @@ int lb_data_options_valid(const lb_data_options_t * opts) {
   if (!(opts->ndim  == 2 || opts->ndim  == 3)) valid = 0;
   if (!(opts->ndist == 1 || opts->ndist == 2)) valid = 0;
 
+  if (opts->ndist == 2 && opts->halo != LB_HALO_TARGET) valid = 0;
+
   return valid;
 }

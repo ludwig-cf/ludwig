@@ -546,14 +546,14 @@ static __host__ int cs_rectilinear_decomposition(cs_t * cs) {
   int idim;
   int n, ntot, nremainder;
   int ntotal[3];
-  int mpisz[3] = {};
+  int mpisz[3] = {0};
 
   assert(cs);
 
   {
-    int dims[3] = {};
-    int coords[3] = {};
-    int periods[3] = {};
+    int dims[3] = {0};
+    int coords[3] = {0};
+    int periods[3] = {0};
     MPI_Cart_get(cs->commcart, 3, dims, coords, periods);
     mpisz[X] = dims[X]; mpisz[Y] = dims[Y]; mpisz[Z] = dims[Z];
   }

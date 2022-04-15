@@ -5,7 +5,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2021 The University of Edinburgh
+ *  (c) 2021-2022 The University of Edinburgh
  *
  *  Contributions:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -59,7 +59,7 @@ __global__ void cahn_stats_min_kernel(kernel_ctxt_t * ktx, field_t * phi,
 __host__ int cahn_hilliard_stats_time0(phi_ch_t * pch, field_t * phi,
 				       map_t * map) {
 
-  phi_stats_t stats = {};
+  phi_stats_t stats = {0};
   MPI_Comm comm = MPI_COMM_NULL;
 
   assert(pch);
@@ -83,8 +83,8 @@ __host__ int cahn_hilliard_stats_time0(phi_ch_t * pch, field_t * phi,
 
 __host__ int cahn_hilliard_stats(phi_ch_t * pch, field_t * phi, map_t * map) {
 
-  phi_stats_t stats = {.sum1 = {},
-		       .sum2 = {},
+  phi_stats_t stats = {.sum1 = {0},
+		       .sum2 = {0},
 		       .sum  = 0.0,
 		       .var  = 0.0,
 		       .min  = +FLT_MAX,
@@ -123,7 +123,7 @@ __host__ int cahn_hilliard_stats(phi_ch_t * pch, field_t * phi, map_t * map) {
 __host__ int cahn_stats_reduce(phi_ch_t * pch, field_t * phi,
 			       map_t * map, phi_stats_t * stats,
 			       int root, MPI_Comm comm) {
-  phi_stats_t local = {};
+  phi_stats_t local = {0};
   phi_stats_t * stats_d = NULL;
 
   int nlocal[3];

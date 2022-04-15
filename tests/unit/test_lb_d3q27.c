@@ -1,12 +1,12 @@
 /*****************************************************************************
  *
- *  lb_d3q19.c
+ *  lb_d3q27.c
  *
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2021-2022 The University of Edinburgh
+ *  (c) 2022 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -18,25 +18,25 @@
 #include <math.h>
 
 #include "pe.h"
-#include "lb_d3q19.h"
+#include "lb_d3q27.h"
 
-__host__ int test_lb_d3q19_create(void);
+__host__ int test_lb_d3q27_create(void);
 
 /*****************************************************************************
  *
- *  test_lb_d3q19_suite
+ *  test_lb_d3q27_suite
  *
  *****************************************************************************/
 
-__host__ int test_lb_d3q19_suite(void) {
+__host__ int test_lb_d3q27_suite(void) {
 
   pe_t * pe = NULL;
 
   pe_create(MPI_COMM_WORLD, PE_QUIET, &pe);
 
-  test_lb_d3q19_create();
+  test_lb_d3q27_create();
 
-  pe_info(pe, "PASS     ./unit/test_lb_d3q19\n");
+  pe_info(pe, "PASS     ./unit/test_lb_d3q27\n");
 
   pe_free(pe);
 
@@ -45,25 +45,18 @@ __host__ int test_lb_d3q19_suite(void) {
 
 /*****************************************************************************
  *
- *  test_lb_d3q19_create
- *
- *   Note.
- *   The expressions for the ghost currents appearing in Chun and Ladd (2007)
- *   are not quite consistent; the reason for this is unclear, as I thought
- *   they used the same set provided by Ronojoy.
- *   Note that c_x and c_z are transposed in chi1 and chi2 cf Chun and Ladd.
- *   Could be just typo.
+ *  test_lb_d3q27_create
  *
  *****************************************************************************/
 
-__host__ int test_lb_d3q19_create(void) {
+__host__ int test_lb_d3q27_create(void) {
 
   lb_model_t model = {0};
 
-  lb_d3q19_create(&model);
+  lb_d3q27_create(&model);
 
   assert(model.ndim == 3);
-  assert(model.nvel == 19);
+  assert(model.nvel == 27);
   assert(model.cv);
   assert(model.wv);
   assert(model.na);

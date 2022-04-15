@@ -7,7 +7,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2014-2021 The University of Edinburgh
+ *  (c) 2014-2022 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -27,35 +27,18 @@
 #include "io_harness.h"
 #include "halo_swap.h"
 
+/* Residual compile-time switches scheduled for removal */
 #ifdef _D2Q9_
-#include "d2q9.h"
-
-enum {NDIM     = NDIM9,
-      NVEL     = NVEL9,
-      CVXBLOCK = CVXBLOCK9,
-      CVYBLOCK = CVYBLOCK9,
-      CVZBLOCK = CVZBLOCK9};
+enum {NDIM = 2, NVEL =  9};
 #endif
-
 #ifdef _D3Q15_
-#include "d3q15.h"
-
-enum {NDIM     = NDIM15,
-      NVEL     = NVEL15,
-      CVXBLOCK = CVXBLOCK15,
-      CVYBLOCK = CVYBLOCK15,
-      CVZBLOCK = CVZBLOCK15};
+enum {NDIM = 3, NVEL = 15};
 #endif
-
 #ifdef _D3Q19_
-
-#include "d3q19.h"
-
-enum {NDIM     = NDIM19,
-      NVEL     = NVEL19,
-      CVXBLOCK = CVXBLOCK19,
-      CVYBLOCK = CVYBLOCK19,
-      CVZBLOCK = CVZBLOCK19};
+enum {NDIM = 3, NVEL = 19};
+#endif
+#ifdef _D3Q27_
+enum {NDIM = 3, NVEL = 27};
 #endif
 
 typedef struct lb_collide_param_s lb_collide_param_t;
@@ -64,7 +47,7 @@ typedef struct lb_data_s lb_t;
 
 struct lb_collide_param_s {
   int8_t isghost;                      /* switch for ghost modes */
-  int8_t cv[NVEL][3];
+  int8_t cv[27][3];
   int nsite;
   int ndist;
   int nvel;
@@ -73,11 +56,11 @@ struct lb_collide_param_s {
   double var_shear;
   double eta_bulk;
   double var_bulk;
-  double rna[NVEL];                    /* reciprocal of normaliser[p] */
-  double rtau[NVEL];
-  double wv[NVEL];
-  double ma[NVEL][NVEL];
-  double mi[NVEL][NVEL];
+  double rna[27];                    /* reciprocal of normaliser[p] */
+  double rtau[27];
+  double wv[27];
+  double ma[27][27];
+  double mi[27][27];
 };
 
 /* Halo */
@@ -132,23 +115,7 @@ struct lb_data_s {
   lb_data_options_t opts;       /* Copy of run time options */
   lb_halo_t h;                  /* halo information/buffers */
 
-  /* MPI data types for halo swaps; these are comupted at runtime
-   * to conform to the model selected at compile time */
-
-  MPI_Datatype plane_xy_full;
-  MPI_Datatype plane_xz_full;
-  MPI_Datatype plane_yz_full;
-  MPI_Datatype plane_xy_reduced[2];
-  MPI_Datatype plane_xz_reduced[2];
-  MPI_Datatype plane_yz_reduced[2];
-  MPI_Datatype plane_xy[2];
-  MPI_Datatype plane_xz[2];
-  MPI_Datatype plane_yz[2];
-  MPI_Datatype site_x[2];
-  MPI_Datatype site_y[2];
-  MPI_Datatype site_z[2];
-
-  lb_t * target;              /* copy of this structure on target */ 
+  lb_t * target;                /* copy of this structure on target */
 };
 
 /* Data storage: A rank two object */
@@ -180,9 +147,6 @@ __host__ int lb_memcpy(lb_t * lb, tdpMemcpyKind flag);
 __host__ int lb_collide_param_commit(lb_t * lb);
 __host__ int lb_halo(lb_t * lb);
 __host__ int lb_halo_swap(lb_t * lb, lb_halo_enum_t flag);
-__host__ int lb_halo_via_copy(lb_t * lb);
-__host__ int lb_halo_via_struct(lb_t * lb);
-__host__ int lb_halo_set(lb_t * lb, lb_halo_enum_t halo);
 __host__ int lb_io_info(lb_t * lb, io_info_t ** io_info);
 __host__ int lb_io_info_set(lb_t * lb, io_info_t * io_info, int fin, int fout);
 __host__ int lb_io_rho_set(lb_t *lb, io_info_t * io_rho, int fin, int fout);
@@ -200,7 +164,6 @@ __host__ __device__ int lb_0th_moment(lb_t * lb, int index, lb_dist_enum_t nd,
 __host__ int lb_init_rest_f(lb_t * lb, double rho0);
 __host__ int lb_1st_moment(lb_t * lb, int index, lb_dist_enum_t nd, double g[3]);
 __host__ int lb_2nd_moment(lb_t * lb, int index, lb_dist_enum_t nd, double s[3][3]);
-__host__ int lb_0th_moment_equilib_set(lb_t * lb, int index, int n, double rho);
 __host__ int lb_1st_moment_equilib_set(lb_t * lb, int index, double rho, double u[3]);
 
 #endif

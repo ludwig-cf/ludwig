@@ -10,7 +10,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2012-2021 The University of Edinburgh
+ *  (c) 2012-2022 The University of Edinburgh
  *
  *  Contributing authors:
  *  Oliver Henrich (oliver.henrich@strath.ac.uk)
@@ -64,7 +64,7 @@ int blue_phase_O8M_init(cs_t * cs, fe_lc_param_t * param, field_t * fq,
   double root2;
   double q0;
   double amplitude0;
-  rotation_t rot = {};
+  rotation_t rot = {0};
 
   assert(cs);
   assert(fq);
@@ -82,7 +82,7 @@ int blue_phase_O8M_init(cs_t * cs, fe_lc_param_t * param, field_t * fq,
   /* So we add a sign here. */
 
   {
-    double angles[3]  = {}; /* radians */
+    double angles[3]  = {0}; /* radians */
     PI_DOUBLE(pi);
 
     angles[0] = -1.0*pi*euler_angles[0]/180.0;
@@ -98,7 +98,7 @@ int blue_phase_O8M_init(cs_t * cs, fe_lc_param_t * param, field_t * fq,
       double y = noffset[Y] + jc;
       for (int kc = 1; kc <= nlocal[Z]; kc++) {
 	double z = noffset[Z] + kc;
-	double r[3] = {};
+	double r[3] = {0};
 
 	/* Rotate around the centre */
 	r[X] = x - 0.5*ntotal[X];
@@ -119,7 +119,7 @@ int blue_phase_O8M_init(cs_t * cs, fe_lc_param_t * param, field_t * fq,
 	  double sinx = sin(root2*q0*r[X]);
 	  double siny = sin(root2*q0*r[Y]);
 	  double sinz = sin(root2*q0*r[Z]);
-	  double q[3][3] = {};
+	  double q[3][3] = {0};
 
 	  q[X][X] = amplitude0*( -2.0*cosy*sinz +       sinx*cosz + cosx*siny);
 	  q[X][Y] = amplitude0*(root2*cosy*cosz + root2*sinx*sinz - sinx*cosy);
@@ -159,7 +159,7 @@ int blue_phase_O2_init(cs_t * cs, fe_lc_param_t * param, field_t * fq,
 
   double q0;
   double amplitude0;
-  rotation_t rot = {};
+  rotation_t rot = {0};
 
   assert(cs);
   assert(fq);
@@ -176,7 +176,7 @@ int blue_phase_O2_init(cs_t * cs, fe_lc_param_t * param, field_t * fq,
   /* Hence the factor of -1.0 below. */
 
   {
-    double angles[3] = {}; /* radians */
+    double angles[3] = {0}; /* radians */
     PI_DOUBLE(pi);
 
     angles[0] = -1.0*pi*euler_angles[0]/180.0;
@@ -192,7 +192,7 @@ int blue_phase_O2_init(cs_t * cs, fe_lc_param_t * param, field_t * fq,
       double y = noffset[Y] + jc;
       for (int kc = 1; kc <= nlocal[Z]; kc++) {
 	double z = noffset[Z] + kc;
-	double r[3] = {};
+	double r[3] = {0};
 
 	r[X] = x - 0.5*ntotal[X];
 	r[Y] = y - 0.5*ntotal[Y];
@@ -212,7 +212,7 @@ int blue_phase_O2_init(cs_t * cs, fe_lc_param_t * param, field_t * fq,
 	  double sinx = sin(2.0*q0*r[X]);
 	  double siny = sin(2.0*q0*r[Y]);
 	  double sinz = sin(2.0*q0*r[Z]);
-	  double q[3][3] = {};
+	  double q[3][3] = {0};
 
 	  q[X][X] = amplitude0*(cosz - cosy);
 	  q[X][Y] = amplitude0*sinz;

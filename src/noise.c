@@ -20,7 +20,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2013-2018 The University of Edinburgh
+ *  (c) 2013-2022 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -296,7 +296,7 @@ __host__ int noise_init_io_info(noise_t * obj, int grid[3], int form_in,
 
   const char * name = "Lattice noise RNG state";
   const char * stubname = "noise";
-  io_info_args_t args = {};
+  io_info_args_t args = io_info_args_default();
 
   assert(obj);
 

@@ -7,7 +7,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group
  *  and Edinburgh Parallel Computing Centre
  *
- *  (c) 2012-2021 The University of Edinburgh
+ *  (c) 2012-2022 The University of Edinburgh
  *
  ****************************************************************************/
 
@@ -29,7 +29,7 @@
 int fe_lc_droplet_run_time(pe_t * pe, rt_t * rt, fe_lc_droplet_t * fe) {
 
   int n;
-  fe_lc_droplet_param_t param = {};
+  fe_lc_droplet_param_t param = {0};
 
   assert(fe);
 
