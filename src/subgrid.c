@@ -866,13 +866,13 @@ int subgrid_mobility_map(colloids_info_t * cinfo, field_t * mobility_map, rt_t *
           cosalpha = (r[X]*m[X] + r[Y]*m[Y] + r[Z]*m[Z]) / rnorm;
           alpha = acos(cosalpha);
 
-          //if (alpha >= -1.0 && alpha <= 1.0) {
-          //  gaussalpha = exp(-0.5*(alpha/0.6)*(alpha/0.6))*mobility;
-	  //  field_scalar_set(mobility_map, index, gaussalpha);
-	  //}
-          if (alpha >= -0.5 && alpha <= 0.5) {
-            field_scalar_set(mobility_map, index, mobility);
-          }
+          if (alpha >= -1.0 && alpha <= 1.0) {
+            gaussalpha = exp(-0.5*(alpha/0.6)*(alpha/0.6))*mobility;
+	    field_scalar_set(mobility_map, index, gaussalpha);
+	  }
+          //if (alpha >= -0.5 && alpha <= 0.5) {
+          //  field_scalar_set(mobility_map, index, mobility);
+          //}
 	}
       }
     }

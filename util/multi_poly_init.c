@@ -69,6 +69,7 @@ int main(int argc, char ** argv) {
   int from_file = 1;
   int random_positions = 0;
   int central_links = 1;
+  int two_vesicles = 0;
 
   int ntotal[3] = {32, 32, 32};        /* Total system size (cf. input) */
   int periodic[3] = {1, 1, 1};         /* 0 = wall, 1 = periodic */
@@ -123,7 +124,8 @@ int main(int argc, char ** argv) {
 
   if (from_file) {
     /* Must know number of colloids in advance */
-    nrequest = 241;
+    if (two_vesicles == 0) nrequest = 241;
+    else nrequest = 482;
   }
   else {
     nrequest=Npoly*Lpoly;
@@ -151,9 +153,9 @@ int main(int argc, char ** argv) {
     if (type == COLLOID_TYPE_SUBGRID) {
       state[n].al= al;
       /* Needs a_L */
-      state[n].u0 = 0.0001;
-      state[n].delta = 1.0;
-      state[n].cutoff = 2.0;
+      state[n].u0 = 1e-5;
+      state[n].delta = 2.0;
+      state[n].cutoff = 6.0;
     }
     state[n].rng = 1 + n;
     //CHANGE1
@@ -180,6 +182,13 @@ int main(int argc, char ** argv) {
       for (int ind = 0; ind < 240; ind++) {
         state[0].bond3[ind] = ind + 2;
       }
+
+      if (two_vesicles) {
+        state[241].nbonds3 = 240;
+        for (int ind = 0; ind < 240; ind++) {
+          state[241].bond3[ind] = 241 + ind + 2;
+        }
+      }
     }
 
     while (fgets(line, sizeof(line), file)) {
@@ -203,13 +212,21 @@ int main(int argc, char ** argv) {
       state[numcol].bond2[2] = mi[2];
 
       if (central_links) {
-        if (numcol != 0) {
+        if (numcol > 0 && numcol < 241) {
           state[numcol].nbonds3 = 1;
 	  state[numcol].bond3[0] = 1;
 	  for (int numbond = 1; numbond < 240; numbond++) {
             state[numcol].bond3[numbond] = 0;
 	  }
 	}
+        if (numcol > 241 && numcol < 482) {
+          state[numcol].nbonds3 = 1;
+	  state[numcol].bond3[0] = 242;
+	  for (int numbond = 1; numbond < 240; numbond++) {
+            state[numcol].bond3[numbond] = 0;
+	  }
+	}
+
       }  
 
       state[numcol].iscentre = iscentre;

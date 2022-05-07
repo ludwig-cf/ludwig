@@ -841,7 +841,7 @@ void ludwig_run(const char * inputfile) {
       subgrid_update(ludwig->collinfo, ludwig->hydro, noise_flag);
       //subgrid_centre_update(ludwig->collinfo, ludwig->hydro, noise_flag);
       subgrid_mobility_map(ludwig->collinfo, ludwig->mobility_map, ludwig->rt);
-      subgrid_mobility_map_vesicle2(ludwig->collinfo, ludwig->mobility_map, ludwig->rt);
+      //subgrid_mobility_map_vesicle2(ludwig->collinfo, ludwig->mobility_map, ludwig->rt);
 
       bounce_back_on_links(ludwig->bbl, ludwig->lb, ludwig->wall,
 			   ludwig->collinfo);

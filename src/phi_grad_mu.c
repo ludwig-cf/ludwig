@@ -187,9 +187,6 @@ __host__ int phi_grad_mu_external(cs_t * cs, field_t * phi, hydro_t * hydro) {
   return 0;
 }
 
-/* -----> CHEMOVESICLE V2 */
-/* Additional force due to the particle interaction */
-
 /*****************************************************************************
  *
  *  phi_grad_mu_fluid_kernel
