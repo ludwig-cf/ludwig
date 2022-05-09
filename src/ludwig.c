@@ -67,6 +67,7 @@
 #include "blue_phase_rt.h"
 #include "lc_droplet_rt.h"
 #include "fe_ternary_rt.h"
+#include "fe_symmetric_ll_rt.h"
 #include "fe_electro.h"
 #include "fe_electro_symmetric.h"
 #include "field_phi_init.h"
@@ -153,6 +154,7 @@ struct ludwig_s {
   fe_symm_t * fe_symm;         /* Symmetric free energy */
   fe_surf_t * fe_surf;         /* Surfactant (van der Graf etc) */
   fe_ternary_t * fe_ternary;   /* Ternary (Semprebon et al.) */
+  fe_symmetric_ll_t * fe_symmetric_ll;   /* Ternary (Semprebon et al.) */
   fe_brazovskii_t * fe_braz;   /* Brazovskki */
 
   visc_t * visc;               /* Viscosity model */
@@ -288,6 +290,9 @@ static int ludwig_rt(ludwig_t * ludwig) {
   }
   if (ludwig->fe_ternary) {
     fe_ternary_init_rt(pe, rt, ludwig->fe_ternary, ludwig->phi);
+  }
+  if (ludwig->fe_symmetric_ll) {
+    fe_symmetric_ll_init_rt(pe, rt, ludwig->fe_symmetric_ll, ludwig->phi);
   }
   if (ludwig->subgrid_potential) {
     field_phi_init_uniform(ludwig->subgrid_potential, 0.0);
@@ -1506,6 +1511,78 @@ int free_energy_init_rt(ludwig_t * ludwig) {
     ludwig->fe = (fe_t *) fe;
     
   }
+  else if (strcmp(description, "symmetric_ll") == 0) {
+
+    fe_symmetric_ll_param_t param = {0};
+    ch_info_t options = {};
+    fe_symmetric_ll_t * fe = NULL;
+
+    nf = 2;       /* Composition, ternary: "phi" and "psi" */
+    nhalo = 2;
+    ngrad = 2;
+
+    cs_nhalo_set(cs, nhalo);
+    coords_init_rt(pe, rt, cs);
+
+    /* No Lees Edwards for the time being */
+
+    field_create(pe, cs, nf, "phi", &ludwig->phi);
+    field_init(ludwig->phi, nhalo, NULL);
+
+    field_create(pe, cs, 1, "subgrid_potential", &ludwig->subgrid_potential);
+    field_init(ludwig->subgrid_potential, nhalo, le);
+
+    field_create(pe, cs, 1, "mobility_map", &ludwig->mobility_map);
+    field_init(ludwig->mobility_map, nhalo, le);
+
+    field_grad_create(pe, ludwig->phi, ngrad, &ludwig->phi_grad);
+
+    pe_info(pe, "\n");
+    pe_info(pe, "Symmetric_ll free energy\n");
+    pe_info(pe, "----------------------\n");
+
+    fe_symmetric_ll_param_rt(pe, rt, &param);
+    fe_symmetric_ll_create(pe, cs, ludwig->phi, ludwig->phi_grad, param, &fe);
+    fe_symmetric_ll_info(fe);
+
+    /* Allow either possibility for gradient computation... */
+    //grad_2d_symmetric_ll_solid_fe_set(fe);
+    grad_3d_symmetric_ll_solid_fe_set(fe);
+
+    /* Cahn Hilliard */
+
+    options.nfield = nf;
+
+    n = rt_double_parameter(rt, "symmetric_ll_mobility_phi", &options.mobility[0]);
+    if (n == 0) pe_fatal(pe, "Please set symmetric_ll_mobility_phi in the input\n");
+
+    n = rt_double_parameter(rt, "symmetric_ll_mobility_psi", &options.mobility[1]);
+    if (n == 0) pe_fatal(pe, "Please set symmetric_ll_mobility_psi in the input\n");
+
+    ch_create(pe, cs, options, &ludwig->ch);
+
+    pe_info(pe, "\n");
+    pe_info(pe, "Using Cahn-Hilliard solver:\n");
+    ch_info(ludwig->ch);
+
+    /* Coupling between momentum and free energy */
+    /* Default method for ternary free energy: gradmu */
+    p = 0;
+
+    rt_int_parameter(rt, "fd_force_divergence", &p);
+    pe_info(pe, "Force calculation:      %s\n",
+    (p == 0) ? "phi grad mu method" : "divergence method");
+    if (p == 0) {
+      pth_create(pe, cs, PTH_METHOD_GRADMU, &ludwig->pth);
+    }
+    else {
+      pth_create(pe, cs, PTH_METHOD_DIVERGENCE, &ludwig->pth);
+    }
+
+    ludwig->fe_symmetric_ll = fe;
+    ludwig->fe = (fe_t *) fe;
+  }
+
   else if (strcmp(description, "ternary") == 0) {
 
     fe_ternary_param_t param = {0};

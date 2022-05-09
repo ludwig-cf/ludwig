@@ -119,6 +119,13 @@ int gradient_rt_init(pe_t * pe, rt_t * rt, const char * fieldname,
       assert(map);
       grad_3d_ternary_solid_map_set(map);
     }
+    else if (strcmp(keyvalue, "3d_symmetric_ll_solid") == 0) {
+      pe_info(pe, "3d_symmetric_ll_solid\n");
+      f2 = grad_3d_symmetric_ll_solid_d2;
+      f4 = NULL;
+      assert(map);
+      grad_3d_symmetric_ll_solid_map_set(map);
+    }
     else {
       /* Not recognised */
       pe_info(pe, "\nfd_gradient_calculation %s not recognised\n", keyvalue);
