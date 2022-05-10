@@ -37,6 +37,8 @@ __host__ int physics_control_init_time(physics_t * phys, int nstart, int nstep);
 __host__ int physics_fpulse_set(physics_t * phys, double fpulse[3]);
 __host__ int physics_fpulse_frequency_set(physics_t * phys, double fpulse_freq);
 __host__ int physics_grad_mu_set(physics_t * phys, double gm[3]);
+__host__ int physics_grad_mu_phi_set(physics_t * phys, double gm[3]);
+__host__ int physics_grad_mu_psi_set(physics_t * phys, double gm[3]);
 
 __host__ __device__ int physics_ref(physics_t ** ref);
 __host__ __device__ int physics_rho0(physics_t * phys, double * rho);
@@ -58,5 +60,7 @@ __host__ __device__ int physics_fpulse(physics_t * phys, double fpulse[3]);
 __host__ __device__ int physics_fpulse_frequency(physics_t * phys, 
 						  double * fpule_frequency);
 __host__ __device__ int physics_grad_mu(physics_t * phys, double gm[3]);
+__host__ __device__ int physics_grad_mu_phi(physics_t * phys, double gm[3]);
+__host__ __device__ int physics_grad_mu_psi(physics_t * phys, double gm[3]);
 
 #endif

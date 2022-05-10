@@ -28,4 +28,6 @@ __host__ int phi_grad_mu_solid(cs_t * cs, field_t * phi, fe_t * fe,
 				field_t * subgrid_potential);
 __host__ int phi_grad_mu_external(cs_t * cs, field_t * phi, hydro_t * hydro);
 
+__host__ int phi_grad_mu_external_ll(cs_t * cs, field_t * phi, hydro_t * hydro);
+
 #endif

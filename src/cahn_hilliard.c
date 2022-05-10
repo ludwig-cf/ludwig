@@ -37,8 +37,11 @@
 
 __host__ int ch_update_forward_step(ch_t * ch, field_t * phif);
 __host__ int ch_flux_mu1(ch_t * ch, fe_t * fe);
+__host__ int ch_flux_mu_ext(ch_t * ch);
 
 __global__ void ch_flux_mu1_kernel(kernel_ctxt_t * ktx, ch_t * ch, fe_t * fe,
+				   ch_info_t info);
+__global__ void ch_flux_mu_ext_kernel(kernel_ctxt_t * ktx, ch_t * ch,
 				   ch_info_t info);
 __global__ void ch_update_kernel_2d(kernel_ctxt_t * ktx, ch_t * ch,
 				    field_t * field, ch_info_t info, int xs, int ys);
@@ -140,6 +143,8 @@ __host__ int ch_info(ch_t * ch) {
   pe_info(ch->pe, "Number of fields      = %2d\n", ch->info->nfield);
   pe_info(ch->pe, "Mobility (phi)        = %12.5e\n", ch->info->mobility[0]);
   pe_info(ch->pe, "Mobility (psi)        = %12.5e\n", ch->info->mobility[1]);
+  pe_info(ch->pe, "Grad_mu (phi)        = %f %f %f\n", ch->info->grad_mu_phi[0], ch->info->grad_mu_phi[1], ch->info->grad_mu_phi[2]);
+  pe_info(ch->pe, "Grad_mu (psi)        = %f %f %f\n", ch->info->grad_mu_psi[0], ch->info->grad_mu_psi[1], ch->info->grad_mu_psi[2]);
   
   return 0;
 }
@@ -189,8 +194,10 @@ __host__ int ch_solver(ch_t * ch, fe_t * fe, field_t * phi, hydro_t * hydro,
   else {
     advflux_cs_zero(ch->flux); /* Reset flux to zero */
   }
-
   ch_flux_mu1(ch, fe);
+
+  /* External chemical potential */
+  ch_flux_mu_ext(ch);
 
   if (map) advflux_cs_no_normal_flux(ch->flux, map);
   ch_update_forward_step(ch, phi);
@@ -283,7 +290,6 @@ __global__ void ch_flux_mu1_kernel(kernel_ctxt_t * ktx, ch_t * ch, fe_t * fe,
     index0 = cs_index(ch->cs, ic, jc, kc);
 
     fe->func->mu(fe, index0, mu0);
-
     /* between ic and ic+1 */
 
     index1 = cs_index(ch->cs, ic+1, jc, kc);
@@ -365,6 +371,90 @@ __host__ int ch_update_forward_step(ch_t * ch, field_t * phif) {
 
   return 0;
 }
+
+/*****************************************************************************
+ *
+ *  ch_flux_mu_ext
+ *
+ *  Kernel driver for external chemical potential gradient contribution.
+ *
+ *****************************************************************************/
+
+__host__ int ch_flux_mu_ext(ch_t * ch) {
+
+  int nlocal[3];
+  dim3 nblk, ntpb;
+  kernel_info_t limits;
+
+  kernel_ctxt_t * ctxt = NULL;
+
+  assert(ch);
+  cs_nlocal(ch->cs, nlocal);
+
+  limits.imin = 0; limits.imax = nlocal[X];
+  limits.jmin = 0; limits.jmax = nlocal[Y];
+  limits.kmin = 0; limits.kmax = nlocal[Z];
+
+  kernel_ctxt_create(ch->cs, 1, limits, &ctxt);
+  kernel_ctxt_launch_param(ctxt, &nblk, &ntpb);
+
+  tdpLaunchKernel(ch_flux_mu_ext_kernel, nblk, ntpb, 0, 0,
+                  ctxt->target, ch->target, *ch->info);
+  tdpAssert(tdpPeekAtLastError());
+  tdpAssert(tdpDeviceSynchronize());
+
+  kernel_ctxt_free(ctxt);
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  phi_ch_flux_mu_ext_kernel
+ *
+ *  Accumulate contributions -m grad mu^ex from external chemical
+ *  potential gradient.
+ *
+ *****************************************************************************/
+
+__global__ void ch_flux_mu_ext_kernel(kernel_ctxt_t * ktx,
+                                          ch_t * ch,
+                                          ch_info_t info) {
+  int kindex;
+  int kiterations;
+  
+  assert(ktx);
+  assert(ch->flux);
+
+  kiterations = kernel_iterations(ktx);
+
+  assert(info.nfield == ch->flux->nf);
+  //pe_verbose(ch->pe, "gradmuphi = %f %f %f \n gradmupsi = %f %f %f\n mobilities %f %f \n",
+//info.grad_mu_phi[X], info.grad_mu_phi[Y], info.grad_mu_phi[Z], info.grad_mu_psi[X], info.grad_mu_psi[Y], info.grad_mu_psi[Z], info.mobility[0], info.mobility[1]);
+
+  for_simt_parallel(kindex, kiterations, 1) {
+
+    int ic, jc, kc;
+    int index0;
+
+    ic = kernel_coords_ic(ktx, kindex);
+    jc = kernel_coords_jc(ktx, kindex);
+    kc = kernel_coords_kc(ktx, kindex);
+
+    index0 = cs_index(ch->cs, ic, jc, kc);
+
+    ch->flux->fx[addr_rank1(ch->flux->nsite, info.nfield, index0, 0)] -= info.mobility[0]*info.grad_mu_phi[X];
+    ch->flux->fy[addr_rank1(ch->flux->nsite, info.nfield, index0, 0)] -= info.mobility[0]*info.grad_mu_phi[Y];
+    ch->flux->fz[addr_rank1(ch->flux->nsite, info.nfield, index0, 0)] -= info.mobility[0]*info.grad_mu_phi[Z];
+
+    ch->flux->fx[addr_rank1(ch->flux->nsite, info.nfield, index0, 1)] -= info.mobility[1]*info.grad_mu_psi[X];
+    ch->flux->fy[addr_rank1(ch->flux->nsite, info.nfield, index0, 1)] -= info.mobility[1]*info.grad_mu_psi[Y];
+    ch->flux->fz[addr_rank1(ch->flux->nsite, info.nfield, index0, 1)] -= info.mobility[1]*info.grad_mu_psi[Z];
+  }
+
+  return;
+}
+
 
 /******************************************************************************
  *

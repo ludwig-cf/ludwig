@@ -31,6 +31,8 @@ __host__ int physics_info(pe_t * pe, physics_t * phys) {
   double e0_frequency;
   double fpulse_frequency;
   double gm0[3];
+  double gm1[3];
+  double gm2[3];
 
   assert(pe);
   assert(phys);
@@ -46,6 +48,8 @@ __host__ int physics_info(pe_t * pe, physics_t * phys) {
   physics_fpulse(phys, fpulse);
   physics_fpulse_frequency(phys, &fpulse_frequency);
   physics_grad_mu(phys, gm0);
+  physics_grad_mu_phi(phys, gm1);
+  physics_grad_mu_psi(phys, gm2);
 
   pe_info(pe, "\n");
   pe_info(pe, "System properties\n");
@@ -73,6 +77,16 @@ __host__ int physics_info(pe_t * pe, physics_t * phys) {
     pe_info(pe, "External chem. pot. grad.    %12.5e %12.5e %12.5e\n",
 	    gm0[0], gm0[1], gm0[2]);
   }
+  if (gm1[0] || gm1[1] || gm1[2]) {
+    pe_info(pe, "External chem. pot. grad.    %12.5e %12.5e %12.5e\n",
+	    gm1[0], gm1[1], gm1[2]);
+  }
+  if (gm2[0] || gm2[1] || gm2[2]) {
+    pe_info(pe, "External chem. pot. grad.    %12.5e %12.5e %12.5e\n",
+	    gm2[0], gm2[1], gm2[2]);
+  }
+
+
 
   return 0;
 }

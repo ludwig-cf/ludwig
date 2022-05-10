@@ -28,6 +28,8 @@ typedef struct ch_info_s ch_info_t;
 struct ch_info_s {
   int nfield;             /* Actual number of order parameters */
   double mobility[NQAB];  /* Mobilities for maximum NQAB order parameters */
+  double grad_mu_phi[3];
+  double grad_mu_psi[3];
 };
 
 struct ch_s {

@@ -359,26 +359,6 @@ __host__ __device__ int fe_symmetric_ll_fed(fe_symmetric_ll_t * fe, int index,
  *
  *  Three chemical potentials are present:
  *
- *   \mu_\rho 
- * = 1/8 kappa1  (rho + phi - psi)(rho + phi - psi - 2)(rho + phi - psi - 1)
- * - 1/8 kappa2  (rho - phi - psi)(rho - phi - psi - 2)(rho - phi - psi - 1)
- * + 1/4 alpha^2 (kappa1 + kappa2)(\Delta\psi - \Delta\phi)
- * + 1/4 alpha^2 (kappa2 - kappa1)(\Delta\rho)
- *
- *
- *    \mu_\phi
- * = 1/8 kappa1  (rho + phi - psi)(rho + phi - psi - 2)(rho + phi - psi - 1)
- * - 1/8 kappa2  (rho - phi - pai)(rho - phi - psi - 2)(rho - phi - psi - 1)
- * + 1/4 alpha^2 (kappa2 - kappa1)(\Delta\rho -\Delta\psi)
- * - 1/4 alpha^2 (kappa2 + kappa1)(\Delta\phi)
- *
- *    \mu_\psi
- * = 1/8 kappa1  (rho + phi - psi)(rho + phi - psi - 2)(rho + phi - psi - 1)
- * - 1/8 kappa2  (rho - phi - psi)(rho - phi - psi - 2)(rho - phi - psi - 1)
- * +     kappa3  psi(\psi - 1)(2psi - 1)
- * + 1/4 alpha^2 (kappa1 + kappa2)(\Delta\rho) - (kappa2 - kappa1)(\Delta\phi)
- * - 1/4 alpha^2 (kappa2 + kappa1 + 4*kappa3)(\Delta\psi)
- *
  ****************************************************************************/
 
 __host__ __device__ int fe_symmetric_ll_mu(fe_symmetric_ll_t * fe, int index,

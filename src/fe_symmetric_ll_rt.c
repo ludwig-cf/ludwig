@@ -47,6 +47,14 @@ __host__ int fe_symmetric_ll_param_rt(pe_t * pe, rt_t * rt,
   rt_key_required(rt, "symmetric_ll_b2", RT_FATAL);
   rt_key_required(rt, "symmetric_ll_kappa2", RT_FATAL);
 
+  rt_double_parameter(rt, "symmetric_ll_a1", &p->a1);
+  rt_double_parameter(rt, "symmetric_ll_b1", &p->b1);
+  rt_double_parameter(rt, "symmetric_ll_kappa1", &p->kappa1);
+
+  rt_double_parameter(rt, "symmetric_ll_a2", &p->a2);
+  rt_double_parameter(rt, "symmetric_ll_b2", &p->b2);
+  rt_double_parameter(rt, "symmetric_ll_kappa2", &p->kappa2);
+
   return 0;
 }
 

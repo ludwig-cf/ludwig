@@ -1535,6 +1535,12 @@ int free_energy_init_rt(ludwig_t * ludwig) {
     field_create(pe, cs, 1, "mobility_map", &ludwig->mobility_map);
     field_init(ludwig->mobility_map, nhalo, le);
 
+    n = rt_double_parameter_vector(rt, "grad_mu_phi", options.grad_mu_phi);
+    if (n != 0) physics_grad_mu_phi_set(ludwig->phys, options.grad_mu_phi);
+
+    n = rt_double_parameter_vector(rt, "grad_mu_psi", options.grad_mu_psi);
+    if (n != 0) physics_grad_mu_psi_set(ludwig->phys, options.grad_mu_psi);
+
     field_grad_create(pe, ludwig->phi, ngrad, &ludwig->phi_grad);
 
     pe_info(pe, "\n");
