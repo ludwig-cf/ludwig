@@ -39,6 +39,7 @@ build:
 	$(MAKE) extract_colloids
 	$(MAKE) coll_squ_subgrid_init
 	$(MAKE) multi_poly_init
+	$(MAKE) polarizer
 
 colloid_init: colloid_init.o
 	$(CC) $(LDFLAGS) -o $@ $^ $(LIBS)
@@ -61,15 +62,18 @@ coll_squ_subgrid_init: coll_squ_subgrid_init.o
 multi_poly_init: multi_poly_init.o
 	$(CC) $(LDFLAGS) -o $@ $^ $(LIBS)
 
+polarizer: polarizer.o
+	$(CXX) $(LDFLAGS) -o $@ $^ $(LIBS)
+
 # Default rules
 
 .PHONY : clean
 clean:
 	rm -f *.o colloid_init extract_colloids capillary extract \
-	coll_squ_subgrid_init multi_poly_init
+	coll_squ_subgrid_init multi_poly_init polarizer
 
 .SUFFIXES:
-.SUFFIXES: .c .o
+.SUFFIXES: .c .cpp .o
 
 .c.o:
 	$(CC) $(CFLAGS) $(INCL) -c $*.c
