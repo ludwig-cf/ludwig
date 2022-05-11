@@ -663,7 +663,7 @@ int colloids_update_discrete_forces_phi(colloids_info_t * cinfo, field_t * phi, 
   colloid_t * pc = NULL;
 
 /* -----> For book-keeping */
-  int freq = 1000000, timestep;
+  int freq = 100000, timestep;
   double colloidforce[3], localforce[3], globalforce[3];
   FILE * fp;
 // time stuff
@@ -675,13 +675,13 @@ int colloids_update_discrete_forces_phi(colloids_info_t * cinfo, field_t * phi, 
   cs_cart_comm(cinfo->cs, &comm);
 /* <----- */
 
-
   cs_nlocal(cinfo->cs, nlocal);
   cs_nlocal_offset(cinfo->cs, offset);
   colloids_info_ncell(cinfo, ncell);
 
   assert(cinfo);
   assert(phi);
+  assert(phi->nf == 2);
   assert(subgrid_potential);
 
 /* Should I also go through the halo cells ? No because you only calculate the values for the domain lattice */
@@ -757,7 +757,7 @@ int colloids_update_discrete_forces_phi(colloids_info_t * cinfo, field_t * phi, 
 		if (rnorm > cutoff) continue;
 					
                 /* Retrieve phi */
-                phi_ = phi->data[addr_rank0(phi->nsites, index)];
+                phi_ = phi->data[addr_rank1(phi->nsites, 2, index, 0)];
 
                 /* Compute potential and grad of potential (grad_u) */
                 u = u0/(sqrt(2*M_PI*delta))*exp(-0.5*(rsq)/delta);
@@ -826,7 +826,7 @@ int colloids_update_discrete_forces_phi(colloids_info_t * cinfo, field_t * phi, 
 		if (rnorm > cutoff + 2) continue;
 					
                 /* Retrieve phi */
-                phi_ = phi->data[addr_rank0(phi->nsites, index)];
+                phi_ = phi->data[addr_rank1(phi->nsites, 2, index, 0)];
 
                 /* Compute potential and grad of potential (grad_u) */
                 /* u = u0/(sqrt(2*M_PI*delta))*exp(-0.5*(rsq)/delta);
@@ -883,7 +883,9 @@ int colloids_update_discrete_forces_phi(colloids_info_t * cinfo, field_t * phi, 
           }
 	
 	/* Increment the local force with the force on this colloid */
+	printf("colloid index %d, force %f %f %f \n", pc->s.index, colloidforce[X], colloidforce[Y], colloidforce[Z]);
 	for (ia = 0; ia < 3; ia ++) localforce[ia] += colloidforce[ia];
+        printf("localforce = %f %f %f\n", localforce[X], localforce[Y], localforce[Z]);
         //Next colloid
         }
       }

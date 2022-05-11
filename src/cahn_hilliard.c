@@ -37,10 +37,12 @@
 
 __host__ int ch_update_forward_step(ch_t * ch, field_t * phif);
 __host__ int ch_flux_mu1(ch_t * ch, fe_t * fe);
+__host__ int ch_flux_interaction(ch_t * ch, fe_t * fe, field_t * subgrid_potential);
 __host__ int ch_flux_mu_ext(ch_t * ch);
 
 __global__ void ch_flux_mu1_kernel(kernel_ctxt_t * ktx, ch_t * ch, fe_t * fe,
 				   ch_info_t info);
+__global__ void ch_flux_interaction_kernel(kernel_ctxt_t * ktx, ch_t * ch, field_t * subgrid_potential, fe_t * fe, ch_info_t info);
 __global__ void ch_flux_mu_ext_kernel(kernel_ctxt_t * ktx, ch_t * ch,
 				   ch_info_t info);
 __global__ void ch_update_kernel_2d(kernel_ctxt_t * ktx, ch_t * ch,
@@ -179,7 +181,7 @@ __host__ int ch_info_set(ch_t * ch, ch_info_t info) {
  *****************************************************************************/
 
 __host__ int ch_solver(ch_t * ch, fe_t * fe, field_t * phi, hydro_t * hydro,
-		       map_t * map) {
+		       map_t * map, field_t * subgrid_potential) {
 
   assert(ch);
   assert(fe);
@@ -194,9 +196,13 @@ __host__ int ch_solver(ch_t * ch, fe_t * fe, field_t * phi, hydro_t * hydro,
   else {
     advflux_cs_zero(ch->flux); /* Reset flux to zero */
   }
+
   ch_flux_mu1(ch, fe);
 
-  /* External chemical potential */
+  /* Interaction fluxes */
+  ch_flux_interaction(ch, fe, subgrid_potential);
+
+  /* External chemical potential fluxes */
   ch_flux_mu_ext(ch);
 
   if (map) advflux_cs_no_normal_flux(ch->flux, map);
@@ -315,13 +321,134 @@ __global__ void ch_flux_mu1_kernel(kernel_ctxt_t * ktx, ch_t * ch, fe_t * fe,
     for (int n = 0; n < info.nfield; n++) {
       flux = info.mobility[n]*(mu1[n] - mu0[n]);
       ch->flux->fz[addr_rank1(ch->flux->nsite, info.nfield, index0, n)] -= flux;
-    }
+   }
 
     /* Next site */
   }
 
   return;
 }
+
+
+/*****************************************************************************
+ *
+ *  ch_flux_interaction
+ *
+ *  Kernel driver for diffusive flux computation.
+ *
+ *****************************************************************************/
+
+__host__ int ch_flux_interaction(ch_t * ch, fe_t * fe, field_t * subgrid_potential) {
+
+  int nlocal[3];
+  dim3 nblk, ntpb;
+  kernel_info_t limits;
+  fe_t * fetarget = NULL;
+  field_t * sftarget = NULL;
+  kernel_ctxt_t * ctxt = NULL;
+
+  assert(ch);
+  assert(fe);
+  assert(subgrid_potential);
+
+  sftarget = subgrid_potential->target;
+
+  cs_nlocal(ch->cs, nlocal);
+  fe->func->target(fe, &fetarget);
+
+  limits.imin = 0; limits.imax = nlocal[X];
+  limits.jmin = 0; limits.jmax = nlocal[Y];
+  limits.kmin = 0; limits.kmax = nlocal[Z];
+
+  kernel_ctxt_create(ch->cs, 1, limits, &ctxt);
+  kernel_ctxt_launch_param(ctxt, &nblk, &ntpb);
+
+  tdpLaunchKernel(ch_flux_interaction_kernel, nblk, ntpb, 0, 0,
+		  ctxt->target, ch->target, sftarget, fetarget, *ch->info);
+
+  tdpAssert(tdpPeekAtLastError());
+  tdpAssert(tdpDeviceSynchronize());
+
+  kernel_ctxt_free(ctxt);
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  ch_flux_interaction_kernel
+ *
+ *  Unvectorised kernel.
+ *
+ *  Accumulate [add to a previously computed advective flux] the
+ *  'diffusive' contribution related to the chemical potential. It's
+ *  computed everywhere regardless of fluid/solid status.
+ *
+ *  This is a two point stencil the in the chemical potential,
+ *  and the mobility is constant.
+ *
+ *****************************************************************************/
+
+__global__ void ch_flux_interaction_kernel(kernel_ctxt_t * ktx, ch_t * ch, field_t * subgrid_potential, fe_t * fe, ch_info_t info) {
+
+  int kindex;
+  int kiterations;
+
+  assert(ktx);
+  assert(ch);
+  assert(fe);
+  assert(fe->func->mu);
+
+  kiterations = kernel_iterations(ktx);
+
+  for_simt_parallel(kindex, kiterations, 1) {
+
+    int ic, jc, kc;
+    int index0, index1;
+    int icm1, icp1;
+    double mu0, mu1;
+    double flux;
+
+    assert(info.nfield == ch->flux->nf);
+    assert(info.nfield == 2);
+
+    ic = kernel_coords_ic(ktx, kindex);
+    jc = kernel_coords_jc(ktx, kindex);
+    kc = kernel_coords_kc(ktx, kindex);
+
+    index0 = cs_index(ch->cs, ic, jc, kc);
+
+    field_scalar(subgrid_potential, index0, &mu0);
+    /* between ic and ic+1 */
+
+    index1 = cs_index(ch->cs, ic+1, jc, kc);
+    field_scalar(subgrid_potential, index1, &mu1);
+    flux = info.mobility[0]*(mu1 - mu0);
+    ch->flux->fx[addr_rank1(ch->flux->nsite, info.nfield, index0, 0)] -= flux;
+
+    /* y direction */
+
+    index1 = cs_index(ch->cs, ic, jc+1, kc);
+    field_scalar(subgrid_potential, index1, &mu1);
+    flux = info.mobility[0]*(mu1 - mu0);
+    ch->flux->fy[addr_rank1(ch->flux->nsite, info.nfield, index0, 0)] -= flux;
+
+    /* z direction */
+
+    index1 = cs_index(ch->cs, ic, jc, kc+1);
+    field_scalar(subgrid_potential, index1, &mu1);
+    flux = info.mobility[0]*(mu1 - mu0);
+    ch->flux->fz[addr_rank1(ch->flux->nsite, info.nfield, index0, 0)] -= flux;
+    //if (ic == 20 && jc == 20 && kc == 20) printf("z interact flux = %f\n",  -flux);
+    //if (ic == 20 && jc == 20 && kc == 20) printf("mob = %f, mu1 = %f mu0 %f\n", info.mobility[0], mu1, mu0);
+    /* Next site */
+  }
+
+  return;
+}
+
+
+
 
 /*****************************************************************************
  *

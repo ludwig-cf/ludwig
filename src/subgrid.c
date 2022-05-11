@@ -660,7 +660,7 @@ int subgrid_phi_production(colloids_info_t * cinfo, field_t * phi) {
 
 		dr = d_peskin(r[X])*d_peskin(r[Y])*d_peskin(r[Z]);
 
-		phi->data[addr_rank1(phi->nsites, 1, index, 0)] += 
+		phi->data[addr_rank1(phi->nsites, 2, index, 0)] += 
 			p_colloid->s.phi_production * dr;
 	      }
 	    }

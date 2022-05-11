@@ -289,7 +289,7 @@ __global__ void phi_grad_mu_fluid_kernel(kernel_ctxt_t * ktx, field_t * phi,
 /* -----> For book-keeping */
   double globalforce[3];
   double localforce[3] = {0,0,0};
-  int freq = 1000000;
+  int freq = 100000;
 
   physics_t * phys;
   FILE * fp;
@@ -333,14 +333,9 @@ __global__ void phi_grad_mu_fluid_kernel(kernel_ctxt_t * ktx, field_t * phi,
       field_scalar(subgrid_potential, indexp1, &up1);
 
       force[X] = 0.0;
-      for (int n = 0; n < phi->nf; n++) {
-	force[X] += -phi0[n]*0.5*(mup1[n] - mum1[n] + up1 - um1);
-	if (timestep % freq == 0) {
-	  localforce[X] -= phi0[n]*0.5*(up1 - um1);
-	}
-	else localforce[X] = 0.0;
-      }
-
+      force[X] += -phi0[0]*0.5*(mup1[0] - mum1[0] + up1 - um1);
+      force[X] += -phi0[1]*0.5*(mup1[1] - mum1[1]);
+      if (timestep % freq == 0) localforce[X] -= phi0[0]*0.5*(up1 - um1);
     }
 
     {
@@ -353,11 +348,9 @@ __global__ void phi_grad_mu_fluid_kernel(kernel_ctxt_t * ktx, field_t * phi,
       field_scalar(subgrid_potential, indexp1, &up1);
 
       force[Y] = 0.0;
-      for (int n = 0; n < phi->nf; n++) {
-	force[Y] += -phi0[n]*0.5*(mup1[n] - mum1[n] + up1 - um1);
-	if (timestep % freq == 0) localforce[Y] -= phi0[n]*0.5*(up1 - um1);
-	else localforce[Y] = 0.0;
-      }
+      force[Y] += -phi0[0]*0.5*(mup1[0] - mum1[0] + up1 - um1);
+      force[Y] += -phi0[1]*0.5*(mup1[1] - mum1[1]);
+      if (timestep % freq == 0) localforce[Y] -= phi0[0]*0.5*(up1 - um1);
     }
 
     {
@@ -370,11 +363,9 @@ __global__ void phi_grad_mu_fluid_kernel(kernel_ctxt_t * ktx, field_t * phi,
       field_scalar(subgrid_potential, indexp1, &up1);
 
       force[Z] = 0.0;
-      for (int n = 0; n < phi->nf; n++) {
-	force[Z] += -phi0[n]*0.5*(mup1[n] - mum1[n] + up1 - um1);
-	if (timestep % freq == 0) localforce[Z] -= phi0[n]*0.5*(up1 - um1);
-	else localforce[Z] = 0.0;
-      }
+      force[Z] += -phi0[0]*0.5*(mup1[0] - mum1[0] + up1 - um1);
+      force[Z] += -phi0[1]*0.5*(mup1[1] - mum1[1]);
+      if (timestep % freq == 0) localforce[Z] -= phi0[0]*0.5*(up1 - um1);
     }
 
     hydro_f_local_add(hydro, index, force);
@@ -476,9 +467,9 @@ __global__ void phi_grad_mu_solid_kernel(kernel_ctxt_t * ktx, field_t * field,
 	up1 = u;
       }
 
-      for (int n1 = 0; n1 < field->nf; n1++) {
-	force[X] -= phi[n1]*0.5*(mup1[n1] - mum1[n1] + up1 - um1);
-      }
+      force[X] -= phi[0]*0.5*(mup1[0] - mum1[0] + up1 - um1);
+      force[X] -= phi[1]*0.5*(mup1[1] - mum1[1]);
+
     }
 
     /* y-direction */
@@ -514,9 +505,9 @@ __global__ void phi_grad_mu_solid_kernel(kernel_ctxt_t * ktx, field_t * field,
 	up1 = u;
       }
 
-      for (int n1 = 0; n1 < field->nf; n1++) {
-	force[Y] -= phi[n1]*0.5*(mup1[n1] - mum1[n1] + up1 - um1);
-      }
+      force[Y] -= phi[0]*0.5*(mup1[0] - mum1[0] + up1 - um1);
+      force[Y] -= phi[1]*0.5*(mup1[1] - mum1[1]);
+
     }
 
     /* z-direction */
@@ -552,9 +543,9 @@ __global__ void phi_grad_mu_solid_kernel(kernel_ctxt_t * ktx, field_t * field,
 	up1 = u;
       }
 
-      for (int n1 = 0; n1 < field->nf; n1++) {
-	force[Z] -= phi[n1]*0.5*(mup1[n1] - mum1[n1] + up1 - um1);
-      }
+      force[Z] -= phi[0]*0.5*(mup1[0] - mum1[0] + up1 - um1);
+      force[Z] -= phi[1]*0.5*(mup1[1] - mum1[1]);
+
     }
 
     /* Store the force on lattice */

@@ -738,40 +738,9 @@ void ludwig_run(const char * inputfile) {
 
       if (ludwig->ch) {
 	ch_solver(ludwig->ch, ludwig->fe, ludwig->phi, ludwig->hydro,
-		  ludwig->map);
+		  ludwig->map, ludwig->subgrid_potential);
       }
        
-
-/* -----> CHEMOVESICLE V3  
-      int ic = 30;
-      int index;
-      double mobility, mobility0 = 0.5;
-      int nlocal[3];
-      cs_nlocal(ludwig->cs, nlocal);
-      pe_info(ludwig->pe, "\n TIMESTEP = %d\n", step); 
-      if (step > 1) { 
-      for (int ic = 1; ic < nlocal[X]; ic++){
-        for (int jc = 1; jc <= nlocal[Y]; jc++ ) {
-          for (int kc = 1; kc <= nlocal[Z]; kc++) {
-            int index = cs_index(ludwig->cs, ic, jc, kc);
-            field_scalar(ludwig->mobility_map, index, &mobility);
-  	  if (mobility > mobility0) {
-            pe_info(ludwig->pe, "\033[0;34m %.*f", 1, mobility);
-	    continue;
-  	  }
-	  if (mobility < mobility0) {
-            pe_info(ludwig->pe, "\033[0;35m %.*f", 1, mobility);
-	    continue;
-  	  }
-  	  pe_info(ludwig->pe, "\033[0m %.*f", 1, mobility);
-          }
-          printf("\n");
-        }
-      }
-      }
-      pe_info(ludwig->pe, "\033[0m");
-*/
-
       if (ludwig->pch) {
 	phi_cahn_hilliard(ludwig->pch, ludwig->fe, ludwig->phi,
 			  ludwig->hydro, 
