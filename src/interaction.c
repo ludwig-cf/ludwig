@@ -883,9 +883,9 @@ int colloids_update_discrete_forces_phi(colloids_info_t * cinfo, field_t * phi, 
           }
 	
 	/* Increment the local force with the force on this colloid */
-	printf("colloid index %d, force %f %f %f \n", pc->s.index, colloidforce[X], colloidforce[Y], colloidforce[Z]);
+	//printf("colloid index %d, force %f %f %f \n", pc->s.index, colloidforce[X], colloidforce[Y], colloidforce[Z]);
 	for (ia = 0; ia < 3; ia ++) localforce[ia] += colloidforce[ia];
-        printf("localforce = %f %f %f\n", localforce[X], localforce[Y], localforce[Z]);
+        //printf("localforce = %f %f %f\n", localforce[X], localforce[Y], localforce[Z]);
         //Next colloid
         }
       }

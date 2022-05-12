@@ -297,9 +297,9 @@ static int ludwig_rt(ludwig_t * ludwig) {
   if (ludwig->subgrid_potential) {
     field_phi_init_uniform(ludwig->subgrid_potential, 0.0);
   }
-  if (ludwig->mobility_map) {
-    field_phi_init_uniform(ludwig->mobility_map, 0.0);
-  }
+  //if (ludwig->mobility_map) {
+  //  field_phi_init_uniform(ludwig->mobility_map, 0.0);
+  //}
   /* To be called before wall_rt_init() */
   if (ludwig->psi) {
     advection_init_rt(pe, rt);
@@ -738,7 +738,7 @@ void ludwig_run(const char * inputfile) {
 
       if (ludwig->ch) {
 	ch_solver(ludwig->ch, ludwig->fe, ludwig->phi, ludwig->hydro,
-		  ludwig->map, ludwig->subgrid_potential);
+		  ludwig->map, ludwig->subgrid_potential, ludwig->mobility_map);
       }
        
       if (ludwig->pch) {
@@ -1501,7 +1501,7 @@ int free_energy_init_rt(ludwig_t * ludwig) {
     field_create(pe, cs, 1, "subgrid_potential", &ludwig->subgrid_potential);
     field_init(ludwig->subgrid_potential, nhalo, le);
 
-    field_create(pe, cs, 1, "mobility_map", &ludwig->mobility_map);
+    field_create(pe, cs, nf, "mobility_map", &ludwig->mobility_map);
     field_init(ludwig->mobility_map, nhalo, le);
 
     n = rt_double_parameter_vector(rt, "grad_mu_phi", options.grad_mu_phi);

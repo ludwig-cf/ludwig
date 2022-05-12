@@ -45,6 +45,6 @@ __host__ int ch_free(ch_t * ch);
 __host__ int ch_info(ch_t * ch);
 __host__ int ch_info_set(ch_t * ch, ch_info_t info);
 __host__ int ch_solver(ch_t * ch, fe_t * fe, field_t * phi, hydro_t * hydro,
-		       map_t * map, field_t * subgrid_potential);
+		       map_t * map, field_t * subgrid_potential, field_t * mobility_map);
 
 #endif
