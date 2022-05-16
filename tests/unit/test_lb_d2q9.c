@@ -7,7 +7,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2021 The University of Edinburgh
+ *  (c) 2021-2022 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -52,7 +52,7 @@ __host__ int test_lb_d2q9_suite(void) {
 
 __host__ int test_lb_d2q9_create(void) {
 
-  lb_model_t model = {};
+  lb_model_t model = {0};
 
   lb_d2q9_create(&model);
 

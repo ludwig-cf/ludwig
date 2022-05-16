@@ -28,7 +28,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2010-2021 The University of Edinburgh
+ *  (c) 2010-2022 The University of Edinburgh
  *
  *  Contributions:
  *  Thanks to Markus Gross, who helped to validate the noise implementation.
@@ -1087,7 +1087,7 @@ static int phi_ch_subtract_sum_phi_after_forward_step(phi_ch_t * pch, field_t * 
   kernel_info_t limits;
   kernel_ctxt_t * ctxt = NULL;
 
-  phi_correct_t local = {};
+  phi_correct_t local = {0};
   phi_correct_t * local_d = NULL;
 
   assert(pch);
@@ -1118,7 +1118,7 @@ static int phi_ch_subtract_sum_phi_after_forward_step(phi_ch_t * pch, field_t * 
 
   {
     MPI_Comm comm = MPI_COMM_NULL;
-    phi_correct_t global = {};
+    phi_correct_t global = {0};
 
     cs_cart_comm(pch->cs, &comm);
 
@@ -1169,7 +1169,7 @@ __global__ void phi_ch_csum_kernel(kernel_ctxt_t * ktx, lees_edw_t *le,
 
   for_simt_parallel(kindex, kiterations, 1) {
 
-    kahan_t phi = {};
+    kahan_t phi = {0};
 
     ic = kernel_coords_ic(ktx, kindex);
     jc = kernel_coords_jc(ktx, kindex);

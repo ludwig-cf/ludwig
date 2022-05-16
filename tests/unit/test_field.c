@@ -7,7 +7,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2012-2021 The University of Edinburgh
+ *  (c) 2012-2022 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -453,7 +453,7 @@ int test_field_halo_create(pe_t * pe) {
   field_t * field = NULL;
   field_options_t opts = field_options_default();
 
-  field_halo_t h = {};
+  field_halo_t h = {0};
 
   {
     int nhalo = 2;

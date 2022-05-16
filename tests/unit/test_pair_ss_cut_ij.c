@@ -2,6 +2,11 @@
  *
  *  test_pair_ss_cut_ij.c
  *
+ *  Edinburgh Soft Matter and Statictical Physics Group and
+ *  Edinburgh Parallel Computing Centre
+ *
+ *  (c) 2022 The University of Edinburgh
+ *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *
@@ -57,10 +62,10 @@ int test_pair_ss_cut_ij_create(pe_t * pe, cs_t * cs) {
 
   pair_ss_cut_ij_t * obj = NULL;
 
-  double epsilon[3] = {};
-  double sigma[3] = {};
-  double nu[3] = {};
-  double hc[3] = {};
+  double epsilon[2] = {0};
+  double sigma[2] = {0};
+  double nu[2] = {0};
+  double hc[2] = {0};
 
   pair_ss_cut_ij_create(pe, cs, 2, epsilon, sigma, nu, hc, &obj);
   assert(obj);

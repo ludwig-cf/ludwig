@@ -7,7 +7,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2012-2021 The University of Edinburgh
+ *  (c) 2012-2022 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -306,7 +306,7 @@ __host__ int hydro_halo_swap(hydro_t * obj, hydro_halo_enum_t flag) {
 __host__ int hydro_init_io_info(hydro_t * obj, int grid[3], int form_in,
 				int form_out) {
 
-  io_info_args_t args = {};
+  io_info_args_t args = io_info_args_default();
 
   assert(obj);
   assert(grid);
@@ -651,7 +651,11 @@ __host__ int hydro_lees_edwards(hydro_t * obj) {
   cs_cartsz(obj->cs, mpi_cartsz);
 
   /* All on host at the moment, so copy here and copy back at end */
-  hydro_memcpy(obj, tdpMemcpyDeviceToHost);
+
+  {
+    int nplane = lees_edw_nplane_total(obj->le);
+    if (nplane > 0) hydro_memcpy(obj, tdpMemcpyDeviceToHost);
+  }
 
   if (mpi_cartsz[Y] > 1) {
     hydro_lees_edwards_parallel(obj);
@@ -701,7 +705,10 @@ __host__ int hydro_lees_edwards(hydro_t * obj) {
     }
   }
 
-  hydro_memcpy(obj, tdpMemcpyHostToDevice);
+  {
+    int nplane = lees_edw_nplane_total(obj->le);
+    if (nplane > 0) hydro_memcpy(obj, tdpMemcpyHostToDevice);
+  }
 
   return 0;
 }
@@ -1416,7 +1423,7 @@ int hydro_halo_dequeue_recv(hydro_t * hydro, const hydro_halo_t * h, int ireq) {
 
 int hydro_halo_create(const hydro_t * hydro, hydro_halo_t * h) {
 
-  int nlocal[3] = {};
+  int nlocal[3] = {0};
 
   assert(hydro);
   assert(h);
@@ -1441,15 +1448,15 @@ int hydro_halo_create(const hydro_t * hydro, hydro_halo_t * h) {
   /* Ranks of Cartesian neighbours */
 
   {
-    int dims[3] = {};
-    int periods[3] = {};
-    int coords[3] = {};
+    int dims[3] = {0};
+    int periods[3] = {0};
+    int coords[3] = {0};
 
     MPI_Cart_get(h->comm, 3, dims, periods, coords);
 
     for (int p = 0; p < h->nvel; p++) {
-      int nbr[3] = {};
-      int out[3] = {};  /* Out-of-range is erroneous for non-perioidic dims */
+      int nbr[3] = {0};
+      int out[3] = {0};  /* Out-of-range is erroneous for non-perioidic dims */
       int i = 1 + h->cv[p][X];
       int j = 1 + h->cv[p][Y];
       int k = 1 + h->cv[p][Z];
@@ -1457,9 +1464,9 @@ int hydro_halo_create(const hydro_t * hydro, hydro_halo_t * h) {
       nbr[X] = coords[X] + h->cv[p][X];
       nbr[Y] = coords[Y] + h->cv[p][Y];
       nbr[Z] = coords[Z] + h->cv[p][Z];
-      out[X] = (!periods[X] && (nbr[X] < 0 || nbr[X] > dims[X]));
-      out[Y] = (!periods[Y] && (nbr[Y] < 0 || nbr[Y] > dims[Y]));
-      out[Z] = (!periods[Z] && (nbr[Z] < 0 || nbr[Z] > dims[Z]));
+      out[X] = (!periods[X] && (nbr[X] < 0 || nbr[X] > dims[X] - 1));
+      out[Y] = (!periods[Y] && (nbr[Y] < 0 || nbr[Y] > dims[Y] - 1));
+      out[Z] = (!periods[Z] && (nbr[Z] < 0 || nbr[Z] > dims[Z] - 1));
 
       if (out[X] || out[Y] || out[Z]) {
 	h->nbrrank[i][j][k] = MPI_PROC_NULL;

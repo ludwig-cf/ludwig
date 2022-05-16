@@ -7,7 +7,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2021
+ *  (c) 2021-2022
  *
  *  Contributing authors;
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -33,9 +33,9 @@
 
 int map_init_status_circle_xy(map_t * map) {
 
-  int ntotal[3] = {};
-  int nlocal[3] = {};
-  int noffset[3] = {};
+  int ntotal[3] = {0};
+  int nlocal[3] = {0};
+  int noffset[3] = {0};
   double x0, y0, r0;
 
   cs_t * cs = NULL;
@@ -94,9 +94,9 @@ int map_init_status_circle_xy(map_t * map) {
 
 __host__ int map_init_status_wall(map_t * map, int id) {
 
-  int ntotal[3]  = {};
-  int nlocal[3]  = {};
-  int noffset[3] = {};
+  int ntotal[3]  = {0};
+  int nlocal[3]  = {0};
+  int noffset[3] = {0};
   cs_t * cs = NULL;
 
   assert(id == X || id == Y || id == Z);
@@ -145,8 +145,8 @@ __host__ int map_init_status_wall(map_t * map, int id) {
 int map_init_status_simple_cubic(map_t * map, int acell) {
 
   cs_t * cs = NULL;
-  int nlocal[3] = {};
-  int noffset[3] = {};
+  int nlocal[3] = {0};
+  int noffset[3] = {0};
 
   assert(map);
 
@@ -194,8 +194,8 @@ int map_init_status_simple_cubic(map_t * map, int acell) {
 int map_init_status_body_centred_cubic(map_t * map, int acell) {
 
   cs_t * cs = NULL;
-  int nlocal[3] = {};
-  int noffset[3] = {};
+  int nlocal[3] = {0};
+  int noffset[3] = {0};
   double radius;
 
   assert(map);
@@ -260,8 +260,8 @@ int map_init_status_body_centred_cubic(map_t * map, int acell) {
 int map_init_status_face_centred_cubic(map_t * map, int acell) {
 
   cs_t * cs = NULL;
-  int nlocal[3] = {};
-  int noffset[3] = {};
+  int nlocal[3] = {0};
+  int noffset[3] = {0};
   double radius;
 
   assert(map);
@@ -345,7 +345,7 @@ int map_init_status_print_section(map_t * map, int id, int ord) {
 
   pe_t * pe = NULL;
   cs_t * cs = NULL;
-  int nlocal[3] = {};
+  int nlocal[3] = {0};
   int status = -1;
 
   assert(map);
@@ -428,7 +428,7 @@ int map_init_data_uniform(map_t * map, int target, double * data) {
 
   {
     cs_t * cs = map->cs;
-    int nlocal[3] = {};
+    int nlocal[3] = {0};
     cs_nlocal(cs, nlocal);
 
     for (int ic = 1; ic <= nlocal[X]; ic++) {

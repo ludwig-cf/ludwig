@@ -7,7 +7,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2012-2021 The University of Edinburgh
+ *  (c) 2012-2022 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -16,6 +16,8 @@
 
 #ifndef LUDWIG_HYDRO_H
 #define LUDWIG_HYDRO_H
+
+#include <stdint.h>
 
 #include "pe.h"
 #include "coords.h"

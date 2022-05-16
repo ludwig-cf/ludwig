@@ -31,7 +31,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2009-2021 The University of Edinburgh
+ *  (c) 2009-2022 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -322,7 +322,7 @@ __host__ int beris_edw_update_host(beris_edw_t * be, fe_t * fe, field_t * fq,
   double gamma;
 
   double chi[NQAB], chi_qab[3][3];
-  double tmatrix[3][3][NQAB] = {};
+  double tmatrix[3][3][NQAB] = {0};
   double var = 0.0;
 
   const double dt = 1.0;

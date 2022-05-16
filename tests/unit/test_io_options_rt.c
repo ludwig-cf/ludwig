@@ -8,7 +8,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2020 The University of Edinburgh
+ *  (c) 2020-2022 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -116,7 +116,7 @@ __host__ int test_io_options_rt_rformat(pe_t * pe) {
 __host__ int test_io_options_rt_default(pe_t * pe) {
 
   rt_t * rt = NULL;
-  io_options_t opts = {};
+  io_options_t opts = io_options_default();
   io_options_t defs = io_options_default();
 
   assert(pe);
@@ -148,7 +148,7 @@ __host__ int test_io_options_rt_default(pe_t * pe) {
 __host__ int test_io_options_rt(pe_t * pe) {
 
   rt_t * rt = NULL;
-  io_options_t opts = {};
+  io_options_t opts = io_options_default();
 
   assert(pe);
 

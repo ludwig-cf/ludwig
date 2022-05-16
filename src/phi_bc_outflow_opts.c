@@ -2,6 +2,14 @@
  *
  *  phi_bc_outflow_opts.c
  *
+ *  Edinburgh Soft Matter and Statistical Physics Group and
+ *  Edinburgh Parallel Computing Centre
+ *
+ *  (c) 2022 The University of Edinburgh
+ *
+ *  Contributing authors:
+ *  Kevin Stratford (kevin@epcc.ed.ac.uk)
+ *
  *****************************************************************************/
 
 #include <assert.h>
@@ -16,7 +24,7 @@
 
 phi_bc_outflow_opts_t phi_bc_outflow_opts_default(void) {
 
-  phi_bc_outflow_opts_t options = {};
+  phi_bc_outflow_opts_t options = {0};
 
   return options;
 }

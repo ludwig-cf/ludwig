@@ -11,7 +11,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2010-2021 The University of Edinburgh
+ *  (c) 2010-2022 The University of Edinburgh
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *
@@ -27,13 +27,18 @@
 #include "util_sum.h"
 #include "stats_distribution.h"
 
+/* Kernel utility continaer */
+typedef struct gm_util_s {
+  int8_t cv[27][3];
+} gm_util_t;
+
 __host__ int stats_distribution_momentum_serial(lb_t * lb, map_t * map,
 						double g[3]);
 __host__ int distribution_stats_momentum(lb_t * lb, map_t * map, int root,
 					 MPI_Comm comm, double gm[3]);
 
 __global__ void distribution_gm_kernel(kernel_ctxt_t * ktxt, lb_t * lb,
-				       map_t * map, kahan_t * gm);
+				       map_t * map, gm_util_t u, kahan_t * gm);
 
 
 /*****************************************************************************
@@ -199,16 +204,23 @@ __host__ int distribution_stats_momentum(lb_t * lb, map_t * map, int root,
 
   int nlocal[3];
   dim3 nblk, ntpb;
+  gm_util_t util = {0};
   kernel_info_t limits;
   kernel_ctxt_t * ctxt = NULL;
 
   /* Device memory for stats */
 
-  kahan_t sum[3] = {};
+  kahan_t sum[3] = {0};
   kahan_t * sum_d = NULL;
 
   tdpAssert(tdpMalloc((void **) &sum_d, 3*sizeof(kahan_t)));
   tdpAssert(tdpMemcpy(sum_d, sum, 3*sizeof(kahan_t), tdpMemcpyHostToDevice));
+
+  for (int p = 0; p < lb->model.nvel; p++) {
+    util.cv[p][X] = lb->model.cv[p][X];
+    util.cv[p][Y] = lb->model.cv[p][Y];
+    util.cv[p][Z] = lb->model.cv[p][Z];
+  }
 
   /* Local kernel */
 
@@ -221,7 +233,7 @@ __host__ int distribution_stats_momentum(lb_t * lb, map_t * map, int root,
   kernel_ctxt_launch_param(ctxt, &nblk, &ntpb);
 
   tdpLaunchKernel(distribution_gm_kernel, nblk, ntpb, 0, 0,
-		  ctxt->target, lb->target, map->target, sum_d);
+		  ctxt->target, lb->target, map->target, util, sum_d);
   tdpAssert(tdpPeekAtLastError());
   tdpAssert(tdpDeviceSynchronize());
 
@@ -233,7 +245,7 @@ __host__ int distribution_stats_momentum(lb_t * lb, map_t * map, int root,
   {
     MPI_Datatype dt = MPI_DATATYPE_NULL;
     MPI_Op op = MPI_OP_NULL;
-    kahan_t gmlocal[3] = {};
+    kahan_t gmlocal[3] = {0};
 
     kahan_mpi_datatype(&dt);
     kahan_mpi_op_sum(&op);
@@ -263,7 +275,8 @@ __host__ int distribution_stats_momentum(lb_t * lb, map_t * map, int root,
  *****************************************************************************/
 
 __global__ void distribution_gm_kernel(kernel_ctxt_t * ktx, lb_t * lb,
-				       map_t * map, kahan_t * gm) {
+				       map_t * map, gm_util_t util,
+				       kahan_t * gm) {
 
   assert(ktx);
   assert(lb);
@@ -304,9 +317,9 @@ __global__ void distribution_gm_kernel(kernel_ctxt_t * ktx, lb_t * lb,
     if (status == MAP_FLUID) {
       for (int p = 1; p < lb->nvel; p++) {
 	double f = lb->f[LB_ADDR(lb->nsite,lb->ndist,lb->nvel,index,LB_RHO,p)];
-	double gxf = f*lb->model.cv[p][X];
-	double gyf = f*lb->model.cv[p][Y];
-	double gzf = f*lb->model.cv[p][Z];
+	double gxf = f*util.cv[p][X];
+	double gyf = f*util.cv[p][Y];
+	double gzf = f*util.cv[p][Z];
 	kahan_add_double(&gx[tid], gxf);
 	kahan_add_double(&gy[tid], gyf);
 	kahan_add_double(&gz[tid], gzf);

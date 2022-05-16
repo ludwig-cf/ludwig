@@ -8,7 +8,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2021 The University of Edinburgh
+ *  (c) 2021-2022 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -32,7 +32,7 @@ int lb_d3q15_create(lb_model_t * model) {
 
   assert(model);
 
-  *model = (lb_model_t) {};
+  *model = (lb_model_t) {0};
 
   model->ndim = 3;
   model->nvel = NVEL_D3Q15;

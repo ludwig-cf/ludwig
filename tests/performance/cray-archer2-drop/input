@@ -1,0 +1,114 @@
+##############################################################################
+#
+#  Ludwig input file liquid crystal emulsion (droplet) benchmkark
+#
+##############################################################################
+
+N_cycles 1000
+
+##############################################################################
+#
+#  System and MPI
+#
+##############################################################################
+
+size 128_128_128
+
+lb_halo_scheme     lb_halo_openmp_reduced
+field_halo_openmp  yes
+hydro_halo_scheme  hydro_u_halo_openmp
+
+##############################################################################
+#
+#  Fluid parameters
+#
+##############################################################################
+
+viscosity       0.5
+viscosity_bulk  0.5
+
+isothermal_fluctuations off
+
+##############################################################################
+#
+#  Free energy parameters
+#
+###############################################################################
+
+free_energy               lc_droplet
+
+fe_use_stress_relaxation  yes
+fd_advection_scheme_order 3
+fd_gradient_calculation   3d_7pt_fluid
+
+###############################################################################
+#
+#  Free energy / order parameters
+#
+###############################################################################
+
+symmetric_a          -0.000625
+symmetric_b           0.000625
+symmetric_kappa       0.00053
+
+mobility              5.0
+phi_initialisation    patches
+phi_init_patch_size   4
+phi_init_patch_vol    0.01
+
+lc_a0                 0.05
+lc_q0                 0.06942
+lc_kappa0             0.14
+lc_kappa1             0.14
+lc_xi                 0.7
+
+lc_Gamma              0.5
+
+lc_q_initialisation   o8m
+lc_q_init_amplitude  -0.2
+lc_init_redshift      1.0
+
+lc_anchoring_method   none
+
+lc_droplet_gamma      2.586
+lc_droplet_delta      0.25 
+lc_droplet_W          0.0
+
+
+###############################################################################
+#
+#  Colloid parameters
+#
+###############################################################################
+
+colloid_init        no_colloids
+
+###############################################################################
+#
+#  Periodic conditions / boundaries
+#
+###############################################################################
+
+periodicity 1_1_1
+
+###############################################################################
+#
+#  Output frequency and type
+#
+###############################################################################
+
+freq_statistics 1000
+config_at_end no
+
+timer_lap_report         yes
+timer_lap_report_freq    1000
+
+###############################################################################
+#
+#  Miscellaneous
+#
+#  random_seed  +ve integer is the random number generator seed
+#
+###############################################################################
+
+random_seed 8361235

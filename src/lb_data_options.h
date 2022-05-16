@@ -22,10 +22,7 @@ typedef enum lb_relaxation_enum {LB_RELAXATION_M10,
 				 LB_RELAXATION_TRT}
   lb_relaxation_enum_t;
 
-typedef enum lb_halo_enum {LB_HALO_FULL,
-                           LB_HALO_REDUCED,
-			   LB_HALO_HOST,
-			   LB_HALO_TARGET,
+typedef enum lb_halo_enum {LB_HALO_TARGET,
                            LB_HALO_OPENMP_FULL,
                            LB_HALO_OPENMP_REDUCED} lb_halo_enum_t;
 

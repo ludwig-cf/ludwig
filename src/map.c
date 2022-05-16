@@ -8,7 +8,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2012-2021 The University of Edinburgh
+ *  (c) 2012-2022 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -214,7 +214,7 @@ __host__ int map_memcpy(map_t * map, tdpMemcpyKind flag) {
 __host__
 int map_init_io_info(map_t * obj, int grid[3], int form_in, int form_out) {
 
-  io_info_args_t args = {};
+  io_info_args_t args = io_info_args_default();
   size_t sz;
 
   assert(obj);

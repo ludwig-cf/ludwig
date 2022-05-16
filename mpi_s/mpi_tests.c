@@ -253,10 +253,10 @@ int test_mpi_type_create_struct(void) {
 
   {
     /* Commit */
-    test_t data = {};
+    test_t data = {0};
     int count = 2;
     int blocklengths[2] = {1, 1};
-    MPI_Aint displacements[3] = {};
+    MPI_Aint displacements[3] = {0};
     MPI_Datatype datatypes[2] = {MPI_INT, MPI_DOUBLE};
 
     MPI_Get_address(&data,   displacements + 0);
