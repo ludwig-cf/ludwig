@@ -47,6 +47,7 @@ int test_fe_symmetric_suite(void);
 int test_fe_ternary_suite(void);
 int test_field_suite(void);
 int test_field_grad_suite(void);
+int test_gradient_d3q27_suite(void);
 int test_halo_suite(void);
 int test_hydro_suite(void);
 int test_io_suite(void);

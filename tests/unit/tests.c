@@ -49,6 +49,7 @@ __host__ int tests_create() {
   test_coords_suite();
 
   test_kernel_suite();
+  test_gradient_d3q27_suite();
   test_angle_cosine_suite();
   test_assumptions_suite();
   test_be_suite();
