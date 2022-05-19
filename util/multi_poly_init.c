@@ -153,7 +153,7 @@ int main(int argc, char ** argv) {
     if (type == COLLOID_TYPE_SUBGRID) {
       state[n].al= al;
       /* Needs a_L */
-      state[n].u0 = 1e-5;
+      state[n].u0 = 5e-5;
       state[n].delta = 2.0;
       state[n].cutoff = 6.0;
     }

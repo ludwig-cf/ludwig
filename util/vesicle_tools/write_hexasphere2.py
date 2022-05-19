@@ -26,31 +26,9 @@ nbonds= 3
 nbonds2 = 3
 nbonds3 = 3
 
-XSHIFT = 25
-YSHIFT = 25
-ZSHIFT = 25
-
-#M27 = np.array([0.061374, -0.467955, 0.843134])
-M27 = np.array([-0.218611, 0.822090, 0.458258])
-M = np.array([1, 0, 0]) # Vesicle oriented towards X (hole towards -X)
-
-M = M / np.sqrt(np.sum(M**2))
-M27 = M27 / np.sqrt(np.sum(M27**2))
- 
-v = np.cross(M, M27)
-s = np.sqrt(np.sum(v**2))
-c = np.dot(M27, M)
-
-matvx = np.zeros((3,3))
-matvx[0][1] = -v[2]
-matvx[0][2] = v[1]
-matvx[1][0] = v[2]
-matvx[1][2] = -v[0]
-matvx[2][0] = -v[1]
-matvx[2][1] = v[0]
-matvx2 = np.matmul(matvx, matvx)
-R = np.eye(3) + matvx + matvx2 * (1/(1+c)) 
-
+XSHIFT = 40
+YSHIFT = 40
+ZSHIFT = 40
 
 # Additional attributes 
 indices = np.arange(1,NATOMS+1,1,dtype=int)
@@ -111,7 +89,6 @@ def dist(x,y):
 # Coordinates
 xyz = file_to_array("hexasphere.xyz")
 
-
 # Connectivities
 for i in range(NATOMS):
   bondmade = 0
@@ -161,19 +138,19 @@ phi_production[0] = 0.01
 localmobility[::] = 0.0
 localmobility[-1] = 0.9
 
-xyzt = xyz.T
-for i, vec in enumerate(xyzt):
-  newvec = np.dot(R.T, vec)
-  xyz[0][i] = newvec[0]
-  xyz[1][i] = newvec[1]
-  xyz[2][i] = newvec[2]
-
 xyz[0, :] += XSHIFT
 xyz[1, :] += YSHIFT
 xyz[2, :] += ZSHIFT
 
+print(Connec.shape)
+Connec[1:,:][Connec[1:,:] != 0] += 241
+Connec2[1:,:][Connec2[1:,:] != 0] += 241
+Connec3[1:,:][Connec3[1:,:] != 0] += 241
+indices += 241
+indexcentre += 241
+
 table = np.column_stack((indices, xyz.T, nConnec, Connec, nConnec2, Connec2, nConnec3, Connec3, iscentre.T, ishole.T, indexcentre.T, phi_production.T, localrange.T, localmobility.T))
-np.savetxt("latticeHexasphere.txt", table, fmt = '%3d     %3f %3f %3f      %3d %3d %3d %3d     %3d %3d %3d %3d     %3d %3d %3d %3d     %3d %3d %3d      %3f     %3f %3f ')
+np.savetxt("latticeHexasphere2.txt", table, fmt = '%3d     %3f %3f %3f      %3d %3d %3d %3d     %3d %3d %3d %3d     %3d %3d %3d %3d     %3d %3d %3d      %3f     %3f %3f ')
 
 if plot:
   dists = []
