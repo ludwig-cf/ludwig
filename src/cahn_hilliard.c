@@ -39,9 +39,12 @@ __host__ int ch_update_forward_step(ch_t * ch, field_t * phif);
 __host__ int ch_flux_mu1(ch_t * ch, fe_t * fe, field_t * mobility_map);
 __host__ int ch_flux_interaction(ch_t * ch, fe_t * fe, field_t * subgrid_potential, field_t * mobility_map);
 __host__ int ch_flux_mu_ext(ch_t * ch, field_t * mobility_map);
+__host__ int ch_mobility_masks(ch_t * ch, field_t * mobility_map);
 
 __global__ void ch_flux_mu1_kernel(kernel_ctxt_t * ktx, ch_t * ch, fe_t * fe,
 				   ch_info_t info, field_t * mobility_map);
+
+__global__ void ch_mobility_masks_kernel(kernel_ctxt_t * ktx, ch_t * ch, field_t * mobility_map);
 
 __global__ void ch_flux_interaction_kernel(kernel_ctxt_t * ktx, ch_t * ch, field_t * subgrid_potential, fe_t * fe, ch_info_t info, field_t * mobility_map);
 
@@ -208,7 +211,8 @@ __host__ int ch_solver(ch_t * ch, fe_t * fe, field_t * phi, hydro_t * hydro,
 
   /* External chemical potential fluxes */
   ch_flux_mu_ext(ch, mobility_map);
-
+  
+  ch_mobility_masks(ch, mobility_map);
   if (map) advflux_cs_no_normal_flux(ch->flux, map);
   ch_update_forward_step(ch, phi);
 
@@ -709,3 +713,107 @@ __global__ void ch_update_kernel_3d(kernel_ctxt_t * ktx, ch_t * ch,
 
   return;
 }
+
+
+
+/*****************************************************************************
+ *
+ *  ch_mobility_masks
+ *
+ *  Kernel driver for no-flux boundary conditions.
+ *
+ *****************************************************************************/
+
+__host__ int ch_mobility_masks(ch_t * ch, field_t * mobility_map) {
+
+  int nlocal[3];
+  dim3 nblk, ntpb;
+  kernel_info_t limits;
+  kernel_ctxt_t * ctxt = NULL;
+
+  assert(ch);
+  assert(mobility_map);
+
+  cs_nlocal(ch->flux->cs, nlocal);
+
+  limits.imin = 0; limits.imax = nlocal[X];
+  limits.jmin = 0; limits.jmax = nlocal[Y];
+  limits.kmin = 0; limits.kmax = nlocal[Z];
+
+  kernel_ctxt_create(ch->flux->cs, NSIMDVL, limits, &ctxt);
+  kernel_ctxt_launch_param(ctxt, &nblk, &ntpb);
+
+  tdpLaunchKernel(ch_mobility_masks_kernel, nblk, ntpb, 0, 0,
+                  ctxt->target, ch->target, mobility_map->target);
+
+  tdpAssert(tdpPeekAtLastError());
+  tdpAssert(tdpDeviceSynchronize());
+
+
+  kernel_ctxt_free(ctxt);
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  ch_mobility_masks_kernel
+ *
+ *  Set normal fluxes at solid fluid interfaces to zero.
+ *
+ *****************************************************************************/
+
+__global__ void ch_mobility_masks_kernel(kernel_ctxt_t * ktx,
+                                          ch_t * ch, field_t * mobility_map) {
+  int kindex;
+  __shared__ int kiter;
+
+  kiter = kernel_iterations(ktx);
+
+  for_simt_parallel(kindex, kiter, 1) {
+
+    int n;
+    int index0, index1;
+    int ic, jc, kc;
+    double m0, m1, mask;
+
+    ic = kernel_coords_ic(ktx, kindex);
+    jc = kernel_coords_jc(ktx, kindex);
+    kc = kernel_coords_kc(ktx, kindex);
+
+    index0 = kernel_coords_index(ktx, ic, jc, kc);
+    m0     = mobility_map->data[addr_rank1(mobility_map->nsites, 2, index0, 0)];
+
+    index1 = kernel_coords_index(ktx, ic+1, jc, kc);
+    m1     = mobility_map->data[addr_rank1(mobility_map->nsites, 2, index1, 0)];
+
+    mask   = m0*m1;
+
+    for (n = 0; n < ch->flux->nf; n++) {
+      ch->flux->fx[addr_rank1(ch->flux->nsite, ch->flux->nf, index0, n)] *= mask;
+    }
+
+    index1 = kernel_coords_index(ktx, ic, jc+1, kc);
+
+    m1     = mobility_map->data[addr_rank1(mobility_map->nsites, 2, index1, 0)];
+    mask   = m0*m1;
+
+    for (n = 0; n < ch->flux->nf; n++) {
+      ch->flux->fy[addr_rank1(ch->flux->nsite, ch->flux->nf, index0, n)] *= mask;
+    }
+
+    index1 = kernel_coords_index(ktx, ic, jc, kc+1);
+
+    m1     = mobility_map->data[addr_rank1(mobility_map->nsites, 2, index1, 0)];
+    mask   = m0*m1;
+
+    for (n = 0; n < ch->flux->nf; n++) {
+      ch->flux->fz[addr_rank1(ch->flux->nsite, ch->flux->nf, index0, n)] *= mask;
+    }
+
+    /* Next site */
+  }
+
+  return;
+}
+
