@@ -696,7 +696,7 @@ int subgrid_mobility_map(colloids_info_t * cinfo, field_t * mobility_map, rt_t *
   double rnorm, mnorm, nnorm;
   double cosalpha, alpha, gaussalpha;
   double rvesicle;  
-  double mobility[2];
+  double mobility[2], porosity[2];
 
   MPI_Comm comm;
   MPI_Status status;
@@ -722,6 +722,9 @@ int subgrid_mobility_map(colloids_info_t * cinfo, field_t * mobility_map, rt_t *
 
   rt_double_parameter(rt, "symmetric_ll_mobility_phi", &mobility[0]);
   rt_double_parameter(rt, "symmetric_ll_mobility_psi", &mobility[1]);
+
+  rt_double_parameter(rt, "symmetric_ll_porosity_phi", &porosity[0]);
+  rt_double_parameter(rt, "symmetric_ll_porosity_psi", &porosity[1]);
 
   /* Loop through all cells (including the halo cells) and set
    * the mobility at each node to default mobiltiy for this step. */
@@ -866,21 +869,16 @@ int subgrid_mobility_map(colloids_info_t * cinfo, field_t * mobility_map, rt_t *
 	rnorm = sqrt(rsq);
 
 	if (rnorm <= rvesicle + 1 && rnorm >= rvesicle - 1) {
-	  //field_scalar_set(mobility_map, index, 0.0);
-	  if (on_phi == 1) mobility_map->data[addr_rank1(mobility_map->nsites, 2, index, 0)] = 0.0;
-	  if (on_psi == 1) mobility_map->data[addr_rank1(mobility_map->nsites, 2, index, 1)] = 0.0;
+	  if (on_phi == 1) mobility_map->data[addr_rank1(mobility_map->nsites, 2, index, 0)] = porosity[0];
+	  if (on_psi == 1) mobility_map->data[addr_rank1(mobility_map->nsites, 2, index, 1)] = porosity[1];
           cosalpha = (r[X]*m[X] + r[Y]*m[Y] + r[Z]*m[Z]) / rnorm;
           alpha = acos(cosalpha);
 
           if (alpha >= -1.0 && alpha <= 1.0) {
             gaussalpha = exp(-0.5*(alpha/0.6)*(alpha/0.6));
-	    if (on_phi == 1) mobility_map->data[addr_rank1(mobility_map->nsites, 2, index, 0)] = gaussalpha*mobility[0];
-	    if (on_psi == 1) mobility_map->data[addr_rank1(mobility_map->nsites, 2, index, 1)] = gaussalpha*mobility[1];
-	    //field_scalar_set(mobility_map, index, gaussalpha);
+	    if (on_phi == 1) mobility_map->data[addr_rank1(mobility_map->nsites, 2, index, 0)] = porosity[0] + (mobility[0] - porosity[0])*gaussalpha;
+	    if (on_psi == 1) mobility_map->data[addr_rank1(mobility_map->nsites, 2, index, 1)] = porosity[1] + (mobility[1] - porosity[1])*gaussalpha;
 	  }
-          //if (alpha >= -0.5 && alpha <= 0.5) {
-          //  field_scalar_set(mobility_map, index, mobility);
-          //}
 	}
       }
     }
