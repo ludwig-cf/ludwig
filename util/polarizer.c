@@ -59,11 +59,11 @@ double p1[4][4],***s1,p2[4][4],***s2,***s2_sum, average; // polariser and analys
 double ****alp,****bet,***del; // orientation angles of local director, phase shift
 // auxiliary variables
 #define MAX_LENGTH 256
-char dirfile[MAX_LENGTH],sopfile[MAX_LENGTH],outfile[MAX_LENGTH];
-char line[MAX_LENGTH],line2[MAX_LENGTH],dummy[MAX_LENGTH];
+char dirfile[2*MAX_LENGTH],sopfile[2*MAX_LENGTH],outfile[2*MAX_LENGTH];
+char line[MAX_LENGTH],dummy;
 int a,i,j,k,l,m,n,p;
-double dirx,diry,dirz,sop0,Sb,Cb,Sd,Cd;
-double fac=0.5, Cx, Sx, Cx2, Sx2;
+double dirx,diry,dirz,sop0;
+double fac=0.5, Sb, Cb, Sd, Cd, Cx, Sx, Cx2, Sx2;
 // functions, see below for further information
 void allocate();
 void read_data(int, char**);
@@ -120,7 +120,7 @@ int main(int argc, char* argv[]){
   // main loop over light components
   for(a=0; a<=nlambda-1; a++){
 
-    printf("# Wavelength no %d: lambda=%d weight=%g\n", a+1, lambda[a], weight[a]);
+    printf("# Wavelength no %d: lambda=%g weight=%g\n", a+1, lambda[a], weight[a]);
 
     initialise_matrices();
     simulate_polarizer();
@@ -322,10 +322,10 @@ void read_data(int argc, char** argv){
          if(k==Lz){break;}
       }
     }
-    sscanf(line, "%g %g %g", &dirx, &diry, &dirz);
-    dir[i][j][k][0]=dirx;
-    dir[i][j][k][1]=diry;
-    dir[i][j][k][2]=dirz;
+    sscanf(line,"%le %le %le", &dirx, &diry, &dirz);
+    dir[i][j][k][0] = dirx;
+    dir[i][j][k][1] = diry;
+    dir[i][j][k][2] = dirz;
 
   }
 
@@ -346,7 +346,7 @@ void read_data(int argc, char** argv){
       fgets(line, MAX_LENGTH, sopinput);
     }
     // take system dimensions from vtk-header
-    fscanf(sopinput, "%s %d %d %d", &dummy, &Lxsop, &Lysop, &Lzsop);
+    fscanf(sopinput,"%s %d %d %d", &dummy, &Lxsop, &Lysop, &Lzsop);
 
     // skip header lines
     for (int skip=5; skip<11; skip++) {
@@ -375,8 +375,8 @@ void read_data(int argc, char** argv){
           if(k==Lz){break;}   
         }
       }
-      sop0 = atof(line);
-      sop[i][j][k]=sop0;
+      sscanf(line,"%le", &sop0);
+      sop[i][j][k] = sop0;
 
     }
     printf("# Scalar order parameter input complete\n"); 
@@ -399,7 +399,7 @@ void read_data(int argc, char** argv){
           if(k==Lz){break;}   
         }
       }
-      sop[i][j][k]=0.3333333;
+      sop[i][j][k] = 0.3333333;
 
     }
     printf("# Assuming constant scalar order parameter\n"); 
@@ -412,9 +412,10 @@ void read_data(int argc, char** argv){
   do{
      pch = strtok(NULL,"-");
      if(pch==NULL) break;
-     sprintf(line2,"-%s",pch);
-     strcat(line,line2);
+     sprintf(line,"-%s",pch);
   }while(1);
+
+  printf("%s\n", line);
 
   if(is_nematic){
     sprintf(outfile,"polar-%s%s",argv[2],line);
@@ -922,7 +923,7 @@ void output(){
     fprintf(polaroutput, "DIMENSIONS %d %d 1\n", Lx, Ly);
     fprintf(polaroutput, "ORIGIN 0 0 0\n");
     fprintf(polaroutput, "SPACING 1 1 1\n");
-    fprintf(polaroutput, "POINT_DATA %d", Lx*Ly);
+    fprintf(polaroutput, "POINT_DATA %d\n", Lx*Ly);
     fprintf(polaroutput, "SCALARS Polarizer float 1\n");
     fprintf(polaroutput, "LOOKUP_TABLE default\n");
 
