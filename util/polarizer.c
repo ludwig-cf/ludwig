@@ -415,8 +415,6 @@ void read_data(int argc, char** argv){
      sprintf(line,"-%s",pch);
   }while(1);
 
-  printf("%s\n", line);
-
   if(is_nematic){
     sprintf(outfile,"polar-%s%s",argv[2],line);
   }
