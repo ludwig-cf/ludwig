@@ -63,7 +63,7 @@ multi_poly_init: multi_poly_init.o
 	$(CC) $(LDFLAGS) -o $@ $^ $(LIBS)
 
 polarizer: polarizer.o
-	$(CXX) $(LDFLAGS) -o $@ $^ $(LIBS)
+	$(CC) $(LDFLAGS) -o $@ $^ $(LIBS)
 
 # Default rules
 
@@ -73,7 +73,7 @@ clean:
 	coll_squ_subgrid_init multi_poly_init polarizer
 
 .SUFFIXES:
-.SUFFIXES: .c .cpp .o
+.SUFFIXES: .c .o
 
 .c.o:
 	$(CC) $(CFLAGS) $(INCL) -c $*.c

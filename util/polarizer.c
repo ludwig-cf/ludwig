@@ -1,6 +1,6 @@
 /****************************************************************************
  *
- *  polarizer.cpp
+ *  polarizer.c
  *
  *  This program simulates the appearance of a liquid-crystalline sample
  *  under polarised light. Director and scalar order parameter data in 
@@ -37,23 +37,18 @@
  ****************************************************************************/
 
 #include <string.h>
-#include <ostream>
-#include <fstream>
-#include <cmath>
-#include <cstdlib>
-#include <iomanip>
-#include <iostream>
+#include <math.h>
+#include <stdlib.h>
+#include <stdio.h>
 #define Pi 3.141592653589793
-
-using namespace std;
 
 /*** ADAPT THE FOLLOWING PARAMETERS ***/
 int is_nematic=0; // is_nematic sets a constant scalar OP q=0.333
 int cut_topbot=0; // ignore cut_topbot sites at entry and exit
 double xi_polarizer=0, xi_analyzer=90; // orientation of polarizer and analyzer (deg)
 double n_e=2.0, n_o=1.5; // extraordinary and ordinary refraction indices
-const int nlambda=1; // number of wavelengths
-double lambda[nlambda]={18.0}, weight[nlambda]={1.0}; // wavelengths in l.u. and weights in total sum  
+#define nlambda 3 // number of wavelengths
+double lambda[nlambda]={18.0, 20.0, 22.0}, weight[nlambda]={0.2,0.4,0.2}; // wavelengths in l.u. and weights in total sum  
 
 /*** IT SHOULD NOT BE NECESSARY TO MODIFY ANYTHING BELOW THIS LINE ***/
 int raydir; // Cartesian direction of incident light, x=0, y=1, z=2
@@ -63,9 +58,9 @@ double ****dir,***sop,*****mueller, ****mueller_sum_tp1, ****mueller_sum_tp2; //
 double p1[4][4],***s1,p2[4][4],***s2,***s2_sum, average; // polariser and analyser, Stokes vectors
 double ****alp,****bet,***del; // orientation angles of local director, phase shift
 // auxiliary variables
-char dirfile[250],sopfile[250],outfile[250];
-char line[250],line2[250],dummy[250];
-string myline;
+#define MAX_LENGTH 256
+char dirfile[MAX_LENGTH],sopfile[MAX_LENGTH],outfile[MAX_LENGTH];
+char line[MAX_LENGTH],line2[MAX_LENGTH],dummy[MAX_LENGTH];
 int a,i,j,k,l,m,n,p;
 double dirx,diry,dirz,sop0,Sb,Cb,Sd,Cd;
 double fac=0.5, Cx, Sx, Cx2, Sx2;
@@ -94,27 +89,29 @@ int main(int argc, char* argv[]){
     if(*argv[3]=='z') raydir=2;
   }
   else{
-    cout << "# Command line argumets after the executable are: director_filename [scalarOP_filename] ray_direction[x, y OR z]" << endl;
+    printf("# Command line argumets after the executable are: director_filename [scalarOP_filename] ray_direction[x, y OR z]\n");
     exit(0);
   }
 
   // take system dimensions from vtk-header
   sprintf(dirfile,"%s",argv[1]);
-  ifstream dirinput(dirfile, ios::in);
+  FILE *dirinput = fopen(dirfile, "r");
   if (!dirinput){
-     cout << "Cannot open director input file" << endl;
+     printf("Cannot open director input file\n");
      exit(0);
   }
 
   for (int skip=0; skip<4; skip++) {
-    getline(dirinput, myline);
-  }
-  dirinput >> dummy >> Lx >> Ly >> Lz;
-  for (int skip=5; skip<10; skip++) {
-    getline(dirinput, myline);
+    fgets(line, MAX_LENGTH, dirinput);
   }
 
-  dirinput.close();
+  fscanf(dirinput, "%s %d %d %d", &dummy, &Lx, &Ly, &Lz);
+
+  for (int skip=5; skip<10; skip++) {
+    fgets(line, MAX_LENGTH, dirinput);
+  }
+
+  fclose(dirinput);
 
   allocate();
 
@@ -123,7 +120,7 @@ int main(int argc, char* argv[]){
   // main loop over light components
   for(a=0; a<=nlambda-1; a++){
 
-    cout << "# Wavelength no " << a+1 << ": lambda=" << lambda[a] << " weight=" << weight[a] << endl;
+    printf("# Wavelength no %d: lambda=%d weight=%g\n", a+1, lambda[a], weight[a]);
 
     initialise_matrices();
     simulate_polarizer();
@@ -132,7 +129,7 @@ int main(int argc, char* argv[]){
 
   output();
 
-  cout << "# Done" << endl;
+  printf("# Done\n");
 
 }
 
@@ -143,140 +140,146 @@ int main(int argc, char* argv[]){
  *****************************************************************************/
 void allocate(){
 
-  dir = new double***[Lx];
-  sop = new double**[Lx];
-  mueller = new double****[Lx];
+  dir = (double****) calloc(Lx, sizeof(double));
+  sop = (double***) calloc(Lx, sizeof(double));
+  mueller = (double*****) calloc(Lx, sizeof(double));
 
-  alp = new double***[Lx];
-  bet = new double***[Lx];
-  del = new double**[Lx];
+  alp = (double****) calloc(Lx, sizeof(double));
+  bet = (double****) calloc(Lx, sizeof(double));
+  del = (double***) calloc(Lx, sizeof(double));
 
   for (i=0; i<Lx; i++){
 
-     dir[i]=new double**[Ly];
-     sop[i]=new double*[Ly];
-     mueller[i]=new double***[Ly];
-     alp[i]=new double**[Ly];
-     bet[i]=new double**[Ly];
-     del[i]=new double*[Ly];
+    dir[i] = (double***) calloc(Ly, sizeof(double));
+    sop[i] = (double**) calloc(Ly, sizeof(double));
+    mueller[i] = (double****) calloc(Ly, sizeof(double));
+    alp[i] = (double***) calloc(Ly, sizeof(double));
+    bet[i] = (double***) calloc(Ly, sizeof(double));
+    del[i] = (double**) calloc(Ly, sizeof(double));
 
-     for (j=0; j<Ly; j++){
+    for (j=0; j<Ly; j++){
 
-        dir[i][j]=new double*[Lz];
-        sop[i][j]=new double[Lz];
-        mueller[i][j]=new double**[Lz];
-        alp[i][j]=new double*[Lz];
-        bet[i][j]=new double*[Lz];
-        del[i][j]=new double[Lz];
+      dir[i][j] = (double**) calloc(Lz, sizeof(double));
+      sop[i][j] = (double*) calloc(Lz, sizeof(double));
+      mueller[i][j] = (double***) calloc(Lz, sizeof(double));
+      alp[i][j] = (double**) calloc(Lz, sizeof(double));
+      bet[i][j] = (double**) calloc(Lz, sizeof(double));
+      del[i][j] = (double*) calloc(Lz, sizeof(double));
 
-        for (k=0; k<Lz; k++){
+      for (k=0; k<Lz; k++){
 
-           dir[i][j][k]=new double[3];
-           mueller[i][j][k]=new double*[4];
-           alp[i][j][k]=new double[3];
-           bet[i][j][k]=new double[3];
+        dir[i][j][k] = (double*) calloc(3, sizeof(double));
+        mueller[i][j][k] = (double**) calloc(4, sizeof(double));
+        alp[i][j][k] = (double*) calloc(3, sizeof(double));
+        bet[i][j][k] = (double*) calloc(3, sizeof(double));
 
-           for (l=0; l<4; l++){
-              mueller[i][j][k][l]=new double[4];
-           }
-
+        for (l=0; l<4; l++){
+          mueller[i][j][k][l] = (double*) calloc(4, sizeof(double));
         }
-     }
+
+      }
+    }
   }
 
   if(raydir==0){
 
-     s1=new double**[Ly];
-     s2=new double**[Ly];
-     s2_sum=new double**[Ly];
-     mueller_sum_tp1 = new double***[Ly];
-     mueller_sum_tp2 = new double***[Ly];
+    s1 = (double***) calloc(Ly, sizeof(double));
+    s2 = (double***) calloc(Ly, sizeof(double));
+    s2_sum = (double***) calloc(Ly, sizeof(double));
+    mueller_sum_tp1 = (double****) calloc(Ly, sizeof(double));
+    mueller_sum_tp2 = (double****) calloc(Ly, sizeof(double));
 
-     for(j=0; j<Ly; j++){
+    for(j=0; j<Ly; j++){
 
-        s1[j]=new double*[Lz];
-        s2[j]=new double*[Lz];
-        s2_sum[j]=new double*[Lz];
-        mueller_sum_tp1[j] = new double**[Lz];
-        mueller_sum_tp2[j] = new double**[Lz];
+      s1[j] = (double**) calloc(Lz, sizeof(double));
+      s2[j] = (double**) calloc(Lz, sizeof(double));
+      s2_sum[j] = (double**) calloc(Lz, sizeof(double));
+      mueller_sum_tp1[j] = (double***) calloc(Lz, sizeof(double)); 
+      mueller_sum_tp2[j] = (double***) calloc(Lz, sizeof(double));
 
-        for(k=0; k<Lz; k++){
+      for(k=0; k<Lz; k++){
 
-           s1[j][k]=new double[4];
-           s2[j][k]=new double[4];
-           s2_sum[j][k]=new double[4];
-           mueller_sum_tp1[j][k] = new double*[4];
-           mueller_sum_tp2[j][k] = new double*[4];
+        s1[j][k] = (double*) calloc(4, sizeof(double));
+        s2[j][k] = (double*) calloc(4, sizeof(double));
+        s2_sum[j][k] = (double*) calloc(4, sizeof(double));
+        mueller_sum_tp1[j][k] = (double**) calloc(4, sizeof(double));
+        mueller_sum_tp2[j][k] = (double**) calloc(4, sizeof(double));
 
-           for(l=0; l<4; l++){
-              mueller_sum_tp1[j][k][l] = new double[4];
-              mueller_sum_tp2[j][k][l] = new double[4];
-           }
+          for(l=0; l<4; l++){
+            mueller_sum_tp1[j][k][l] = (double*) calloc(4, sizeof(double));
+            mueller_sum_tp2[j][k][l] = (double*) calloc(4, sizeof(double));
         }
-     }
+      }
+    }
   }
 
   if(raydir==1){
-     s1=new double**[Lx];
-     s2=new double**[Lx];
-     s2_sum=new double**[Lx];
-     mueller_sum_tp1 = new double***[Lx];
-     mueller_sum_tp2 = new double***[Lx];
 
+    s1 = (double***) calloc(Lx, sizeof(double));
+    s2 = (double***) calloc(Lx, sizeof(double));
+    s2_sum = (double***) calloc(Lx, sizeof(double));
+    mueller_sum_tp1 = (double****) calloc(Lx, sizeof(double));
+    mueller_sum_tp2 = (double****) calloc(Lx, sizeof(double));
 
-     for(i=0; i<Lx; i++){
+    for(i=0; i<Lx; i++){
 
-        s1[i]=new double*[Lz];
-        s2[i]=new double*[Lz];
-        s2_sum[i]=new double*[Lz];
-        mueller_sum_tp1[i] = new double**[Lz];
-        mueller_sum_tp2[i] = new double**[Lz];
+      s1[i] = (double**) calloc(Lz, sizeof(double));
+      s2[i] = (double**) calloc(Lz, sizeof(double));
+      s2_sum[i] = (double**) calloc(Lz, sizeof(double));
+      mueller_sum_tp1[i] = (double***) calloc(Lz, sizeof(double));
+      mueller_sum_tp2[i] = (double***) calloc(Lz, sizeof(double));
 
+      for(k=0; k<Lz; k++){
 
-        for(k=0; k<Lz; k++){
-           s1[i][k]=new double[4];
-           s2[i][k]=new double[4];
-           s2_sum[i][k]=new double[4];
-           mueller_sum_tp1[i][k] = new double*[4];
-           mueller_sum_tp2[i][k] = new double*[4];
+        s1[i][k] = (double*) calloc(4, sizeof(double));
+        s2[i][k] = (double*) calloc(4, sizeof(double));
+        s2_sum[i][k] = (double*) calloc(4, sizeof(double));
+        mueller_sum_tp1[i][k] = (double**) calloc(4, sizeof(double));
+        mueller_sum_tp2[i][k] = (double**) calloc(4, sizeof(double));
 
-           for(l=0; l<4; l++){
-              mueller_sum_tp1[i][k][l] = new double[4];
-              mueller_sum_tp2[i][k][l] = new double[4];
-           }
+        for(l=0; l<4; l++){
+
+          mueller_sum_tp1[i][k][l] = (double*) calloc(4, sizeof(double));
+          mueller_sum_tp2[i][k][l] = (double*) calloc(4, sizeof(double));
+
         }
-     }
+      }
+    }
   }
 
   if(raydir==2){
-     s1=new double**[Lx];
-     s2=new double**[Lx];
-     s2_sum=new double**[Lx];
-     mueller_sum_tp1 = new double***[Lx];
-     mueller_sum_tp2 = new double***[Lx];
+
+    s1 = (double***) calloc(Lx, sizeof(double));
+    s2 = (double***) calloc(Lx, sizeof(double));
+    s2_sum = (double***) calloc(Lx, sizeof(double));
+    mueller_sum_tp1 = (double****) calloc(Lx, sizeof(double));
+    mueller_sum_tp2 = (double****) calloc(Lx, sizeof(double));
+
+    for(i=0; i<Lx; i++){
+
+      s1[i] = (double**) calloc(Ly, sizeof(double));
+      s2[i] = (double**) calloc(Ly, sizeof(double));
+      s2_sum[i] = (double**) calloc(Ly, sizeof(double));
+      mueller_sum_tp1[i] = (double***) calloc(Ly, sizeof(double));
+      mueller_sum_tp2[i] = (double***) calloc(Ly, sizeof(double));
+
+      for(j=0; j<Ly; j++){
+
+        s1[i][j] = (double*) calloc(4, sizeof(double));
+        s2[i][j] = (double*) calloc(4, sizeof(double));
+        s2_sum[i][j] = (double*) calloc(4, sizeof(double));
+        mueller_sum_tp1[i][j] = (double**) calloc(4, sizeof(double));
+        mueller_sum_tp2[i][j] = (double**) calloc(4, sizeof(double));
+
+        for(l=0; l<4; l++){
+
+          mueller_sum_tp1[i][j][l] = (double*) calloc(4, sizeof(double));
+          mueller_sum_tp2[i][j][l] = (double*) calloc(4, sizeof(double));
 
 
-     for(i=0; i<Lx; i++){
-
-        s1[i]=new double*[Ly];
-        s2[i]=new double*[Ly];
-        s2_sum[i]=new double*[Ly];
-        mueller_sum_tp1[i] = new double**[Ly];
-        mueller_sum_tp2[i] = new double**[Ly];
-
-
-        for(j=0; j<Ly; j++){
-           s1[i][j]=new double[4];
-           s2[i][j]=new double[4];
-           s2_sum[i][j]=new double[4];
-           mueller_sum_tp1[i][j] = new double*[4];
-           mueller_sum_tp2[i][j] = new double*[4];
-           for(l=0; l<4; l++){
-              mueller_sum_tp1[i][j][l] = new double[4];
-              mueller_sum_tp2[i][j][l] = new double[4];
-           }
         }
-     }
+      }
+    }
   }
 
 }
@@ -288,25 +291,26 @@ void allocate(){
  *****************************************************************************/
 void read_data(int argc, char** argv){
 
-  cout << "# Director input\r" << flush; 
+  printf("# Director input\r");
+  fflush(stdout); 
 
   sprintf(dirfile,"%s",argv[1]);
-  ifstream dirinput(dirfile, ios::in);
+  FILE *dirinput = fopen(dirfile, "r");
   if (!dirinput){
-     cout << "Cannot open director input file" << endl;
+     printf("Cannot open director input file\n");
      exit(0);
   }
 
   // skip header lines
   for (int skip=0; skip<9; skip++) {
-    getline(dirinput, myline);
+    fgets(line, MAX_LENGTH, dirinput);
   }
 
   i=-1;
   j=0;
   k=0;
 
-  while(!dirinput.eof()){
+  while(fgets(line, MAX_LENGTH, dirinput)){
 
     i++;
     if(i==Lx){
@@ -318,37 +322,40 @@ void read_data(int argc, char** argv){
          if(k==Lz){break;}
       }
     }
-    dirinput >> dirx >> diry >> dirz;
+    sscanf(line, "%g %g %g", &dirx, &diry, &dirz);
     dir[i][j][k][0]=dirx;
     dir[i][j][k][1]=diry;
     dir[i][j][k][2]=dirz;
+
   }
 
-  cout << "# Director input complete" << endl; 
+  printf("# Director input complete\n"); 
 
-  cout << "# Scalar order parameter input\r" << flush; 
+  printf("# Scalar order parameter input\r");
+  fflush(stdout);
 
   if(!is_nematic){
     sprintf(sopfile,"%s",argv[2]);
-    ifstream sopinput(sopfile, ios::in);
+    FILE *sopinput = fopen(sopfile, "r");
     if (!sopinput){
-       cout << "Cannot open scalar order parameter input file" << endl;
+       printf("Cannot open scalar order parameter input file\n");
        exit(0);
     }
     // skip header lines
     for (int skip=0; skip<4; skip++) {
-      getline(sopinput, myline);
+      fgets(line, MAX_LENGTH, sopinput);
     }
     // take system dimensions from vtk-header
-    sopinput >> dummy >> Lxsop >> Lysop >> Lzsop;
+    fscanf(sopinput, "%s %d %d %d", &dummy, &Lxsop, &Lysop, &Lzsop);
+
     // skip header lines
     for (int skip=5; skip<11; skip++) {
-      getline(sopinput, myline);
+      fgets(line, MAX_LENGTH, sopinput);
     }
 
     // compare dimensions for consistency
     if (Lx!=Lxsop || Ly!=Lysop || Lz!=Lzsop) {
-      cout << "Inconsistent dimensions in director and scalar OP input" << endl;
+      printf("Inconsistent dimensions in director and scalar OP input\n");
       exit(0);
     }
 
@@ -356,7 +363,7 @@ void read_data(int argc, char** argv){
     j=0;
     k=0;
 
-    while(!sopinput.eof()){
+    while(fgets(line, MAX_LENGTH, sopinput)){
 
       i++;
       if(i==Lx){
@@ -368,10 +375,11 @@ void read_data(int argc, char** argv){
           if(k==Lz){break;}   
         }
       }
-      sopinput >> sop0;
+      sop0 = atof(line);
       sop[i][j][k]=sop0;
+
     }
-    cout << "# Scalar order parameter input complete" << endl; 
+    printf("# Scalar order parameter input complete\n"); 
   }
   else{
 
@@ -394,7 +402,7 @@ void read_data(int argc, char** argv){
       sop[i][j][k]=0.3333333;
 
     }
-    cout << "# Assuming constant scalar order parameter" << endl; 
+    printf("# Assuming constant scalar order parameter\n"); 
   }
 
   // create output filename
@@ -427,7 +435,8 @@ void read_data(int argc, char** argv){
  *****************************************************************************/
 void initialise_matrices(){
 
-  cout << "# Initialisation\r" << flush; 
+  printf("# Initialisation\r");
+  fflush(stdout);
 
   if(raydir==0){
      for(j=0; j<Ly; j++){
@@ -583,7 +592,7 @@ void initialise_matrices(){
   p2[3][2]=0;
   p2[3][3]=0;
 
-  cout << "# Initialisation complete" << endl;
+  printf("# Initialisation complete\n");
 
 }
 
@@ -596,14 +605,14 @@ void initialise_matrices(){
  *****************************************************************************/
 void simulate_polarizer(){
 
-  cout << "# Simulating polarizer" << endl;
+  printf("# Simulating polarizer\n");
 
   if(raydir==0){
 
     for(j=0; j<Ly; j++){
       for(k=0; k<Lz; k++){
 
-        cout << "# j= " << j << " k= " << k << "\r";
+        printf("# j= %d k= %d\r", j, k);
 
         for(l=0; l<4; l++){
           s1[j][k][l]=0;
@@ -684,7 +693,7 @@ void simulate_polarizer(){
     for(i=0; i<Lx; i++){
       for(k=0; k<Lz; k++){
 
-        cout << "# i= " << i << " k= " << k << "\r";
+        printf("# i= %d k= %d\r", i, k);
 
         for(l=0; l<4; l++){
           s1[i][k][l]=0;
@@ -765,7 +774,7 @@ void simulate_polarizer(){
     for(i=0; i<Lx; i++){
       for(j=0; j<Ly; j++){
 
-        cout << "# i= " << i << " j= " << j << "\r";
+        printf("# i= %d j= %d\r", i, j);
 
         for(l=0; l<4; l++){
           s1[i][j][l]=0;
@@ -850,81 +859,81 @@ void simulate_polarizer(){
  *****************************************************************************/
 void output(){
 
-  ofstream polaroutput(outfile, ios::out);
+  FILE *polaroutput = fopen(outfile, "w");
 
-  cout << "# Output" << "\r";
+  printf("# Output\r");
 
   if(raydir==0){
 
-    polaroutput << "# vtk DataFile Version 2.0" << endl;
-    polaroutput << "Generated by ludwig extract.c" << endl;
-    polaroutput << "ASCII" << endl;
-    polaroutput << "DATASET STRUCTURED_POINTS" << endl;
-    polaroutput << "DIMENSIONS 1 " << Ly << " " << Lz << endl;
-    polaroutput << "ORIGIN 0 0 0" << endl;
-    polaroutput << "SPACING 1 1 1" << endl;
-    polaroutput << "POINT_DATA " << Ly*Lz << endl;
-    polaroutput << "SCALARS Polarizer float 1" << endl;
-    polaroutput << "LOOKUP_TABLE default" << endl;
+    fprintf(polaroutput,"# vtk DataFile Version 2.0\n");
+    fprintf(polaroutput,"Generated by ludwig extract.c\n");
+    fprintf(polaroutput,"ASCII\n");
+    fprintf(polaroutput,"DATASET STRUCTURED_POINTS\n");
+    fprintf(polaroutput,"DIMENSIONS 1 %d %d\n", Ly, Lz);
+    fprintf(polaroutput,"ORIGIN 0 0 0\n");
+    fprintf(polaroutput,"SPACING 1 1 1\n");
+    fprintf(polaroutput,"POINT_DATA %d\n", Ly*Lz);
+    fprintf(polaroutput,"SCALARS Polarizer float 1\n");
+    fprintf(polaroutput,"LOOKUP_TABLE default\n");
 
     for(k=0; k<Lz; k++){
       for(j=0; j<Ly; j++){
-        polaroutput << s2_sum[j][k][0] << endl;  
+        fprintf(polaroutput, "%le\n", s2_sum[j][k][0]);  
       }
     }
 
-    cout << "# Output complete" << endl;
-    cout << "# Average intensity: " << average/Ly/Lz/nlambda << endl;
+    printf("# Output complete\n");
+    printf("# Average intensity: %g\n", average/Ly/Lz/nlambda);
 
   }
 
   if(raydir==1){
 
-    polaroutput << "# vtk DataFile Version 2.0" << endl;
-    polaroutput << "Generated by ludwig extract.c" << endl;
-    polaroutput << "ASCII" << endl;
-    polaroutput << "DATASET STRUCTURED_POINTS" << endl;
-    polaroutput << "DIMENSIONS " << Lx << " 1 " << Lz << endl;
-    polaroutput << "ORIGIN 0 0 0" << endl;
-    polaroutput << "SPACING 1 1 1" << endl;
-    polaroutput << "POINT_DATA " << Lx*Lz << endl;
-    polaroutput << "SCALARS Polarizer float 1" << endl;
-    polaroutput << "LOOKUP_TABLE default" << endl;
+    fprintf(polaroutput, "# vtk DataFile Version 2.0\n");
+    fprintf(polaroutput, "Generated by ludwig extract.c\n");
+    fprintf(polaroutput, "ASCII\n");
+    fprintf(polaroutput, "DATASET STRUCTURED_POINTS\n");
+    fprintf(polaroutput, "DIMENSIONS %d 1 %d\n", Lx, Lz);
+    fprintf(polaroutput, "ORIGIN 0 0 0\n");
+    fprintf(polaroutput, "SPACING 1 1 1\n");
+    fprintf(polaroutput, "POINT_DATA %d\n", Lx*Lz);
+    fprintf(polaroutput, "SCALARS Polarizer float 1\n");
+    fprintf(polaroutput, "LOOKUP_TABLE default\n");
 
 
     for(k=0; k<Lz; k++){
       for(i=0; i<Lx; i++){
-        polaroutput << s2_sum[i][k][0] << endl;  
+        fprintf(polaroutput, "%le\n", s2_sum[i][k][0]);  
       }
     }
 
-    cout << "# Output complete" << endl;
-    cout << "# Average intensity: " << average/Lx/Lz/nlambda << endl;
+    printf("# Output complete\n");
+    printf("# Average intensity: %g\n", average/Lx/Lz/nlambda);
 
   }
 
 
   if(raydir==2){
 
-    polaroutput << "# vtk DataFile Version 2.0" << endl;
-    polaroutput << "Generated by ludwig extract.c" << endl;
-    polaroutput << "ASCII" << endl;
-    polaroutput << "DATASET STRUCTURED_POINTS" << endl;
-    polaroutput << "DIMENSIONS " << Lx << " " << Ly << " 1" << endl;
-    polaroutput << "ORIGIN 0 0 0" << endl;
-    polaroutput << "SPACING 1 1 1" << endl;
-    polaroutput << "POINT_DATA " << Lx*Ly << endl;
-    polaroutput << "SCALARS Polarizer float 1" << endl;
-    polaroutput << "LOOKUP_TABLE default" << endl;
+    fprintf(polaroutput, "# vtk DataFile Version 2.0\n");
+    fprintf(polaroutput, "Generated by ludwig extract.c\n");
+    fprintf(polaroutput, "ASCII\n");
+    fprintf(polaroutput, "DATASET STRUCTURED_POINTS\n");
+    fprintf(polaroutput, "DIMENSIONS %d %d 1\n", Lx, Ly);
+    fprintf(polaroutput, "ORIGIN 0 0 0\n");
+    fprintf(polaroutput, "SPACING 1 1 1\n");
+    fprintf(polaroutput, "POINT_DATA %d", Lx*Ly);
+    fprintf(polaroutput, "SCALARS Polarizer float 1\n");
+    fprintf(polaroutput, "LOOKUP_TABLE default\n");
 
     for(j=0; j<Ly; j++){
       for(i=0; i<Lx; i++){
-        polaroutput << s2_sum[i][j][0] << endl;  
+        fprintf(polaroutput, "%le\n", s2_sum[i][j][0]);  
       }
     }
 
-    cout << "# Output complete" << endl;
-    cout << "# Average intensity: " << average/Lx/Ly/nlambda << endl;
+    printf("# Output complete\n");
+    printf("# Average intensity: %g\n", average/Lx/Ly/nlambda);
 
   }
 }
