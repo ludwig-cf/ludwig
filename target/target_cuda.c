@@ -7,7 +7,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2019 The University of Edinburgh
+ *  (c) 2019-2022 The University of Edinburgh
  *
  *  Contributing authors:
  *  Alan Gray (alang@epcc.ed.ac.uk)
@@ -240,7 +240,9 @@ __host__ tdpError_t tdpDeviceSetCacheConfig(tdpFuncCache cacheConfig) {
   return cudaDeviceSetCacheConfig(cacheConfig);
 }
 
-__host__ __device__ tdpError_t tdpDeviceSynchronize(void) {
+/* nb. CUDA 11.6 has deprecated the __device__ version of
+ * cudaDeviceSynchronize(). It should be used only on the host. */
+__host__ tdpError_t tdpDeviceSynchronize(void) {
 
   return cudaDeviceSynchronize();
 }

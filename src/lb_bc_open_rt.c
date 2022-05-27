@@ -13,7 +13,7 @@
  *  Edinburgh Parallel Computing Centre
  *
  *
- *  (c) 2021 The University of Edinburgh
+ *  (c) 2021-2022 The University of Edinburgh
  *
  *  Contibuting authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -45,7 +45,7 @@ __host__ int lb_bc_open_rt(pe_t * pe, rt_t * rt, cs_t * cs, lb_t * lb,
 			   lb_bc_open_t ** outflow) {
 
   int have_bc = 0;   /* inflow/outflow required */
-  int flow[3] = {};  /* flow direction */
+  int flow[3] = {0}; /* flow direction */
   
   assert(pe);
   assert(rt);
@@ -55,8 +55,8 @@ __host__ int lb_bc_open_rt(pe_t * pe, rt_t * rt, cs_t * cs, lb_t * lb,
   have_bc = rt_switch(rt, "lb_bc_open");
 
   if (have_bc) {
-    int wall[3] = {};
-    int periodic[3] = {};
+    int wall[3] = {0};
+    int periodic[3] = {0};
 
     /* Take flow direction from non-wall direction. */
     /* There must be D-1 walls in D dimensions */
@@ -94,8 +94,8 @@ __host__ int lb_bc_open_rt(pe_t * pe, rt_t * rt, cs_t * cs, lb_t * lb,
 
   if (have_bc) {
  
-    char intype[BUFSIZ] = {};
-    double u0[3] = {};
+    char intype[BUFSIZ] = {0};
+    double u0[3] = {0};
 
     rt_string_parameter(rt, "lb_bc_inflow_type", intype, BUFSIZ/2);
     rt_double_parameter_vector(rt, "lb_bc_inflow_rhou_u0", u0);
@@ -136,7 +136,7 @@ __host__ int lb_bc_open_rt(pe_t * pe, rt_t * rt, cs_t * cs, lb_t * lb,
   /* Outflow */
   if (have_bc) {
 
-    char outtype[BUFSIZ] = {};
+    char outtype[BUFSIZ] = {0};
     double rho0 = 1.0;
 
     rt_string_parameter(rt, "lb_bc_outflow_type", outtype, BUFSIZ/2);

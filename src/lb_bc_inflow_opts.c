@@ -7,7 +7,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2021 The University of Edinburgh
+ *  (c) 2021-2022 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -28,7 +28,7 @@
 
 lb_bc_inflow_opts_t lb_bc_inflow_opts_default(void) {
 
-  lb_bc_inflow_opts_t opts = {.nvel = 19, .flow = {}, .u0 = {}};
+  lb_bc_inflow_opts_t opts = {.nvel = 19, .flow = {0}, .u0 = {0}};
 
   return opts;
 }

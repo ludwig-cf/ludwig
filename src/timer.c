@@ -10,7 +10,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2010-2021 The University of Edinburgh
+ *  (c) 2010-2022 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -253,7 +253,7 @@ __host__ int timekeeper_create(pe_t * pe, const timekeeper_options_t * opts,
   assert(opts);
   assert(tk);
 
-  *tk = (timekeeper_t) {};
+  *tk = (timekeeper_t) {0};
   tk->pe = pe;
   tk->options = *opts;
 
@@ -278,7 +278,7 @@ __host__ int timekeeper_step(timekeeper_t * tk) {
     if (tk->timestep % tk->options.lap_report_freq == 0) {
       /* Recell strctime from pe_time() has a new line */
       pe_t * pe = tk->pe;
-      char strctime[BUFSIZ] = {};
+      char strctime[BUFSIZ] = {0};
       pe_time(strctime, BUFSIZ);
       pe_info(pe, "\nLap time at step %9d is: %8.3f seconds at %s",
 	      tk->timestep, timer_lapse(TIMER_LAP), strctime);
@@ -298,7 +298,7 @@ __host__ int timekeeper_free(timekeeper_t * tk) {
 
   assert(tk);
 
-  *tk = (timekeeper_t) {};
+  *tk = (timekeeper_t) {0};
 
   return 0;
 }

@@ -2,13 +2,13 @@
  *
  *  test_lb_bc_inflow_rhou.c
  *
- *  (c) 2021 The University of Edinburgh
- *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
+ *  (c) 2021-2022 The University of Edinburgh
+ *
  *  Contributing authors:
- *    Kevin Stratford (kevin@epcc.ed.ac.uk)
+ *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *
  *****************************************************************************/
 
@@ -41,8 +41,13 @@ __host__ int test_lb_bc_inflow_rhou_suite(void) {
   cs_init(cs);
 
   test_lb_bc_inflow_rhou_create(pe, cs);
-  test_lb_bc_inflow_rhou_update(pe, cs, NVEL);
-  test_lb_bc_inflow_rhou_impose(pe, cs, NVEL);
+  /* Need to check (2, 9) in 2d system */
+  test_lb_bc_inflow_rhou_update(pe, cs, 15);
+  test_lb_bc_inflow_rhou_impose(pe, cs, 15);
+  test_lb_bc_inflow_rhou_update(pe, cs, 19);
+  test_lb_bc_inflow_rhou_impose(pe, cs, 19);
+  test_lb_bc_inflow_rhou_update(pe, cs, 27);
+  test_lb_bc_inflow_rhou_impose(pe, cs, 27);
 
   pe_info(pe, "PASS     ./unit/test_lb_bc_inflow_rhou\n");
 
@@ -99,8 +104,8 @@ __host__ int test_lb_bc_inflow_rhou_create(pe_t * pe, cs_t * cs) {
 
 __host__ int test_lb_bc_inflow_rhou_update(pe_t * pe, cs_t * cs, int nvel) {
 
-  int nlocal[3] = {};
-  int noffset[3] = {};
+  int nlocal[3] = {0};
+  int noffset[3] = {0};
   double rho0 = 2.0;
 
   lb_bc_inflow_opts_t options = {.nvel = nvel,
@@ -150,7 +155,7 @@ __host__ int test_lb_bc_inflow_rhou_update(pe_t * pe, cs_t * cs, int nvel) {
 	for (int kc = limits.kmin; kc <= limits.kmax; kc++) {
 	  int index = cs_index(cs, ic, jc, kc);
 	  double rho = 0.0;
-	  double u[3] = {};
+	  double u[3] = {0};
 
 	  hydro_rho(hydro, index, &rho);
 	  hydro_u(hydro, index, u);
@@ -181,9 +186,9 @@ __host__ int test_lb_bc_inflow_rhou_impose(pe_t * pe, cs_t * cs, int nvel) {
 
   int ierr = 0;
 
-  int nlocal[3] = {};
-  int ntotal[3] = {};
-  int noffset[3] = {};
+  int nlocal[3] = {0};
+  int ntotal[3] = {0};
+  int noffset[3] = {0};
 
   double rho0 = 1.0;
 
@@ -209,6 +214,8 @@ __host__ int test_lb_bc_inflow_rhou_impose(pe_t * pe, cs_t * cs, int nvel) {
 
   lb_bc_inflow_rhou_create(pe, cs, &options, &inflow);
   hydro_create(pe, cs, NULL, &hopts, &hydro);
+
+  lb_options.nvel = nvel;
   lb_data_create(pe, cs, &lb_options, &lb);
 
   /* Set the relevant domain values (rho only here) */

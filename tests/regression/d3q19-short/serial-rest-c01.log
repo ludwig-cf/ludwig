@@ -38,7 +38,7 @@ Lattice Boltzmann distributions
 Model:            d3q19  
 SIMD vector len:  1
 Number of sets:   1
-Halo type:        full
+Halo type:        lb_halo_target (full halo)
 Input format:     binary
 Output format:    binary
 I/O grid:         1 1 1

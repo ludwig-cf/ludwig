@@ -660,7 +660,7 @@ int MPI_Type_indexed(int count, int * array_of_blocklengths,
   assert(newtype);
 
   {
-    data_t dt = {};
+    data_t dt = {0};
 
     dt.handle  = MPI_DATATYPE_NULL;
     dt.bytes   = 0;
@@ -685,7 +685,7 @@ int MPI_Type_contiguous(int count, MPI_Datatype old, MPI_Datatype * newtype) {
   assert(newtype);
 
   {
-    data_t dt = {};
+    data_t dt = {0};
 
     dt.handle  = MPI_DATATYPE_NULL;
     dt.bytes   = mpi_sizeof(old)*count;  /* contiguous */
@@ -756,7 +756,7 @@ int MPI_Type_vector(int count, int blocklength, int stride,
   assert(newtype);
 
   {
-    data_t dt = {};
+    data_t dt = {0};
 
     dt.handle = MPI_DATATYPE_NULL;
     dt.bytes  = 0;
@@ -1164,7 +1164,7 @@ int MPI_Type_create_resized(MPI_Datatype oldtype, MPI_Aint lb, MPI_Aint extent,
   assert(newtype);
 
   {
-    data_t dt = {};
+    data_t dt = {0};
 
     dt.handle  = MPI_DATATYPE_NULL;
     dt.bytes   = extent;
@@ -1198,7 +1198,7 @@ int MPI_Type_create_struct(int count, int array_of_blocklengths[],
 
 
   {
-    data_t dt = {};
+    data_t dt = {0};
 
     dt.handle  = MPI_DATATYPE_NULL;
     dt.bytes   = 0;

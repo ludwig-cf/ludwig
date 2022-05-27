@@ -9,7 +9,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2009-2021 The University of Edinburgh
+ *  (c) 2009-2022 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -72,7 +72,7 @@ __host__ int blue_phase_init_rt(pe_t * pe, rt_t *rt,
   pe_info(pe, "Blue phase free energy selected.\n");
 
   {
-    char description[BUFSIZ] = {};
+    char description[BUFSIZ] = {0};
     rt_string_parameter(rt, "free_energy", description, BUFSIZ);
     fe_is_lc_droplet = (strcmp(description, "lc_droplet") == 0);
   }

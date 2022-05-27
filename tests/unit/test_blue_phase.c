@@ -247,7 +247,7 @@ int test_o8m_struct(pe_t * pe, cs_t * cs, lees_edw_t * le, fe_lc_t * fe,
    * so an exhaustive test is probably not worth while. */
 
   {
-    double angles[3] = {}; /* No rotation. */
+    double angles[3] = {0}; /* No rotation. */
     blue_phase_O8M_init(cs, &param, fq, angles);
   }
 
@@ -682,9 +682,9 @@ int test_o8m_struct(pe_t * pe, cs_t * cs, lees_edw_t * le, fe_lc_t * fe,
    * to test the decomposition into bulk and gradient parts */
 
   {
-    double sfull[3][3] = {};
-    double sbulk[3][3] = {};
-    double sgrad[3][3] = {};
+    double sfull[3][3] = {0};
+    double sbulk[3][3] = {0};
+    double sgrad[3][3] = {0};
     ic = 1;
     jc = 1;
     kc = 1;
@@ -703,9 +703,9 @@ int test_o8m_struct(pe_t * pe, cs_t * cs, lees_edw_t * le, fe_lc_t * fe,
   }
 
   {
-    double sfull[3][3] = {};
-    double sbulk[3][3] = {};
-    double sgrad[3][3] = {};
+    double sfull[3][3] = {0};
+    double sbulk[3][3] = {0};
+    double sgrad[3][3] = {0};
     ic = 1;
     jc = 1;
     kc = 2;
@@ -724,9 +724,9 @@ int test_o8m_struct(pe_t * pe, cs_t * cs, lees_edw_t * le, fe_lc_t * fe,
   }
 
   {
-    double sfull[3][3] = {};
-    double sbulk[3][3] = {};
-    double sgrad[3][3] = {};
+    double sfull[3][3] = {0};
+    double sbulk[3][3] = {0};
+    double sgrad[3][3] = {0};
     ic = 1;
     jc = 1;
     kc = 3;
@@ -745,9 +745,9 @@ int test_o8m_struct(pe_t * pe, cs_t * cs, lees_edw_t * le, fe_lc_t * fe,
   }
 
   {
-    double sfull[3][3] = {};
-    double sbulk[3][3] = {};
-    double sgrad[3][3] = {};
+    double sfull[3][3] = {0};
+    double sbulk[3][3] = {0};
+    double sgrad[3][3] = {0};
     ic = 1;
     jc = 12;
     kc = 4;
@@ -766,9 +766,9 @@ int test_o8m_struct(pe_t * pe, cs_t * cs, lees_edw_t * le, fe_lc_t * fe,
   }
 
   {
-    double sfull[3][3] = {};
-    double sbulk[3][3] = {};
-    double sgrad[3][3] = {};
+    double sfull[3][3] = {0};
+    double sbulk[3][3] = {0};
+    double sgrad[3][3] = {0};
     ic = 2;
     jc = 6;
     kc = 7;

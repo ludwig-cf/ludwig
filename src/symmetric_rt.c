@@ -7,8 +7,9 @@
  *  Edinburgh Soft Matter and Statistical Physics Group
  *  and Edinburgh Parallel Computing Centre
  *
+ *  (c) 2010-2022 The University of Edinburgh
+ *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
- *  (c) 2010-2021 The University of Edinburgh
  *
  ****************************************************************************/
 
@@ -34,7 +35,7 @@ int fe_symmetric_init_rt(pe_t * pe, rt_t * rt, fe_symm_t * fe) {
   int old_keys = 0;
   double sigma;
   double xi;
-  fe_symm_param_t param = {};
+  fe_symm_param_t param = {0};
 
   assert(pe);
   assert(rt);

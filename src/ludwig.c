@@ -1282,7 +1282,7 @@ int free_energy_init_rt(ludwig_t * ludwig) {
 	   strcmp(description, "symmetric_noise") == 0) {
 
     int use_stress_relaxation;
-    phi_ch_info_t ch_options = {};
+    phi_ch_info_t ch_options = {0};
     fe_symm_t * fe = NULL;
 
     /* Symmetric free energy via finite difference */
@@ -1405,7 +1405,7 @@ int free_energy_init_rt(ludwig_t * ludwig) {
 
     /* Brazovskii (always finite difference). */
 
-    phi_ch_info_t ch_options = {};
+    phi_ch_info_t ch_options = {0};
     fe_brazovskii_t * fe = NULL;
     nf = 1;      /* 1 scalar order parameter */
     nhalo = 3;   /* Required for stress diveregnce. */
@@ -1452,7 +1452,7 @@ int free_energy_init_rt(ludwig_t * ludwig) {
   else if (strcmp(description, "surfactant") == 0) {
 
     fe_surf_param_t param;
-    ch_info_t options = {};
+    ch_info_t options = {0};
     fe_surf_t * fe = NULL;
 
     nf = 2;       /* Composition, surfactant: "phi" and "psi" */
@@ -1511,7 +1511,7 @@ int free_energy_init_rt(ludwig_t * ludwig) {
   else if (strcmp(description, "ternary") == 0) {
 
     fe_ternary_param_t param = {0};
-    ch_info_t options = {};
+    ch_info_t options = {0};
     fe_ternary_t * fe = NULL;
 
     nf = 2;       /* Composition, ternary: "phi" and "psi" */
@@ -1672,7 +1672,7 @@ int free_energy_init_rt(ludwig_t * ludwig) {
   }
   else if(strcmp(description, "lc_droplet") == 0) {
 
-    phi_ch_info_t ch_options = {};
+    phi_ch_info_t ch_options = {0};
     fe_symm_t * symm = NULL;
     fe_lc_t * lc = NULL;
     fe_lc_droplet_t * fe = NULL;
@@ -1699,6 +1699,11 @@ int free_energy_init_rt(ludwig_t * ludwig) {
 
     {
       field_options_t opts = field_options_ndata_nhalo(nf, nhalo);
+
+      if (rt_switch(rt, "field_halo_openmp")) {
+	opts.haloscheme = FIELD_HALO_OPENMP;
+	opts.haloverbose = rt_switch(rt, "field_halo_verbose");
+      }
       field_create(pe, cs, le, "phi", &opts, &ludwig->phi);
       field_grad_create(pe, ludwig->phi, ngrad, &ludwig->phi_grad);
       phi_ch_create(pe, cs, le, &ch_options, &ludwig->pch);
@@ -1732,6 +1737,11 @@ int free_energy_init_rt(ludwig_t * ludwig) {
 
     {
       field_options_t opts = field_options_ndata_nhalo(NQAB, nhalo);
+
+      if (rt_switch(rt, "field_halo_openmp")) {
+	opts.haloscheme = FIELD_HALO_OPENMP;
+	opts.haloverbose = rt_switch(rt, "field_halo_verbose");
+      }
       field_create(pe, cs, le, "q", &opts, &ludwig->q);
       field_grad_create(pe, ludwig->q, ngrad, &ludwig->q_grad);
     }
@@ -1808,7 +1818,7 @@ int free_energy_init_rt(ludwig_t * ludwig) {
   }
   else if(strcmp(description, "fe_electro_symmetric") == 0) {
 
-    phi_ch_info_t ch_options = {};
+    phi_ch_info_t ch_options = {0};
     fe_symm_t * fe_symm = NULL;
     fe_electro_t * fe_elec = NULL;
     fe_es_t * fes = NULL;
@@ -2070,7 +2080,7 @@ int ludwig_colloids_update(ludwig_t * ludwig) {
     lb_halo(ludwig->lb);
   }
   else {
-    lb_halo_swap(ludwig->lb, LB_HALO_HOST);
+    lb_halo_swap(ludwig->lb, LB_HALO_OPENMP_FULL);
   }
 
   TIMER_stop(TIMER_HALO_LATTICE);
@@ -2164,7 +2174,7 @@ int io_replace_values(field_t * field, map_t * map, int map_id, double value) {
 
 __host__ int ludwig_timekeeper_init(ludwig_t * ludwig) {
 
-  timekeeper_options_t opts = {};
+  timekeeper_options_t opts = {0};
 
   assert(ludwig);
 

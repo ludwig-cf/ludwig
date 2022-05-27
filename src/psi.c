@@ -9,7 +9,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2012-2020 The University of Edinburgh
+ *  (c) 2012-2022 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -255,7 +255,7 @@ int psi_diffusivity(psi_t * obj, int n, double * diff) {
 
 int psi_init_io_info(psi_t * obj, int grid[3], int form_in, int form_out) {
 
-  io_info_args_t args = {};
+  io_info_args_t args = io_info_args_default();
 
   assert(obj);
   assert(grid);
