@@ -310,14 +310,8 @@ void read_data(int argc, char** argv, const options_t * opts,
   else {
 
     FILE * dirinput = NULL;
+    char filename[BUFSIZ] = {0};
     char * pl = NULL;
-
-    if (strncmp(argv[1], "l", 1) == 0) dirinput = fopen(argv[1], "r");
-
-    if (!dirinput) {
-      printf("Cannot open director input file %s\n", argv[1]);
-      exit(-1);
-    }
 
     /* We assume a file name: lcd-01234567.vtk; work out the time step ... */
     {
@@ -326,6 +320,14 @@ void read_data(int argc, char** argv, const options_t * opts,
 
       if (*endptr == '.') sys->its = its;
       assert(0 <= sys->its && sys->its < 1000*1000*1000);
+    }
+
+    sprintf(filename, "lcd-%8.8d.vtk", sys->its);
+    dirinput = fopen(filename, "r");
+
+    if (!dirinput) {
+      printf("Cannot open director input file %s\n", argv[1]);
+      exit(-1);
     }
 
 
