@@ -130,6 +130,7 @@ int main(int argc, char* argv[]){
   /* take system dimensions from vtk-header */
 
   FILE * dirinput = fopen(argv[1], "r");
+  char * pl = NULL;
 
   if (!dirinput) {
     printf("Cannot open director input file %s\n", argv[1]);
@@ -137,14 +138,16 @@ int main(int argc, char* argv[]){
   }
 
   for (int skip = 0; skip < 4; skip++) {
-    (void) fgets(line, BUFSIZ, dirinput);
+    pl = fgets(line, BUFSIZ, dirinput);
+    assert(pl);
   }
 
   nread = fscanf(dirinput, "%s %d %d %d", dummy, &sys.Lx, &sys.Ly, &sys.Lz);
   assert(nread == 4);
 
   for (int skip = 5; skip < 10; skip++) {
-    (void) fgets(line, BUFSIZ, dirinput);
+    pl = fgets(line, BUFSIZ, dirinput);
+    assert(pl);
   }
 
   fclose(dirinput);
@@ -305,6 +308,7 @@ void read_data(int argc, char** argv, const options_t * opts,
   else {
 
     FILE * dirinput = fopen(argv[1], "r");
+    char * pl = NULL;
 
     if (!dirinput) {
       printf("Cannot open director input file %s\n", argv[1]);
@@ -313,14 +317,16 @@ void read_data(int argc, char** argv, const options_t * opts,
 
     /* skip vtk header lines */
     for (int skip = 0; skip < 9; skip++) {
-      (void) fgets(line, BUFSIZ, dirinput);
+      pl = fgets(line, BUFSIZ, dirinput);
+      assert(pl);
     }
 
     for (int k = 0; k < sys->Lz; k++) {
       for (int j = 0; j < sys->Ly; j++) {
 	for (int i = 0; i < sys->Lx; i++) {
 
-	  (void) fgets(line, BUFSIZ, dirinput);
+	  pl = fgets(line, BUFSIZ, dirinput);
+	  assert(pl);
 
 	  double dirx = 0.0;
 	  double diry = 0.0;
@@ -354,6 +360,7 @@ void read_data(int argc, char** argv, const options_t * opts,
   else {
 
     FILE * sopinput = fopen(argv[2], "r");
+    char * pl = NULL;
     char dummy[BUFSIZ] = {0};
     int nread = 0;
 
@@ -367,7 +374,8 @@ void read_data(int argc, char** argv, const options_t * opts,
     }
     /* skip header vtk lines to size ... */
     for (int skip = 0; skip < 4; skip++) {
-      (void) fgets(line, BUFSIZ, sopinput);
+      pl = fgets(line, BUFSIZ, sopinput);
+      assert(pl);
     }
     /* take system dimensions from vtk-header */
     nread = fscanf(sopinput,"%s %d %d %d", dummy, &Lxsop, &Lysop, &Lzsop);
@@ -375,7 +383,8 @@ void read_data(int argc, char** argv, const options_t * opts,
 
     /* skip rest header lines */
     for (int skip = 5; skip < 11; skip++) {
-      (void) fgets(line, BUFSIZ, sopinput);
+      pl = fgets(line, BUFSIZ, sopinput);
+      assert(pl);
     }
 
     /* compare dimensions for consistency */
@@ -387,7 +396,8 @@ void read_data(int argc, char** argv, const options_t * opts,
     for (int k = 0; k < sys->Lz; k++) {
       for (int j = 0; j < sys->Ly; j++) {
 	for (int i = 0; i < sys->Lx; i++) {
-	  (void) fgets(line, BUFSIZ, sopinput);
+	  pl = fgets(line, BUFSIZ, sopinput);
+	  assert(pl);
 	  sscanf(line,"%le", &sys->sop[i][j][k]);
 	}
       }
