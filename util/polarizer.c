@@ -48,14 +48,14 @@ int cut_topbot=0; // ignore cut_topbot sites at entry and exit
 double xi_polarizer=0, xi_analyzer=90; // orientation of polarizer and analyzer (deg)
 double n_e=2.0, n_o=1.5; // extraordinary and ordinary refraction indices
 #define nlambda 3 // number of wavelengths
-double lambda[nlambda]={18.0, 20.0, 22.0}, weight[nlambda]={0.2,0.4,0.2}; // wavelengths in l.u. and weights in total sum  
+double lambda[nlambda]={18.0, 20.0, 22.0}, weight[nlambda]={0.2, 0.4, 0.2}; // wavelengths in l.u. and weights in total sum  
 
 /*** IT SHOULD NOT BE NECESSARY TO MODIFY ANYTHING BELOW THIS LINE ***/
 int raydir; // Cartesian direction of incident light, x=0, y=1, z=2
 int Lx,Ly,Lz; // box size
 int Lxdir,Lydir,Lzdir,Lxsop,Lysop,Lzsop; // box size in input arrays
 double ****dir,***sop,*****mueller, ****mueller_sum_tp1, ****mueller_sum_tp2; // director, Mueller matrices
-double p1[4][4],***s1,p2[4][4],***s2,***s2_sum, average; // polariser and analyser, Stokes vectors
+double p1[4][4],***s1,p2[4][4],***s2,***s2_sum, average, av; // polariser and analyser, Stokes vectors
 double ****alp,****bet,***del; // orientation angles of local director, phase shift
 // auxiliary variables
 #define MAX_LENGTH 256
@@ -606,6 +606,8 @@ void simulate_polarizer(){
 
   printf("# Simulating polarizer\n");
 
+  average = 0;
+
   if(raydir==0){
 
     for(j=0; j<Ly; j++){
@@ -849,6 +851,9 @@ void simulate_polarizer(){
     }
 
   }
+
+  av += average;
+
 }
 
 /*****************************************************************************
@@ -882,7 +887,7 @@ void output(){
     }
 
     printf("# Output complete\n");
-    printf("# Average intensity: %g\n", average/Ly/Lz/nlambda);
+    printf("# Average intensity: %g\n", av/Ly/Lz);
 
   }
 
@@ -907,7 +912,7 @@ void output(){
     }
 
     printf("# Output complete\n");
-    printf("# Average intensity: %g\n", average/Lx/Lz/nlambda);
+    printf("# Average intensity: %g\n", av/Lx/Lz);
 
   }
 
@@ -932,7 +937,7 @@ void output(){
     }
 
     printf("# Output complete\n");
-    printf("# Average intensity: %g\n", average/Lx/Ly/nlambda);
+    printf("# Average intensity: %g\n", av/Lx/Ly);
 
   }
 }
