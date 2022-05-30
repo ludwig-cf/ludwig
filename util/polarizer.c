@@ -302,14 +302,17 @@ void read_data(int argc, char** argv, const options_t * opts,
 
   printf("# Director input\n");
 
+
   if (argc < 2) {
     printf("Usage:\n");
     exit(-1);
   }
   else {
 
-    FILE * dirinput = fopen(argv[1], "r");
+    FILE * dirinput = NULL;
     char * pl = NULL;
+
+    if (strncmp(argv[1], "l", 1) == 0) dirinput = fopen(argv[1], "r");
 
     if (!dirinput) {
       printf("Cannot open director input file %s\n", argv[1]);
@@ -318,15 +321,11 @@ void read_data(int argc, char** argv, const options_t * opts,
 
     /* We assume a file name: lcd-01234567.vtk; work out the time step ... */
     {
-      char cits[10] = {0};
-      char * endptr = NULL;
-      int its = 0;
-      memcpy(cits, argv[1] + 4, 8);
-      cits[9] = '\0';
-      its = strtol(cits, &endptr, 10);
-      /* Store a valid time step: */
-      sys->its = 0;
-      if (*endptr == '\0') sys->its = its;
+      char * endptr = NULL; /* should be the first invalid char, ie., '.' */
+      int its = strtol(argv[1] + 4, &endptr, 10);
+
+      if (*endptr == '.') sys->its = its;
+      assert(0 <= sys->its && sys->its < 1000*1000*1000);
     }
 
 
