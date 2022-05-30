@@ -108,6 +108,7 @@ int main(int argc, char* argv[]){
 
   options_t opts = default_options();
   system_t sys = {0};
+  int nread = 0;
 
   assert(argc > 1);
 
@@ -136,13 +137,14 @@ int main(int argc, char* argv[]){
   }
 
   for (int skip = 0; skip < 4; skip++) {
-    fgets(line, BUFSIZ, dirinput);
+    (void) fgets(line, BUFSIZ, dirinput);
   }
 
-  fscanf(dirinput, "%s %d %d %d", dummy, &sys.Lx, &sys.Ly, &sys.Lz);
+  nread = fscanf(dirinput, "%s %d %d %d", dummy, &sys.Lx, &sys.Ly, &sys.Lz);
+  assert(nread == 4);
 
   for (int skip = 5; skip < 10; skip++) {
-    fgets(line, BUFSIZ, dirinput);
+    (void) fgets(line, BUFSIZ, dirinput);
   }
 
   fclose(dirinput);
@@ -311,14 +313,14 @@ void read_data(int argc, char** argv, const options_t * opts,
 
     /* skip vtk header lines */
     for (int skip = 0; skip < 9; skip++) {
-      fgets(line, BUFSIZ, dirinput);
+      (void) fgets(line, BUFSIZ, dirinput);
     }
 
     for (int k = 0; k < sys->Lz; k++) {
       for (int j = 0; j < sys->Ly; j++) {
 	for (int i = 0; i < sys->Lx; i++) {
 
-	  fgets(line, BUFSIZ, dirinput);
+	  (void) fgets(line, BUFSIZ, dirinput);
 
 	  double dirx = 0.0;
 	  double diry = 0.0;
@@ -353,6 +355,7 @@ void read_data(int argc, char** argv, const options_t * opts,
 
     FILE * sopinput = fopen(argv[2], "r");
     char dummy[BUFSIZ] = {0};
+    int nread = 0;
 
     int Lxsop = -1;
     int Lysop = -1;
@@ -364,14 +367,15 @@ void read_data(int argc, char** argv, const options_t * opts,
     }
     /* skip header vtk lines to size ... */
     for (int skip = 0; skip < 4; skip++) {
-      fgets(line, BUFSIZ, sopinput);
+      (void) fgets(line, BUFSIZ, sopinput);
     }
     /* take system dimensions from vtk-header */
-    fscanf(sopinput,"%s %d %d %d", dummy, &Lxsop, &Lysop, &Lzsop);
+    nread = fscanf(sopinput,"%s %d %d %d", dummy, &Lxsop, &Lysop, &Lzsop);
+    assert(nread == 4);
 
     /* skip rest header lines */
     for (int skip = 5; skip < 11; skip++) {
-      fgets(line, BUFSIZ, sopinput);
+      (void) fgets(line, BUFSIZ, sopinput);
     }
 
     /* compare dimensions for consistency */
@@ -383,7 +387,7 @@ void read_data(int argc, char** argv, const options_t * opts,
     for (int k = 0; k < sys->Lz; k++) {
       for (int j = 0; j < sys->Ly; j++) {
 	for (int i = 0; i < sys->Lx; i++) {
-	  fgets(line, BUFSIZ, sopinput);
+	  (void) fgets(line, BUFSIZ, sopinput);
 	  sscanf(line,"%le", &sys->sop[i][j][k]);
 	}
       }
