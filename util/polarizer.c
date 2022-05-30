@@ -104,8 +104,12 @@ void polariser_matrix(double angle, double p[4][4]);
 
 int main(int argc, char* argv[]){
 
-  char line[BUFSIZ] = {0};  /* line of input */
-  char dummy[BUFSIZ] = {0}; /* unused input */
+  char filename[BUFSIZ] = {0};
+  char line[BUFSIZ] = {0};       /* line of input */
+  char dummy[BUFSIZ] = {0};      /* unused input */
+
+  FILE * dirinput = NULL;
+  char * pl = NULL;
 
   options_t opts = default_options();
   system_t sys = {0};
@@ -128,10 +132,19 @@ int main(int argc, char* argv[]){
     exit(-1);
   }
 
+  /* We assume a file name: lcd-01234567.vtk; work out the time step ... */
+  {
+    char * endptr = NULL; /* should be the first invalid char, ie., '.' */
+    int its = strtol(argv[1] + 4, &endptr, 10);
+
+    if (*endptr == '.') sys.its = its;
+    assert(0 <= sys.its && sys.its < 1000*1000*1000);
+  }
+
   /* take system dimensions from vtk-header */
 
-  FILE * dirinput = fopen(argv[1], "r");
-  char * pl = NULL;
+  sprintf(filename, "lcd-%8.8d.vtk", sys.its);
+  dirinput = fopen(filename, "r");
 
   if (!dirinput) {
     printf("Cannot open director input file %s\n", argv[1]);
@@ -298,6 +311,7 @@ void allocate(const options_t * opts, system_t * sys) {
 void read_data(int argc, char** argv, const options_t * opts,
 	       system_t * sys) {
 
+  char filename[BUFSIZ] = {0};
   char line[BUFSIZ] = {0};
 
   printf("# Director input\n");
@@ -310,17 +324,7 @@ void read_data(int argc, char** argv, const options_t * opts,
   else {
 
     FILE * dirinput = NULL;
-    char filename[BUFSIZ] = {0};
     char * pl = NULL;
-
-    /* We assume a file name: lcd-01234567.vtk; work out the time step ... */
-    {
-      char * endptr = NULL; /* should be the first invalid char, ie., '.' */
-      int its = strtol(argv[1] + 4, &endptr, 10);
-
-      if (*endptr == '.') sys->its = its;
-      assert(0 <= sys->its && sys->its < 1000*1000*1000);
-    }
 
     sprintf(filename, "lcd-%8.8d.vtk", sys->its);
     dirinput = fopen(filename, "r");
@@ -375,7 +379,7 @@ void read_data(int argc, char** argv, const options_t * opts,
   }
   else {
 
-    FILE * sopinput = fopen(argv[2], "r");
+    FILE * sopinput = NULL;
     char * pl = NULL;
     char dummy[BUFSIZ] = {0};
     int nread = 0;
@@ -384,9 +388,12 @@ void read_data(int argc, char** argv, const options_t * opts,
     int Lysop = -1;
     int Lzsop = -1;
 
+    sprintf(filename, "lcs-%8.8d.vtk", sys->its);
+    sopinput = fopen(filename, "r");
+
     if (!sopinput) {
       printf("Cannot open scalar order parameter input file %s\n", argv[2]);
-       exit(0);
+      exit(0);
     }
     /* skip header vtk lines to size ... */
     for (int skip = 0; skip < 4; skip++) {
