@@ -292,17 +292,15 @@ __host__ __device__
 int fe_symm_oft_fed(fe_symm_oft_t * fe, int index, double * fed) {
 
   double temperature;
-/*
   double phi;
   double dphi[3];
   double A;
   double Kappa;
 
-*/
+
   assert(fe);
   field_scalar(fe->temperature, index, &temperature);
 
-/*
   field_scalar(fe->phi, index, &phi);
   field_grad_scalar_grad(fe->dphi, index, dphi);
   
@@ -311,8 +309,8 @@ int fe_symm_oft_fed(fe_symm_oft_t * fe, int index, double * fed) {
 
   *fed = (0.5*A + 0.25*fe->param->b*phi*phi)*phi*phi
     + 0.5*Kappa*dot_product(dphi, dphi);
-  */
-  *fed = temperature;
+
+  //*fed = temperature;
 
   return 0;
 }
