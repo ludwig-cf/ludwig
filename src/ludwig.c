@@ -1591,7 +1591,11 @@ int free_energy_init_rt(ludwig_t * ludwig) {
     /* No Lees Edwards for the time being */
 
     field_create(pe, cs, nf, "surfactant1", &ludwig->phi);
-    field_init(ludwig->phi, nhalo, NULL);
+
+    lees_edw_t * le = NULL;
+    lees_edw_create(pe, cs, info, &le);
+    field_init(ludwig->phi, nhalo, le);
+    //field_create(pe, cs, le, "surfactant1", &options, &ludwig->phi);
 
     field_grad_create(pe, ludwig->phi, ngrad, &ludwig->phi_grad);
 
