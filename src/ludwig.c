@@ -1590,7 +1590,7 @@ int free_energy_init_rt(ludwig_t * ludwig) {
 
     /* No Lees Edwards for the time being */
 
-    field_create(pe, cs, nf, "surfactant1", &ludwig->phi);
+    field_create(pe, cs, nf, "phi", &ludwig->phi);
 
     lees_edw_t * le = NULL;
     lees_edw_create(pe, cs, info, &le);
