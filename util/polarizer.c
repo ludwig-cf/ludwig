@@ -7,16 +7,15 @@
  *  vtk-format is required. The output consists of a file 'polar-...' 
  *  that contains the light intensity in vtk-format.
  * 
- *  To process run
+ *  The file names should be (in the current directory) e.g.,:
  *
- *  ./polarizer director-file scalarOP-file Cartesian_direction 
+ *  ./polarizer lcd-00100000.vtk lcs-00100000.vtk x|y|z
  * 
- *  where director-file and scalarOP-file are the data filenames and
  *  Cartesian_direction is x, y, or z and defines the direction of the
  *  incident light.
  *
  *  COMMAND LINE INPUT
- *  (1) the director filename
+ *  (1) the director filename (must be "lcd-*.vtk")
  *  (2) the scalar order parameter filename
  *  (3) the Cartesian direction of incident light
  *
@@ -28,10 +27,12 @@
  * 
  *  Edinburgh Soft Matter and Statistical Physics Group
  *  Edinburgh Parallel Computing Centre
- *  University of Strathclyde, Glasgow, UK
+ *
+ *  (c) 2022 The University of Edinburgh
  *
  *  Contributing authors:
  *  Oliver Henrich  (oliver.henrich@strath.ac.uk)
+ *  University of Strathclyde, Glasgow, UK
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *
  ****************************************************************************/
