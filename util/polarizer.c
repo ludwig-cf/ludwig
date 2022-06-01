@@ -437,39 +437,13 @@ void read_data(int argc, char** argv, const options_t * opts,
  *
  *  initialise_matrices
  *
- *  Initialises the Mueller matrices, Stokes vector and projectors for 
- *  polariser and analyser.
+ *  Computes the Mueller matrices for given wavelength.
  *
  *****************************************************************************/
 
 void initialise_matrices(const options_t * opts, int ilambda, system_t * sys) {
 
-  printf("# Initialisation\r");
-  fflush(stdout);
-
-  if (opts->raydir == 0) {
-    for (int j = 0; j < sys->Ly; j++) {
-      for (int k = 0; k < sys->Lz; k++) {
-	sys->s_out[j][k] = 0.0;
-      }
-    }
-  }
-
-  if (opts->raydir == 1) {
-    for (int i = 0; i < sys->Lx; i++) {
-      for (int k = 0; k < sys->Lz; k++) {
-	sys->s_out[i][k] = 0.0;
-      }
-    }
-  }
-
-  if (opts->raydir == 2) {
-    for (int i = 0; i < sys->Lx; i++) {
-      for (int j = 0; j < sys->Ly; j++) {
-	sys->s_out[i][j] = 0.0;
-      }
-    }
-  }
+  printf("# Initialisation for waelength %2d\r", ilambda);
 
   for (int i = 0; i < sys->Lx; i++) {
     for (int j = 0; j < sys->Ly; j++) {
