@@ -1628,6 +1628,7 @@ int free_energy_init_rt(ludwig_t * ludwig) {
 
     /* Not very elegant, but here ... */
     grad_lc_anch_create(pe, cs, NULL, NULL, NULL, fe, NULL);
+    grad_s7_anchoring_create(pe, cs, NULL, fe, NULL);
 
     ludwig->fe_lc = fe;
     ludwig->fe = (fe_t *) fe;
