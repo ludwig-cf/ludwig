@@ -73,7 +73,6 @@ static int rt_key_broadcast(rt_t * rt);
 static int rt_is_valid_key_pair(rt_t * rt, const char * line, int lineno);
 static int rt_look_up_key(rt_t * rt, const char * key, char * value);
 static int rt_free_keylist(key_pair_t * key);
-static int rt_vinfo(rt_t * rt, rt_enum_t lv, const char * fmt, ...);
 
 static int rt_is_valid_token(const char * token);
 static int rt_line_count_tokens(const char * line);
@@ -874,7 +873,7 @@ int rt_key_required(rt_t * rt, const char * key, rt_enum_t level) {
  *
  *****************************************************************************/
 
-static int rt_vinfo(rt_t * rt, rt_enum_t lv, const char * fmt, ...) {
+int rt_vinfo(rt_t * rt, rt_enum_t lv, const char * fmt, ...) {
 
   int rank;
 
