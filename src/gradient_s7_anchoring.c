@@ -964,10 +964,10 @@ __host__ __device__ int grad_s7_boundary_c(fe_lc_param_t * param,
   if (anchor == LC_ANCHORING_FIXED) {
     /* Preferred surface order parameter */
     double q0[3][3] = {0};
+    double n[3] = {param->wall.nfix[X], param->wall.nfix[Y], param->wall.nfix[Z]};
     for (int ia = 0; ia < 3; ia++) {
       for (int ib = 0; ib < 3; ib++) {
-	assert(0); /* WALL! */
-        q0[ia][ib] = 0.5*amp*(3.0*param->nfix[ia]*param->nfix[ib] - d[ia][ib]);
+        q0[ia][ib] = 0.5*amp*(3.0*n[ia]*n[ib] - d[ia][ib]);
       }
     }
     /* Constant terms then contribute ... */
