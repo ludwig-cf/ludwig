@@ -194,8 +194,8 @@ __host__ int blue_phase_init_rt(pe_t * pe, rt_t *rt,
       /* Temporary */
       pe_info(pe, "Wall anchoring temporary output\n");
       pe_info(pe, "Wall anchoring type:       %d\n", fe_param.wall.type);
-      pe_info(pe, "Wall anchoring w1:         %d\n", fe_param.wall.w1);
-      pe_info(pe, "Wall anchoring w2:         %d\n", fe_param.wall.w2);
+      pe_info(pe, "Wall anchoring w1:         %f\n", fe_param.wall.w1);
+      pe_info(pe, "Wall anchoring w2:         %f\n", fe_param.wall.w2);
       /* Still need to get energy right ...*/
       fe_param.anchoring_wall = fe_param.wall.type;
       fe_param.w1_wall = fe_param.wall.w1;
