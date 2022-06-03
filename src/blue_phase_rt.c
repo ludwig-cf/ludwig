@@ -26,6 +26,9 @@
 #include "blue_phase_rt.h"
 #include "physics.h"
 
+int blue_phase_rt_wall_anchoring(pe_t * pe, rt_t * rt, rt_enum_t rt_err_level,
+				 lc_anchoring_param_t * param);
+
 /*****************************************************************************
  *
  *  blue_phase_init_rt
@@ -40,7 +43,7 @@ __host__ int blue_phase_init_rt(pe_t * pe, rt_t *rt,
   int n;
   int fe_is_lc_droplet = 0;
   int redshift_update;
-  char method[BUFSIZ] = "none";
+  char method[BUFSIZ] = "s7"; /* This is the default */
   char type[BUFSIZ] = "none";
   char type_wall[BUFSIZ] = "none";
 
@@ -183,16 +186,26 @@ __host__ int blue_phase_init_rt(pe_t * pe, rt_t *rt,
 
   rt_string_parameter(rt, "lc_anchoring_method", method, FILENAME_MAX);
 
-  if (strcmp(method, "two") != 0) {
-    /* There's a bit of an historical problem here, as 'two'
-     * is now the only valid choice. However, it is worth
-     * not getting a load a irrelevant output if no solids.
-     * So I assert 'none' is the only other option. */
-    if (strcmp(method, "none") != 0) {
-      pe_fatal(pe, "Check anchoring method input\n");
+  if (strcmp(method, "s7")  == 0) {
+    /* The default should be the updated 7 point stencil method. */
+    blue_phase_rt_wall_anchoring(pe, rt, RT_FATAL, &fe_param.wall);
+
+    if (fe_param.wall.type) {
+      /* Temporary */
+      pe_info(pe, "Wall anchoring temporary output\n");
+      pe_info(pe, "Wall anchoring type:       %d\n", fe_param.wall.type);
+      pe_info(pe, "Wall anchoring w1:         %d\n", fe_param.wall.w1);
+      pe_info(pe, "Wall anchoring w2:         %d\n", fe_param.wall.w2);
+      /* Still need to get energy right ...*/
+      fe_param.anchoring_wall = fe_param.wall.type;
+      fe_param.w1_wall = fe_param.wall.w1;
     }
+
   }
-  else {
+  else if (strcmp(method, "two") == 0) {
+
+    /* Older-style input for "lc_anchoring_method". The name "two"
+     * is because, historically, it was the second method tried. */
 
     /* Find out type */
 
@@ -309,6 +322,10 @@ __host__ int blue_phase_init_rt(pe_t * pe, rt_t *rt,
     if (fe_param.gamma < (8.0/3.0)) {
       pe_fatal(pe, "Please check anchoring amplitude\n");
     }
+  }
+  else {
+    /* not recognised */
+    pe_fatal(pe, "lc_anchoring_method must be either s7 or two\n");
   }
 
   fe_lc_param_set(fe, &fe_param);
@@ -548,4 +565,55 @@ __host__ int blue_phase_rt_initial_conditions(pe_t * pe, rt_t * rt, cs_t * cs,
   }
 
   return 0;
+}
+
+/*****************************************************************************
+ *
+ *  blue_phase_rt_wall_anchoring
+ *
+ *  Newer style anchoring input which is documented (unlike the old type).
+ *
+ *****************************************************************************/
+
+int blue_phase_rt_wall_anchoring(pe_t * pe, rt_t * rt, rt_enum_t rt_err_level,
+				 lc_anchoring_param_t * wall) {
+
+  assert(pe);
+  assert(rt);
+  assert(wall);
+
+  /* No wall at all is fine; return 0. */
+
+  int ierr = 0;
+  char atype[BUFSIZ] = {0};
+
+  if (rt_string_parameter(rt, "lc_wall_anchoring", atype, BUFSIZ)) {
+    wall->type = lc_anchoring_type_from_string(atype);
+
+    switch (wall->type) {
+    case LC_ANCHORING_NORMAL:
+      ierr += rt_key_required(rt, "lc_wall_anchoring_w1", rt_err_level);
+      rt_double_parameter(rt, "lc_wall_anchoring_w1", &wall->w1);
+      break;
+    case LC_ANCHORING_PLANAR:
+      ierr += rt_key_required(rt, "lc_wall_anchoring_w1", rt_err_level);
+      ierr += rt_key_required(rt, "lc_wall_anchoring_w2", rt_err_level);
+      rt_double_parameter(rt, "lc_wall_anchoring_w1", &wall->w1);
+      rt_double_parameter(rt, "lc_wall_anchoring_w2", &wall->w2);
+      break;
+    case LC_ANCHORING_FIXED:
+      ierr += rt_key_required(rt, "lc_wall_anchoring_w1", rt_err_level);
+      ierr += rt_key_required(rt, "lc_wall_fixed_orientation", rt_err_level);
+      rt_double_parameter(rt, "lc_wall_anchoring_w1", &wall->w1);
+      rt_double_parameter_vector(rt, "lc_wall_fixed_orientation", wall->nfix);
+      break;
+    default:
+      /* Not valid. */
+      rt_vinfo(rt, rt_err_level, "%s: %s\n",
+	       "Input key `lc_wall_anchoring` had invalid value", atype);
+      ierr += 1;
+    }
+  }
+
+  return ierr;
 }
