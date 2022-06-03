@@ -532,6 +532,11 @@ __host__ int blue_phase_rt_initial_conditions(pe_t * pe, rt_t * rt, cs_t * cs,
     blue_phase_random_q_init(cs, feparam, q);
   }
 
+  if (strcmp(key1, "random_xy") == 0) {
+    pe_info(pe, "Initialising Q_ab at random in (x,y)\n");
+    blue_phase_random_q_2d(cs, feparam, q);
+  }
+
   /* Superpose a rectangle of random Q_ab on whatever was above */
 
   n1 = rt_int_parameter_vector(rt, "lc_q_init_rectangle_min", rmin);
