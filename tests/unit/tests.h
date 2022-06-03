@@ -62,6 +62,7 @@ int test_lb_bc_inflow_opts_suite(void);
 int test_lb_bc_inflow_rhou_suite(void);
 int test_lb_bc_outflow_opts_suite(void);
 int test_lb_bc_outflow_rhou_suite(void);
+int test_lc_anchoring_suite(void);
 int test_le_suite(void);
 int test_kernel_suite(void);
 int test_lubrication_suite(void);
