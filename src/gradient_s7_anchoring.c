@@ -923,11 +923,11 @@ __host__ __device__ int grad_s7_boundary_c(fe_lc_param_t * param,
   assert(param);
   assert(anch);
 
-  /* Default -> outward normal, ie., flat wall */
+  /* Local anchoring */
 
-  w1 = param->w1_wall;
-  w2 = param->w2_wall;
-  anchor = param->anchoring_wall;
+  w1 = param->wall.w1;
+  w2 = param->wall.w2;
+  anchor = param->wall.type;
 
   fe_lc_amplitude_compute(param, &amp);
 
@@ -966,6 +966,7 @@ __host__ __device__ int grad_s7_boundary_c(fe_lc_param_t * param,
     double q0[3][3] = {0};
     for (int ia = 0; ia < 3; ia++) {
       for (int ib = 0; ib < 3; ib++) {
+	assert(0); /* WALL! */
         q0[ia][ib] = 0.5*amp*(3.0*param->nfix[ia]*param->nfix[ib] - d[ia][ib]);
       }
     }
