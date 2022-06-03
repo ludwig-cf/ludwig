@@ -49,7 +49,6 @@ lc_Gamma      0.1
 
 lc_q_initialisation random
 lc_q_init_amplitude 0.01
-lc_anchoring_method none
 
 ###############################################################################
 #

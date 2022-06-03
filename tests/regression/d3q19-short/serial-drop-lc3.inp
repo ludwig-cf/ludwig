@@ -166,8 +166,6 @@ lc_q_initialisation o8m
 lc_q_init_amplitude -0.2
 lc_init_redshift 1.0
 
-lc_anchoring_method none
-
 lc_droplet_gamma 2.586
 lc_droplet_delta 0.25 
 lc_droplet_W     0.0

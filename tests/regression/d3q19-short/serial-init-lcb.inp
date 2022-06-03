@@ -51,7 +51,6 @@ lc_q_initialisation cholesteric_x
 lc_q_init_rectangle_min 16_16_16
 lc_q_init_rectangle_max 17_17_17 
 lc_q_init_amplitude 0.01
-lc_anchoring_method none
 
 ###############################################################################
 #
