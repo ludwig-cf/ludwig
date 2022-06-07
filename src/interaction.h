@@ -81,6 +81,7 @@ int interact_angles_harmonic(interact_t * obj, colloids_info_t * cinfo);
 int interact_angles_dihedral(interact_t * obj, colloids_info_t * cinfo);
 
 int colloids_update_discrete_forces_phi(colloids_info_t * cinfo, field_t * phi, field_t * subgrid_potential);
+int colloids_update_discrete_forces_phi_old(colloids_info_t * cinfo, field_t * phi, field_t * subgrid_potential);
 int colloids_update_analytic_forces_phi(colloids_info_t * cinfo, field_t * phi, field_t * subgrid_potential);
 
 int interact_find_bonds(interact_t * obj, colloids_info_t * cinfo);

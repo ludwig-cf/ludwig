@@ -289,7 +289,7 @@ __global__ void phi_grad_mu_fluid_kernel(kernel_ctxt_t * ktx, field_t * phi,
 /* -----> For book-keeping */
   double globalforce[3];
   double localforce[3] = {0,0,0};
-  int freq = 100000;
+  int writefreq = 10;
 
   physics_t * phys;
   FILE * fp;
@@ -335,7 +335,7 @@ __global__ void phi_grad_mu_fluid_kernel(kernel_ctxt_t * ktx, field_t * phi,
       force[X] = 0.0;
       force[X] += -phi0[0]*0.5*(mup1[0] - mum1[0] + up1 - um1);
       force[X] += -phi0[1]*0.5*(mup1[1] - mum1[1]);
-      if (timestep % freq == 0) localforce[X] -= phi0[0]*0.5*(up1 - um1);
+      if (timestep % writefreq == 0) localforce[X] -= phi0[0]*0.5*(up1 - um1);
     }
 
     {
@@ -350,7 +350,7 @@ __global__ void phi_grad_mu_fluid_kernel(kernel_ctxt_t * ktx, field_t * phi,
       force[Y] = 0.0;
       force[Y] += -phi0[0]*0.5*(mup1[0] - mum1[0] + up1 - um1);
       force[Y] += -phi0[1]*0.5*(mup1[1] - mum1[1]);
-      if (timestep % freq == 0) localforce[Y] -= phi0[0]*0.5*(up1 - um1);
+      if (timestep % writefreq == 0) localforce[Y] -= phi0[0]*0.5*(up1 - um1);
     }
 
     {
@@ -365,15 +365,15 @@ __global__ void phi_grad_mu_fluid_kernel(kernel_ctxt_t * ktx, field_t * phi,
       force[Z] = 0.0;
       force[Z] += -phi0[0]*0.5*(mup1[0] - mum1[0] + up1 - um1);
       force[Z] += -phi0[1]*0.5*(mup1[1] - mum1[1]);
-      if (timestep % freq == 0) localforce[Z] -= phi0[0]*0.5*(up1 - um1);
+      if (timestep % writefreq == 0) localforce[Z] -= phi0[0]*0.5*(up1 - um1);
     }
 
     hydro_f_local_add(hydro, index, force);
   }
 
-  if (timestep % freq == 0) {
+  if (timestep % writefreq == 0) {
     MPI_Allreduce(localforce, globalforce, 3, MPI_DOUBLE, MPI_SUM, comm);
-    fp = fopen("force_fluid.txt","a");
+    fp = fopen("TOT_INTERACT_FORCE_FLUID.txt","a");
     fprintf(fp, "%14.7e, %14.7e, %14.7e\n", globalforce[X], globalforce[Y], 
 					globalforce[Z]);
     fclose(fp);
@@ -413,6 +413,20 @@ __global__ void phi_grad_mu_solid_kernel(kernel_ctxt_t * ktx, field_t * field,
   assert(field);
   assert(hydro);
   assert(field->nf <= NVECTOR);
+
+/* -----> For book-keeping */
+  double globalforce[3];
+  double localforce[3] = {0,0,0};
+  int writefreq = 10;
+
+  physics_t * phys;
+  FILE * fp;
+
+  physics_ref(&phys);
+  int timestep = physics_control_timestep(phys);
+  MPI_Comm comm;
+  cs_cart_comm(hydro->cs, &comm);
+/* <----- */
 
   kiterations = kernel_iterations(ktx);
 
@@ -469,6 +483,7 @@ __global__ void phi_grad_mu_solid_kernel(kernel_ctxt_t * ktx, field_t * field,
 
       force[X] -= phi[0]*0.5*(mup1[0] - mum1[0] + up1 - um1);
       force[X] -= phi[1]*0.5*(mup1[1] - mum1[1]);
+      if (timestep % writefreq == 0) localforce[X] -= phi[0]*0.5*(up1 - um1);
 
     }
 
@@ -507,7 +522,8 @@ __global__ void phi_grad_mu_solid_kernel(kernel_ctxt_t * ktx, field_t * field,
 
       force[Y] -= phi[0]*0.5*(mup1[0] - mum1[0] + up1 - um1);
       force[Y] -= phi[1]*0.5*(mup1[1] - mum1[1]);
-
+      if (timestep % writefreq == 0) localforce[Y] -= phi[0]*0.5*(up1 - um1);
+      //if (timestep % writefreq == 0 && up1-um1 != 0.0) printf("fluid %14.7e\n", localforce[Y]);
     }
 
     /* z-direction */
@@ -545,12 +561,21 @@ __global__ void phi_grad_mu_solid_kernel(kernel_ctxt_t * ktx, field_t * field,
 
       force[Z] -= phi[0]*0.5*(mup1[0] - mum1[0] + up1 - um1);
       force[Z] -= phi[1]*0.5*(mup1[1] - mum1[1]);
+      if (timestep % writefreq == 0) localforce[Z] -= phi[0]*0.5*(up1 - um1);
 
     }
 
     /* Store the force on lattice */
 
     hydro_f_local_add(hydro, index0, force);
+  }
+
+  if (timestep % writefreq == 0) {
+    MPI_Allreduce(localforce, globalforce, 3, MPI_DOUBLE, MPI_SUM, comm);
+    fp = fopen("TOT_INTERACT_FORCE_FLUID.txt","a");
+    fprintf(fp, "%14.7e, %14.7e, %14.7e\n", globalforce[X], globalforce[Y], 
+					globalforce[Z]);
+    fclose(fp);
   }
 
   return;
