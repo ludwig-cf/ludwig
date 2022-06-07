@@ -936,7 +936,7 @@ int colloids_update_discrete_forces_phi(colloids_info_t * cinfo, field_t * phi, 
   physics_t * phys = NULL;
 
 /* ------------------------- For book-keeping ------------------------------> */
-  int writefreq = 10, timestep;
+  int writefreq = 10000000, timestep;
   double colloidforce[3], localforce[3], globalforce[3];
   FILE * fp;
 
@@ -968,6 +968,21 @@ int colloids_update_discrete_forces_phi(colloids_info_t * cinfo, field_t * phi, 
     }
   }
   
+  /* Initialize forcephi to 0 */ 
+  for (ic = 0; ic <= ncell[X] + 1; ic++) {
+    for (jc = 0; jc <= ncell[Y] + 1; jc++) {
+      for (kc = 0; kc <= ncell[Z] + 1; kc++) {
+        colloids_info_cell_list_head(cinfo, ic, jc, kc, &pc);
+	
+        for (; pc; pc = pc->next) {
+	  pc->forcephi[X] = 0.0;
+	  pc->forcephi[Y] = 0.0;
+	  pc->forcephi[Z] = 0.0;
+	}
+      }
+    }
+  }
+
   /* Go over cell lists */
   for (ic = 0; ic <= ncell[X] + 1; ic++) {
     for (jc = 0; jc <= ncell[Y] + 1; jc++) {
@@ -1081,6 +1096,10 @@ int colloids_update_discrete_forces_phi(colloids_info_t * cinfo, field_t * phi, 
                 pc->force[X] += phi_*grad_u[X];
                 pc->force[Y] += phi_*grad_u[Y];
                 pc->force[Z] += phi_*grad_u[Z];
+
+		pc->forcephi[X] += phi_*grad_u[X];
+                pc->forcephi[Y] += phi_*grad_u[Y];
+                pc->forcephi[Z] += phi_*grad_u[Z];
 
 		colloidforce[X] += phi_*grad_u[X];
 		colloidforce[Y] += phi_*grad_u[Y];
