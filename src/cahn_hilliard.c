@@ -36,20 +36,20 @@
 #include "cahn_hilliard.h"
 
 __host__ int ch_update_forward_step(ch_t * ch, field_t * phif);
-__host__ int ch_flux_mu1(ch_t * ch, fe_t * fe, field_t * mobility_map);
-__host__ int ch_flux_interaction(ch_t * ch, fe_t * fe, field_t * subgrid_potential, field_t * mobility_map);
-__host__ int ch_flux_mu_ext(ch_t * ch, field_t * mobility_map);
-__host__ int ch_mobility_masks(ch_t * ch, field_t * mobility_map);
+__host__ int ch_flux_mu1(ch_t * ch, fe_t * fe);
+__host__ int ch_flux_interaction(ch_t * ch, fe_t * fe, field_t * subgrid_potential);
+__host__ int ch_flux_mu_ext(ch_t * ch);
+__host__ int ch_apply_mask(ch_t * ch, field_t * flux_mask);
 
 __global__ void ch_flux_mu1_kernel(kernel_ctxt_t * ktx, ch_t * ch, fe_t * fe,
-				   ch_info_t info, field_t * mobility_map);
+				   ch_info_t info);
 
-__global__ void ch_mobility_masks_kernel(kernel_ctxt_t * ktx, ch_t * ch, field_t * mobility_map);
+__global__ void ch_apply_mask_kernel(kernel_ctxt_t * ktx, ch_t * ch, field_t * flux_mask);
 
-__global__ void ch_flux_interaction_kernel(kernel_ctxt_t * ktx, ch_t * ch, field_t * subgrid_potential, fe_t * fe, ch_info_t info, field_t * mobility_map);
+__global__ void ch_flux_interaction_kernel(kernel_ctxt_t * ktx, ch_t * ch, field_t * subgrid_potential, fe_t * fe, ch_info_t info);
 
 __global__ void ch_flux_mu_ext_kernel(kernel_ctxt_t * ktx, ch_t * ch,
-				   ch_info_t info, field_t * mobility_map);
+				   ch_info_t info);
 
 __global__ void ch_update_kernel_2d(kernel_ctxt_t * ktx, ch_t * ch,
 				    field_t * field, ch_info_t info, int xs, int ys);
@@ -187,12 +187,12 @@ __host__ int ch_info_set(ch_t * ch, ch_info_t info) {
  *****************************************************************************/
 
 __host__ int ch_solver(ch_t * ch, fe_t * fe, field_t * phi, hydro_t * hydro,
-		       map_t * map, field_t * subgrid_potential, field_t * mobility_map) {
+		       map_t * map, field_t * subgrid_potential, field_t * flux_mask) {
 
   assert(ch);
   assert(fe);
   assert(phi);
-  assert(mobility_map);
+  assert(flux_mask);
 
   /* Compute any advective fluxes first, then diffusive fluxes. */
 
@@ -204,15 +204,16 @@ __host__ int ch_solver(ch_t * ch, fe_t * fe, field_t * phi, hydro_t * hydro,
     advflux_cs_zero(ch->flux); /* Reset flux to zero */
   }
 
-  ch_flux_mu1(ch, fe, mobility_map);
+  ch_flux_mu1(ch, fe);
 
   /* Interaction fluxes */
-  ch_flux_interaction(ch, fe, subgrid_potential, mobility_map);
+  ch_flux_interaction(ch, fe, subgrid_potential);
 
   /* External chemical potential fluxes */
-  ch_flux_mu_ext(ch, mobility_map);
+  ch_flux_mu_ext(ch);
   
-  ch_mobility_masks(ch, mobility_map);
+  ch_apply_mask(ch, flux_mask);
+
   if (map) advflux_cs_no_normal_flux(ch->flux, map);
   ch_update_forward_step(ch, phi);
 
@@ -227,7 +228,7 @@ __host__ int ch_solver(ch_t * ch, fe_t * fe, field_t * phi, hydro_t * hydro,
  *
  *****************************************************************************/
 
-__host__ int ch_flux_mu1(ch_t * ch, fe_t * fe, field_t * mobility_map) {
+__host__ int ch_flux_mu1(ch_t * ch, fe_t * fe) {
 
   int nlocal[3];
   dim3 nblk, ntpb;
@@ -237,7 +238,6 @@ __host__ int ch_flux_mu1(ch_t * ch, fe_t * fe, field_t * mobility_map) {
 
   assert(ch);
   assert(fe);
-  assert(mobility_map->nf == 2);
 
   cs_nlocal(ch->cs, nlocal);
   fe->func->target(fe, &fetarget);
@@ -250,7 +250,7 @@ __host__ int ch_flux_mu1(ch_t * ch, fe_t * fe, field_t * mobility_map) {
   kernel_ctxt_launch_param(ctxt, &nblk, &ntpb);
 
   tdpLaunchKernel(ch_flux_mu1_kernel, nblk, ntpb, 0, 0,
-		  ctxt->target, ch->target, fetarget, *ch->info, mobility_map->target);
+                  ctxt->target, ch->target, fetarget, *ch->info);
 
   tdpAssert(tdpPeekAtLastError());
   tdpAssert(tdpDeviceSynchronize());
@@ -276,7 +276,7 @@ __host__ int ch_flux_mu1(ch_t * ch, fe_t * fe, field_t * mobility_map) {
  *****************************************************************************/
 
 __global__ void ch_flux_mu1_kernel(kernel_ctxt_t * ktx, ch_t * ch, fe_t * fe,
-				   ch_info_t info, field_t * mobility_map) {
+                                   ch_info_t info) {
 
   int kindex;
   int kiterations;
@@ -295,7 +295,6 @@ __global__ void ch_flux_mu1_kernel(kernel_ctxt_t * ktx, ch_t * ch, fe_t * fe,
     int index0, index1;
     double flux;
     double mu0[3], mu1[3];
-    double mobility0[2], mobility1[2];
 
     assert(info.nfield == ch->flux->nf);
 
@@ -306,47 +305,33 @@ __global__ void ch_flux_mu1_kernel(kernel_ctxt_t * ktx, ch_t * ch, fe_t * fe,
     index0 = cs_index(ch->cs, ic, jc, kc);
 
     fe->func->mu(fe, index0, mu0);
+
     /* between ic and ic+1 */
-    
-    mobility0[0] = mobility_map->data[addr_rank1(mobility_map->nsites, 2, index0, 0)];
-    mobility0[1] = mobility_map->data[addr_rank1(mobility_map->nsites, 2, index0, 1)];
 
     index1 = cs_index(ch->cs, ic+1, jc, kc);
-
-    mobility1[0] = mobility_map->data[addr_rank1(mobility_map->nsites, 2, index1, 0)];
-    mobility1[1] = mobility_map->data[addr_rank1(mobility_map->nsites, 2, index1, 1)];
-
     fe->func->mu(fe, index1, mu1);
     for (int n = 0; n < info.nfield; n++) {
-      flux = 0.5*(mobility0[n] + mobility1[n])*(mu1[n] - mu0[n]);
+      flux = info.mobility[n]*(mu1[n] - mu0[n]);
       ch->flux->fx[addr_rank1(ch->flux->nsite, info.nfield, index0, n)] -= flux;
     }
 
     /* y direction */
 
     index1 = cs_index(ch->cs, ic, jc+1, kc);
-
-    mobility1[0] = mobility_map->data[addr_rank1(mobility_map->nsites, 2, index1, 0)];
-    mobility1[1] = mobility_map->data[addr_rank1(mobility_map->nsites, 2, index1, 1)];
-
     fe->func->mu(fe, index1, mu1);
     for (int n = 0; n < info.nfield; n++) {
-      flux = 0.5*(mobility0[n] + mobility1[n])*(mu1[n] - mu0[n]);
+      flux = info.mobility[n]*(mu1[n] - mu0[n]);
       ch->flux->fy[addr_rank1(ch->flux->nsite, info.nfield, index0, n)] -= flux;
     }
 
     /* z direction */
 
     index1 = cs_index(ch->cs, ic, jc, kc+1);
-
-    mobility1[0] = mobility_map->data[addr_rank1(mobility_map->nsites, 2, index1, 0)];
-    mobility1[1] = mobility_map->data[addr_rank1(mobility_map->nsites, 2, index1, 1)];
-
     fe->func->mu(fe, index1, mu1);
     for (int n = 0; n < info.nfield; n++) {
-      flux = 0.5*(mobility0[n] + mobility1[n])*(mu1[n] - mu0[n]);
+      flux = info.mobility[n]*(mu1[n] - mu0[n]);
       ch->flux->fz[addr_rank1(ch->flux->nsite, info.nfield, index0, n)] -= flux;
-   }
+    }
 
     /* Next site */
   }
@@ -363,7 +348,7 @@ __global__ void ch_flux_mu1_kernel(kernel_ctxt_t * ktx, ch_t * ch, fe_t * fe,
  *
  *****************************************************************************/
 
-__host__ int ch_flux_interaction(ch_t * ch, fe_t * fe, field_t * subgrid_potential, field_t * mobility_map) {
+__host__ int ch_flux_interaction(ch_t * ch, fe_t * fe, field_t * subgrid_potential) {
 
   int nlocal[3];
   dim3 nblk, ntpb;
@@ -389,7 +374,7 @@ __host__ int ch_flux_interaction(ch_t * ch, fe_t * fe, field_t * subgrid_potenti
   kernel_ctxt_launch_param(ctxt, &nblk, &ntpb);
 
   tdpLaunchKernel(ch_flux_interaction_kernel, nblk, ntpb, 0, 0,
-		  ctxt->target, ch->target, sftarget, fetarget, *ch->info, mobility_map->target);
+		  ctxt->target, ch->target, sftarget, fetarget, *ch->info);
 
   tdpAssert(tdpPeekAtLastError());
   tdpAssert(tdpDeviceSynchronize());
@@ -414,7 +399,7 @@ __host__ int ch_flux_interaction(ch_t * ch, fe_t * fe, field_t * subgrid_potenti
  *
  *****************************************************************************/
 
-__global__ void ch_flux_interaction_kernel(kernel_ctxt_t * ktx, ch_t * ch, field_t * subgrid_potential, fe_t * fe, ch_info_t info, field_t * mobility_map) {
+__global__ void ch_flux_interaction_kernel(kernel_ctxt_t * ktx, ch_t * ch, field_t * subgrid_potential, fe_t * fe, ch_info_t info) {
 
   int kindex;
   int kiterations;
@@ -432,7 +417,6 @@ __global__ void ch_flux_interaction_kernel(kernel_ctxt_t * ktx, ch_t * ch, field
     int index0, index1;
     int icm1, icp1;
     double mu0, mu1;
-    double mobility0[2], mobility1[2];
     double flux;
 
     assert(info.nfield == ch->flux->nf);
@@ -444,39 +428,31 @@ __global__ void ch_flux_interaction_kernel(kernel_ctxt_t * ktx, ch_t * ch, field
 
     index0 = cs_index(ch->cs, ic, jc, kc);
 
-    mobility0[0] = mobility_map->data[addr_rank1(mobility_map->nsites, 2, index0, 0)];
     field_scalar(subgrid_potential, index0, &mu0);
 
     /* between ic and ic+1 */
 
     index1 = cs_index(ch->cs, ic+1, jc, kc);
-
-    mobility1[0] = mobility_map->data[addr_rank1(mobility_map->nsites, 2, index1, 0)];
     field_scalar(subgrid_potential, index1, &mu1);
 
-    flux = 0.5*(mobility0[0]+mobility1[0])*(mu1 - mu0);
+    flux = info.mobility[0]*(mu1 - mu0);
     ch->flux->fx[addr_rank1(ch->flux->nsite, info.nfield, index0, 0)] -= flux;
-
 
     /* y direction */
 
     index1 = cs_index(ch->cs, ic, jc+1, kc);
-
-    mobility1[0] = mobility_map->data[addr_rank1(mobility_map->nsites, 2, index1, 0)];
     field_scalar(subgrid_potential, index1, &mu1);
 
-    flux = 0.5*(mobility0[0]+mobility1[0])*(mu1 - mu0);
+    flux = info.mobility[0]*(mu1 - mu0);
     ch->flux->fy[addr_rank1(ch->flux->nsite, info.nfield, index0, 0)] -= flux;
 
 
     /* z direction */
 
     index1 = cs_index(ch->cs, ic, jc, kc+1);
-
-    mobility1[0] = mobility_map->data[addr_rank1(mobility_map->nsites, 2, index1, 0)];
     field_scalar(subgrid_potential, index1, &mu1);
 
-    flux = 0.5*(mobility0[0]+mobility1[0])*(mu1 - mu0);
+    flux = info.mobility[0]*(mu1 - mu0);
     ch->flux->fz[addr_rank1(ch->flux->nsite, info.nfield, index0, 0)] -= flux;
     //if (ic == 20 && jc == 20 && kc == 20) printf("z interact flux = %f\n",  -flux);
     //if (ic == 20 && jc == 20 && kc == 20) printf("mob = %f, mu1 = %f mu0 %f\n", info.mobility[0], mu1, mu0);
@@ -485,9 +461,6 @@ __global__ void ch_flux_interaction_kernel(kernel_ctxt_t * ktx, ch_t * ch, field
 
   return;
 }
-
-
-
 
 /*****************************************************************************
  *
@@ -546,7 +519,7 @@ __host__ int ch_update_forward_step(ch_t * ch, field_t * phif) {
  *
  *****************************************************************************/
 
-__host__ int ch_flux_mu_ext(ch_t * ch, field_t * mobility_map) {
+__host__ int ch_flux_mu_ext(ch_t * ch) {
 
   int nlocal[3];
   dim3 nblk, ntpb;
@@ -565,7 +538,7 @@ __host__ int ch_flux_mu_ext(ch_t * ch, field_t * mobility_map) {
   kernel_ctxt_launch_param(ctxt, &nblk, &ntpb);
 
   tdpLaunchKernel(ch_flux_mu_ext_kernel, nblk, ntpb, 0, 0,
-                  ctxt->target, ch->target, *ch->info, mobility_map->target);
+                  ctxt->target, ch->target, *ch->info);
   tdpAssert(tdpPeekAtLastError());
   tdpAssert(tdpDeviceSynchronize());
 
@@ -585,7 +558,7 @@ __host__ int ch_flux_mu_ext(ch_t * ch, field_t * mobility_map) {
 
 __global__ void ch_flux_mu_ext_kernel(kernel_ctxt_t * ktx,
                                           ch_t * ch,
-                                          ch_info_t info, field_t * mobility_map) {
+                                          ch_info_t info) {
   int kindex;
   int kiterations;
   
@@ -602,7 +575,6 @@ __global__ void ch_flux_mu_ext_kernel(kernel_ctxt_t * ktx,
 
     int ic, jc, kc;
     int index0;
-    double mobility[2];
 
     ic = kernel_coords_ic(ktx, kindex);
     jc = kernel_coords_jc(ktx, kindex);
@@ -610,16 +582,13 @@ __global__ void ch_flux_mu_ext_kernel(kernel_ctxt_t * ktx,
 
     index0 = cs_index(ch->cs, ic, jc, kc);
 
-    mobility[0] = mobility_map->data[addr_rank1(mobility_map->nsites, 2, index0, 0)];
-    mobility[1] = mobility_map->data[addr_rank1(mobility_map->nsites, 2, index0, 1)];
+    ch->flux->fx[addr_rank1(ch->flux->nsite, info.nfield, index0, 0)] -= info.mobility[0]*info.grad_mu_phi[X];
+    ch->flux->fy[addr_rank1(ch->flux->nsite, info.nfield, index0, 0)] -= info.mobility[0]*info.grad_mu_phi[Y];
+    ch->flux->fz[addr_rank1(ch->flux->nsite, info.nfield, index0, 0)] -= info.mobility[0]*info.grad_mu_phi[Z];
 
-    ch->flux->fx[addr_rank1(ch->flux->nsite, info.nfield, index0, 0)] -= mobility[0]*info.grad_mu_phi[X];
-    ch->flux->fy[addr_rank1(ch->flux->nsite, info.nfield, index0, 0)] -= mobility[0]*info.grad_mu_phi[Y];
-    ch->flux->fz[addr_rank1(ch->flux->nsite, info.nfield, index0, 0)] -= mobility[0]*info.grad_mu_phi[Z];
-
-    ch->flux->fx[addr_rank1(ch->flux->nsite, info.nfield, index0, 1)] -= mobility[1]*info.grad_mu_psi[X];
-    ch->flux->fy[addr_rank1(ch->flux->nsite, info.nfield, index0, 1)] -= mobility[1]*info.grad_mu_psi[Y];
-    ch->flux->fz[addr_rank1(ch->flux->nsite, info.nfield, index0, 1)] -= mobility[1]*info.grad_mu_psi[Z];
+    ch->flux->fx[addr_rank1(ch->flux->nsite, info.nfield, index0, 1)] -= info.mobility[1]*info.grad_mu_psi[X];
+    ch->flux->fy[addr_rank1(ch->flux->nsite, info.nfield, index0, 1)] -= info.mobility[1]*info.grad_mu_psi[Y];
+    ch->flux->fz[addr_rank1(ch->flux->nsite, info.nfield, index0, 1)] -= info.mobility[1]*info.grad_mu_psi[Z];
   }
 
   return;
@@ -724,7 +693,7 @@ __global__ void ch_update_kernel_3d(kernel_ctxt_t * ktx, ch_t * ch,
  *
  *****************************************************************************/
 
-__host__ int ch_mobility_masks(ch_t * ch, field_t * mobility_map) {
+__host__ int ch_apply_mask(ch_t * ch, field_t * flux_mask) {
 
   int nlocal[3];
   dim3 nblk, ntpb;
@@ -732,7 +701,7 @@ __host__ int ch_mobility_masks(ch_t * ch, field_t * mobility_map) {
   kernel_ctxt_t * ctxt = NULL;
 
   assert(ch);
-  assert(mobility_map);
+  assert(flux_mask);
 
   cs_nlocal(ch->flux->cs, nlocal);
 
@@ -743,8 +712,8 @@ __host__ int ch_mobility_masks(ch_t * ch, field_t * mobility_map) {
   kernel_ctxt_create(ch->flux->cs, NSIMDVL, limits, &ctxt);
   kernel_ctxt_launch_param(ctxt, &nblk, &ntpb);
 
-  tdpLaunchKernel(ch_mobility_masks_kernel, nblk, ntpb, 0, 0,
-                  ctxt->target, ch->target, mobility_map->target);
+  tdpLaunchKernel(ch_apply_mask_kernel, nblk, ntpb, 0, 0,
+                  ctxt->target, ch->target, flux_mask->target);
 
   tdpAssert(tdpPeekAtLastError());
   tdpAssert(tdpDeviceSynchronize());
@@ -757,14 +726,14 @@ __host__ int ch_mobility_masks(ch_t * ch, field_t * mobility_map) {
 
 /*****************************************************************************
  *
- *  ch_mobility_masks_kernel
+ *  ch_apply_mask_kernel
  *
- *  Set normal fluxes at solid fluid interfaces to zero.
+ *  Multiply total flux by mask
  *
  *****************************************************************************/
 
-__global__ void ch_mobility_masks_kernel(kernel_ctxt_t * ktx,
-                                          ch_t * ch, field_t * mobility_map) {
+__global__ void ch_apply_mask_kernel(kernel_ctxt_t * ktx,
+                                          ch_t * ch, field_t * flux_mask) {
   int kindex;
   __shared__ int kiter;
 
@@ -782,10 +751,10 @@ __global__ void ch_mobility_masks_kernel(kernel_ctxt_t * ktx,
     kc = kernel_coords_kc(ktx, kindex);
 
     index0 = kernel_coords_index(ktx, ic, jc, kc);
-    m0     = mobility_map->data[addr_rank1(mobility_map->nsites, 2, index0, 0)];
+    m0     = flux_mask->data[addr_rank1(flux_mask->nsites, 2, index0, 0)];
 
     index1 = kernel_coords_index(ktx, ic+1, jc, kc);
-    m1     = mobility_map->data[addr_rank1(mobility_map->nsites, 2, index1, 0)];
+    m1     = flux_mask->data[addr_rank1(flux_mask->nsites, 2, index1, 0)];
 
     mask   = m0*m1;
 
@@ -795,7 +764,7 @@ __global__ void ch_mobility_masks_kernel(kernel_ctxt_t * ktx,
 
     index1 = kernel_coords_index(ktx, ic, jc+1, kc);
 
-    m1     = mobility_map->data[addr_rank1(mobility_map->nsites, 2, index1, 0)];
+    m1     = flux_mask->data[addr_rank1(flux_mask->nsites, 2, index1, 0)];
     mask   = m0*m1;
 
     for (n = 0; n < ch->flux->nf; n++) {
@@ -804,7 +773,7 @@ __global__ void ch_mobility_masks_kernel(kernel_ctxt_t * ktx,
 
     index1 = kernel_coords_index(ktx, ic, jc, kc+1);
 
-    m1     = mobility_map->data[addr_rank1(mobility_map->nsites, 2, index1, 0)];
+    m1     = flux_mask->data[addr_rank1(flux_mask->nsites, 2, index1, 0)];
     mask   = m0*m1;
 
     for (n = 0; n < ch->flux->nf; n++) {

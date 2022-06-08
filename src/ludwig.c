@@ -134,7 +134,7 @@ struct ludwig_s {
   field_t * p;              /* Vector order parameter */
   field_t * q;              /* Tensor order parameter */
   field_t * subgrid_potential;   /* Phi-subgrid particles interaction field */
-  field_t * mobility_map;   /* Phi-subgrid particles interaction field */
+  field_t * flux_mask;   /* Phi-subgrid particles interaction field */
   field_grad_t * phi_grad;  /* Gradients for phi */
   field_grad_t * p_grad;    /* Gradients for p */
   field_grad_t * q_grad;    /* Gradients for q */
@@ -261,7 +261,7 @@ static int ludwig_rt(ludwig_t * ludwig) {
   /* All the same I/O grid  */
 
   if (ludwig->phi) field_init_io_info(ludwig->phi, io_grid, form, form);
-  if (ludwig->mobility_map) field_init_io_info(ludwig->mobility_map, io_grid, form, form);
+  if (ludwig->flux_mask) field_init_io_info(ludwig->flux_mask, io_grid, form, form);
   if (ludwig->p) field_init_io_info(ludwig->p, io_grid, form, form);
   if (ludwig->q) field_init_io_info(ludwig->q, io_grid, form, form);
 
@@ -297,8 +297,8 @@ static int ludwig_rt(ludwig_t * ludwig) {
   if (ludwig->subgrid_potential) {
     field_phi_init_uniform(ludwig->subgrid_potential, 0.0);
   }
-  //if (ludwig->mobility_map) {
-  //  field_phi_init_uniform(ludwig->mobility_map, 0.0);
+  //if (ludwig->flux_mask) {
+  //  field_phi_init_uniform(ludwig->flux_mask, 0.0);
   //}
   /* To be called before wall_rt_init() */
   if (ludwig->psi) {
@@ -497,7 +497,7 @@ void ludwig_run(const char * inputfile) {
 
   if (ludwig->phi) field_memcpy(ludwig->phi, tdpMemcpyHostToDevice);
   if (ludwig->subgrid_potential) field_memcpy(ludwig->subgrid_potential, tdpMemcpyHostToDevice);
-  if (ludwig->mobility_map) field_memcpy(ludwig->mobility_map, tdpMemcpyHostToDevice);
+  if (ludwig->flux_mask) field_memcpy(ludwig->flux_mask, tdpMemcpyHostToDevice);
   if (ludwig->p)   field_memcpy(ludwig->p, tdpMemcpyHostToDevice);
   if (ludwig->q)   field_memcpy(ludwig->q, tdpMemcpyHostToDevice);
 
@@ -571,7 +571,7 @@ void ludwig_run(const char * inputfile) {
       TIMER_start(TIMER_PHI_HALO);
       field_halo(ludwig->phi);
       field_halo(ludwig->subgrid_potential);
-      field_halo(ludwig->mobility_map);
+      field_halo(ludwig->flux_mask);
       TIMER_stop(TIMER_PHI_HALO);
 
       field_grad_compute(ludwig->phi_grad);
@@ -738,14 +738,14 @@ void ludwig_run(const char * inputfile) {
 
       if (ludwig->ch) {
 	ch_solver(ludwig->ch, ludwig->fe, ludwig->phi, ludwig->hydro,
-		  ludwig->map, ludwig->subgrid_potential, ludwig->mobility_map);
+		  ludwig->map, ludwig->subgrid_potential, ludwig->flux_mask);
       }
        
       if (ludwig->pch) {
 	phi_cahn_hilliard(ludwig->pch, ludwig->fe, ludwig->phi,
 			  ludwig->hydro, 
 			  ludwig->map, ludwig->noise_phi,
-			ludwig->subgrid_potential, ludwig->mobility_map);
+			ludwig->subgrid_potential, ludwig->flux_mask);
       }
 
       if (ludwig->p) {
@@ -811,11 +811,11 @@ void ludwig_run(const char * inputfile) {
       TIMER_start(TIMER_BBL);
       wall_set_wall_distributions(ludwig->wall);
 
-      subgrid_phi_production(ludwig->collinfo, ludwig->phi); 
+      //subgrid_phi_production(ludwig->collinfo, ludwig->phi); 
       subgrid_update(ludwig->collinfo, ludwig->hydro, noise_flag);
       //subgrid_centre_update(ludwig->collinfo, ludwig->hydro, noise_flag);
-      subgrid_mobility_map(ludwig->collinfo, ludwig->mobility_map, ludwig->rt);
-      //subgrid_mobility_map_vesicle2(ludwig->collinfo, ludwig->mobility_map, ludwig->rt);
+      subgrid_flux_mask(ludwig->collinfo, ludwig->flux_mask, ludwig->rt);
+      //subgrid_flux_mask_vesicle2(ludwig->collinfo, ludwig->flux_mask, ludwig->rt);
 
       bounce_back_on_links(ludwig->bbl, ludwig->lb, ludwig->wall,
 			   ludwig->collinfo);
@@ -873,13 +873,13 @@ void ludwig_run(const char * inputfile) {
       }
     }
 
-    if (is_mobility_output_step() || is_config_step()) {
+    if (is_mask_output_step() || is_config_step()) {
 
-      if (ludwig->mobility_map) {
-	field_io_info(ludwig->mobility_map, &iohandler);
-	pe_info(ludwig->pe, "Writing mobility file at step %d!\n", step);
-	sprintf(filename,"%smobility_map-%8.8d", subdirectory, step);
-	io_write_data(iohandler, filename, ludwig->mobility_map);
+      if (ludwig->flux_mask) {
+	field_io_info(ludwig->flux_mask, &iohandler);
+	pe_info(ludwig->pe, "Writing flux_mask file at step %d!\n", step);
+	sprintf(filename,"%sflux_mask-%8.8d", subdirectory, step);
+	io_write_data(iohandler, filename, ludwig->flux_mask);
       }
     } 
     if (is_phi_output_step() || is_config_step()) {
@@ -1041,11 +1041,11 @@ void ludwig_run(const char * inputfile) {
       io_write_data(iohandler, filename, ludwig->phi);
     }
 
-    if (ludwig->mobility_map) {
-      field_io_info(ludwig->mobility_map, &iohandler);
+    if (ludwig->flux_mask) {
+      field_io_info(ludwig->flux_mask, &iohandler);
       pe_info(ludwig->pe, "Writing mobility map file at step %d!\n", step);
-      sprintf(filename, "%smobility_map-%8.8d", subdirectory, step);
-      io_write_data(iohandler, filename, ludwig->mobility_map);
+      sprintf(filename, "%sflux_mask-%8.8d", subdirectory, step);
+      io_write_data(iohandler, filename, ludwig->flux_mask);
     }
 
     if (ludwig->q) {
@@ -1279,8 +1279,8 @@ int free_energy_init_rt(ludwig_t * ludwig) {
     field_create(pe, cs, nf, "subgrid_potential", &ludwig->subgrid_potential);
     field_init(ludwig->subgrid_potential, nhalo, le);
 
-    field_create(pe, cs, nf, "mobility_map", &ludwig->mobility_map);
-    field_init(ludwig->mobility_map, nhalo, le);
+    field_create(pe, cs, nf, "flux_mask", &ludwig->flux_mask);
+    field_init(ludwig->flux_mask, nhalo, le);
 
     field_grad_create(pe, ludwig->phi, ngrad, &ludwig->phi_grad);
 
@@ -1501,8 +1501,8 @@ int free_energy_init_rt(ludwig_t * ludwig) {
     field_create(pe, cs, 1, "subgrid_potential", &ludwig->subgrid_potential);
     field_init(ludwig->subgrid_potential, nhalo, le);
 
-    field_create(pe, cs, nf, "mobility_map", &ludwig->mobility_map);
-    field_init(ludwig->mobility_map, nhalo, le);
+    field_create(pe, cs, nf, "flux_mask", &ludwig->flux_mask);
+    field_init(ludwig->flux_mask, nhalo, le);
 
     n = rt_double_parameter_vector(rt, "grad_mu_phi", options.grad_mu_phi);
     if (n != 0) physics_grad_mu_phi_set(ludwig->phys, options.grad_mu_phi);

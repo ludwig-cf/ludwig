@@ -678,13 +678,13 @@ int subgrid_phi_production(colloids_info_t * cinfo, field_t * phi) {
 
 /*****************************************************************************
  *
- *  subgrid_mobility_map  ! MUST BE CALLED AFTER SUBGRID_UPDATE !
+ *  subgrid_flux_mask  ! MUST BE CALLED AFTER SUBGRID_UPDATE !
  *  TODO: fuse finding m and n and rcentre as well as their broadcasting ?
  *  TODO: realrank is a variable that can be set when calculating m 
  *
  *****************************************************************************/
 
-int subgrid_mobility_map(colloids_info_t * cinfo, field_t * mobility_map, rt_t * rt) {
+int subgrid_flux_mask(colloids_info_t * cinfo, field_t * flux_mask, rt_t * rt) {
 
   int ia, i, j, k, on_phi = 0, on_psi = 0, index;
   int nlocal[3], offset[3];
@@ -696,7 +696,7 @@ int subgrid_mobility_map(colloids_info_t * cinfo, field_t * mobility_map, rt_t *
   double rnorm, mnorm, nnorm;
   double cosalpha, alpha, gaussalpha;
   double rvesicle;  
-  double mobility[2], porosity[2];
+  double porosity[2];
 
   MPI_Comm comm;
   MPI_Status status;
@@ -717,24 +717,20 @@ int subgrid_mobility_map(colloids_info_t * cinfo, field_t * mobility_map, rt_t *
   if (cinfo->nsubgrid == 0) return 0;
   assert(cinfo);
 
-  rt_int_parameter(rt, "subgrid_mobility_map_phi", &on_phi); 
-  rt_int_parameter(rt, "subgrid_mobility_map_psi", &on_psi); 
+  rt_int_parameter(rt, "ch_mask_phi", &on_phi); 
+  rt_int_parameter(rt, "ch_mask_psi", &on_psi); 
 
-  rt_double_parameter(rt, "symmetric_ll_mobility_phi", &mobility[0]);
-  rt_double_parameter(rt, "symmetric_ll_mobility_psi", &mobility[1]);
-
-  rt_double_parameter(rt, "symmetric_ll_porosity_phi", &porosity[0]);
-  rt_double_parameter(rt, "symmetric_ll_porosity_psi", &porosity[1]);
+  rt_double_parameter(rt, "ch_porosity_phi", &porosity[0]);
+  rt_double_parameter(rt, "ch_porosity_psi", &porosity[1]);
 
   /* Loop through all cells (including the halo cells) and set
-   * the mobility at each node to default mobiltiy for this step. */
+   * the mask at each node to 1 */
   for (i = 1; i <= nlocal[X]; i++) {
     for (j = 1; j <= nlocal[Y]; j++) {
       for (k = 1; k <= nlocal[Z]; k++) {
 	index = cs_index(cinfo->cs, i, j, k);
-	mobility_map->data[addr_rank1(mobility_map->nsites, 2, index, 0)] = mobility[0];
-	mobility_map->data[addr_rank1(mobility_map->nsites, 2, index, 1)] = mobility[1];
-	//field_scalar_set(mobility_map, index, mobility);
+	flux_mask->data[addr_rank1(flux_mask->nsites, 2, index, 0)] = 1.0;
+	flux_mask->data[addr_rank1(flux_mask->nsites, 2, index, 1)] = 1.0;
       }
     }
   }
@@ -845,7 +841,7 @@ int subgrid_mobility_map(colloids_info_t * cinfo, field_t * mobility_map, rt_t *
     }
   }
  
-// Assign mobility
+// Assign mask value 
 
   rcentre_local[X] = rcentre[X] - offset[X];
   rcentre_local[Y] = rcentre[Y] - offset[Y];
@@ -869,15 +865,15 @@ int subgrid_mobility_map(colloids_info_t * cinfo, field_t * mobility_map, rt_t *
 	rnorm = sqrt(rsq);
 
 	if (rnorm <= rvesicle + 1 && rnorm >= rvesicle - 1) {
-	  if (on_phi == 1) mobility_map->data[addr_rank1(mobility_map->nsites, 2, index, 0)] = porosity[0];
-	  if (on_psi == 1) mobility_map->data[addr_rank1(mobility_map->nsites, 2, index, 1)] = porosity[1];
+	  if (on_phi == 1) flux_mask->data[addr_rank1(flux_mask->nsites, 2, index, 0)] = porosity[0];
+	  if (on_psi == 1) flux_mask->data[addr_rank1(flux_mask->nsites, 2, index, 1)] = porosity[1];
           cosalpha = (r[X]*m[X] + r[Y]*m[Y] + r[Z]*m[Z]) / rnorm;
           alpha = acos(cosalpha);
 
           if (alpha >= -1.0 && alpha <= 1.0) {
             gaussalpha = exp(-0.5*(alpha/0.6)*(alpha/0.6));
-	    if (on_phi == 1) mobility_map->data[addr_rank1(mobility_map->nsites, 2, index, 0)] = porosity[0] + (mobility[0] - porosity[0])*gaussalpha;
-	    //if (on_psi == 1) mobility_map->data[addr_rank1(mobility_map->nsites, 2, index, 1)] = porosity[1] + (mobility[1] - porosity[1])*gaussalpha;
+	    if (on_phi == 1) flux_mask->data[addr_rank1(flux_mask->nsites, 2, index, 0)] = porosity[0] + (1.0 - porosity[0])*gaussalpha;
+	    //if (on_psi == 1) flux_mask->data[addr_rank1(flux_mask->nsites, 2, index, 1)] = porosity[1] + (1.0 - porosity[1])*gaussalpha;
 	  }
 	}
       }
@@ -890,13 +886,13 @@ int subgrid_mobility_map(colloids_info_t * cinfo, field_t * mobility_map, rt_t *
 
 /*****************************************************************************
  *
- *  subgrid_mobility_map_vesicle2  ! MUST BE CALLED AFTER SUBGRID_UPDATE !
+ *  subgrid_flux_mask_vesicle2  ! MUST BE CALLED AFTER SUBGRID_UPDATE !
  *  TODO: fuse finding m and n and rcentre as well as their broadcasting ?
  *  TODO: realrank is a variable that can be set when calculating m 
  *
  *****************************************************************************/
 
-int subgrid_mobility_map_vesicle2(colloids_info_t * cinfo, field_t * mobility_map, rt_t * rt) {
+int subgrid_flux_mask_vesicle2(colloids_info_t * cinfo, field_t * flux_mask, rt_t * rt) {
 
   int ia, i, j, k, on, index;
   int nlocal[3], offset[3];
@@ -929,7 +925,7 @@ int subgrid_mobility_map_vesicle2(colloids_info_t * cinfo, field_t * mobility_ma
   if (cinfo->nsubgrid == 0) return 0;
   assert(cinfo);
 
-  rt_int_parameter(rt, "subgrid_mobility_map", &on); 
+  rt_int_parameter(rt, "subgrid_flux_mask", &on); 
   
   /* Loop through all cells (including the halo cells) and set
    * the mobility at each node to default mobiltiy for this step. */
@@ -938,7 +934,7 @@ int subgrid_mobility_map_vesicle2(colloids_info_t * cinfo, field_t * mobility_ma
     for (j = 1; j <= nlocal[Y]; j++) {
       for (k = 1; k <= nlocal[Z]; k++) {
 	index = cs_index(cinfo->cs, i, j, k);
-	field_scalar_set(mobility_map, index, mobility);
+	field_scalar_set(flux_mask, index, mobility);
       }
     }
   }
@@ -1074,16 +1070,16 @@ int subgrid_mobility_map_vesicle2(colloids_info_t * cinfo, field_t * mobility_ma
 	rnorm = sqrt(rsq);
 
 	if (rnorm <= rvesicle + 1 && rnorm >= rvesicle - 1) {
-	  field_scalar_set(mobility_map, index, 0.0);
+	  field_scalar_set(flux_mask, index, 0.0);
           cosalpha = (r[X]*m[X] + r[Y]*m[Y] + r[Z]*m[Z]) / rnorm;
           alpha = acos(cosalpha);
 
           //if (alpha >= -1.0 && alpha <= 1.0) {
           //  gaussalpha = exp(-0.5*(alpha/0.6)*(alpha/0.6))*mobility;
-	  //  field_scalar_set(mobility_map, index, gaussalpha);
+	  //  field_scalar_set(flux_mask, index, gaussalpha);
 	  //}
           if (alpha >= -0.5 && alpha <= 0.5) {
-            field_scalar_set(mobility_map, index, mobility);
+            field_scalar_set(flux_mask, index, mobility);
           }
 	}
       }

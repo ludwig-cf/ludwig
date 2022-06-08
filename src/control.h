@@ -25,7 +25,7 @@ int is_config_at_end(void);
 int is_colloid_io_step(void);
 
 int is_phi_output_step(void);
-int is_mobility_output_step(void);
+int is_mask_output_step(void);
 int is_vel_output_step(void);
 int is_psi_output_step(void);
 int is_rho_output_step(void);
