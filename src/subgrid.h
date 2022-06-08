@@ -24,7 +24,7 @@ int subgrid_update(colloids_info_t * cinfo, hydro_t * hydro, int noise_flag);
 int subgrid_centre_update(colloids_info_t * cinfo, hydro_t * hydro, int noise_flag);
 int subgrid_centre_update2(colloids_info_t * cinfo, hydro_t * hydro, int noise_flag);
 int subgrid_phi_production(colloids_info_t * cinfo, field_t * phi);
-int subgrid_flux_mask(colloids_info_t * cinfo, field_t * flux_mask, rt_t * rt);
+int subgrid_flux_mask(pe_t * pe, colloids_info_t * cinfo, field_t * flux_mask, rt_t * rt, field_t * phi);
 int subgrid_flux_mask_vesicle2(colloids_info_t * cinfo, field_t * flux_mask, rt_t * rt);
 /* <----- */
 

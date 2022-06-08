@@ -417,7 +417,7 @@ __global__ void phi_grad_mu_solid_kernel(kernel_ctxt_t * ktx, field_t * field,
 /* -----> For book-keeping */
   double globalforce[3];
   double localforce[3] = {0,0,0};
-  int writefreq = 10;
+  int writefreq = 100000;
 
   physics_t * phys;
   FILE * fp;

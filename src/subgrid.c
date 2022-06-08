@@ -19,8 +19,10 @@
 #include <assert.h>
 #include <math.h>
 #include <stddef.h>
+#include <string.h>
 
 #include "pe.h"
+#include "runtime.h"
 #include "coords.h"
 #include "physics.h"
 #include "colloids.h"
@@ -684,9 +686,9 @@ int subgrid_phi_production(colloids_info_t * cinfo, field_t * phi) {
  *
  *****************************************************************************/
 
-int subgrid_flux_mask(colloids_info_t * cinfo, field_t * flux_mask, rt_t * rt) {
+int subgrid_flux_mask(pe_t * pe, colloids_info_t * cinfo, field_t * flux_mask, rt_t * rt, field_t * phi) {
 
-  int ia, i, j, k, on_phi = 0, on_psi = 0, index;
+  int ia, i, j, k, on_phi = 0, on_psi = 0, index, p;
   int nlocal[3], offset[3];
   int my_id, id, totnum_ids, hole_id = -1, ortho_id = -1, centre_id = -1;
   int centrefound = 0, holefound = 0, orthofound = 0;
@@ -694,9 +696,12 @@ int subgrid_flux_mask(colloids_info_t * cinfo, field_t * flux_mask, rt_t * rt) {
   double m[3] = {0., 0., 0.}, n[3] = {0., 0., 0.}, ijk[3];
   double r[3], rcentre[3], rhole[3], rortho[3], rcentre_local[3], rsq;
   double rnorm, mnorm, nnorm;
-  double cosalpha, alpha, gaussalpha;
+  double cosalpha, alpha, gaussalpha, alpha0;
   double rvesicle;  
   double porosity[2];
+  double psi0, kappa, dphi;
+
+  char value[BUFSIZ];
 
   MPI_Comm comm;
   MPI_Status status;
@@ -717,11 +722,23 @@ int subgrid_flux_mask(colloids_info_t * cinfo, field_t * flux_mask, rt_t * rt) {
   if (cinfo->nsubgrid == 0) return 0;
   assert(cinfo);
 
+  p = rt_string_parameter(rt, "chemical_reaction_model", value, BUFSIZ );
+  if (p == 0) pe_fatal(pe, "Please specify chemical_reaction_model\n");
+  
+  if (p != 0) {
+    if ( strcmp(value, "none") != 0 && strcmp(value, "uniform") != 0 && strcmp(value, "psi_creates_phi") != 0 ) {
+      pe_fatal(pe, "chemical_reaction_model can only be one of the following keywords: none, uniform, psi_creates_phi\n");
+    } 
+  } 
+
   rt_int_parameter(rt, "ch_mask_phi", &on_phi); 
   rt_int_parameter(rt, "ch_mask_psi", &on_psi); 
 
   rt_double_parameter(rt, "ch_porosity_phi", &porosity[0]);
   rt_double_parameter(rt, "ch_porosity_psi", &porosity[1]);
+
+  p = rt_double_parameter(rt, "ch_alpha0", &alpha0);
+  if (p != 1) pe_fatal(pe, "Please specify alpha0\n");
 
   /* Loop through all cells (including the halo cells) and set
    * the mask at each node to 1 */
@@ -864,24 +881,37 @@ int subgrid_flux_mask(colloids_info_t * cinfo, field_t * flux_mask, rt_t * rt) {
 	rsq = r[X]*r[X] + r[Y]*r[Y] + r[Z]*r[Z];
 	rnorm = sqrt(rsq);
 
+	// PRODUCE PHI
+	if (rnorm < rvesicle - 1) {
+	  if (strcmp(value, "uniform") == 0) {
+	    p = rt_double_parameter(rt, "rate_of_production", &dphi);
+	    if (p != 1) pe_fatal(pe, "For uniform chemical reaction model, please specify rate_of_production\n");
+	    phi->data[addr_rank1(phi->nsites, 2, index, 0)] += dphi;
+	  }
+	  else if (strcmp(value, "psi_creates_phi") == 0) {
+	    p = rt_double_parameter(rt, "rate_of_conversion", &kappa);
+	    if (p != 1) pe_fatal(pe, "For psi_creates_phi chemical reaction model, please specify rate_of_conversion\n");
+	    rt_double_parameter(rt, "psi0", &psi0);
+	    phi->data[addr_rank1(phi->nsites, 2, index, 0)] += kappa*(phi->data[addr_rank1(phi->nsites, 2, index, 1)] - psi0);
+	  }
+	}
+
+	// ASSIGN MASK VALUE
 	if (rnorm <= rvesicle + 1 && rnorm >= rvesicle - 1) {
 	  if (on_phi == 1) flux_mask->data[addr_rank1(flux_mask->nsites, 2, index, 0)] = porosity[0];
 	  if (on_psi == 1) flux_mask->data[addr_rank1(flux_mask->nsites, 2, index, 1)] = porosity[1];
           cosalpha = (r[X]*m[X] + r[Y]*m[Y] + r[Z]*m[Z]) / rnorm;
           alpha = acos(cosalpha);
 
-          if (alpha >= -1.0 && alpha <= 1.0) {
-            gaussalpha = exp(-0.5*(alpha/0.6)*(alpha/0.6));
-	    if (on_phi == 1) flux_mask->data[addr_rank1(flux_mask->nsites, 2, index, 0)] = porosity[0] + (1.0 - porosity[0])*gaussalpha;
-	    //if (on_psi == 1) flux_mask->data[addr_rank1(flux_mask->nsites, 2, index, 1)] = porosity[1] + (1.0 - porosity[1])*gaussalpha;
-	  }
+          gaussalpha = exp(-0.5*(alpha/alpha0)*(alpha/alpha0));
+	  if (on_phi == 1) flux_mask->data[addr_rank1(flux_mask->nsites, 2, index, 0)] = porosity[0] + (1.0 - porosity[0])*gaussalpha;
+	  //if (on_psi == 1) flux_mask->data[addr_rank1(flux_mask->nsites, 2, index, 1)] = porosity[1] + (1.0 - porosity[1])*gaussalpha;
 	}
       }
     }
   }
   return 0;
 }
-
 
 
 /*****************************************************************************

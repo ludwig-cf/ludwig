@@ -814,7 +814,7 @@ void ludwig_run(const char * inputfile) {
       //subgrid_phi_production(ludwig->collinfo, ludwig->phi); 
       subgrid_update(ludwig->collinfo, ludwig->hydro, noise_flag);
       //subgrid_centre_update(ludwig->collinfo, ludwig->hydro, noise_flag);
-      subgrid_flux_mask(ludwig->collinfo, ludwig->flux_mask, ludwig->rt);
+      subgrid_flux_mask(ludwig->pe, ludwig->collinfo, ludwig->flux_mask, ludwig->rt, ludwig->phi);
       //subgrid_flux_mask_vesicle2(ludwig->collinfo, ludwig->flux_mask, ludwig->rt);
 
       bounce_back_on_links(ludwig->bbl, ludwig->lb, ludwig->wall,
