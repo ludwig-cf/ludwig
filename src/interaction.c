@@ -975,9 +975,9 @@ int colloids_update_discrete_forces_phi(colloids_info_t * cinfo, field_t * phi, 
         colloids_info_cell_list_head(cinfo, ic, jc, kc, &pc);
 	
         for (; pc; pc = pc->next) {
-	  pc->forcephi[X] = 0.0;
-	  pc->forcephi[Y] = 0.0;
-	  pc->forcephi[Z] = 0.0;
+	  pc->s.fphi[X] = 0.0;
+	  pc->s.fphi[Y] = 0.0;
+	  pc->s.fphi[Z] = 0.0;
 	}
       }
     }
@@ -1097,9 +1097,9 @@ int colloids_update_discrete_forces_phi(colloids_info_t * cinfo, field_t * phi, 
                 pc->force[Y] += phi_*grad_u[Y];
                 pc->force[Z] += phi_*grad_u[Z];
 
-		pc->forcephi[X] += phi_*grad_u[X];
-                pc->forcephi[Y] += phi_*grad_u[Y];
-                pc->forcephi[Z] += phi_*grad_u[Z];
+		pc->s.fphi[X] += phi_*grad_u[X];
+                pc->s.fphi[Y] += phi_*grad_u[Y];
+                pc->s.fphi[Z] += phi_*grad_u[Z];
 
 		colloidforce[X] += phi_*grad_u[X];
 		colloidforce[Y] += phi_*grad_u[Y];
@@ -1941,7 +1941,12 @@ int colloids_update_forces_ext(colloids_info_t * cinfo) {
     pc->tex[X] = pc->torque[X];
     pc->tex[Y] = pc->torque[Y];
     pc->tex[Z] = pc->torque[Z];
-  }
+ 
+    /* For extraction */
+    pc->s.fex[X] = pc->force[X];
+    pc->s.fex[Y] = pc->force[Y];
+    pc->s.fex[Z] = pc->force[Z];
+ }
 
   return 0;
 }

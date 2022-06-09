@@ -592,91 +592,91 @@ static double d_peskin(double r) {
 
 /*****************************************************************************
  *
- *  subgrid_phi_production
+ *  subgrid_phi_production now obsolete because phi_production attribute is gone
  *
  *  Produce phi with a rate of phi_production at nodes around a subgrid 
  *  particle of specified index subgridp_index (uses d_peskin with drange = 1)
  *
  *****************************************************************************/
 
-int subgrid_phi_production(colloids_info_t * cinfo, field_t * phi) {
-
-  int ic, jc, kc;
-  int i, j, k, i_min, i_max, j_min, j_max, k_min, k_max;
-  int index;
-  int nlocal[3], offset[3];
-  int ncell[3];
-
-  double r0[3], r[3];
-  double dr;
-  colloid_t * p_colloid;
-
-  assert(cinfo);
-
-  cs_nlocal(cinfo->cs, nlocal);
-  cs_nlocal_offset(cinfo->cs, offset);
-  colloids_info_ncell(cinfo, ncell);
-
-  /* And add up the contributions to the velocity from the lattice. */
-
-  for (ic = 0; ic <= ncell[X] + 1; ic++) {
-    for (jc = 0; jc <= ncell[Y] + 1; jc++) {
-      for (kc = 0; kc <= ncell[Z] + 1; kc++) {
-
-	colloids_info_cell_list_head(cinfo, ic, jc, kc, &p_colloid);
-
-	for ( ; p_colloid; p_colloid = p_colloid->next) {
-
-          if (p_colloid->s.type != COLLOID_TYPE_SUBGRID) continue;
-	  if (p_colloid->s.phi_production == 0.0) continue;
-	  /* Need to translate the colloid position to "local"
-	   * coordinates, so that the correct range of lattice
-	   * nodes is found */
-
-	  r0[X] = p_colloid->s.r[X] - 1.0*offset[X];
-	  r0[Y] = p_colloid->s.r[Y] - 1.0*offset[Y];
-	  r0[Z] = p_colloid->s.r[Z] - 1.0*offset[Z];
-
-	  /* Work out which local lattice sites are involved
-	   * and loop around */
-
-	  i_min = imax(1,         (int) floor(r0[X] - 1));
-	  i_max = imin(nlocal[X], (int) ceil (r0[X] + 1));
-	  j_min = imax(1,         (int) floor(r0[Y] - 1));
-	  j_max = imin(nlocal[Y], (int) ceil (r0[Y] + 1));
-	  k_min = imax(1,         (int) floor(r0[Z] - 1));
-	  k_max = imin(nlocal[Z], (int) ceil (r0[Z] + 1));
-
-	  for (i = i_min; i <= i_max; i++) {
-	    for (j = j_min; j <= j_max; j++) {
-	      for (k = k_min; k <= k_max; k++) {
-
-		index = cs_index(cinfo->cs, i, j, k);
-
-		/* Separation between r0 and the coordinate position of
-		 * this site */
-
-		r[X] = r0[X] - 1.0*i;
-		r[Y] = r0[Y] - 1.0*j;
-		r[Z] = r0[Z] - 1.0*k;
-
-		dr = d_peskin(r[X])*d_peskin(r[Y])*d_peskin(r[Z]);
-
-		phi->data[addr_rank1(phi->nsites, 2, index, 0)] += 
-			p_colloid->s.phi_production * dr;
-	      }
-	    }
-	  }
-	  /* Next colloid */
-	}
-	/* Next cell */
-      }
-    }
-  }
-
-  return 0;
-}
-
+//int subgrid_phi_production(colloids_info_t * cinfo, field_t * phi) {
+//
+//  int ic, jc, kc;
+//  int i, j, k, i_min, i_max, j_min, j_max, k_min, k_max;
+//  int index;
+//  int nlocal[3], offset[3];
+//  int ncell[3];
+//
+//  double r0[3], r[3];
+//  double dr;
+//  colloid_t * p_colloid;
+//
+//  assert(cinfo);
+//
+//  cs_nlocal(cinfo->cs, nlocal);
+//  cs_nlocal_offset(cinfo->cs, offset);
+//  colloids_info_ncell(cinfo, ncell);
+//
+//  /* And add up the contributions to the velocity from the lattice. */
+//
+//  for (ic = 0; ic <= ncell[X] + 1; ic++) {
+//    for (jc = 0; jc <= ncell[Y] + 1; jc++) {
+//      for (kc = 0; kc <= ncell[Z] + 1; kc++) {
+//
+//	colloids_info_cell_list_head(cinfo, ic, jc, kc, &p_colloid);
+//
+//	for ( ; p_colloid; p_colloid = p_colloid->next) {
+//
+//          if (p_colloid->s.type != COLLOID_TYPE_SUBGRID) continue;
+//	  if (p_colloid->s.phi_production == 0.0) continue;
+//	  /* Need to translate the colloid position to "local"
+//	   * coordinates, so that the correct range of lattice
+//	   * nodes is found */
+//
+//	  r0[X] = p_colloid->s.r[X] - 1.0*offset[X];
+//	  r0[Y] = p_colloid->s.r[Y] - 1.0*offset[Y];
+//	  r0[Z] = p_colloid->s.r[Z] - 1.0*offset[Z];
+//
+//	  /* Work out which local lattice sites are involved
+//	   * and loop around */
+//
+//	  i_min = imax(1,         (int) floor(r0[X] - 1));
+//	  i_max = imin(nlocal[X], (int) ceil (r0[X] + 1));
+//	  j_min = imax(1,         (int) floor(r0[Y] - 1));
+//	  j_max = imin(nlocal[Y], (int) ceil (r0[Y] + 1));
+//	  k_min = imax(1,         (int) floor(r0[Z] - 1));
+//	  k_max = imin(nlocal[Z], (int) ceil (r0[Z] + 1));
+//
+//	  for (i = i_min; i <= i_max; i++) {
+//	    for (j = j_min; j <= j_max; j++) {
+//	      for (k = k_min; k <= k_max; k++) {
+//
+//		index = cs_index(cinfo->cs, i, j, k);
+//
+//		/* Separation between r0 and the coordinate position of
+//		 * this site */
+//
+//		r[X] = r0[X] - 1.0*i;
+//		r[Y] = r0[Y] - 1.0*j;
+//		r[Z] = r0[Z] - 1.0*k;
+//
+//		dr = d_peskin(r[X])*d_peskin(r[Y])*d_peskin(r[Z]);
+//
+//		phi->data[addr_rank1(phi->nsites, 2, index, 0)] += 
+//			p_colloid->s.phi_production * dr;
+//	      }
+//	    }
+//	  }
+//	  /* Next colloid */
+//	}
+//	/* Next cell */
+//      }
+//    }
+//  }
+//
+//  return 0;
+//}
+//
 
 /*****************************************************************************
  *

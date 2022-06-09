@@ -31,7 +31,6 @@ struct colloid {
 
   double random[6];     /* Random numbers for MC/Brownian dynamics */
   double force[3];      /* Total force on colloid */
-  double forcephi[3];   /* Force phi field exerts on colloid */
   double torque[3];     /* Total torque on colloid */
   double f0[3];         /* Velocity independent force */
   double t0[3];         /* Velocity independent torque */

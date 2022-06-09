@@ -94,8 +94,8 @@ int main(int argc, char ** argv) {
 
   int type  = COLLOID_TYPE_SUBGRID;
 
-  int Npoly = 4;        /* number of polymers */
-  int Lpoly = 20;       /* length of a polymer */
+  int Npoly = 2;        /* number of polymers */
+  int Lpoly = 1;       /* length of a polymer */
   double lbond = 1.0;   /* bond length */
   //CHANGE1
   int inter_type=0; /* interaction type: 0,1,2,3...; put 0 if only one type of interaction is used*/
@@ -133,6 +133,17 @@ int main(int argc, char ** argv) {
   state = (colloid_state_t *) calloc(nrequest, sizeof(colloid_state_t));
   assert(state != NULL);
   for (int n = 0; n < nrequest; n++) {
+    if (n == 0) {
+      state[n].r[X] = 15.0;
+      state[n].r[Y] = 15.0;
+      state[n].r[Z] = 15.0;
+    }
+    if (n == 1) {
+      state[n].r[X] = 25.0;
+      state[n].r[Y] = 25.0;
+      state[n].r[Z] = 25.0;
+    }
+
     state[n].isfixedr = 0;
     state[n].isfixedv = 0;
     state[n].index = 1 + n;
@@ -164,7 +175,7 @@ int main(int argc, char ** argv) {
 
   if (from_file) {
     int numcol;
-    float pos[3], phi_production, localmobility, localrange;
+    float pos[3];
     int ni[3];
     int mi[3];
     int li[3];
@@ -193,7 +204,7 @@ int main(int argc, char ** argv) {
 
     while (fgets(line, sizeof(line), file)) {
       strcpy(data,line);
-      sscanf(data, "%d %f %f %f %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %f %f %f", &numcol, &pos[0], &pos[1], &pos[2], &nConnec, &ni[0], &ni[1], &ni[2], &nConnec2, &mi[0], &mi[1], &mi[2], &nConnec3, &li[0], &li[1], &li[2], &iscentre, &ishole, &indexcentre, &phi_production, &localrange, &localmobility);
+      sscanf(data, "%d %f %f %f %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d", &numcol, &pos[0], &pos[1], &pos[2], &nConnec, &ni[0], &ni[1], &ni[2], &nConnec2, &mi[0], &mi[1], &mi[2], &nConnec3, &li[0], &li[1], &li[2], &iscentre, &ishole, &indexcentre);
 
       numcol = numcol - 1;
 
@@ -232,10 +243,6 @@ int main(int argc, char ** argv) {
       state[numcol].iscentre = iscentre;
       state[numcol].ishole = ishole;
       state[numcol].indexcentre = indexcentre;
- 
-      state[numcol].phi_production = phi_production;
-      state[numcol].localrange = localrange;
-      state[numcol].localmobility = localmobility;
       
       if (nConnec == 0 || nConnec2 == 0 || nConnec == 3) state[numcol].nangles = 0;
       else state[numcol].nangles = 1;
