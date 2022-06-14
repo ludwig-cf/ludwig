@@ -662,7 +662,7 @@ int colloids_rt_cell_list_checks(rt_t * rt, pe_t * pe, cs_t * cs,
   pe_info(pe, "Input radius maximum:        %14.7e\n", a0max);
 
   if (nc == 1) {
-    rt_int_parameter(rt, "phi_subgrid_on", &onsubgrid);
+    rt_int_parameter(rt, "phi_subgrid_switch", &onsubgrid);
   if (onsubgrid) colloids_info_cutoffmax(*pinfo, &cutoffmax); 
     rmax_phi = cutoffmax + 2;
     nbest[X] = (int) floor(1.0*nlocal[X] / rmax_phi);
@@ -683,15 +683,16 @@ int colloids_rt_cell_list_checks(rt_t * rt, pe_t * pe, cs_t * cs,
     /* Deal with interaction range of the phi/subgrid interaction
 	and with the center of mass update of central particle */
 
-    rt_int_parameter(rt, "phi_subgrid_on", &onsubgrid);
+    rt_int_parameter(rt, "phi_subgrid_switch", &onsubgrid);
     if (onsubgrid) {
       colloids_info_cutoffmax(*pinfo, &cutoffmax); 
       rmax = dmax(rmax, cutoffmax + 2);
     }
 
-    rt_int_parameter(rt, "vesicle_com", &onvesicle);
+    rt_int_parameter(rt, "vesicle_switch", &onvesicle);
     if (onvesicle) {
-      rt_double_parameter(rt, "radius_vesicle", &radius_vesicle);
+      rt_double_parameter(rt, "vesicle_radius", &radius_vesicle);
+      //LIGHTHOUSE
       physics_rvesicle_set(phys, radius_vesicle);
       rmax = dmax(rmax, radius_vesicle);
     }

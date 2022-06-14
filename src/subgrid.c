@@ -246,6 +246,7 @@ int subgrid_update(colloids_info_t * cinfo, hydro_t * hydro, int noise_flag) {
           }
   
           for (ia = 0; ia < 3; ia++) {
+	    //pe_verbose(cinfo->pe, "fphi from subgrid update = %14.7e\n", p_colloid->s.fphi[ia]);
 	    p_colloid->s.v[ia] = p_colloid->fsub[ia] + drag*p_colloid->fex[ia]
                                    + frand[ia];
   	    p_colloid->s.dr[ia] = p_colloid->s.v[ia];
@@ -688,20 +689,21 @@ static double d_peskin(double r) {
 
 int subgrid_flux_mask(pe_t * pe, colloids_info_t * cinfo, field_t * flux_mask, rt_t * rt, field_t * phi) {
 
-  int ia, i, j, k, on_phi = 0, on_psi = 0, index, p;
+  int ia, i, j, k, index, p;
   int nlocal[3], offset[3];
   int my_id, id, totnum_ids, hole_id = -1, ortho_id = -1, centre_id = -1;
   int centrefound = 0, holefound = 0, orthofound = 0;
+  int mask_phi_switch, mask_psi_switch, vesicle_switch, reaction_switch;
 
   double m[3] = {0., 0., 0.}, n[3] = {0., 0., 0.}, ijk[3];
   double r[3], rcentre[3], rhole[3], rortho[3], rcentre_local[3], rsq;
   double rnorm, mnorm, nnorm;
-  double cosalpha, alpha, gaussalpha, alpha0;
+  double cosalpha, alpha, gaussalpha, alpha0, mask_thickness;
   double rvesicle;  
   double porosity[2];
   double psi0, kappa, dphi;
 
-  char value[BUFSIZ];
+  char reaction_model[BUFSIZ];
 
   MPI_Comm comm;
   MPI_Status status;
@@ -719,26 +721,7 @@ int subgrid_flux_mask(pe_t * pe, colloids_info_t * cinfo, field_t * flux_mask, r
   MPI_Comm_rank(comm, &my_id);
   MPI_Comm_size(comm, &totnum_ids);
   
-  if (cinfo->nsubgrid == 0) return 0;
   assert(cinfo);
-
-  p = rt_string_parameter(rt, "chemical_reaction_model", value, BUFSIZ );
-  if (p == 0) pe_fatal(pe, "Please specify chemical_reaction_model\n");
-  
-  if (p != 0) {
-    if ( strcmp(value, "none") != 0 && strcmp(value, "uniform") != 0 && strcmp(value, "psi_creates_phi") != 0 ) {
-      pe_fatal(pe, "chemical_reaction_model can only be one of the following keywords: none, uniform, psi_creates_phi\n");
-    } 
-  } 
-
-  rt_int_parameter(rt, "ch_mask_phi", &on_phi); 
-  rt_int_parameter(rt, "ch_mask_psi", &on_psi); 
-
-  rt_double_parameter(rt, "ch_porosity_phi", &porosity[0]);
-  rt_double_parameter(rt, "ch_porosity_psi", &porosity[1]);
-
-  p = rt_double_parameter(rt, "ch_alpha0", &alpha0);
-  if (p != 1) pe_fatal(pe, "Please specify alpha0\n");
 
   /* Loop through all cells (including the halo cells) and set
    * the mask at each node to 1 */
@@ -752,10 +735,53 @@ int subgrid_flux_mask(pe_t * pe, colloids_info_t * cinfo, field_t * flux_mask, r
     }
   }
 
-  if (on_phi == 0 && on_psi == 0) return 0;
+  vesicle_switch = rt_switch(rt, "vesicle_switch");
 
-/* Find central particle */
+  if (vesicle_switch) {
 
+    mask_phi_switch = rt_switch(rt, "mask_phi_switch");
+    mask_psi_switch = rt_switch(rt, "mask_psi_switch");
+    reaction_switch = rt_switch(rt, "chemical_reaction_switch");
+
+    if (!mask_phi_switch && !mask_psi_switch && !reaction_switch) return 0;
+    if (mask_phi_switch) { 
+      p = rt_double_parameter(rt, "mask_phi_porosity", &porosity[0]);
+      if (p != 1) pe_fatal(pe, "Please specify mask_phi_porosity\n");
+    }
+    if (mask_psi_switch) {
+      p = rt_double_parameter(rt, "mask_psi_porosity", &porosity[1]);
+      if (p != 1) pe_fatal(pe, "Please specify mask_psi_porosity\n");
+    }
+    if (mask_phi_switch || mask_psi_switch) {
+      p = rt_double_parameter(rt, "mask_alpha0", &alpha0);
+      if (p != 1) pe_fatal(pe, "Please specify mask_alpha0\n");
+      p = rt_double_parameter(rt, "mask_thickness", &mask_thickness);
+      if (p != 1) pe_fatal(pe, "Please specify mask_thickness\n");
+    }
+    if (reaction_switch) {
+      p = rt_string_parameter(rt, "chemical_reaction_model", reaction_model, BUFSIZ );
+      if (p != 1) pe_fatal(pe, "Please specify chemical_reaction_model\n");
+      else {
+        if (strcmp(reaction_model, "uniform") == 0) {
+	  p = rt_double_parameter(rt, "rate_of_production", &dphi);
+	  if (p != 1) pe_fatal(pe, "If you choose chemical_reaction_model uniform, please specify rate_of_production\n");
+	}
+	else if (strcmp(reaction_model, "psi_creates_phi") == 0) {	
+	  rt_double_parameter(rt, "psi0", &psi0);
+	  p = rt_double_parameter(rt, "rate_of_conversion", &kappa);
+	  if (p != 1) pe_fatal(pe, "If you choose chemical_reaction_model psi_creates_phi, please specify rate_of_conversion\n");
+        } 
+	else pe_fatal(pe, "Key chemical_reaction_model can only take one of the following values: uniform, psi_creates_phi\n");
+        
+      } 
+    }
+  }
+  else if (reaction_switch) pe_fatal(cinfo->pe, "Reaction not available without vesicle\n");
+  else return 0;
+
+/* The following is only useful when a vesicle is present */
+
+  /* Find central particle */
   colloids_info_local_head(cinfo, &pc);
 
   for ( ; pc; pc = pc->nextlocal) {
@@ -882,30 +908,40 @@ int subgrid_flux_mask(pe_t * pe, colloids_info_t * cinfo, field_t * flux_mask, r
 	rnorm = sqrt(rsq);
 
 	// PRODUCE PHI
-	if (rnorm < rvesicle - 1) {
-	  if (strcmp(value, "uniform") == 0) {
-	    p = rt_double_parameter(rt, "rate_of_production", &dphi);
-	    if (p != 1) pe_fatal(pe, "For uniform chemical reaction model, please specify rate_of_production\n");
-	    phi->data[addr_rank1(phi->nsites, 2, index, 0)] += dphi;
-	  }
-	  else if (strcmp(value, "psi_creates_phi") == 0) {
-	    p = rt_double_parameter(rt, "rate_of_conversion", &kappa);
-	    if (p != 1) pe_fatal(pe, "For psi_creates_phi chemical reaction model, please specify rate_of_conversion\n");
-	    rt_double_parameter(rt, "psi0", &psi0);
-	    phi->data[addr_rank1(phi->nsites, 2, index, 0)] += kappa*(phi->data[addr_rank1(phi->nsites, 2, index, 1)] - psi0);
+        if (reaction_switch) {
+	  if (rnorm < rvesicle - mask_thickness) {
+
+	    if (strcmp(reaction_model, "uniform") == 0) 
+	      phi->data[addr_rank1(phi->nsites, 2, index, 0)] += dphi;
+
+	    else if (strcmp(reaction_model, "psi_creates_phi") == 0) 
+	      phi->data[addr_rank1(phi->nsites, 2, index, 0)] += kappa*(phi->data[addr_rank1(phi->nsites, 2, index, 1)] - psi0);
+
 	  }
 	}
 
 	// ASSIGN MASK VALUE
-	if (rnorm <= rvesicle + 1 && rnorm >= rvesicle - 1) {
-	  if (on_phi == 1) flux_mask->data[addr_rank1(flux_mask->nsites, 2, index, 0)] = porosity[0];
-	  if (on_psi == 1) flux_mask->data[addr_rank1(flux_mask->nsites, 2, index, 1)] = porosity[1];
-          cosalpha = (r[X]*m[X] + r[Y]*m[Y] + r[Z]*m[Z]) / rnorm;
-          alpha = acos(cosalpha);
+	if (mask_phi_switch) { 
+	  if (rnorm <= rvesicle + mask_thickness && rnorm >= rvesicle - mask_thickness) {
 
-          gaussalpha = exp(-0.5*(alpha/alpha0)*(alpha/alpha0));
-	  if (on_phi == 1) flux_mask->data[addr_rank1(flux_mask->nsites, 2, index, 0)] = porosity[0] + (1.0 - porosity[0])*gaussalpha;
-	  //if (on_psi == 1) flux_mask->data[addr_rank1(flux_mask->nsites, 2, index, 1)] = porosity[1] + (1.0 - porosity[1])*gaussalpha;
+            cosalpha = (r[X]*m[X] + r[Y]*m[Y] + r[Z]*m[Z]) / rnorm;
+            alpha = acos(cosalpha);
+            gaussalpha = exp(-0.5*(alpha/alpha0)*(alpha/alpha0));
+
+	    flux_mask->data[addr_rank1(flux_mask->nsites, 2, index, 0)] = porosity[0] + (1.0 - porosity[0])*gaussalpha;
+
+	  }
+	}
+
+	if (mask_psi_switch) { 
+	  if (rnorm <= rvesicle + mask_thickness && rnorm >= rvesicle - mask_thickness) 
+
+            cosalpha = (r[X]*m[X] + r[Y]*m[Y] + r[Z]*m[Z]) / rnorm;
+            alpha = acos(cosalpha);
+            gaussalpha = exp(-0.5*(alpha/alpha0)*(alpha/alpha0));
+
+	    flux_mask->data[addr_rank1(flux_mask->nsites, 2, index, 1)] = porosity[1] + (1.0 - porosity[1])*gaussalpha;
+
 	}
       }
     }
@@ -915,8 +951,7 @@ int subgrid_flux_mask(pe_t * pe, colloids_info_t * cinfo, field_t * flux_mask, r
 
 
 /*****************************************************************************
- *
- *  subgrid_flux_mask_vesicle2  ! MUST BE CALLED AFTER SUBGRID_UPDATE !
+ * *  subgrid_flux_mask_vesicle2  ! MUST BE CALLED AFTER SUBGRID_UPDATE !
  *  TODO: fuse finding m and n and rcentre as well as their broadcasting ?
  *  TODO: realrank is a variable that can be set when calculating m 
  *

@@ -63,7 +63,7 @@ int interact_hc_set(interact_t * obj, interact_enum_t it, double hc);
 int interact_range_check(interact_t * obj, colloids_info_t * cinfo);
 
 /* -----> CHEMOVESICLE V2 */
-/* Now requires rt to know whether phi_subgrid_on is on */
+/* Now requires rt to know whether phi_subgrid_switch is on */
 int interact_compute(interact_t * interact, colloids_info_t * cinfo,
 		     map_t * map, psi_t * psi, ewald_t * ewald,
 			field_t * phi,

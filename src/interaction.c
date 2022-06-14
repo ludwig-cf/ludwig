@@ -203,7 +203,7 @@ int interact_compute(interact_t * interact, colloids_info_t * cinfo,
     colloids_update_forces_fluid_driven(cinfo, map);
     interact_wall(interact, cinfo);
 
-    rt_int_parameter(rt, "phi_subgrid_on", &on);
+    rt_int_parameter(rt, "phi_subgrid_switch", &on);
     if (on) colloids_update_discrete_forces_phi(cinfo, phi, subgrid_potential); 
 
     if (nc > 1) {
