@@ -1202,7 +1202,6 @@ int field_halo_create(const field_t * field, field_halo_t * h) {
   // Device
   int ndevice = 0;
   tdpGetDeviceCount(&ndevice);
-  printf("ndevice = %d\n", ndevice);
   if (ndevice == 0) {
     h->target = h;
   } else {
