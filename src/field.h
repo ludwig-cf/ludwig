@@ -45,6 +45,9 @@ struct field_halo_s {
   double * send[27];            /* halo: send data buffers */
   double * recv[27];            /* halo: recv data buffers */
   MPI_Request request[2*27];    /* halo: array of send/recv requests */
+
+  tdpStream_t stream[27];
+  field_halo_t * target;        /* target structure */
 };
 
 typedef struct field_s field_t;

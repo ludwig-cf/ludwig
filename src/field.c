@@ -1195,8 +1195,30 @@ int field_halo_create(const field_t * field, field_halo_t * h) {
     h->recv[p] = (double *) calloc(rcount, sizeof(double));
     assert(h->send[p]);
     assert(h->recv[p]);
+
+    tdpStreamCreate(&h->stream[p]);
   }
 
+  // Device
+  int ndevice = 0;
+  tdpGetDeviceCount(&ndevice);
+  printf("ndevice = %d\n", ndevice);
+  if (ndevice == 0) {
+    h->target = h;
+  } else {
+    tdpMalloc((void **) &h->target, sizeof(field_halo_t));
+    tdpMemcpy(h->target, h, sizeof(field_halo_t), tdpMemcpyHostToDevice);
+    double *send[27] = {0};
+    double *recv[27] = {0};
+    for (int p = 1; p < h->nvel; p++) {
+      int scount = field->nf*field_halo_size(h->slim[p]);
+      int rcount = field->nf*field_halo_size(h->rlim[p]);
+      tdpMalloc((void**) &send[p], scount * sizeof(double));
+      tdpMalloc((void**) &recv[p], rcount * sizeof(double));
+    }
+    tdpMemcpy(h->target->send, send, 27 * sizeof(double *), tdpMemcpyHostToDevice);
+    tdpMemcpy(h->target->recv, recv, 27 * sizeof(double *), tdpMemcpyHostToDevice);
+  }
   return 0;
 }
 
@@ -1363,9 +1385,25 @@ int field_halo_free(field_halo_t * h) {
 
   assert(h);
 
+  int ndevice = 0;
+  tdpGetDeviceCount(&ndevice);
+
+  if (ndevice > 0) {
+    double *send[27];
+    double *recv[27];
+    tdpMemcpy(send, h->target->send, 27 * sizeof(double *), tdpMemcpyDeviceToHost);
+    tdpMemcpy(recv, h->target->recv, 27 * sizeof(double *), tdpMemcpyDeviceToHost);
+    for (int p = 1; p < h->nvel; p++) {
+      tdpFree(send[p]);
+      tdpFree(recv[p]);
+    }
+    tdpFree(h->target);
+  }
+
   for (int p = 1; p < h->nvel; p++) {
     free(h->send[p]);
     free(h->recv[p]);
+    tdpStreamDestroy(h->stream[p]);
   }
 
   *h = (field_halo_t) {0};
