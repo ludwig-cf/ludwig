@@ -374,10 +374,10 @@ __host__ int field_halo_swap(field_t * obj, field_halo_enum_t flag) {
     halo_swap_host_rank1(obj->halo, obj->data, MPI_DOUBLE);
     break;
   case FIELD_HALO_TARGET:
-    tdpMemcpy(&data, &obj->target->data, sizeof(double *),
-	      tdpMemcpyDeviceToHost);
-    halo_swap_packed(obj->halo, data);
-    break;
+    // tdpMemcpy(&data, &obj->target->data, sizeof(double *),
+	  //     tdpMemcpyDeviceToHost);
+    // halo_swap_packed(obj->halo, data);
+    // break;
   case FIELD_HALO_OPENMP:
     field_halo_post(obj, &obj->h);
     field_halo_wait(obj, &obj->h);
@@ -1279,16 +1279,14 @@ int field_halo_create(const field_t * field, field_halo_t * h) {
   } else {
     tdpMalloc((void **) &h->target, sizeof(field_halo_t));
     tdpMemcpy(h->target, h, sizeof(field_halo_t), tdpMemcpyHostToDevice);
-    double *send[27] = {0};
-    double *recv[27] = {0};
     for (int p = 1; p < h->nvel; p++) {
       int scount = field->nf*field_halo_size(h->slim[p]);
       int rcount = field->nf*field_halo_size(h->rlim[p]);
-      tdpMalloc((void**) &send[p], scount * sizeof(double));
-      tdpMalloc((void**) &recv[p], rcount * sizeof(double));
+      tdpMalloc((void**) &h->send_d[p], scount * sizeof(double));
+      tdpMalloc((void**) &h->recv_d[p], rcount * sizeof(double));
     }
-    tdpMemcpy(h->target->send, send, 27 * sizeof(double *), tdpMemcpyHostToDevice);
-    tdpMemcpy(h->target->recv, recv, 27 * sizeof(double *), tdpMemcpyHostToDevice);
+    tdpMemcpy(h->target->send, h->send_d, 27 * sizeof(double *), tdpMemcpyHostToDevice);
+    tdpMemcpy(h->target->recv, h->recv_d, 27 * sizeof(double *), tdpMemcpyHostToDevice);
   }
   return 0;
 }
@@ -1335,6 +1333,17 @@ int field_halo_post(const field_t * field, field_halo_t * h) {
   dim3 nblk, ntpb;
   kernel_launch_param(h->max_buf_len, &nblk, &ntpb);
   tdpLaunchKernel(field_halo_enqueue_send_kernel, nblk, ntpb, 0, h->stream, field->target, h->target);
+  int ndevice = 0;
+  tdpGetDeviceCount(&ndevice);
+  if (ndevice > 0) {
+    for (int p = 1; p < h->nvel; p++) {
+      int scount = field->nf*field_halo_size(h->slim[p]);
+      tdpMemcpyAsync(h->send[p], h->send_d[p], scount * sizeof(double), tdpMemcpyDeviceToHost, h->stream);
+    }
+  }
+  tdpStreamSynchronize(h->stream);
+  tdpAssert(tdpPeekAtLastError());
+  tdpAssert(tdpDeviceSynchronize());
 
   TIMER_stop(TIMER_FIELD_HALO_PACK);
 
@@ -1379,8 +1388,19 @@ int field_halo_wait(field_t * field, field_halo_t * h) {
   TIMER_start(TIMER_FIELD_HALO_UNPACK);
 
   dim3 nblk, ntpb;
+  int ndevice = 0;
+  tdpGetDeviceCount(&ndevice);
+  if (ndevice > 0) {
+    for (int p = 1; p < h->nvel; p++) {
+      int rcount = field->nf*field_halo_size(h->rlim[p]);
+      tdpMemcpyAsync(h->recv_d[p], h->recv[p], rcount * sizeof(double), tdpMemcpyHostToDevice, h->stream);
+    }
+  }
   kernel_launch_param(h->max_buf_len, &nblk, &ntpb);
   tdpLaunchKernel(field_halo_dequeue_recv_kernel, nblk, ntpb, 0, h->stream, field->target, h->target);
+  tdpStreamSynchronize(h->stream);
+  tdpAssert(tdpPeekAtLastError());
+  tdpAssert(tdpDeviceSynchronize());
 
   TIMER_stop(TIMER_FIELD_HALO_UNPACK);
 
@@ -1453,13 +1473,11 @@ int field_halo_free(field_halo_t * h) {
   tdpGetDeviceCount(&ndevice);
 
   if (ndevice > 0) {
-    double *send[27];
-    double *recv[27];
-    tdpMemcpy(send, h->target->send, 27 * sizeof(double *), tdpMemcpyDeviceToHost);
-    tdpMemcpy(recv, h->target->recv, 27 * sizeof(double *), tdpMemcpyDeviceToHost);
+    tdpMemcpy(h->send_d, h->target->send, 27 * sizeof(double *), tdpMemcpyDeviceToHost);
+    tdpMemcpy(h->recv_d, h->target->recv, 27 * sizeof(double *), tdpMemcpyDeviceToHost);
     for (int p = 1; p < h->nvel; p++) {
-      tdpFree(send[p]);
-      tdpFree(recv[p]);
+      tdpFree(h->send_d[p]);
+      tdpFree(h->recv_d[p]);
     }
     tdpFree(h->target);
   }

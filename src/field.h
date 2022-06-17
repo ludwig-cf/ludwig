@@ -49,6 +49,8 @@ struct field_halo_s {
 
   tdpStream_t stream;
   field_halo_t * target;        /* target structure */
+  double * send_d[27];          /* halo: device send data buffers */
+  double * recv_d[27];          /* halo: device recv data buffers */
 };
 
 typedef struct field_s field_t;
