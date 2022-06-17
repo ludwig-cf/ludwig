@@ -1337,6 +1337,12 @@ int field_halo_post(const field_t * field, field_halo_t * h) {
   tdpGetDeviceCount(&ndevice);
   if (ndevice > 0) {
     for (int p = 1; p < h->nvel; p++) {
+      int i = 1 + h->cv[p][X];
+      int j = 1 + h->cv[p][Y];
+      int k = 1 + h->cv[p][Z];
+      if (h->nbrrank[i][j][k] == h->nbrrank[1][1][1]) {
+        continue;
+      }
       int scount = field->nf*field_halo_size(h->slim[p]);
       tdpMemcpyAsync(h->send[p], h->send_d[p], scount * sizeof(double), tdpMemcpyDeviceToHost, h->stream);
     }
@@ -1392,6 +1398,12 @@ int field_halo_wait(field_t * field, field_halo_t * h) {
   tdpGetDeviceCount(&ndevice);
   if (ndevice > 0) {
     for (int p = 1; p < h->nvel; p++) {
+      int i = 1 + h->cv[p][X];
+      int j = 1 + h->cv[p][Y];
+      int k = 1 + h->cv[p][Z];
+      if (h->nbrrank[i][j][k] == h->nbrrank[1][1][1]) {
+        continue;
+      }
       int rcount = field->nf*field_halo_size(h->rlim[p]);
       tdpMemcpyAsync(h->recv_d[p], h->recv[p], rcount * sizeof(double), tdpMemcpyHostToDevice, h->stream);
     }
