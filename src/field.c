@@ -1004,8 +1004,7 @@ int field_halo_size(cs_limits_t lim) {
  *  field_halo_enqueue_send
  *
  *****************************************************************************/
-
-int field_halo_enqueue_send(const field_t * field, field_halo_t * h, int ireq) {
+void field_halo_enqueue_send(const field_t * field, field_halo_t * h, int ireq) {
 
   assert(field);
   assert(h);
@@ -1019,7 +1018,7 @@ int field_halo_enqueue_send(const field_t * field, field_halo_t * h, int ireq) {
   int stry = strz*nz;
   int strx = stry*ny;
 
-  #pragma omp for nowait
+#pragma omp for nowait
   for (int ih = 0; ih < nx*ny*nz; ih++) {
     int ic = h->slim[ireq].imin + ih/strx;
     int jc = h->slim[ireq].jmin + (ih % strx)/stry;
@@ -1031,8 +1030,36 @@ int field_halo_enqueue_send(const field_t * field, field_halo_t * h, int ireq) {
       h->send[ireq][ih*field->nf + ibf] = field->data[faddr];
     }
   }
+}
 
-  return 0;
+__global__
+void field_halo_enqueue_send_kernal(const field_t * field, field_halo_t * h) {
+  for (int ireq = 1; ireq < h->nvel; ireq++) {
+    assert(field);
+    assert(h);
+    assert(1 <= ireq && ireq < h->nvel);
+
+    int nx = 1 + h->slim[ireq].imax - h->slim[ireq].imin;
+    int ny = 1 + h->slim[ireq].jmax - h->slim[ireq].jmin;
+    int nz = 1 + h->slim[ireq].kmax - h->slim[ireq].kmin;
+
+    int strz = 1;
+    int stry = strz*nz;
+    int strx = stry*ny;
+
+    int ih = 0;
+    for_simt_parallel(ih, nx*ny*nz, 1) {
+      int ic = h->slim[ireq].imin + ih/strx;
+      int jc = h->slim[ireq].jmin + (ih % strx)/stry;
+      int kc = h->slim[ireq].kmin + (ih % stry)/strz;
+      int index = cs_index(field->cs, ic, jc, kc);
+
+      for (int ibf = 0; ibf < field->nf; ibf++) {
+        int faddr = addr_rank1(field->nsites, field->nf, index, ibf);
+        h->send[ireq][ih*field->nf + ibf] = field->data[faddr];
+      }
+    }
+  }
 }
 
 /*****************************************************************************
@@ -1185,19 +1212,20 @@ int field_halo_create(const field_t * field, field_halo_t * h) {
   }
 
   /* Message count and buffers */
-
+  h->max_buf_len = 0;
   for (int p = 1; p < h->nvel; p++) {
 
     int scount = field->nf*field_halo_size(h->slim[p]);
     int rcount = field->nf*field_halo_size(h->rlim[p]);
-
+    if (scount > h->max_buf_len) {
+      h->max_buf_len = scount;
+    }
     h->send[p] = (double *) calloc(scount, sizeof(double));
     h->recv[p] = (double *) calloc(rcount, sizeof(double));
     assert(h->send[p]);
     assert(h->recv[p]);
-
-    tdpStreamCreate(&h->stream[p]);
   }
+  tdpStreamCreate(&h->stream);
 
   // Device
   int ndevice = 0;
@@ -1260,13 +1288,9 @@ int field_halo_post(const field_t * field, field_halo_t * h) {
   /* Load send buffers; post sends */
 
   TIMER_start(TIMER_FIELD_HALO_PACK);
-
-  #pragma omp parallel
-  {
-    for (int ireq = 1; ireq < h->nvel; ireq++) {
-      field_halo_enqueue_send(field, h, ireq);
-    }
-  }
+  dim3 nblk, ntpb;
+  kernel_launch_param(h->max_buf_len, &nblk, &ntpb);
+  tdpLaunchKernel(field_halo_enqueue_send_kernal, nblk, ntpb, 0, h->stream, field->target, h->target);
 
   TIMER_stop(TIMER_FIELD_HALO_PACK);
 
@@ -1401,10 +1425,9 @@ int field_halo_free(field_halo_t * h) {
 
   for (int p = 1; p < h->nvel; p++) {
     free(h->send[p]);
-    free(h->recv[p]);
-    tdpStreamDestroy(h->stream[p]);
+    free(h->recv[p]);  
   }
-
+  tdpStreamDestroy(h->stream);
   *h = (field_halo_t) {0};
 
   return 0;

@@ -44,9 +44,10 @@ struct field_halo_s {
   cs_limits_t rlim[27];         /* halo: recv regions (rectangular) */
   double * send[27];            /* halo: send data buffers */
   double * recv[27];            /* halo: recv data buffers */
+  int max_buf_len;             /* halo: the size of the largest buffer */
   MPI_Request request[2*27];    /* halo: array of send/recv requests */
 
-  tdpStream_t stream[27];
+  tdpStream_t stream;
   field_halo_t * target;        /* target structure */
 };
 
