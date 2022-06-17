@@ -1004,7 +1004,8 @@ int field_halo_size(cs_limits_t lim) {
  *  field_halo_enqueue_send
  *
  *****************************************************************************/
-void field_halo_enqueue_send(const field_t * field, field_halo_t * h, int ireq) {
+
+int field_halo_enqueue_send(const field_t * field, field_halo_t * h, int ireq) {
 
   assert(field);
   assert(h);
@@ -1030,10 +1031,12 @@ void field_halo_enqueue_send(const field_t * field, field_halo_t * h, int ireq) 
       h->send[ireq][ih*field->nf + ibf] = field->data[faddr];
     }
   }
+
+  return 0;
 }
 
 __global__
-void field_halo_enqueue_send_kernal(const field_t * field, field_halo_t * h) {
+void field_halo_enqueue_send_kernel(const field_t * field, field_halo_t * h) {
   for (int ireq = 1; ireq < h->nvel; ireq++) {
     assert(field);
     assert(h);
@@ -1106,6 +1109,47 @@ int field_halo_dequeue_recv(field_t * field, const field_halo_t * h, int ireq) {
   }
 
   return 0;
+}
+
+__global__
+void field_halo_dequeue_recv_kernel(field_t * field, const field_halo_t * h) {
+  for (int ireq = 1; ireq < h->nvel; ireq++) {
+    assert(field);
+    assert(h);
+    assert(1 <= ireq && ireq < h->nvel);
+
+    int nx = 1 + h->rlim[ireq].imax - h->rlim[ireq].imin;
+    int ny = 1 + h->rlim[ireq].jmax - h->rlim[ireq].jmin;
+    int nz = 1 + h->rlim[ireq].kmax - h->rlim[ireq].kmin;
+
+    int strz = 1;
+    int stry = strz*nz;
+    int strx = stry*ny;
+
+    double * recv = h->recv[ireq];
+
+    /* Check if this a copy from our own send buffer */
+    {
+      int i = 1 + h->cv[h->nvel - ireq][X];
+      int j = 1 + h->cv[h->nvel - ireq][Y];
+      int k = 1 + h->cv[h->nvel - ireq][Z];
+
+      if (h->nbrrank[i][j][k] == h->nbrrank[1][1][1]) recv = h->send[ireq];
+    }
+
+    int ih = 0;
+    for_simt_parallel(ih, nx*ny*nz, 1) {
+      int ic = h->rlim[ireq].imin + ih/strx;
+      int jc = h->rlim[ireq].jmin + (ih % strx)/stry;
+      int kc = h->rlim[ireq].kmin + (ih % stry)/strz;
+      int index = cs_index(field->cs, ic, jc, kc);
+
+      for (int ibf = 0; ibf < field->nf; ibf++) {
+        int faddr = addr_rank1(field->nsites, field->nf, index, ibf);
+        field->data[faddr] = recv[ih*field->nf + ibf];
+      }
+    }
+  }
 }
 
 /*****************************************************************************
@@ -1290,7 +1334,7 @@ int field_halo_post(const field_t * field, field_halo_t * h) {
   TIMER_start(TIMER_FIELD_HALO_PACK);
   dim3 nblk, ntpb;
   kernel_launch_param(h->max_buf_len, &nblk, &ntpb);
-  tdpLaunchKernel(field_halo_enqueue_send_kernal, nblk, ntpb, 0, h->stream, field->target, h->target);
+  tdpLaunchKernel(field_halo_enqueue_send_kernel, nblk, ntpb, 0, h->stream, field->target, h->target);
 
   TIMER_stop(TIMER_FIELD_HALO_PACK);
 
@@ -1334,12 +1378,9 @@ int field_halo_wait(field_t * field, field_halo_t * h) {
 
   TIMER_start(TIMER_FIELD_HALO_UNPACK);
 
-  #pragma omp parallel
-  {
-    for (int ireq = 1; ireq < h->nvel; ireq++) {
-      field_halo_dequeue_recv(field, h, ireq);
-    }
-  }
+  dim3 nblk, ntpb;
+  kernel_launch_param(h->max_buf_len, &nblk, &ntpb);
+  tdpLaunchKernel(field_halo_dequeue_recv_kernel, nblk, ntpb, 0, h->stream, field->target, h->target);
 
   TIMER_stop(TIMER_FIELD_HALO_UNPACK);
 
