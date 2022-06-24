@@ -114,8 +114,9 @@ int colloid_state_read_ascii(colloid_state_t * ps, FILE * fp) {
   nread += fscanf(fp, sformat, &ps->u0);
   nread += fscanf(fp, sformat, &ps->delta);
   nread += fscanf(fp, sformat, &ps->cutoff);
-  nread += fscanf(fp, vformat, &ps->fex[0], &ps->fex[1], &ps->fex[2]);
   nread += fscanf(fp, vformat, &ps->fphi[0], &ps->fphi[1], &ps->fphi[2]);
+  nread += fscanf(fp, vformat, &ps->fsub[0], &ps->fsub[1], &ps->fsub[2]);
+  nread += fscanf(fp, vformat, &ps->fsprings[0], &ps->fsprings[1], &ps->fsprings[2]);
 /* <----- */
 
   for (n = 0; n < NPAD_DBL; n++) {
@@ -258,8 +259,9 @@ int colloid_state_write_ascii(const colloid_state_t * s, FILE * fp) {
   nwrite += fprintf(fp, sformat, s->u0);
   nwrite += fprintf(fp, sformat, s->delta);
   nwrite += fprintf(fp, sformat, s->cutoff);
-  nwrite += fprintf(fp, vformat, s->fex[0], s->fex[1], s->fex[2]);
   nwrite += fprintf(fp, vformat, s->fphi[0], s->fphi[1], s->fphi[2]);
+  nwrite += fprintf(fp, vformat, s->fsub[0], s->fsub[1], s->fsub[2]);
+  nwrite += fprintf(fp, vformat, s->fsprings[0], s->fsprings[1], s->fsprings[2]);
 /* <----- */
 
   for (n = 0; n < NPAD_DBL; n++) {

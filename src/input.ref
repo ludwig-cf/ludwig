@@ -91,6 +91,7 @@ mask_psi_porosity 0.0
 
 mask_thickness 1.0
 mask_alpha0 0.5
+mask_alpha_cutoff 0.5 
 
 
 ##############################################################################
@@ -165,7 +166,7 @@ fd_gradient_calculation 3d_symmetric_ll_solid
 # Could change later for increased accuracy 
 fd_advection_scheme_order 1 
 
-# 0 = "grad mu" method for the divergence of the force is the only that can add the PHI force for now */
+# 0 = "grad mu" method for the divergence of the force is the only that can add the PHI force # for now 
 fd_force_divergence 0 
 
 

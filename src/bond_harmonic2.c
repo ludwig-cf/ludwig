@@ -194,6 +194,17 @@ int bond_harmonic2_compute(colloids_info_t * cinfo, void * self) {
       pc->bonded2[n]->force[X] += f*r12[X];
       pc->bonded2[n]->force[Y] += f*r12[Y];
       pc->bonded2[n]->force[Z] += f*r12[Z];
+
+/* For visualization purposes */
+      pc->s.fsprings[X] -= f*r12[X];
+      pc->s.fsprings[Y] -= f*r12[Y];
+      pc->s.fsprings[Z] -= f*r12[Z];
+
+      pc->bonded2[n]->s.fsprings[X] += f*r12[X];
+      pc->bonded2[n]->s.fsprings[Y] += f*r12[Y];
+      pc->bonded2[n]->s.fsprings[Z] += f*r12[Z];
+
+
     }
   }
 
