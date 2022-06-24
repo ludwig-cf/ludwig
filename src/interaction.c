@@ -1780,11 +1780,6 @@ int colloids_update_forces_ext(colloids_info_t * cinfo) {
     pc->tex[X] = pc->torque[X];
     pc->tex[Y] = pc->torque[Y];
     pc->tex[Z] = pc->torque[Z];
- 
-    /* For extraction purposes */
-    pc->s.fex[X] = pc->force[X];
-    pc->s.fex[Y] = pc->force[Y];
-    pc->s.fex[Z] = pc->force[Z];
  }
 
   return 0;
