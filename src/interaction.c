@@ -211,6 +211,7 @@ int interact_compute(interact_t * interact, colloids_info_t * cinfo,
       interact_bonds_harmonic(interact, cinfo);
       interact_bonds_harmonic2(interact, cinfo);
       interact_bonds_harmonic3(interact, cinfo);
+
       interact_pairwise(interact, cinfo);
       interact_angles(interact, cinfo);
       interact_angles_harmonic(interact, cinfo);
@@ -337,6 +338,7 @@ int interact_stats(interact_t * obj, colloids_info_t * cinfo) {
 	pe_info(obj->pe, "Bond harmonic potential minimum r is: %14.7e\n", rmin);
 	pe_info(obj->pe, "Bond harmonic potential maximum r is: %14.7e\n", rmax);
 	pe_info(obj->pe, "Bond harmonic potential energy is:    %14.7e\n", v);
+	
       }
 
       intr = obj->abstr[INTERACT_BOND_HARMONIC2];
@@ -356,6 +358,8 @@ int interact_stats(interact_t * obj, colloids_info_t * cinfo) {
 	pe_info(obj->pe, "Bond harmonic2 potential minimum r is: %14.7e\n", rmin);
 	pe_info(obj->pe, "Bond harmonic2 potential maximum r is: %14.7e\n", rmax);
 	pe_info(obj->pe, "Bond harmonic2 potential energy is:    %14.7e\n", v);
+	
+
       }
 
       intr = obj->abstr[INTERACT_BOND_HARMONIC3];
@@ -375,6 +379,7 @@ int interact_stats(interact_t * obj, colloids_info_t * cinfo) {
 	pe_info(obj->pe, "Bond harmonic3 potential minimum r is: %14.7e\n", rmin);
 	pe_info(obj->pe, "Bond harmonic3 potential maximum r is: %14.7e\n", rmax);
 	pe_info(obj->pe, "Bond harmonic3 potential energy is:    %14.7e\n", v);
+
       }
 
       intr = obj->abstr[INTERACT_ANGLE];
@@ -468,9 +473,14 @@ int colloids_update_forces_zero(colloids_info_t * cinfo) {
     pc->torque[Y] = 0.0;
     pc->torque[Z] = 0.0;
 
+/*  The following is for extraction purposes */
     pc->s.fphi[X] = 0.0;
     pc->s.fphi[Y] = 0.0;
     pc->s.fphi[Z] = 0.0;
+
+    pc->s.fsprings[X] = 0.0;
+    pc->s.fsprings[Y] = 0.0;
+    pc->s.fsprings[Z] = 0.0;
 
   }
 
@@ -1264,7 +1274,6 @@ int interact_bonds_harmonic3(interact_t * obj, colloids_info_t * cinfo) {
   return 0;
 }
 
-
 /*****************************************************************************
  *
  *  interact_angles
@@ -1341,6 +1350,7 @@ int interact_find_bonds(interact_t * obj, colloids_info_t * cinfo) {
   return 0;
 }
 
+
 /*****************************************************************************
  *
  *  interact_find_bonds_all
@@ -1362,7 +1372,7 @@ int interact_find_bonds_all(interact_t * obj, colloids_info_t * cinfo,
 
   int nbondfound = 0;
   int nbondpair = 0;
-
+ 
   colloid_t * pc1;
   colloid_t * pc2;
 
@@ -1380,6 +1390,7 @@ int interact_find_bonds_all(interact_t * obj, colloids_info_t * cinfo,
 
         colloids_info_cell_list_head(cinfo, ic1, jc1, kc1, &pc1);
         for (; pc1; pc1 = pc1->next) {
+	  //printf("%d %d %d %d \n", pc1->s.index, pc1->s.nbonds, pc1->s.nbonds2, pc1->s.nbonds3);
 
 	  if (pc1->s.nbonds == 0) continue;
 
@@ -1396,6 +1407,7 @@ int interact_find_bonds_all(interact_t * obj, colloids_info_t * cinfo,
 		    if (pc1->s.bond[n1] == pc2->s.index) {
 		      nbondfound += 1;
 		      pc1->bonded[n1] = pc2;
+		     
 		      /* And bond is reciprocated */
 		      for (n2 = 0; n2 < pc2->s.nbonds; n2++) {
 			if (pc2->s.bond[n2] == pc1->s.index) {
@@ -1415,7 +1427,6 @@ int interact_find_bonds_all(interact_t * obj, colloids_info_t * cinfo,
       }
     }
   }
-
   if (nbondfound != nbondpair) {
     /* There is a mismatch in the bond information (treat as fatal) */
     pe_fatal(obj->pe, "Find bonds: bond not reciprocated\n");
@@ -1497,6 +1508,7 @@ int interact_find_bonds_all2(interact_t * obj, colloids_info_t * cinfo,
 		    if (pc1->s.bond2[n1] == pc2->s.index) {
 		      nbondfound += 1;
 		      pc1->bonded2[n1] = pc2;
+		      
 		      /* And bond is reciprocated */
 		      for (n2 = 0; n2 < pc2->s.nbonds2; n2++) {
 			if (pc2->s.bond2[n2] == pc1->s.index) {
@@ -1564,7 +1576,7 @@ int interact_find_bonds_all3(interact_t * obj, colloids_info_t * cinfo,
   int di[2], dj[2], dk[2];
   int n1, n2;
   int ncell[3];
-
+  
   int nbondfound = 0;
   int nbondpair = 0;
 
@@ -1600,11 +1612,14 @@ int interact_find_bonds_all3(interact_t * obj, colloids_info_t * cinfo,
 		    if (pc1->s.bond3[n1] == pc2->s.index) {
 		      nbondfound += 1;
 		      pc1->bonded3[n1] = pc2;
+
 		      /* And bond is reciprocated */
 		      for (n2 = 0; n2 < pc2->s.nbonds3; n2++) {
+
 			if (pc2->s.bond3[n2] == pc1->s.index) {
 			  nbondpair += 1;
 			  pc2->bonded3[n2] = pc1;
+
 			}
 		      }
 		    }
@@ -1766,7 +1781,7 @@ int colloids_update_forces_ext(colloids_info_t * cinfo) {
     pc->tex[Y] = pc->torque[Y];
     pc->tex[Z] = pc->torque[Z];
  
-    /* For extraction */
+    /* For extraction purposes */
     pc->s.fex[X] = pc->force[X];
     pc->s.fex[Y] = pc->force[Y];
     pc->s.fex[Z] = pc->force[Z];
