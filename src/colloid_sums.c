@@ -77,7 +77,7 @@ static int colloid_sums_m7(colloid_sum_t * sum, int, int, int, int);
 /* Message sizes (doubles) */
 /* NULL is a dummy zero size */
 
-static const int msize_[COLLOID_SUM_MAX] = {0, 10, 35, 7, 4, 6, 19, 4};
+static const int msize_[COLLOID_SUM_MAX] = {0, 10, 35, 7, 4, 6, 16, 4};
 
 /* The following are used for internal communication */
 
