@@ -64,6 +64,7 @@ struct colloid {
   colloid_t * bonded[NBOND_MAX];
   colloid_t * bonded2[NBOND_MAX2];
   colloid_t * bonded3[NBOND_MAX3];
+  colloid_t * bonded_mesh[NBOND_MAX_MESH];
 };
 
 typedef struct colloids_info_s colloids_info_t;

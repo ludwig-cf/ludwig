@@ -44,6 +44,7 @@ int colloid_state_read_ascii(colloid_state_t * ps, FILE * fp) {
   nread += fscanf(fp, isformat, &ps->nbonds);
   nread += fscanf(fp, isformat, &ps->nbonds2);
   nread += fscanf(fp, isformat, &ps->nbonds3);
+  nread += fscanf(fp, isformat, &ps->nbonds_mesh);
   nread += fscanf(fp, isformat, &ps->nangles);
   nread += fscanf(fp, isformat, &ps->isfixedr);
   nread += fscanf(fp, isformat, &ps->isfixedv);
@@ -63,6 +64,9 @@ int colloid_state_read_ascii(colloid_state_t * ps, FILE * fp) {
     nread += fscanf(fp, isformat, &ps->bond3[n]);
   }
 
+  for (n = 0; n < NBOND_MAX_MESH; n++) {
+    nread += fscanf(fp, isformat, &ps->bond_mesh[n]);
+  }
 
   nread += fscanf(fp, isformat, &ps->rng);
 
@@ -114,14 +118,19 @@ int colloid_state_read_ascii(colloid_state_t * ps, FILE * fp) {
   nread += fscanf(fp, sformat, &ps->u0);
   nread += fscanf(fp, sformat, &ps->delta);
   nread += fscanf(fp, sformat, &ps->cutoff);
-  nread += fscanf(fp, vformat, &ps->fphi[0], &ps->fphi[1], &ps->fphi[2]);
   nread += fscanf(fp, vformat, &ps->fsub[0], &ps->fsub[1], &ps->fsub[2]);
+  nread += fscanf(fp, vformat, &ps->fphi[0], &ps->fphi[1], &ps->fphi[2]);
   nread += fscanf(fp, vformat, &ps->fsprings[0], &ps->fsprings[1], &ps->fsprings[2]);
 /* <----- */
 
   for (n = 0; n < NPAD_DBL; n++) {
     nread += fscanf(fp, sformat, &ps->dpad[n]);
   }
+
+  for (n = 0; n < 7; n++) {
+    nread += fscanf(fp, isformat, &ps->tuple.indices[n]);
+    nread += fscanf(fp, sformat, &ps->tuple.r0s[n]);
+  }  //LIGHTHOUSE 7 is the maximum number of springs for the edge particles
 
   if (nread != NTOT_VAR) ifail = 1;
 
@@ -179,12 +188,12 @@ int colloid_state_write_ascii(const colloid_state_t * s, FILE * fp) {
 
   assert(s);
   assert(fp);
-
   nwrite += fprintf(fp, isformat, s->index);
   nwrite += fprintf(fp, isformat, s->rebuild);
   nwrite += fprintf(fp, isformat, s->nbonds);
   nwrite += fprintf(fp, isformat, s->nbonds2);
   nwrite += fprintf(fp, isformat, s->nbonds3);
+  nwrite += fprintf(fp, isformat, s->nbonds_mesh);
   nwrite += fprintf(fp, isformat, s->nangles);
   nwrite += fprintf(fp, isformat, s->isfixedr);
   nwrite += fprintf(fp, isformat, s->isfixedv);
@@ -204,6 +213,9 @@ int colloid_state_write_ascii(const colloid_state_t * s, FILE * fp) {
     nwrite += fprintf(fp, isformat, s->bond3[n]);
   }
 
+  for (n = 0; n < NBOND_MAX_MESH; n++) {
+    nwrite += fprintf(fp, isformat, s->bond_mesh[n]);
+  }
 
   nwrite += fprintf(fp, isformat, s->rng);
 
@@ -259,8 +271,8 @@ int colloid_state_write_ascii(const colloid_state_t * s, FILE * fp) {
   nwrite += fprintf(fp, sformat, s->u0);
   nwrite += fprintf(fp, sformat, s->delta);
   nwrite += fprintf(fp, sformat, s->cutoff);
-  nwrite += fprintf(fp, vformat, s->fphi[0], s->fphi[1], s->fphi[2]);
   nwrite += fprintf(fp, vformat, s->fsub[0], s->fsub[1], s->fsub[2]);
+  nwrite += fprintf(fp, vformat, s->fphi[0], s->fphi[1], s->fphi[2]);
   nwrite += fprintf(fp, vformat, s->fsprings[0], s->fsprings[1], s->fsprings[2]);
 /* <----- */
 
@@ -268,11 +280,16 @@ int colloid_state_write_ascii(const colloid_state_t * s, FILE * fp) {
     nwrite += fprintf(fp, sformat, s->dpad[n]);
   }
 
+  for (n = 0; n < 7; n++) {
+    nwrite += fprintf(fp, isformat, s->tuple.indices[n]);
+    nwrite += fprintf(fp, sformat, s->tuple.r0s[n]);
+  } 
+
   /* ... should be NTOT_VAR items of format + 1 characters */
 
   if (nwrite != NTOT_VAR*25) ifail = 1;
-
   /* If assertions are off, responsibility passes to caller */
+  
   assert(ifail == 0);
 
   return ifail;

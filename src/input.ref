@@ -151,7 +151,11 @@ bond_harmonic3_k 1e-2
 bond_harmonic3_r0 10.0
 bond_harmonic3_cutoff 10.0 // Has to be compatible (equal) to vesicle_radius
 
+mesh_harmonic_on 1
+mesh_harmonic_k 1e-2
+mesh_harmonic_r0 1.0 
 
+//r0 is not useful but needs to be given for now
 
 ##############################################################################
 #

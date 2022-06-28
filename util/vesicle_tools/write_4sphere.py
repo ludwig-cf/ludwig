@@ -2,33 +2,23 @@ import csv
 import numpy as np
 import matplotlib.pyplot as plt
 
-plot = False
+plot = 0
 
 NVESICLES = 1
-NATOMS = 241
+NATOMS = 643
 
-RADIUS0 = 5.2796821
-RADIUS = 8.0
-
-icosphere_small_l = 0.1821
-icosphere_large_l = 0.2060
-epsilon = 1e-3
-
-# Choose bond length
-BOND_LENGTH = 1.0
+sphere_l = 0.17
 
 # or choose vesicle radius
-BOND_LENGTH = RADIUS / RADIUS0
+RADIUS = 10.0
 
-print(str(BOND_LENGTH) + "\n" + str(BOND_LENGTH*icosphere_large_l/icosphere_small_l) + "\n" + str(BOND_LENGTH*RADIUS0))
+#print(str(BOND_LENGTH) + "\n" + str(BOND_LENGTH*sphere_l) + "\n" + str(BOND_LENGTH*RADIUS0))
 
-nbonds= 3
-nbonds2 = 3
-nbonds3 = 3
+nbonds= 7
 
-XSHIFT = 15
-YSHIFT = 15
-ZSHIFT = 15
+XSHIFT = 25
+YSHIFT = 25
+ZSHIFT = 25
 
 #M27 = np.array([0.061374, -0.467955, 0.843134])
 M27 = np.array([-0.218611, 0.822090, 0.458258])
@@ -56,14 +46,12 @@ R = np.eye(3) + matvx + matvx2 * (1/(1+c))
 indices = np.arange(1,NATOMS+1,1,dtype=int)
 
 nConnec = np.zeros((NATOMS*NVESICLES), dtype = int)
-nConnec2 = np.zeros((NATOMS*NVESICLES), dtype = int)
-nConnec3 = np.zeros((NATOMS*NVESICLES), dtype = int)
 Connec = np.zeros((NATOMS, nbonds), dtype = int)
-Connec2 = np.zeros((NATOMS, nbonds2), dtype = int)
-Connec3 = np.zeros((NATOMS, nbonds3), dtype = int)
+Connecdist = np.zeros((NATOMS, nbonds), dtype = float)
+
 iscentre = np.zeros((NATOMS*NVESICLES), dtype = int)
 ishole = np.zeros((NATOMS*NVESICLES), dtype = int)
-indexcentre = np.zeros((NATOMS*NVESICLES), dtype = int)
+indexcentre = np.ones((NATOMS*NVESICLES), dtype = int)
 
 def file_to_array(filename):
   x, y, z = [], [], []
@@ -100,57 +88,45 @@ def dist(x,y):
   dr = np.sqrt(np.sum((x-y)**2))
   return dr
 
-
-
 # Coordinates
-xyz = file_to_array("hexasphere.xyz")
+xyz = file_to_array("4sphere.xyz")
 
+#Renormalize distances so that the smallest of the two harmonic bonds has l_0=1
+xyz = rescale(xyz, RADIUS)
 
 # Connectivities
 for i in range(NATOMS):
   bondmade = 0
-  bondmade2 = 0
   for j in range(NATOMS):
+    dr = dist(xyz.T[i], xyz.T[j])
     if i == j: continue
 
-    dr = dist(xyz.T[i], xyz.T[j])
+    elif dr < sphere_l*RADIUS:
+      Connec[i][bondmade] = np.int_(j) + 1
+      Connecdist[i][bondmade] = dr
 
-    if dr < icosphere_small_l + epsilon and bondmade < nbonds:
-      Connec[i][bondmade] = np.int_(j)
       nConnec[i] += 1
       bondmade += 1
 
-    if icosphere_large_l - epsilon < dr < icosphere_large_l + epsilon and bondmade < nbonds2:
-      Connec2[i][bondmade2] = np.int_(j)
-      nConnec2[i] += 1
-      bondmade2 += 1 
+  for j in range(NATOMS):
+    if j == 0:
+      dr = dist(xyz.T[i], xyz.T[j])
+      Connec[i][bondmade] = np.int_(j) + 1
+      Connecdist[i][bondmade] = dr
 
-for i in range(len(Connec)):
-  for j in range(len(Connec[i])):
-    if Connec[i][j] == 0: continue
-    Connec[i][j] += 1
-for i in range(len(Connec2)):
-  for j in range(len(Connec2[i])):
-    if Connec2[i][j] == 0: continue
-    Connec2[i][j] += 1
-for i in range(len(Connec3)):
-  for j in range(len(Connec3[i])):
-    if Connec3[i][j] == 0: continue
-    Connec3[i][j] += 1
+      nConnec[i] += 1
+      bondmade += 1
+
+
 
 Connec = np.array(Connec)
-Connec2 = np.array(Connec2)
-Connec3 = np.array(Connec3)
 
-
-# Renormalize distances so that the smallest of the two harmonic bonds has l_0=1
-factor = BOND_LENGTH / icosphere_small_l
-xyz = rescale(xyz, factor)
+#Renormalize distances so that the smallest of the two harmonic bonds has l_0=1
+#xyz = rescale(xyz, RADIUS)
 
 #Other attributes
 iscentre[0] = 1 #0, NATOMS, etc...
-ishole[240] = 1 #0, NATOMS, etc...
-indexcentre[0:NATOMS + 1] = 1 #(0, NATOMS-1), (NATOMS, 2*NATOMS), etc..
+ishole[NATOMS - 1] = 1 #0, NATOMS, etc...
 
 xyzt = xyz.T
 for i, vec in enumerate(xyzt):
@@ -163,16 +139,23 @@ xyz[0, :] += XSHIFT
 xyz[1, :] += YSHIFT
 xyz[2, :] += ZSHIFT
 
-table = np.column_stack((indices, xyz.T, nConnec, Connec, nConnec2, Connec2, nConnec3, Connec3, iscentre.T, ishole.T, indexcentre.T))
-np.savetxt("latticeHexasphere.txt", table, fmt = '%3d     %3f %3f %3f      %3d %3d %3d %3d     %3d %3d %3d %3d     %3d %3d %3d %3d     %3d %3d %3d')
+print(indices.shape, xyz.T.shape, nConnec.shape, Connec.shape, iscentre.T.shape, ishole.T.shape, indexcentre.T.shape)
+
+table = np.column_stack((indices, xyz.T, nConnec, Connec, Connecdist, iscentre.T, ishole.T, indexcentre.T))
+print(indices[:5], Connec[:5])
+np.savetxt("lattice4sphere.txt", table, fmt = '%3d     %3f %3f %3f      %3d %3d %3d %3d %3d %3d %3d %3d   %3f %3f %3f %3f %3f %3f %3f    %3d %3d %3d')
 
 if plot:
   dists = []
-  coord0 = xyz[:,0]
-  for coord in xyz.T[1::]:
-    dist = np.sqrt(np.sum((coord0 - coord)**2 ))
-    dists.append(dist)
+  lendists = np.zeros((NATOMS))
+  for i in range(xyz.shape[1]):
+    coordi = xyz[:,i]
+    for j,coordj in enumerate(xyz.T):
+      if (i == j): continue
+      else:
+        dist = np.sqrt(np.sum((coordi - coordj)**2 ))
+        if (dist < 0.17): 
+          lendists[i] += 1
+          dists.append(dist) 
 
-  print(np.mean(dists), np.max(dists), np.min(dists))
-
-
+#print(lendists)

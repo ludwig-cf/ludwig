@@ -35,6 +35,7 @@
 #include "bond_harmonic.h"
 #include "bond_harmonic2.h"
 #include "bond_harmonic3.h"
+#include "mesh_harmonic.h"
 #include "angle_cosine.h"
 //CHANGE1
 #include "angle_harmonic.h"
@@ -57,6 +58,7 @@ int bond_fene_init(pe_t * pe, cs_t * cs, rt_t * rt, interact_t * interact);
 int bond_harmonic_init(pe_t * pe, cs_t * cs, rt_t * rt, interact_t * interact);
 int bond_harmonic2_init(pe_t * pe, cs_t * cs, rt_t * rt, interact_t * interact);
 int bond_harmonic3_init(pe_t * pe, cs_t * cs, rt_t * rt, interact_t * interact);
+int mesh_harmonic_init(pe_t * pe, cs_t * cs, rt_t * rt, interact_t * interact);
 int angle_cosine_init(pe_t * pe, cs_t * cs, rt_t * rt, interact_t * interact);
 //CHANGE1
 int angle_harmonic_init(pe_t * pe, cs_t * cs, rt_t * rt, interact_t * interact);
@@ -160,6 +162,7 @@ int colloids_init_rt(pe_t * pe, rt_t * rt, cs_t * cs, colloids_info_t ** pinfo,
   bond_harmonic_init(pe, cs, rt, *interact);
   bond_harmonic2_init(pe, cs, rt, *interact);
   bond_harmonic3_init(pe, cs, rt, *interact);
+  mesh_harmonic_init(pe, cs, rt, *interact);
   angle_cosine_init(pe, cs, rt, *interact);
   angle_harmonic_init(pe, cs, rt, *interact);
   angle_dihedral_init(pe, cs, rt, *interact);
@@ -1159,6 +1162,41 @@ int bond_harmonic3_init(pe_t * pe, cs_t * cs, rt_t * rt, interact_t * interact) 
   return 0;
 }
 
+/*****************************************************************************
+ *
+ *  mesh_harmonic_init
+ *
+ *****************************************************************************/
+
+int mesh_harmonic_init(pe_t * pe, cs_t * cs, rt_t * rt, interact_t * interact) {
+
+  int n;
+  int on = 0;
+  double kappa;
+  double r0;
+
+  mesh_harmonic_t * harmonic = NULL;
+
+  assert(pe);
+  assert(rt);
+  assert(interact);
+
+  rt_int_parameter(rt, "mesh_harmonic_on", &on);
+
+  if (on) {
+    n = rt_double_parameter(rt, "mesh_harmonic_k", &kappa);
+    if (n == 0) pe_fatal(pe, "Must set mesh_harmonic_k in input for harmonic bond\n");
+    n = rt_double_parameter(rt, "mesh_harmonic_r0", &r0);
+    if (n == 0) pe_fatal(pe, "Must set mesh_harmonic_r0 in input for harmonic bond\n");
+
+    mesh_harmonic_create(pe, cs,&harmonic);
+    mesh_harmonic_param_set(harmonic, kappa, r0);
+    mesh_harmonic_register(harmonic, interact);
+    mesh_harmonic_info(harmonic);
+  }
+
+  return 0;
+}
 
 
 

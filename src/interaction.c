@@ -195,7 +195,6 @@ int interact_compute(interact_t * interact, colloids_info_t * cinfo,
   assert(cinfo);
 
   colloids_info_ntotal(cinfo, &nc);
-
   if (nc > 0) {
     colloids_update_forces_zero(cinfo);
     colloids_update_forces_external(cinfo, psi);
@@ -211,6 +210,7 @@ int interact_compute(interact_t * interact, colloids_info_t * cinfo,
       interact_bonds_harmonic(interact, cinfo);
       interact_bonds_harmonic2(interact, cinfo);
       interact_bonds_harmonic3(interact, cinfo);
+      interact_mesh_harmonic(interact, cinfo);
 
       interact_pairwise(interact, cinfo);
       interact_angles(interact, cinfo);
@@ -382,6 +382,26 @@ int interact_stats(interact_t * obj, colloids_info_t * cinfo) {
 
       }
 
+      intr = obj->abstr[INTERACT_MESH_HARMONIC];
+
+      if (intr) {
+
+	obj->stats[INTERACT_MESH_HARMONIC](intr, stats);
+
+	rminlocal = stats[INTERACT_STAT_RMINLOCAL];
+	rmaxlocal = stats[INTERACT_STAT_RMAXLOCAL];
+	vlocal = stats[INTERACT_STAT_VLOCAL];
+
+	MPI_Reduce(&rminlocal, &rmin, 1, MPI_DOUBLE, MPI_MIN, 0, comm);
+	MPI_Reduce(&rmaxlocal, &rmax, 1, MPI_DOUBLE, MPI_MAX, 0, comm);
+	MPI_Reduce(&vlocal, &v, 1, MPI_DOUBLE, MPI_SUM, 0, comm);
+
+	//pe_info(obj->pe, "Mesh harmonic potential minimum r is: %14.7e\n", rmin);
+	//pe_info(obj->pe, "Mesh harmonic potential maximum r is: %14.7e\n", rmax);
+	pe_info(obj->pe, "Mesh harmonic potential energy is:    %14.7e\n", v);
+      }
+
+
       intr = obj->abstr[INTERACT_ANGLE];
 
       if (intr) {
@@ -400,6 +420,7 @@ int interact_stats(interact_t * obj, colloids_info_t * cinfo) {
 	pe_info(obj->pe, "Angle maximum angle is:      %14.7e\n", rmax);
 	pe_info(obj->pe, "Angle potential energy is:   %14.7e\n", v);
       }
+
 
       //CHANGE1
       intr = obj->abstr[INTERACT_ANGLE_HARMONIC];
@@ -1276,6 +1297,27 @@ int interact_bonds_harmonic3(interact_t * obj, colloids_info_t * cinfo) {
 
 /*****************************************************************************
  *
+ *  interact_mesh_harmonic
+ *
+ *****************************************************************************/
+
+int interact_mesh_harmonic(interact_t * obj, colloids_info_t * cinfo) {
+
+  void * intr = NULL;
+
+  assert(obj);
+  assert(cinfo);
+
+  intr = obj->abstr[INTERACT_MESH_HARMONIC];
+  if (intr) interact_find_bonds_all_mesh(obj, cinfo, 1);
+  if (intr) obj->compute[INTERACT_MESH_HARMONIC](cinfo, intr);
+
+  return 0;
+}
+
+
+/*****************************************************************************
+ *
  *  interact_angles
  *
  *****************************************************************************/
@@ -1644,6 +1686,109 @@ int interact_find_bonds_all3(interact_t * obj, colloids_info_t * cinfo,
 }
 
 
+/*****************************************************************************
+ *
+ *  interact_find_bonds_mesh
+ *
+ *  For backwards compatability, the case where only local bonds are
+ *  included (nextra = 0).
+ *
+ *****************************************************************************/
+
+int interact_find_bonds_mesh(interact_t * obj, colloids_info_t * cinfo) {
+
+  assert(obj);
+  assert(cinfo);
+
+  interact_find_bonds_all_mesh(obj, cinfo, 1);
+
+  return 0;
+}
+
+
+/*****************************************************************************
+ *
+ *  interact_find_bonds_all_mesh
+ *
+ *  Examine the local colloids and match any bonded interactions
+ *  in terms of pointers.
+ *
+ *  Unchanged fromm the other find_bonds_all functions
+ * 
+ *****************************************************************************/
+
+int interact_find_bonds_all_mesh(interact_t * obj, colloids_info_t * cinfo,
+			    int nextra) {
+
+  int ic1, jc1, kc1, ic2, jc2, kc2;
+  int di[2], dj[2], dk[2];
+  int n1, n2;
+  int ncell[3];
+
+  int nbondfound = 0;
+  int nbondpair = 0;
+ 
+  colloid_t * pc1;
+  colloid_t * pc2;
+
+  assert(obj);
+  assert(cinfo);
+
+  colloids_info_ncell(cinfo, ncell);
+
+  for (ic1 = 1 - nextra; ic1 <= ncell[X] + nextra; ic1++) {
+    colloids_info_climits(cinfo, X, ic1, di); 
+    for (jc1 = 1 - nextra; jc1 <= ncell[Y] + nextra; jc1++) {
+      colloids_info_climits(cinfo, Y, jc1, dj);
+      for (kc1 = 1 - nextra; kc1 <= ncell[Z] + nextra; kc1++) {
+        colloids_info_climits(cinfo, Z, kc1, dk);
+
+        colloids_info_cell_list_head(cinfo, ic1, jc1, kc1, &pc1);
+        for (; pc1; pc1 = pc1->next) {
+
+	  if (pc1->s.nbonds_mesh == 0) continue;
+
+	  for (ic2 = di[0]; ic2 <= di[1]; ic2++) {
+	    for (jc2 = dj[0]; jc2 <= dj[1]; jc2++) {
+	      for (kc2 = dk[0]; kc2 <= dk[1]; kc2++) {
+   
+		colloids_info_cell_list_head(cinfo, ic2, jc2, kc2, &pc2);
+		for (; pc2; pc2 = pc2->next) {
+
+		  if (pc2->s.nbonds_mesh == 0) continue; 
+                  
+		  for (n1 = 0; n1 < pc1->s.nbonds_mesh; n1++) {
+		    if (pc1->s.bond_mesh[n1] == pc2->s.index) {
+		      nbondfound += 1;
+		      pc1->bonded_mesh[n1] = pc2;
+		     
+		      /* And bond is reciprocated */
+		      for (n2 = 0; n2 < pc2->s.nbonds_mesh; n2++) {
+			if (pc2->s.bond_mesh[n2] == pc1->s.index) {
+			  nbondpair += 1;
+			  pc2->bonded_mesh[n2] = pc1;
+			}
+		      }
+		    }
+		  }
+
+		  /* Cell list */
+	        }
+	      }
+	    }
+	  }
+	}
+      }
+    }
+  }
+  if (nbondfound != nbondpair) {
+    /* There is a mismatch in the bond information (treat as fatal) */
+    pe_fatal(obj->pe, "Find bonds: bond not reciprocated\n");
+  }
+
+  return 0;
+}
+
 
 
 
@@ -1784,3 +1929,4 @@ int colloids_update_forces_ext(colloids_info_t * cinfo) {
 
   return 0;
 }
+

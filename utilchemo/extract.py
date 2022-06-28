@@ -37,9 +37,9 @@ import os
 import sys
 import getopt
 
-nstart=1000    # Start timestep
-nend= 5000	# End timestep
-nint=1000		# Increment
+nstart=1000   # Start timestep
+nend=10000	# End timestep
+nint=1000	# Increment
 
 ngroup=1	# Number of output groups
 
@@ -48,12 +48,12 @@ a0_poly = None  # the radius of monomer
 
 vel=False	# Switch for velocity 
 q=False		# Switch for Q-tensor
-phi=False	# Switch for binary fluid
-mobility=False	# Switch for binary fluid
+phi=True	# Switch for binary fluid
+mask=True	# Switch for binary fluid
 psi=False	# Switch for electrokinetics
 fed=False	# Switch for free energy
 colcds=False	# Switch for colloid coordinate
-colcdsvel=False # Switch for colloid coordinate and lattice velocity
+colcdsvel=True # Switch for colloid coordinate and lattice velocity
 
 squ_poly_cds = False     # Squirmer, polymer co-ordinate
 squ_poly_cdsvel = False  # Squirmer, polymer co-ordinate; velocity 
@@ -73,7 +73,7 @@ for opt, arg in opts:
         elif (opt == "-p"):
           phi = True
         elif (opt == "-m"):
-          mobility = True
+          mask = True
         elif (opt == "-v"):
           vel = True
         elif (opt == "-c"):
@@ -82,7 +82,7 @@ for opt, arg in opts:
 print("Extracting ", end = "")
 if phi == True: print("phi fields, ", end = "")
 if vel == True: print("velocity fields, ", end = "")
-if mobility == True: print("mobility fields, ", end = "")
+if mask == True: print("mask fields, ", end = "")
 if colcdsvel == True: print("and colloid coordinates and velocities ", end = "")
 print("from " + str(nstart) + " to " + str(nend) + " with increment " + str(nint))
 
@@ -102,11 +102,11 @@ if phi:
 	for i in range(nstart,nend+nint,nint):
 		os.system('ls -t1 phi-%08.0d.%03.0d-001 >> filelist_phi' % (i,ngroup))
 
-if mobility:
-	metafile.append('mobility_map.%03.0d-001.meta' % ngroup)
-	filelist.append('filelist_mobility')
+if mask:
+	metafile.append('flux_mask.%03.0d-001.meta' % ngroup)
+	filelist.append('filelist_mask')
 	for i in range(nstart,nend+nint,nint):
-		os.system('ls -t1 mobility_map-%08.0d.%03.0d-001 >> filelist_mobility' % (i,ngroup))
+		os.system('ls -t1 flux_mask-%08.0d.%03.0d-001 >> filelist_mask' % (i,ngroup))
 
 if colcdsvel==1:
 	metafile.append('')
@@ -116,7 +116,7 @@ if colcdsvel==1:
 
 # Create vtk-files
 for i in range(len(filelist)):
-	if filelist[i] == 'filelist_vel' or filelist[i] == 'filelist_phi' or filelist[i] == 'filelist_mobility':
+	if filelist[i] == 'filelist_vel' or filelist[i] == 'filelist_phi' or filelist[i] == 'filelist_mask':
 		datafiles=open(filelist[i],'r') 
 
 		while 1:

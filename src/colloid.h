@@ -34,13 +34,18 @@ typedef enum colloid_io_version colloid_io_version_t;
 /* NPAD_DOUBLE 6 = 15 - u0 - delta - cutoff - n[3] - fphi[3] - fsprings[3] - fsub[3] */
 /* <----- */
 
-#define NTOT_VAR (269+48)
-#define NPAD_INT  1
-#define NPAD_DBL  3
+#define NTOT_VAR (12 + 3 + 3 + 3 + 642 + 11 + 0              + 48            + 0           + 14)
+//                ints nbonds 1 2 3 mesh ints pad	     double	   double pad       tuple
+
+
+// PADDING MUST BE INCLUDED IN NTOT_VAR !!
+#define NPAD_INT  0
+#define NPAD_DBL  0
 
 #define NBOND_MAX  3
 #define NBOND_MAX2  3
-#define NBOND_MAX3  240
+#define NBOND_MAX3  3
+#define NBOND_MAX_MESH 642 
 
 enum colloid_type_enum {COLLOID_TYPE_DEFAULT = 0,
 			COLLOID_TYPE_ACTIVE,
@@ -50,6 +55,11 @@ enum colloid_type_enum {COLLOID_TYPE_DEFAULT = 0,
 typedef enum colloid_type_enum colloid_type_enum_t;
 typedef struct colloid_state_type colloid_state_t;
 
+typedef struct {
+  int indices[7];
+  double r0s[7];
+} tTuple;
+
 struct colloid_state_type {
 
   int index;            /* Unique global index for colloid */
@@ -57,6 +67,7 @@ struct colloid_state_type {
   int nbonds;           /* Number of bonds e.g. fene (to NBOND_MAX) */
   int nbonds2;           /* Number of bonds e.g. fene (to NBOND_MAX2) */
   int nbonds3;           /* Number of bonds e.g. fene (to NBOND_MAX3) */
+  int nbonds_mesh;           /* Number of bonds e.g. fene (to NBOND_MAX) */
   int nangles;          /* Number of angles, e.g., fene (1 at the moment) */
 
   int isfixedr;         /* Set to 1 for no position update */
@@ -68,6 +79,7 @@ struct colloid_state_type {
   int bond[NBOND_MAX];  /* Bonded neighbours ids (index) */
   int bond2[NBOND_MAX2];  /* Bonded neighbours ids (index) */
   int bond3[NBOND_MAX3];  /* Bonded neighbours ids (index) */
+  int bond_mesh[NBOND_MAX_MESH];  /* Bonded neighbours ids (index) */
 
   int rng;              /* Random number state */
 
@@ -132,6 +144,7 @@ struct colloid_state_type {
 
   double dpad[NPAD_DBL];/* Again, this pads to 512 bytes to allow
 			 * for future expansion. */
+  tTuple tuple;
 };
 
 int colloid_state_read_ascii(colloid_state_t * ps, FILE * fp);
