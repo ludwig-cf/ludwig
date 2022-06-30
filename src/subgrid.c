@@ -90,7 +90,7 @@ int subgrid_force_from_particles(colloids_info_t * cinfo, hydro_t * hydro,
 
 /* -----> CHEMOVESICLE V2 */
 /* Central particle does not interact with fluid */
-          if (p_colloid->s.iscentre == 1) continue; //LIGHTHOUSE
+          //if (p_colloid->s.iscentre == 1) continue; //LIGHTHOUSE
 /* <----- */
 
 	  /* Need to translate the colloid position to "local"
@@ -444,8 +444,8 @@ static int subgrid_interpolation(colloids_info_t * cinfo, hydro_t * hydro) {
 
           if (p_colloid->s.type != COLLOID_TYPE_SUBGRID) continue;
 
-/* -----> CHEMOVESICLE V2 */
-	  if (p_colloid->s.iscentre == 1) continue;
+/* -----> CHEMOVESICLE V2 */ //LIGHTHOUSE
+	  //if (p_colloid->s.iscentre == 1) continue;
 /* <----- */
 	  p_colloid->fsub[X] = 0.0;
 	  p_colloid->fsub[Y] = 0.0;
@@ -473,7 +473,7 @@ static int subgrid_interpolation(colloids_info_t * cinfo, hydro_t * hydro) {
           if (p_colloid->s.type != COLLOID_TYPE_SUBGRID) continue;
 
 /* -----> CHEMOVESICLE V2 */
-	  if (p_colloid->s.iscentre == 1) continue;
+	  //if (p_colloid->s.iscentre == 1) continue;
 /* <----- */
 
 	  /* Need to translate the colloid position to "local"
@@ -706,9 +706,9 @@ int subgrid_flux_mask(pe_t * pe, colloids_info_t * cinfo, field_t * flux_mask, r
   double m[3] = {0., 0., 0.}, n[3] = {0., 0., 0.}, ijk[3];
   double r[3], rcentre[3], rhole[3], rortho[3], rcentre_local[3], rsq;
   double rnorm, mnorm, nnorm;
-  double cosalpha, alpha, gaussalpha, alpha0, alpha_cutoff, mask_thickness;
-  double rvesicle;  
-  double porosity[2];
+  double cosalpha, alpha, gaussalpha, std_alpha, alpha_cutoff, std_width;
+  double radius, gaussr;  
+  double permeability[2];
   double psi0, kappa, dphi;
 
   char reaction_model[BUFSIZ];
@@ -721,7 +721,7 @@ int subgrid_flux_mask(pe_t * pe, colloids_info_t * cinfo, field_t * flux_mask, r
   physics_t * phys = NULL;
 
   physics_ref(&phys);
-  physics_rvesicle(phys, &rvesicle);
+  physics_rvesicle(phys, &radius);
 
   cs_nlocal_offset(cinfo->cs, offset);
   cs_nlocal(cinfo->cs, nlocal);
@@ -753,20 +753,20 @@ int subgrid_flux_mask(pe_t * pe, colloids_info_t * cinfo, field_t * flux_mask, r
 
     if (!mask_phi_switch && !mask_psi_switch && !reaction_switch) return 0;
     if (mask_phi_switch) { 
-      p = rt_double_parameter(rt, "mask_phi_porosity", &porosity[0]);
-      if (p != 1) pe_fatal(pe, "Please specify mask_phi_porosity\n");
+      p = rt_double_parameter(rt, "mask_phi_permeability", &permeability[0]);
+      if (p != 1) pe_fatal(pe, "Please specify mask_phi_permeability\n");
     }
     if (mask_psi_switch) {
-      p = rt_double_parameter(rt, "mask_psi_porosity", &porosity[1]);
-      if (p != 1) pe_fatal(pe, "Please specify mask_psi_porosity\n");
+      p = rt_double_parameter(rt, "mask_psi_permeability", &permeability[1]);
+      if (p != 1) pe_fatal(pe, "Please specify mask_psi_permeability\n");
     }
     if (mask_phi_switch || mask_psi_switch) {
-      p = rt_double_parameter(rt, "mask_alpha0", &alpha0);
-      if (p != 1) pe_fatal(pe, "Please specify mask_alpha0\n");
-      p = rt_double_parameter(rt, "mask_thickness", &mask_thickness);
-      if (p != 1) pe_fatal(pe, "Please specify mask_thickness\n");
+      p = rt_double_parameter(rt, "mask_std_alpha", &std_alpha);
+      if (p != 1) pe_fatal(pe, "Please specify mask_std_alpha\n");
+      p = rt_double_parameter(rt, "mask_std_width", &std_width);
+      if (p != 1) pe_fatal(pe, "Please specify std_width\n");
       p = rt_double_parameter(rt, "mask_alpha_cutoff", &alpha_cutoff);
-      if (p != 1) pe_fatal(pe, "Please specify mask_alpha0\n");
+      if (p != 1) pe_fatal(pe, "Please specify mask_alpha_cutoff\n");
     }
 
     if (reaction_switch) {
@@ -920,7 +920,7 @@ int subgrid_flux_mask(pe_t * pe, colloids_info_t * cinfo, field_t * flux_mask, r
 
 	// PRODUCE PHI
         if (reaction_switch) {
-	  if (rnorm < rvesicle - mask_thickness - 2) {
+	  if (rnorm < radius - std_width - 2) {
 
 	    if (strcmp(reaction_model, "uniform") == 0) 
 	      phi->data[addr_rank1(phi->nsites, 2, index, 0)] += dphi;
@@ -932,36 +932,57 @@ int subgrid_flux_mask(pe_t * pe, colloids_info_t * cinfo, field_t * flux_mask, r
 	}
 
 	// ASSIGN MASK VALUE
-	if (mask_phi_switch) { 
-	  if (rnorm <= rvesicle + mask_thickness && rnorm >= rvesicle - mask_thickness) {
 
-            cosalpha = (r[X]*m[X] + r[Y]*m[Y] + r[Z]*m[Z]) / rnorm;
-            alpha = acos(cosalpha);
-            gaussalpha = exp(-0.5*(alpha/alpha0)*(alpha/alpha0));
+	// Allowed because the central particle should never be near the edge of the vesicle
+	if (rnorm == 0.0) continue;
+
+	if (mask_phi_switch) { 
+
+          cosalpha = (r[X]*m[X] + r[Y]*m[Y] + r[Z]*m[Z])/rnorm;
+
+	  if (cosalpha > 1.) cosalpha = 1.; 
+	  if (cosalpha < -1.) cosalpha = -1.; 
+
+          alpha = acos(cosalpha);
+
+          gaussalpha = exp(-.5*(alpha/std_alpha)*(alpha/std_alpha));
+          gaussr = exp(-.5*((rnorm - radius)*(rnorm - radius)) / (std_width*std_width) );
 	    
-	    if (alpha*alpha > alpha_cutoff*alpha_cutoff) {
-	      flux_mask->data[addr_rank1(flux_mask->nsites, 2, index, 0)] = porosity[0];
-	    }
-	    else flux_mask->data[addr_rank1(flux_mask->nsites, 2, index, 0)] = porosity[0] + (1.0 - porosity[0])*gaussalpha;
+	  if (alpha*alpha > alpha_cutoff*alpha_cutoff) {
+	    flux_mask->data[addr_rank1(flux_mask->nsites, 2, index, 0)] = 1. - gaussr*(1 - (1 - permeability[0])* gaussalpha);
 	  }
+	  else flux_mask->data[addr_rank1(flux_mask->nsites, 2, index, 0)] = 1. - gaussr*(1 - (1 - permeability[0])* gaussalpha);
 	}
+
 
 	if (mask_psi_switch) { 
-	  if (rnorm <= rvesicle + mask_thickness && rnorm >= rvesicle - mask_thickness) 
 
-            cosalpha = (r[X]*m[X] + r[Y]*m[Y] + r[Z]*m[Z]) / rnorm;
-            alpha = acos(cosalpha);
-            gaussalpha = exp(-0.5*(alpha/alpha0)*(alpha/alpha0));
-	    
-	    if (alpha*alpha > alpha_cutoff*alpha_cutoff) {
-	      flux_mask->data[addr_rank1(flux_mask->nsites, 2, index, 1)] = porosity[1];
-	    }
-	    else flux_mask->data[addr_rank1(flux_mask->nsites, 2, index, 1)] = porosity[1] + (1.0 - porosity[1])*gaussalpha;
+          cosalpha = (r[X]*m[X] + r[Y]*m[Y] + r[Z]*m[Z]) / rnorm;
+ 
+	  if (cosalpha > 1.) cosalpha = 1.; 
+	  if (cosalpha < -1.) cosalpha = -1.; 
 
-	}
+          alpha = acos(cosalpha);
+
+          gaussalpha = exp(-.5*(alpha/std_alpha)*(alpha/std_alpha));
+          gaussr = exp(-.5*((rnorm - radius)*(rnorm - radius)) / (std_width*std_width) );
+ 
+          if (alpha*alpha > alpha_cutoff*alpha_cutoff) {
+	    flux_mask->data[addr_rank1(flux_mask->nsites, 2, index, 1)] = 1. - gaussr*(1 - (1 - permeability[1])* gaussalpha);
+	  }
+	  else flux_mask->data[addr_rank1(flux_mask->nsites, 2, index, 1)] = 1. - gaussr*(1 - (1 - permeability[1])* gaussalpha);
+        }
+
+	assert(flux_mask->data[addr_rank1(flux_mask->nsites, 2, index, 0)] >= 0.0);
+	assert(flux_mask->data[addr_rank1(flux_mask->nsites, 2, index, 0)] <= 1.0);
+
+	assert(flux_mask->data[addr_rank1(flux_mask->nsites, 2, index, 1)] >= 0.0);
+	assert(flux_mask->data[addr_rank1(flux_mask->nsites, 2, index, 1)] <= 1.0);
+
       }
     }
   }
+
   return 0;
 }
 

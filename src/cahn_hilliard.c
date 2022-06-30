@@ -744,43 +744,56 @@ __global__ void ch_apply_mask_kernel(kernel_ctxt_t * ktx,
     int n;
     int index0, index1;
     int ic, jc, kc;
-    double m0, m1, mask;
+    double m0[2], m1[2], mask[2];
 
     ic = kernel_coords_ic(ktx, kindex);
     jc = kernel_coords_jc(ktx, kindex);
     kc = kernel_coords_kc(ktx, kindex);
 
     index0 = kernel_coords_index(ktx, ic, jc, kc);
-    m0     = flux_mask->data[addr_rank1(flux_mask->nsites, 2, index0, 0)];
-
-    index1 = kernel_coords_index(ktx, ic+1, jc, kc);
-    m1     = flux_mask->data[addr_rank1(flux_mask->nsites, 2, index1, 0)];
-
-    mask   = m0*m1;
 
     for (n = 0; n < ch->flux->nf; n++) {
-      ch->flux->fx[addr_rank1(ch->flux->nsite, ch->flux->nf, index0, n)] *= mask;
+      
+      {	// Between ic and ic+1
+
+        index1 = kernel_coords_index(ktx, ic+1, jc, kc);
+
+        m0[n]     = flux_mask->data[addr_rank1(flux_mask->nsites, ch->flux->nf, index0, n)];
+        m1[n]     = flux_mask->data[addr_rank1(flux_mask->nsites, ch->flux->nf, index1, n)];
+
+        mask[n]   = m0[n]*m1[n];
+        ch->flux->fx[addr_rank1(ch->flux->nsite, ch->flux->nf, index0, n)] *= mask[n];
+      }
+
+
+      { // Between jc and jc+1
+
+        index1 = kernel_coords_index(ktx, ic, jc+1, kc);
+
+        m0[n]     = flux_mask->data[addr_rank1(flux_mask->nsites, ch->flux->nf, index0, n)];
+        m1[n]     = flux_mask->data[addr_rank1(flux_mask->nsites, ch->flux->nf, index1, n)];
+
+        mask[n]   = m0[n]*m1[n];
+        ch->flux->fy[addr_rank1(ch->flux->nsite, ch->flux->nf, index0, n)] *= mask[n];
+
+      }
+
+
+      { // Between kc and kc+1
+
+        index1 = kernel_coords_index(ktx, ic, jc, kc+1);
+
+        m0[n]     = flux_mask->data[addr_rank1(flux_mask->nsites, ch->flux->nf, index0, n)];
+        m1[n]     = flux_mask->data[addr_rank1(flux_mask->nsites, ch->flux->nf, index1, n)];
+
+        mask[n]   = m0[n]*m1[n];
+        ch->flux->fz[addr_rank1(ch->flux->nsite, ch->flux->nf, index0, n)] *= mask[n];
+
+      }
+
+    // Next order parameter
     }
-
-    index1 = kernel_coords_index(ktx, ic, jc+1, kc);
-
-    m1     = flux_mask->data[addr_rank1(flux_mask->nsites, 2, index1, 0)];
-    mask   = m0*m1;
-
-    for (n = 0; n < ch->flux->nf; n++) {
-      ch->flux->fy[addr_rank1(ch->flux->nsite, ch->flux->nf, index0, n)] *= mask;
-    }
-
-    index1 = kernel_coords_index(ktx, ic, jc, kc+1);
-
-    m1     = flux_mask->data[addr_rank1(flux_mask->nsites, 2, index1, 0)];
-    mask   = m0*m1;
-
-    for (n = 0; n < ch->flux->nf; n++) {
-      ch->flux->fz[addr_rank1(ch->flux->nsite, ch->flux->nf, index0, n)] *= mask;
-    }
-
-    /* Next site */
+  // Next site 
   }
 
   return;
