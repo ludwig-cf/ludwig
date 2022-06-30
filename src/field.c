@@ -1036,31 +1036,29 @@ int field_halo_enqueue_send(const field_t * field, field_halo_t * h, int ireq) {
 }
 
 __global__
-void field_halo_enqueue_send_kernel(const field_t * field, field_halo_t * h) {
-  for (int ireq = 1; ireq < h->nvel; ireq++) {
-    assert(field);
-    assert(h);
-    assert(1 <= ireq && ireq < h->nvel);
+void field_halo_enqueue_send_kernel(const field_t * field, field_halo_t * h, int ireq) {
+  assert(field);
+  assert(h);
+  assert(1 <= ireq && ireq < h->nvel);
 
-    int nx = 1 + h->slim[ireq].imax - h->slim[ireq].imin;
-    int ny = 1 + h->slim[ireq].jmax - h->slim[ireq].jmin;
-    int nz = 1 + h->slim[ireq].kmax - h->slim[ireq].kmin;
+  int nx = 1 + h->slim[ireq].imax - h->slim[ireq].imin;
+  int ny = 1 + h->slim[ireq].jmax - h->slim[ireq].jmin;
+  int nz = 1 + h->slim[ireq].kmax - h->slim[ireq].kmin;
 
-    int strz = 1;
-    int stry = strz*nz;
-    int strx = stry*ny;
+  int strz = 1;
+  int stry = strz*nz;
+  int strx = stry*ny;
 
-    int ih = 0;
-    for_simt_parallel(ih, nx*ny*nz, 1) {
-      int ic = h->slim[ireq].imin + ih/strx;
-      int jc = h->slim[ireq].jmin + (ih % strx)/stry;
-      int kc = h->slim[ireq].kmin + (ih % stry)/strz;
-      int index = cs_index(field->cs, ic, jc, kc);
+  int ih = 0;
+  for_simt_parallel(ih, nx*ny*nz, 1) {
+    int ic = h->slim[ireq].imin + ih/strx;
+    int jc = h->slim[ireq].jmin + (ih % strx)/stry;
+    int kc = h->slim[ireq].kmin + (ih % stry)/strz;
+    int index = cs_index(field->cs, ic, jc, kc);
 
-      for (int ibf = 0; ibf < field->nf; ibf++) {
-        int faddr = addr_rank1(field->nsites, field->nf, index, ibf);
-        h->send[ireq][ih*field->nf + ibf] = field->data[faddr];
-      }
+    for (int ibf = 0; ibf < field->nf; ibf++) {
+      int faddr = addr_rank1(field->nsites, field->nf, index, ibf);
+      h->send[ireq][ih*field->nf + ibf] = field->data[faddr];
     }
   }
 }
@@ -1112,46 +1110,177 @@ int field_halo_dequeue_recv(field_t * field, const field_halo_t * h, int ireq) {
 }
 
 __global__
-void field_halo_dequeue_recv_kernel(field_t * field, const field_halo_t * h) {
-  for (int ireq = 1; ireq < h->nvel; ireq++) {
-    assert(field);
-    assert(h);
-    assert(1 <= ireq && ireq < h->nvel);
+void field_halo_dequeue_recv_kernel(field_t * field, const field_halo_t * h, int ireq) {
+  assert(field);
+  assert(h);
+  assert(1 <= ireq && ireq < h->nvel);
 
-    int nx = 1 + h->rlim[ireq].imax - h->rlim[ireq].imin;
-    int ny = 1 + h->rlim[ireq].jmax - h->rlim[ireq].jmin;
-    int nz = 1 + h->rlim[ireq].kmax - h->rlim[ireq].kmin;
+  int nx = 1 + h->rlim[ireq].imax - h->rlim[ireq].imin;
+  int ny = 1 + h->rlim[ireq].jmax - h->rlim[ireq].jmin;
+  int nz = 1 + h->rlim[ireq].kmax - h->rlim[ireq].kmin;
 
-    int strz = 1;
-    int stry = strz*nz;
-    int strx = stry*ny;
+  int strz = 1;
+  int stry = strz*nz;
+  int strx = stry*ny;
 
-    double * recv = h->recv[ireq];
+  double * recv = h->recv[ireq];
 
-    /* Check if this a copy from our own send buffer */
-    {
-      int i = 1 + h->cv[h->nvel - ireq][X];
-      int j = 1 + h->cv[h->nvel - ireq][Y];
-      int k = 1 + h->cv[h->nvel - ireq][Z];
+  /* Check if this a copy from our own send buffer */
+  {
+    int i = 1 + h->cv[h->nvel - ireq][X];
+    int j = 1 + h->cv[h->nvel - ireq][Y];
+    int k = 1 + h->cv[h->nvel - ireq][Z];
 
-      if (h->nbrrank[i][j][k] == h->nbrrank[1][1][1]) recv = h->send[ireq];
-    }
+    if (h->nbrrank[i][j][k] == h->nbrrank[1][1][1]) recv = h->send[ireq];
+  }
 
-    int ih = 0;
-    for_simt_parallel(ih, nx*ny*nz, 1) {
-      int ic = h->rlim[ireq].imin + ih/strx;
-      int jc = h->rlim[ireq].jmin + (ih % strx)/stry;
-      int kc = h->rlim[ireq].kmin + (ih % stry)/strz;
-      int index = cs_index(field->cs, ic, jc, kc);
+  int ih = 0;
+  for_simt_parallel(ih, nx*ny*nz, 1) {
+    int ic = h->rlim[ireq].imin + ih/strx;
+    int jc = h->rlim[ireq].jmin + (ih % strx)/stry;
+    int kc = h->rlim[ireq].kmin + (ih % stry)/strz;
+    int index = cs_index(field->cs, ic, jc, kc);
 
-      for (int ibf = 0; ibf < field->nf; ibf++) {
-        int faddr = addr_rank1(field->nsites, field->nf, index, ibf);
-        field->data[faddr] = recv[ih*field->nf + ibf];
-      }
+    for (int ibf = 0; ibf < field->nf; ibf++) {
+      int faddr = addr_rank1(field->nsites, field->nf, index, ibf);
+      field->data[faddr] = recv[ih*field->nf + ibf];
     }
   }
 }
 
+#if defined(__NVCC__)
+void CUDART_CB field_halo_send_callback(void *data) {
+  const static int tagbase = 2022;
+
+  intptr_t *tmp = (intptr_t *)data;
+  field_t *field = (field_t *)tmp[0];
+  field_halo_t *h = (field_halo_t *)tmp[1];
+  int ireq = (int)tmp[2];
+  
+  int i = 1 + h->cv[ireq][X];
+  int j = 1 + h->cv[ireq][Y];
+  int k = 1 + h->cv[ireq][Z];
+  int mcount = field->nf*field_halo_size(h->slim[ireq]);
+
+  if (h->nbrrank[i][j][k] == h->nbrrank[1][1][1]) mcount = 0;
+
+  MPI_Isend(h->send[ireq], mcount, MPI_DOUBLE, h->nbrrank[i][j][k],
+      tagbase + ireq, h->comm, h->request + 27 + ireq);
+}
+
+int create_send_graph(const field_t * field, field_halo_t * h) {
+  h->send_graph = (cuda_graph_t *)malloc(sizeof(*h->send_graph));
+  cudaGraphCreate(&h->send_graph->graph, 0);
+  for (int ireq = 1; ireq < h->nvel; ireq++) {
+    cudaGraphNode_t kernelNode;
+    cudaKernelNodeParams kernelNodeParams = {0};
+    h->send_graph->kernelArgs[ireq][0] = (intptr_t)field->target;
+    h->send_graph->kernelArgs[ireq][1] = (intptr_t)h->target;
+    h->send_graph->kernelArgs[ireq][2] = (intptr_t)ireq;
+    void *kernelArgs[3] = {&h->send_graph->kernelArgs[ireq][0], 
+                            &h->send_graph->kernelArgs[ireq][1], 
+                            &h->send_graph->kernelArgs[ireq][2]};
+    kernelNodeParams.func = (void *)field_halo_enqueue_send_kernel;
+    dim3 nblk, ntpb;
+    int scount = field->nf*field_halo_size(h->slim[ireq]);
+    kernel_launch_param(scount, &nblk, &ntpb);
+    kernelNodeParams.gridDim = nblk;
+    kernelNodeParams.blockDim = ntpb;
+    kernelNodeParams.sharedMemBytes = 0;
+    kernelNodeParams.kernelParams = (void **)kernelArgs;
+    kernelNodeParams.extra = NULL;
+    cudaGraphAddKernelNode(&kernelNode, h->send_graph->graph, NULL,
+                             0, &kernelNodeParams);
+    int i = 1 + h->cv[h->nvel - ireq][X];
+    int j = 1 + h->cv[h->nvel - ireq][Y];
+    int k = 1 + h->cv[h->nvel - ireq][Z];
+    if (h->nbrrank[i][j][k] != h->nbrrank[1][1][1]) {
+      cudaGraphNode_t memcpyNode;
+      cudaMemcpy3DParms memcpyParams = {0};
+      memcpyParams.srcArray = NULL;
+      memcpyParams.srcPos = make_cudaPos(0, 0, 0);
+      memcpyParams.srcPtr =
+          make_cudaPitchedPtr(h->send_d[ireq], sizeof(double) * scount, scount, 1);
+      memcpyParams.dstArray = NULL;
+      memcpyParams.dstPos = make_cudaPos(0, 0, 0);
+      memcpyParams.dstPtr =
+          make_cudaPitchedPtr(h->send[ireq], sizeof(double) * scount, scount, 1);
+      memcpyParams.extent = make_cudaExtent(sizeof(double) * scount, 1, 1);
+      memcpyParams.kind = cudaMemcpyDeviceToHost;
+      cudaGraphAddMemcpyNode(&memcpyNode, 
+                              h->send_graph->graph, 
+                              &kernelNode, 
+                              1, &memcpyParams);
+      
+      cudaGraphNode_t hostNode;
+      cudaHostNodeParams hostParams = {0};
+      hostParams.fn = field_halo_send_callback;
+      hostParams.userData = &h->send_graph->kernelArgs[ireq];
+
+      cudaGraphAddHostNode(&hostNode, h->send_graph->graph,
+                            &memcpyNode,
+                            1, &hostParams);
+    }
+  }
+  // char errLog[1000];
+  cudaGraphInstantiate(&h->send_graph->graphExec, h->send_graph->graph, NULL, NULL, 0);
+  // errLog[999] = '\0';
+  // printf("send graph log: %s\n", errLog);
+  return 0;
+}
+
+int create_recv_graph(const field_t * field, field_halo_t * h) {
+  h->recv_graph = (cuda_graph_t *)malloc(sizeof(*h->recv_graph));
+  cudaGraphCreate(&h->recv_graph->graph, 0);
+  for (int ireq = 1; ireq < h->nvel; ireq++) {
+    int rcount = field->nf*field_halo_size(h->rlim[ireq]);
+    cudaGraphNode_t memcpyNode;
+    int i = 1 + h->cv[h->nvel - ireq][X];
+    int j = 1 + h->cv[h->nvel - ireq][Y];
+    int k = 1 + h->cv[h->nvel - ireq][Z];
+    if (h->nbrrank[i][j][k] != h->nbrrank[1][1][1]) {
+      cudaMemcpy3DParms memcpyParams = {0};
+      memcpyParams.srcArray = NULL;
+      memcpyParams.srcPos = make_cudaPos(0, 0, 0);
+      memcpyParams.srcPtr =
+          make_cudaPitchedPtr(h->recv[ireq], sizeof(double) * rcount, rcount, 1);
+      memcpyParams.dstArray = NULL;
+      memcpyParams.dstPos = make_cudaPos(0, 0, 0);
+      memcpyParams.dstPtr =
+          make_cudaPitchedPtr(h->recv_d[ireq], sizeof(double) * rcount, rcount, 1);
+      memcpyParams.extent = make_cudaExtent(sizeof(double) * rcount, 1, 1);
+      memcpyParams.kind = cudaMemcpyHostToDevice;
+      cudaGraphAddMemcpyNode(&memcpyNode, h->send_graph->graph, NULL, 0, &memcpyParams);
+    }
+    cudaGraphNode_t node;
+    cudaKernelNodeParams kernelNodeParams = {0};
+    h->recv_graph->kernelArgs[ireq][0] = (intptr_t)field->target;
+    h->recv_graph->kernelArgs[ireq][1] = (intptr_t)h->target;
+    h->recv_graph->kernelArgs[ireq][2] = (intptr_t)ireq;
+    void *kernelArgs[3] = {&h->recv_graph->kernelArgs[ireq][0], 
+                            &h->recv_graph->kernelArgs[ireq][1], 
+                            &h->recv_graph->kernelArgs[ireq][2]};
+    kernelNodeParams.func = (void *)field_halo_dequeue_recv_kernel;
+    dim3 nblk, ntpb;
+    kernel_launch_param(rcount, &nblk, &ntpb);
+    kernelNodeParams.gridDim = nblk;
+    kernelNodeParams.blockDim = ntpb;
+    kernelNodeParams.sharedMemBytes = 0;
+    kernelNodeParams.kernelParams = (void **)kernelArgs;
+    kernelNodeParams.extra = NULL;
+    if (h->nbrrank[i][j][k] != h->nbrrank[1][1][1]) {
+      cudaGraphAddKernelNode(&node, h->recv_graph->graph, &memcpyNode,
+                             1, &kernelNodeParams);
+    } else {
+      cudaGraphAddKernelNode(&node, h->recv_graph->graph, NULL,
+                             0, &kernelNodeParams);
+    }
+  }
+  cudaGraphInstantiate(&h->recv_graph->graphExec, h->recv_graph->graph, NULL, NULL, 0);
+  return 0;
+}
+
+#endif
 /*****************************************************************************
  *
  *  field_halo_create
@@ -1287,6 +1416,10 @@ int field_halo_create(const field_t * field, field_halo_t * h) {
     }
     tdpMemcpy(h->target->send, h->send_d, 27 * sizeof(double *), tdpMemcpyHostToDevice);
     tdpMemcpy(h->target->recv, h->recv_d, 27 * sizeof(double *), tdpMemcpyHostToDevice);
+#if defined(__NVCC__) 
+    create_send_graph(field, h);
+    create_recv_graph(field, h);
+#endif
   }
   return 0;
 }
@@ -1330,26 +1463,20 @@ int field_halo_post(const field_t * field, field_halo_t * h) {
   /* Load send buffers; post sends */
 
   TIMER_start(TIMER_FIELD_HALO_PACK);
-  dim3 nblk, ntpb;
-  kernel_launch_param(h->max_buf_len, &nblk, &ntpb);
-  tdpLaunchKernel(field_halo_enqueue_send_kernel, nblk, ntpb, 0, h->stream, field->target, h->target);
-  int ndevice = 0;
-  tdpGetDeviceCount(&ndevice);
-  if (ndevice > 0) {
-    for (int p = 1; p < h->nvel; p++) {
-      int i = 1 + h->cv[p][X];
-      int j = 1 + h->cv[p][Y];
-      int k = 1 + h->cv[p][Z];
-      if (h->nbrrank[i][j][k] == h->nbrrank[1][1][1]) {
-        continue;
-      }
-      int scount = field->nf*field_halo_size(h->slim[p]);
-      tdpMemcpyAsync(h->send[p], h->send_d[p], scount * sizeof(double), tdpMemcpyDeviceToHost, h->stream);
-    }
-  }
+
+#if defined(__NVCC__)
+  cudaGraphLaunch(h->send_graph->graphExec, h->stream);
   tdpStreamSynchronize(h->stream);
   tdpAssert(tdpPeekAtLastError());
   tdpAssert(tdpDeviceSynchronize());
+#else
+  #pragma omp parallel
+  {
+    for (int ireq = 1; ireq < h->nvel; ireq++) {
+      field_halo_enqueue_send(field, h, ireq);
+    }
+  }
+#endif
 
   TIMER_stop(TIMER_FIELD_HALO_PACK);
 
@@ -1393,26 +1520,19 @@ int field_halo_wait(field_t * field, field_halo_t * h) {
 
   TIMER_start(TIMER_FIELD_HALO_UNPACK);
 
-  dim3 nblk, ntpb;
-  int ndevice = 0;
-  tdpGetDeviceCount(&ndevice);
-  if (ndevice > 0) {
-    for (int p = 1; p < h->nvel; p++) {
-      int i = 1 + h->cv[p][X];
-      int j = 1 + h->cv[p][Y];
-      int k = 1 + h->cv[p][Z];
-      if (h->nbrrank[i][j][k] == h->nbrrank[1][1][1]) {
-        continue;
-      }
-      int rcount = field->nf*field_halo_size(h->rlim[p]);
-      tdpMemcpyAsync(h->recv_d[p], h->recv[p], rcount * sizeof(double), tdpMemcpyHostToDevice, h->stream);
-    }
-  }
-  kernel_launch_param(h->max_buf_len, &nblk, &ntpb);
-  tdpLaunchKernel(field_halo_dequeue_recv_kernel, nblk, ntpb, 0, h->stream, field->target, h->target);
+#if defined(__NVCC__)
+  cudaGraphLaunch(h->recv_graph->graphExec, h->stream);
   tdpStreamSynchronize(h->stream);
   tdpAssert(tdpPeekAtLastError());
   tdpAssert(tdpDeviceSynchronize());
+#else
+  #pragma omp parallel
+  {
+    for (int ireq = 1; ireq < h->nvel; ireq++) {
+      field_halo_dequeue_recv(field, h, ireq);
+    }
+  }
+#endif
 
   TIMER_stop(TIMER_FIELD_HALO_UNPACK);
 
@@ -1493,6 +1613,11 @@ int field_halo_free(field_halo_t * h) {
     }
     tdpFree(h->target);
   }
+
+#if defined(__NVCC__)
+  free(h->send_graph);
+  free(h->recv_graph);
+#endif
 
   for (int p = 1; p < h->nvel; p++) {
     free(h->send[p]);

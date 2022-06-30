@@ -31,6 +31,17 @@
 
 #include "cs_limits.h"
 
+#if defined(__NVCC__)
+
+typedef struct cuda_graph_s cuda_graph_t;
+
+struct cuda_graph_s {
+  cudaGraph_t graph;
+  cudaGraphExec_t graphExec;
+  intptr_t kernelArgs[27][3];
+};
+#endif
+
 typedef struct field_halo_s field_halo_t;
 
 struct field_halo_s {
@@ -51,6 +62,10 @@ struct field_halo_s {
   field_halo_t * target;        /* target structure */
   double * send_d[27];          /* halo: device send data buffers */
   double * recv_d[27];          /* halo: device recv data buffers */
+#if defined(__NVCC__)
+  cuda_graph_t *send_graph;
+  cuda_graph_t *recv_graph;
+#endif
 };
 
 typedef struct field_s field_t;
@@ -109,5 +124,10 @@ __host__ __device__ int field_scalar_array(field_t * obj, int index,
 					   double * array);
 __host__ __device__ int field_scalar_array_set(field_t * obj, int index,
 					       const double * array);
+
+#if defined(__NVCC__)
+int create_send_graph(const field_t * field, field_halo_t * h);
+int create_recv_graph(const field_t * field, field_halo_t * h);
+#endif
 
 #endif
