@@ -2,9 +2,6 @@
  *
  *  test_lc_anchoring.c
  *
- *  ... to include lc_anchoring_incl.c (which could be split into
- *      a separate test suite).
- *
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -24,7 +21,6 @@
 #include "pe.h"
 #include "util.h"
 #include "lc_anchoring.h"
-#include "lc_anchoring_incl.c"
 
 int test_lc_anchoring_type_from_string(void);
 int test_lc_anchoring_type_from_enum(void);

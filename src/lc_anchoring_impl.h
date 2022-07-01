@@ -1,6 +1,6 @@
 /*****************************************************************************
  *
- *  lc_anchoring_incl.c
+ *  lc_anchoring_impl.h
  *
  *  Inline routines for liquid crystal anchoring.
  *
@@ -21,13 +21,12 @@
  *
  *****************************************************************************/
 
-#ifndef LUDWIG_LC_ANCHORING_INCL_C
-#define LUDWIG_LC_ANCHORING_INCL_C
+#ifndef LUDWIG_LC_ANCHORING_IMPL_C
+#define LUDWIG_LC_ANCHORING_IMPL_C
 
 #include <assert.h>
 
 #include "coords.h"
-#include "lc_anchoring.h"
 
 /*****************************************************************************
  *

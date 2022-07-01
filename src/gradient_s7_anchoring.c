@@ -56,8 +56,8 @@
 #include "coords.h"
 #include "kernel.h"
 
+#include "lc_anchoring.h"
 #include "gradient_s7_anchoring.h"
-#include "lc_anchoring_incl.c"
 
 typedef struct param_s param_t;
 
