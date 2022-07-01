@@ -63,6 +63,7 @@ const char * lc_anchoring_type_from_enum(lc_anchoring_enum_t type) {
     break;
   default:
     /* Nothing */
+    break;
   }
 
   return "invalid";

@@ -19,6 +19,7 @@
 #include <assert.h>
 #include <float.h>
 #include <math.h>
+#include <string.h>
 
 #include "pe.h"
 #include "util.h"
@@ -103,7 +104,7 @@ int test_lc_anchoring_type_from_string(void) {
 
 int test_lc_anchoring_type_from_enum(void) {
 
-  char * name = NULL;
+  const char * name = NULL;
 
   name = lc_anchoring_type_from_enum(LC_ANCHORING_NORMAL);
   assert(strcmp(name, "normal") == 0);
