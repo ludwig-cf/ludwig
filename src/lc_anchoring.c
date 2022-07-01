@@ -37,3 +37,33 @@ lc_anchoring_enum_t lc_anchoring_type_from_string(const char * string) {
 
   return lc_anchor;
 }
+
+/*****************************************************************************
+ *
+ *  lc_anchoring_type_from_enum
+ *
+ *  Return the relevant descriptive string.
+ *
+ *****************************************************************************/
+
+const char * lc_anchoring_type_from_enum(lc_anchoring_enum_t type) {
+
+  switch (type) {
+  case LC_ANCHORING_NORMAL:
+    return "normal";
+    break;
+  case LC_ANCHORING_PLANAR:
+    return "planar";
+    break;
+  case LC_ANCHORING_FIXED:
+    return "fixed";
+    break;
+  case LC_ANCHORING_INVALID:
+    return "invalid";
+    break;
+  default:
+    /* Nothing */
+  }
+
+  return "invalid";
+}

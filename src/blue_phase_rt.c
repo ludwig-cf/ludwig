@@ -187,20 +187,20 @@ __host__ int blue_phase_init_rt(pe_t * pe, rt_t *rt,
   rt_string_parameter(rt, "lc_anchoring_method", method, FILENAME_MAX);
 
   if (strcmp(method, "s7")  == 0) {
-    /* The default should be the updated 7 point stencil method. */
+    /* The default is set to "s7" above */
     blue_phase_rt_wall_anchoring(pe, rt, RT_FATAL, &fe_param.wall);
 
     if (fe_param.wall.type) {
       /* Temporary */
-      pe_info(pe, "Wall anchoring temporary output\n");
-      pe_info(pe, "Wall anchoring type:       %d\n", fe_param.wall.type);
+      pe_info(pe, "Wall anchoring temporary output TO FIX TO FIX\n");
+      pe_info(pe, "Wall anchoring type:       %s\n",
+	      lc_anchoring_type_from_enum(fe_param.wall.type));
       pe_info(pe, "Wall anchoring w1:         %f\n", fe_param.wall.w1);
       pe_info(pe, "Wall anchoring w2:         %f\n", fe_param.wall.w2);
       /* Still need to get energy right ...*/
       fe_param.anchoring_wall = fe_param.wall.type;
       fe_param.w1_wall = fe_param.wall.w1;
     }
-
   }
   else if (strcmp(method, "two") == 0) {
 

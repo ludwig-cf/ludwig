@@ -55,7 +55,9 @@
 #include "util.h"
 #include "coords.h"
 #include "kernel.h"
+
 #include "gradient_s7_anchoring.h"
+#include "lc_anchoring_incl.c"
 
 typedef struct param_s param_t;
 
@@ -897,7 +899,7 @@ int grad_s7_bcs_coeff(double kappa0, double kappa1, const int dn[3],
 
 /*****************************************************************************
  *
- *  grad_s7_boundary_c
+ *  grad_s7_boundary_wall
  *
  *  Compute the constant term in the cholesteric boundary condition.
  *  Fluid point is (ic, jc, kc) with fluid Q_ab = qs
@@ -906,37 +908,19 @@ int grad_s7_bcs_coeff(double kappa0, double kappa1, const int dn[3],
  *
  *****************************************************************************/
 
-__host__ __device__ int grad_s7_boundary_c(fe_lc_param_t * param,
-					   grad_s7_anch_t * anch,
-					   const double qs[3][3],
-					   const int di[3],
-					   double c[3][3]) {
-  int anchor;
+__host__ __device__ void grad_s7_boundary_wall(fe_lc_param_t * param,
+					       const double qs[3][3],
+					       const int di[3],
+					       double c[3][3]) {
 
-  double w1, w2;
-  double nhat[3] = {0};
-  double amp;
-
-  KRONECKER_DELTA_CHAR(d);
-  LEVI_CIVITA_CHAR(e);
-
-  assert(param);
-  assert(anch);
-
-  /* Local anchoring */
-
-  w1 = param->wall.w1;
-  w2 = param->wall.w2;
-  anchor = param->wall.type;
+  double nhat[3] = {1.0*di[X], 1.0*di[Y], 1.0*di[Z]};
+  double amp     = 0.0;
+  double kappa1  = param->kappa1;
+  double q0      = param->q0;
 
   fe_lc_amplitude_compute(param, &amp);
 
   /* Make sure we have a unit vector */
-  
-  nhat[X] = 1.0*di[X];
-  nhat[Y] = 1.0*di[Y];
-  nhat[Z] = 1.0*di[Z];
-
   {
     double rd = 1.0/sqrt(nhat[X]*nhat[X] + nhat[Y]*nhat[Y] + nhat[Z]*nhat[Z]);
     nhat[X] *= rd;
@@ -944,85 +928,38 @@ __host__ __device__ int grad_s7_boundary_c(fe_lc_param_t * param,
     nhat[Z] *= rd;
   }
 
-  /* Cholesteric term in q0 */
-  for (int ia = 0; ia < 3; ia++) {
-    for (int ib = 0; ib < 3; ib++) {
+  {
+    lc_anchoring_param_t * anchor = &param->wall;
 
-      c[ia][ib] = 0.0;
+    if (anchor->type == LC_ANCHORING_FIXED) {
+      lc_anchoring_fixed_ct(anchor, qs, nhat, kappa1, q0, amp, c);
+    }
 
-      for (int ig = 0; ig < 3; ig++) {
-        for (int ih = 0; ih < 3; ih++) {
-          c[ia][ib] -= param->kappa1*param->q0*nhat[ig]*
-	    (e[ia][ig][ih]*qs[ih][ib] + e[ib][ig][ih]*qs[ih][ia]);
-        }
-      }
+    if (anchor->type == LC_ANCHORING_NORMAL) {
+      lc_anchoring_normal_ct(anchor, qs, nhat, kappa1, q0, amp, c);
+    }
+
+    if (anchor->type == LC_ANCHORING_PLANAR) {
+      lc_anchoring_planar_ct(anchor, qs, nhat, kappa1, q0, amp, c);
     }
   }
 
-  /* Surface energy terms. */
+  return;
+}
 
-  if (anchor == LC_ANCHORING_FIXED) {
-    /* Preferred surface order parameter */
-    double q0[3][3] = {0};
-    double n[3] = {param->wall.nfix[X], param->wall.nfix[Y], param->wall.nfix[Z]};
-    for (int ia = 0; ia < 3; ia++) {
-      for (int ib = 0; ib < 3; ib++) {
-        q0[ia][ib] = 0.5*amp*(3.0*n[ia]*n[ib] - d[ia][ib]);
-      }
-    }
-    /* Constant terms then contribute ... */
-    for (int ia = 0; ia < 3; ia++) {
-      for (int ib = 0; ib < 3; ib++) {
-	c[ia][ib] += -w1*(qs[ia][ib] - q0[ia][ib]);
-      }
-    }
-  }
+/*****************************************************************************
+ *
+ *  NEED TO switch for colloid/wall cf old version.
+ *
+ *****************************************************************************/
 
-  if (anchor == LC_ANCHORING_NORMAL) {
-    double q0[3][3] = {0}; /* Preferred order parameter */
-    for (int ia = 0; ia < 3; ia++) {
-      for (int ib = 0; ib < 3; ib++) {
-        q0[ia][ib] = 0.5*amp*(3.0*nhat[ia]*nhat[ib] - d[ia][ib]);
-      }
-    }
-    /* Constant terms contribute ... */
-    for (int ia = 0; ia < 3; ia++) {
-      for (int ib = 0; ib < 3; ib++) {
-	c[ia][ib] += -w1*(qs[ia][ib] - q0[ia][ib]);
-      }
-    }
-  }
+__host__ __device__ int grad_s7_boundary_c(fe_lc_param_t * param,
+					   grad_s7_anch_t * anch,
+					   const double qs[3][3],
+					   const int di[3],
+					   double c[3][3]) {
 
-  if (anchor == LC_ANCHORING_PLANAR) {
-    /* Compute qtilde = qs + A/2 */
-    double qtilde[3][3] = {0};   /* Q~ */
-    double q2 = 0.0;             /* Q~ squared */
-    for (int ia = 0; ia < 3; ia++) {
-      for (int ib = 0; ib < 3; ib++) {
-        qtilde[ia][ib] = qs[ia][ib] + 0.5*amp*d[ia][ib];
-        q2 += qtilde[ia][ib]*qtilde[ia][ib];
-      }
-    }
-
-    /* Project onto tangent plane */
-
-    for (int ia = 0; ia < 3; ia++) {
-      for (int ib = 0; ib < 3; ib++) {
-        double qtperp = 0.0;
-	double s0 = 1.5*amp; /* Fournier and Galatola S_0 = (3/2)A */
-        for (int ig = 0; ig < 3; ig++) {
-          for (int ih = 0; ih < 3; ih++) {
-	    double pag = d[ia][ig] - nhat[ia]*nhat[ig];
-	    double phb = d[ih][ib] - nhat[ih]*nhat[ib];
-            qtperp += pag*qtilde[ig][ih]*phb;
-          }
-        }
-	/* Contribute to surface terms ... */
-	c[ia][ib] += -w1*(qtilde[ia][ib] - qtperp);
-	c[ia][ib] += -2.0*w2*(q2 - s0*s0)*qtilde[ia][ib];
-      }
-    }
-  }
+  grad_s7_boundary_wall(param, qs, di, c);
 
   return 0;
 }

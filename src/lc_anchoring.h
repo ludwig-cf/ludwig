@@ -33,6 +33,7 @@ struct lc_anchoring_param_s {
   double nfix[3];                /* Preferred director (fixed type only) */
 };
 
+const char * lc_anchoring_type_from_enum(lc_anchoring_enum_t type);
 lc_anchoring_enum_t lc_anchoring_type_from_string(const char * str);
 
 #endif
