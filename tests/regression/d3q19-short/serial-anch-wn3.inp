@@ -1,0 +1,106 @@
+##############################################################################
+#
+#  Wall anchoring with nematic edge test: fixed anchoring.
+#
+#  In a 2-dimensional system we initialise a random nematic in the
+#  (x,y) plane. The system is surrounded by plane walls with fixed
+#  anchoring. The fixed orientation is in the x-direction.
+#
+#  Relaxational dynamics only.
+#
+#  We can identify three cases for the dimensionless parameter:
+#    w_1 / kappa L
+#
+#  (for fixed kappa1 L) with zero, weak, or strong using
+#
+#  lc_anhcoring_w1   0.0       => w_1 / kappa L = 0
+#  lc_anchoring_w1   0.0002    => w_1 / kappa L = 0.002
+#  lc_anchoring_w1   0.02      => w_1 / kappa L = 2.0
+#
+#  Run for e.g., 100,000 steps to obtain a steady energy.
+#  This test is only for 1000 steps.
+#
+##############################################################################
+
+N_cycles 1000
+
+##############################################################################
+#
+#  System and MPI
+# 
+##############################################################################
+
+size 16_16_1
+
+##############################################################################
+#
+#  Fluid parameters
+#
+##############################################################################
+
+hydrodynamics    off
+
+##############################################################################
+#
+#  Free energy parameters
+#
+###############################################################################
+
+free_energy lc_blue_phase
+
+fd_advection_scheme_order   1
+fd_gradient_calculation     s7_anchoring
+
+lc_a0      0.01
+lc_gamma   3.0
+lc_q0      0.0000
+lc_kappa0  0.000625
+lc_kappa1  0.000625
+lc_xi      0.7
+
+lc_Gamma   2.5
+
+lc_q_initialisation        random_xy
+lc_q_init_amplitude        0.333333333333333
+lc_init_redshift           1.0
+
+lc_wall_anchoring          fixed
+lc_wall_fixed_orientation  1.0_0.0_0.0
+lc_wall_anchoring_w1       0.0002
+
+
+###############################################################################
+#
+#  Colloid parameters
+#
+###############################################################################
+
+colloid_init     none
+
+###############################################################################
+#
+#  Periodic conditions / boundaries
+#
+###############################################################################
+
+boundary_walls    1_1_0
+periodicity       0_0_1
+
+###############################################################################
+#
+#  Output frequency and type
+#
+###############################################################################
+
+freq_statistics   1000
+config_at_end     no
+
+colloid_io_freq   10000000
+
+###############################################################################
+#
+#  Miscellaneous
+#
+###############################################################################
+
+random_seed 8361236
