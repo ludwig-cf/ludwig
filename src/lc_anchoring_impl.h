@@ -8,13 +8,15 @@
  *  Planar anchoring follows Fournier and Galatola
  *  Europhys. Lett. 72, 403 (2005).
  *
- *  This source file is intended to be inlined via an include statement
+ *  This file is intended to be inlined via an include statement
  *  as it is repeated in a number of places, and performance is
  *  sensitive to contractions involving the permutation tensor...
  *
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
+ *
+ *  (c) 2022 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -46,10 +48,10 @@
  *****************************************************************************/
 
 __host__ __device__
-static __inline__ void lc_anchoring_kappa1_ct(double kappa1, double q0,
-					      const double nhat[3],
-					      const double qs[3][3],
-					      double c[3][3]) {
+static inline void lc_anchoring_kappa1_ct(double kappa1, double q0,
+					  const double nhat[3],
+					  const double qs[3][3],
+					  double c[3][3]) {
 
   double kq = -kappa1*q0;
 
@@ -85,9 +87,9 @@ static __inline__ void lc_anchoring_kappa1_ct(double kappa1, double q0,
  ****************************************************************************/ 
 
 __host__ __device__
-static __inline__ void lc_anchoring_fixed_q0(const double nhat[3],
-				             double amp,
-				             double q0[3][3]) {
+static inline void lc_anchoring_fixed_q0(const double nhat[3],
+					 double amp,
+					 double q0[3][3]) {
 
   q0[X][X] = 0.5*amp*(3.0*nhat[X]*nhat[X] - 1.0);
   q0[X][Y] = 0.5*amp*(3.0*nhat[X]*nhat[Y] - 0.0);
@@ -118,13 +120,13 @@ static __inline__ void lc_anchoring_fixed_q0(const double nhat[3],
  *****************************************************************************/
 
 __host__ __device__
-static __inline__ void lc_anchoring_fixed_ct(const lc_anchoring_param_t * anch,
-					     const double qs[3][3],
-					     const double nhat[3],
-					     double kappa1,
-					     double q0,
-	   	       		             double amp,
-		 		 	     double ct[3][3]) {
+static inline void lc_anchoring_fixed_ct(const lc_anchoring_param_t * anch,
+					 const double qs[3][3],
+					 const double nhat[3],
+					 double kappa1,
+					 double q0,
+					 double amp,
+					 double ct[3][3]) {
   double qfix[3][3] = {0};
 
   assert(anch->type == LC_ANCHORING_FIXED);
@@ -150,9 +152,9 @@ static __inline__ void lc_anchoring_fixed_ct(const lc_anchoring_param_t * anch,
  *****************************************************************************/
 
 __host__ __device__
-static __inline__ void lc_anchoring_normal_q0(const double nhat[3],
-					      double amp,
-					      double q0[3][3]) {
+static inline void lc_anchoring_normal_q0(const double nhat[3],
+					  double amp,
+					  double q0[3][3]) {
   /* These are the same. */
   lc_anchoring_fixed_q0(nhat, amp, q0);
 
@@ -165,14 +167,14 @@ static __inline__ void lc_anchoring_normal_q0(const double nhat[3],
  *
  *****************************************************************************/
 
-__host__ __device__ static __inline__
-void lc_anchoring_normal_ct(const lc_anchoring_param_t * anch,
-			    const double qs[3][3],
-			    const double nhat[3],
-			    double kappa1,
-			    double q0,
-			    double amp,
-			    double ct[3][3]) {
+__host__ __device__
+static inline void lc_anchoring_normal_ct(const lc_anchoring_param_t * anch,
+					  const double qs[3][3],
+					  const double nhat[3],
+					  double kappa1,
+					  double q0,
+					  double amp,
+					  double ct[3][3]) {
 
   double qnormal[3][3] = {0};  /* Preferred Q at boundary */
 
@@ -200,10 +202,10 @@ void lc_anchoring_normal_ct(const lc_anchoring_param_t * anch,
  *
  *****************************************************************************/
 
-__host__ __device__ static __inline__
-void lc_anchoring_planar_qtilde(double a0,
-				const double qs[3][3],
-				double qtilde[3][3]) {
+__host__ __device__
+static inline void lc_anchoring_planar_qtilde(double a0,
+					      const double qs[3][3],
+					      double qtilde[3][3]) {
 
   qtilde[X][X] = qs[X][X] + 0.5*a0;
   qtilde[X][Y] = qs[X][Y];
@@ -230,14 +232,14 @@ void lc_anchoring_planar_qtilde(double a0,
  *
  *****************************************************************************/
 
-__host__ __device__ static __inline__
-void lc_anchoring_planar_ct(const lc_anchoring_param_t * anchor,
-			    const double qs[3][3],
-			    const double nhat[3],
-			    double kappa1,
-			    double q0,
-			    double amp,
-			    double ct[3][3]) {
+__host__ __device__
+static inline void lc_anchoring_planar_ct(const lc_anchoring_param_t * anchor,
+					  const double qs[3][3],
+					  const double nhat[3],
+					  double kappa1,
+					  double q0,
+					  double amp,
+					  double ct[3][3]) {
 
   double qtilde[3][3] = {0};
 

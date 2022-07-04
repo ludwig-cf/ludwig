@@ -17,11 +17,11 @@
 
 /* Surface anchoring types */
 typedef enum lc_anchoring_enum {
-  LC_ANCHORING_INVALID = 0,
+  LC_ANCHORING_NONE = 0,
   LC_ANCHORING_PLANAR,
   LC_ANCHORING_NORMAL, 
   LC_ANCHORING_FIXED,
-  LC_ANCHORING_NTYPES /* Last entry */
+  LC_ANCHORING_INVALID /* Last entry */
 } lc_anchoring_enum_t;
 
 typedef struct lc_anchoring_param_s lc_anchoring_param_t;

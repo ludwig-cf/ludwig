@@ -17,6 +17,7 @@
  *****************************************************************************/
 
 #include <assert.h>
+#include <float.h>
 #include <math.h>
 #include <stdio.h>
 #include <string.h>
@@ -187,19 +188,34 @@ __host__ int blue_phase_init_rt(pe_t * pe, rt_t *rt,
   rt_string_parameter(rt, "lc_anchoring_method", method, FILENAME_MAX);
 
   if (strcmp(method, "s7")  == 0) {
+
     /* The default is set to "s7" above */
     blue_phase_rt_wall_anchoring(pe, rt, RT_FATAL, &fe_param.wall);
 
-    if (fe_param.wall.type) {
-      /* Temporary */
-      pe_info(pe, "Wall anchoring temporary output TO FIX TO FIX\n");
-      pe_info(pe, "Wall anchoring type:       %s\n",
+    if (fe_param.wall.type != LC_ANCHORING_NONE) {
+      pe_info(pe, "\n");
+      pe_info(pe, "Liquid crystal anchoring:\n");
+
+      pe_info(pe, "Wall anchoring type:          %s\n",
 	      lc_anchoring_type_from_enum(fe_param.wall.type));
-      pe_info(pe, "Wall anchoring w1:         %f\n", fe_param.wall.w1);
-      pe_info(pe, "Wall anchoring w2:         %f\n", fe_param.wall.w2);
+
+      if (fe_param.wall.type == LC_ANCHORING_FIXED) {
+	pe_info(pe, "Preferred orientation:       %14.7e %14.7e %14.7e\n",
+		fe_param.wall.nfix[X],
+		fe_param.wall.nfix[Y],
+		fe_param.wall.nfix[Z]);
+      }
+
+      pe_info(pe, "Wall anchoring w1:           %14.7e\n", fe_param.wall.w1);
+
+      if (fe_param.wall.type == LC_ANCHORING_PLANAR) {
+	pe_info(pe, "Wall anchoring w2:           %14.7e\n", fe_param.wall.w2);
+      }
+
       /* Still need to get energy right ...*/
       fe_param.anchoring_wall = fe_param.wall.type;
       fe_param.w1_wall = fe_param.wall.w1;
+      fe_param.w2_wall = fe_param.wall.w2;
     }
   }
   else if (strcmp(method, "two") == 0) {
@@ -606,6 +622,21 @@ int blue_phase_rt_wall_anchoring(pe_t * pe, rt_t * rt, rt_enum_t rt_err_level,
       ierr += rt_key_required(rt, "lc_wall_fixed_orientation", rt_err_level);
       rt_double_parameter(rt, "lc_wall_anchoring_w1", &wall->w1);
       rt_double_parameter_vector(rt, "lc_wall_fixed_orientation", wall->nfix);
+
+      /* Make sure this is a vlaid unit vector here */
+      {
+	double x2 = wall->nfix[X]*wall->nfix[X];
+	double y2 = wall->nfix[Y]*wall->nfix[Y];
+	double z2 = wall->nfix[Z]*wall->nfix[Z];
+	if (fabs(x2 + y2 + z2) < DBL_EPSILON) {
+	  ierr += 1;
+	  rt_vinfo(rt, rt_err_level, "%s'n",
+		   "lc_wall_fixed_orientation must be non-zero\n");
+	}
+	wall->nfix[X] /= sqrt(x2 + y2 + z2);
+	wall->nfix[Y] /= sqrt(x2 + y2 + z2);
+	wall->nfix[Z] /= sqrt(x2 + y2 + z2);
+      }
       break;
     default:
       /* Not valid. */
