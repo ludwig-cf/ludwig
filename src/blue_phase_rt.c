@@ -27,8 +27,10 @@
 #include "blue_phase_rt.h"
 #include "physics.h"
 
+int blue_phase_rt_coll_anchoring(pe_t * pe, rt_t * rt, rt_enum_t rt_err_level,
+				 lc_anchoring_param_t * coll);
 int blue_phase_rt_wall_anchoring(pe_t * pe, rt_t * rt, rt_enum_t rt_err_level,
-				 lc_anchoring_param_t * param);
+				 lc_anchoring_param_t * wall);
 
 /*****************************************************************************
  *
@@ -183,14 +185,15 @@ __host__ int blue_phase_init_rt(pe_t * pe, rt_t *rt,
     pe_info(pe, "Dimensionless field e      = %14.7e\n", ered);
   }
 
-  /* Surface anchoring */
+  /* Surface anchoring. The default meoth si "s7" (set above). */
 
   rt_string_parameter(rt, "lc_anchoring_method", method, FILENAME_MAX);
 
   if (strcmp(method, "s7")  == 0) {
 
-    /* The default is set to "s7" above */
+    /* Check what is wanted for walls/colloids */ 
     blue_phase_rt_wall_anchoring(pe, rt, RT_FATAL, &fe_param.wall);
+    blue_phase_rt_coll_anchoring(pe, rt, RT_FATAL, &fe_param.coll);
 
     if (fe_param.wall.type != LC_ANCHORING_NONE) {
       pe_info(pe, "\n");
@@ -212,10 +215,31 @@ __host__ int blue_phase_init_rt(pe_t * pe, rt_t *rt,
 	pe_info(pe, "Wall anchoring w2:           %14.7e\n", fe_param.wall.w2);
       }
 
-      /* Still need to get energy right ...*/
+      /* Still need to get energy right ... */
       fe_param.anchoring_wall = fe_param.wall.type;
       fe_param.w1_wall = fe_param.wall.w1;
       fe_param.w2_wall = fe_param.wall.w2;
+    }
+
+    if (fe_param.coll.type != LC_ANCHORING_NONE) {
+
+      pe_info(pe, "\n");
+      pe_info(pe, "Liquid crystal anchoring:\n");
+
+      pe_info(pe, "Colloid anchoring type:       %s\n",
+	      lc_anchoring_type_from_enum(fe_param.coll.type));
+
+      if (fe_param.coll.type == LC_ANCHORING_NORMAL) {
+	pe_info(pe, "Colloid anchoring w1:        %14.7e\n", fe_param.coll.w1);
+      }
+      if (fe_param.coll.type == LC_ANCHORING_PLANAR) {
+	pe_info(pe, "Colloid anchoring w1:        %14.7e\n", fe_param.coll.w1);
+	pe_info(pe, "Colloid anchoring w2:        %14.7e\n", fe_param.coll.w2);
+      }
+      /* Temporary fix to get energy right ... */
+      fe_param.anchoring_coll = fe_param.coll.type;
+      fe_param.w1_coll = fe_param.coll.w1;
+      fe_param.w2_coll = fe_param.coll.w2;
     }
   }
   else if (strcmp(method, "two") == 0) {
@@ -581,6 +605,53 @@ __host__ int blue_phase_rt_initial_conditions(pe_t * pe, rt_t * rt, cs_t * cs,
   }
 
   return 0;
+}
+
+/*****************************************************************************
+ *
+ *  blue_phase_rt_coll_anchoring
+ *
+ *  Newer style anchoring input which is documented for colloids.
+ *  Normal or planar only for colloids.
+ *
+ *****************************************************************************/
+
+int blue_phase_rt_coll_anchoring(pe_t * pe, rt_t * rt, rt_enum_t rt_err_level,
+				 lc_anchoring_param_t * coll) {
+
+  assert(pe);
+  assert(rt);
+  assert(coll);
+
+  /* No colloids at all returns 0. */
+
+  int ierr = 0;
+  char atype[BUFSIZ] = {0};
+
+  if (rt_string_parameter(rt, "lc_coll_anchoring", atype, BUFSIZ)) {
+
+    coll->type = lc_anchoring_type_from_string(atype);
+
+    switch (coll->type) {
+    case LC_ANCHORING_NORMAL:
+      ierr += rt_key_required(rt, "lc_coll_anchoring_w1", rt_err_level);
+      rt_double_parameter(rt, "lc_coll_anchoring_w1", &coll->w1);
+      break;
+    case LC_ANCHORING_PLANAR:
+      ierr += rt_key_required(rt, "lc_coll_anchoring_w1", rt_err_level);
+      ierr += rt_key_required(rt, "lc_coll_anchoring_w2", rt_err_level);
+      rt_double_parameter(rt, "lc_coll_anchoring_w1", &coll->w1);
+      rt_double_parameter(rt, "lc_coll_anchoring_w2", &coll->w2);
+      break;
+    default:
+      /* Not valid. */
+      rt_vinfo(rt, rt_err_level, "%s: %s\n",
+	       "Input key `lc_coll_anchoring` had invalid value", atype);
+      ierr += 1;
+    }
+  }
+
+  return ierr;
 }
 
 /*****************************************************************************

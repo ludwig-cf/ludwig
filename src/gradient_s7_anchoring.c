@@ -55,6 +55,7 @@
 #include "util.h"
 #include "coords.h"
 #include "kernel.h"
+#include "colloids.h"
 
 #include "lc_anchoring.h"
 #include "gradient_s7_anchoring.h"
@@ -67,6 +68,7 @@ struct grad_s7_anch_s {
   param_t * param;           /* Boundary condition parameters */
   map_t * map;               /* Supports a map */
   fe_lc_t * fe;              /* Liquid crystal free energy */
+  colloids_info_t * cinfo;   /* Colloid information */
   grad_s7_anch_t * target;   /* Device memory */
 };
 
@@ -91,7 +93,9 @@ int grad_s7_bcs_coeff(double kappa0, double kappa1, const int dn[3],
 		      double bc[NSYMM][NSYMM][3]);
 
 __host__ __device__ int grad_s7_boundary_c(fe_lc_param_t * param,
-					   grad_s7_anch_t * anch, 
+					   grad_s7_anch_t * anch,
+					   int ic, int jc, int kc,
+					   int status,
 					   const double qs[3][3],
 					   const int di[3],
 					   double c[3][3]);
@@ -99,6 +103,9 @@ __host__ __device__ int grad_s7_boundary_c(fe_lc_param_t * param,
 /*****************************************************************************
  *
  *  grad_s7_anchoring_create
+ *
+ *  Note we just attach the new object to the static pointer at the
+ *  moment.
  *
  *****************************************************************************/
 
@@ -132,15 +139,45 @@ __host__ int grad_s7_anchoring_create(pe_t * pe, cs_t * cs, map_t * map,
     obj->target = obj;
   }
   else {
+    cs_t * cstarget = NULL;
     param_t * tmp = NULL;
     tdpMalloc((void **) &obj->target, sizeof(grad_s7_anch_t));
+    tdpMemset(obj->target, 0, sizeof(grad_s7_anch_t));
     tdpGetSymbolAddress((void **) &tmp, tdpSymbol(static_param));
     tdpMemcpy(&obj->target->param, (const void *) &tmp, sizeof(param_t *),
 	      tdpMemcpyHostToDevice);
     grad_s7_anchoring_param_commit(obj);
+
+    cs_target(obj->cs, &cstarget);
+    tdpMemcpy(&obj->target->cs, &cstarget, sizeof(cs_t *),
+              tdpMemcpyHostToDevice);
   }
 
   static_grad = obj;
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  grad_s7_anchoring_cinfo_set
+ *
+ *****************************************************************************/
+
+__host__ int grad_s7_anchoring_cinfo_set(colloids_info_t * cinfo) {
+
+  int ndevice = 0;
+
+  assert(cinfo);
+
+  static_grad->cinfo = cinfo;
+
+  tdpGetDeviceCount(&ndevice);
+
+  if (ndevice > 0) {
+    tdpAssert(tdpMemcpy(&static_grad->target->cinfo, &cinfo->target,
+			sizeof(colloids_info_t *), tdpMemcpyHostToDevice));
+  }
 
   return 0;
 }
@@ -238,7 +275,9 @@ __host__ int grad_s7_anchoring_d2(field_grad_t * fg) {
 		  ctxt->target, cstarget,
 		  anch->target, anch->fe->target, fg->target,
 		  anch->map->target);
-  tdpDeviceSynchronize();
+
+  tdpAssert(tdpPeekAtLastError());
+  tdpAssert(tdpDeviceSynchronize());
 
   kernel_ctxt_free(ctxt);
 
@@ -382,7 +421,8 @@ void grad_s7_kernel(kernel_ctxt_t * ktx, cs_t * cs, grad_s7_anch_t * anch,
 	qs[Z][Y] = q->data[addr_rank1(q->nsites, NQAB, index, YZ)];
 	qs[Z][Z] = 0.0 - qs[X][X] - qs[Y][Y];
 	
-	grad_s7_boundary_c(fe->param, anch, qs, bcs[normal[0]], c);
+	grad_s7_boundary_c(fe->param, anch, ic, jc, kc, status[normal[0]], qs,
+			   bcs[normal[0]], c);
 	
 	/* Constant terms all move to RHS (hence -ve sign). Factors
 	 * of two in off-diagonals agree with matrix coefficients. */
@@ -414,7 +454,8 @@ void grad_s7_kernel(kernel_ctxt_t * ktx, cs_t * cs, grad_s7_anch_t * anch,
 	bcse[Y] = bcs[nn0][Y] + bcs[nn1][Y];
 	bcse[Z] = bcs[nn0][Z] + bcs[nn1][Z];
 
-	grad_s7_boundary_c(fe->param, anch, qs, bcse, c);
+	grad_s7_boundary_c(fe->param, anch, ic, jc, kc, status[normal[1]], qs,
+			   bcse, c);
 
 	/* Overwrite the existing values, and add new ones, which are
 	 * the same. */
@@ -450,7 +491,8 @@ void grad_s7_kernel(kernel_ctxt_t * ktx, cs_t * cs, grad_s7_anch_t * anch,
 	bcse[Y] = bcs[nn0][Y] + bcs[nn1][Y] + bcs[nn2][Y];
 	bcse[Z] = bcs[nn0][Z] + bcs[nn1][Z] + bcs[nn2][Z];
 
-	grad_s7_boundary_c(fe->param, anch, qs, bcse, c);
+	grad_s7_boundary_c(fe->param, anch, ic, jc, kc, status[normal[2]], qs,
+			   bcse, c);
 
 	b18[0*NSYMM + XX] = -1.0*c[X][X];
 	b18[0*NSYMM + XY] = -2.0*c[X][Y];
@@ -604,11 +646,11 @@ void grad_s7_kernel(kernel_ctxt_t * ktx, cs_t * cs, grad_s7_anch_t * anch,
 	  }
 	}
       }
-      
+
       /* Fix the trace (don't store Qzz in the end) */
-      
+
       for (n = 0; n < nunknown; n++) {
-	
+
 	tr = r3*(x18[NSYMM*n + XX] + x18[NSYMM*n + YY] + x18[NSYMM*n + ZZ]);
 	x18[NSYMM*n + XX] -= tr;
 	x18[NSYMM*n + YY] -= tr;
@@ -619,7 +661,7 @@ void grad_s7_kernel(kernel_ctxt_t * ktx, cs_t * cs, grad_s7_anch_t * anch,
 	  gradn[n1][normal[n]/2][normal[n] % 2] = x18[NSYMM*n + n1];
 	}
       }
-      
+
       /* The final answer is the sum of partial gradients */
 
       for (n1 = 0; n1 < NQAB; n1++) {
@@ -635,7 +677,7 @@ void grad_s7_kernel(kernel_ctxt_t * ktx, cs_t * cs, grad_s7_anch_t * anch,
     }
     /* Next site */
   }
- 
+
   return;
 }
 
@@ -899,10 +941,56 @@ int grad_s7_bcs_coeff(double kappa0, double kappa1, const int dn[3],
 
 /*****************************************************************************
  *
+ *  grad_s7_boundary_coll
+ *
+ *  Compute the constant term in the cholesteric boundary condition.
+ *  Fluid Q_ab = qs
+ *
+ *  The outward normal is dr[3].
+ *
+ *****************************************************************************/
+
+__host__ __device__ void grad_s7_boundary_coll(fe_lc_param_t * param,
+					       const double qs[3][3],
+					       const double r[3],
+					       double c[3][3]) {
+
+  double rhat[3] = {r[X], r[Y], r[Z]};
+  double amp     = 0.0;
+  double kappa1  = param->kappa1;
+  double q0      = param->q0;
+
+  fe_lc_amplitude_compute(param, &amp);
+
+  /* Make sure we have a unit vector */
+  {
+    double rd = 1.0/sqrt(rhat[X]*rhat[X] + rhat[Y]*rhat[Y] + rhat[Z]*rhat[Z]);
+    rhat[X] *= rd;
+    rhat[Y] *= rd;
+    rhat[Z] *= rd;
+  }
+
+  {
+    lc_anchoring_param_t * anchor = &param->coll;
+
+    if (anchor->type == LC_ANCHORING_NORMAL) {
+      lc_anchoring_normal_ct(anchor, qs, rhat, kappa1, q0, amp, c);
+    }
+
+    if (anchor->type == LC_ANCHORING_PLANAR) {
+      lc_anchoring_planar_ct(anchor, qs, rhat, kappa1, q0, amp, c);
+    }
+  }
+
+  return;
+}
+
+/*****************************************************************************
+ *
  *  grad_s7_boundary_wall
  *
  *  Compute the constant term in the cholesteric boundary condition.
- *  Fluid point is (ic, jc, kc) with fluid Q_ab = qs
+ *  Fluid Q_ab = qs.
  *
  *  The outward normal is di[3] = {+/-1,+/-1,+/-1}.
  *
@@ -949,17 +1037,49 @@ __host__ __device__ void grad_s7_boundary_wall(fe_lc_param_t * param,
 
 /*****************************************************************************
  *
- *  NEED TO switch for colloid/wall cf old version.
+ *  grad_s7_anchoring_bc
+ *
+ *  This just switches depending on status boundary or colloid.
  *
  *****************************************************************************/
 
 __host__ __device__ int grad_s7_boundary_c(fe_lc_param_t * param,
 					   grad_s7_anch_t * anch,
+					   int ic, int jc, int kc,
+					   int status,
 					   const double qs[3][3],
 					   const int di[3],
 					   double c[3][3]) {
 
-  grad_s7_boundary_wall(param, qs, di, c);
+
+  assert(status != MAP_FLUID);
+
+  if (status == MAP_BOUNDARY) {
+    grad_s7_boundary_wall(param, qs, di, c);
+  }
+  else if (status == MAP_COLLOID) {
+    /* Compute relevant vector from colloid centre to fluid site. */
+    /* Fluid site (ic,jc,kc); colloid site is fluid site - di[] */
+    /* Use fluid site as the boundary position. */
+
+    int noffset[3] = {0};
+    double dr[3] = {0};
+    cs_nlocal_offset(anch->cs, noffset);
+    {
+      int index = cs_index(anch->cs, ic - di[X], jc - di[Y], kc - di[Z]);
+      colloid_t * pc = anch->cinfo->map_new[index];
+      assert(pc);
+      dr[X] = 1.0*(noffset[X] + ic) - pc->s.r[X];
+      dr[Y] = 1.0*(noffset[Y] + jc) - pc->s.r[Y];
+      dr[Z] = 1.0*(noffset[Z] + kc) - pc->s.r[Z];
+    }
+
+    grad_s7_boundary_coll(param, qs, dr, c);
+  }
+  else {
+    /* Should not be here. */
+    assert(0);
+  }
 
   return 0;
 }

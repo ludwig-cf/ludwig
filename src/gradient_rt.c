@@ -125,6 +125,7 @@ int gradient_rt_init(pe_t * pe, rt_t * rt, const char * fieldname,
       f2 = grad_s7_anchoring_d2;
       f4 = NULL;
       grad_s7_anchoring_map_set(map);
+      grad_s7_anchoring_cinfo_set(cinfo);
     }
     else {
       /* Not recognised */
