@@ -1254,12 +1254,12 @@ int create_recv_graph(const field_t * field, field_halo_t * h) {
     }
     cudaGraphNode_t node;
     cudaKernelNodeParams kernelNodeParams = {0};
-    h->recv_graph->kernelArgs[ireq][0] = (intptr_t)field->target;
-    h->recv_graph->kernelArgs[ireq][1] = (intptr_t)h->target;
-    h->recv_graph->kernelArgs[ireq][2] = (intptr_t)ireq;
-    void *kernelArgs[3] = {&h->recv_graph->kernelArgs[ireq][0], 
-                            &h->recv_graph->kernelArgs[ireq][1], 
-                            &h->recv_graph->kernelArgs[ireq][2]};
+    // h->recv_graph->kernelArgs[ireq][0] = (intptr_t)field->target;
+    // h->recv_graph->kernelArgs[ireq][1] = (intptr_t)h->target;
+    // h->recv_graph->kernelArgs[ireq][2] = (intptr_t)ireq;
+    void *kernelArgs[3] = {(void*)&field->target, 
+                            (void*)&h->target, 
+                            (void*)&ireq};
     kernelNodeParams.func = (void *)field_halo_dequeue_recv_kernel;
     dim3 nblk, ntpb;
     kernel_launch_param(rcount, &nblk, &ntpb);
