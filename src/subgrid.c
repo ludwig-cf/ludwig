@@ -878,9 +878,9 @@ int subgrid_flux_mask(pe_t * pe, colloids_info_t * cinfo, field_t * flux_mask, r
           gaussr = exp(-.5*((rnorm - radius)*(rnorm - radius)) / (std_width*std_width) );
  
           if (alpha*alpha > alpha_cutoff*alpha_cutoff) {
-	    flux_mask->data[addr_rank1(flux_mask->nsites, 2, index, 0)] = 1. - (1. - permeability[0])*gaussr*(1 - gaussalpha);
+	    flux_mask->data[addr_rank1(flux_mask->nsites, 2, index, 1)] = 1. - (1. - permeability[0])*gaussr*(1 - gaussalpha);
 	  }
-	  else flux_mask->data[addr_rank1(flux_mask->nsites, 2, index, 0)] = 1. - (1. - permeability[0])*gaussr*(1 - gaussalpha);
+	  else flux_mask->data[addr_rank1(flux_mask->nsites, 2, index, 1)] = 1. - (1. - permeability[0])*gaussr*(1 - gaussalpha);
         }
 
 	assert(flux_mask->data[addr_rank1(flux_mask->nsites, 2, index, 0)] >= 0.0);
