@@ -38,7 +38,7 @@ typedef struct cuda_graph_s cuda_graph_t;
 struct cuda_graph_s {
   cudaGraph_t graph;
   cudaGraphExec_t graphExec;
-  intptr_t kernelArgs[27][3];
+  intptr_t hostCallbackArgs[27][3];
 };
 #endif
 
