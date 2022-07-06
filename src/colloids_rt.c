@@ -695,9 +695,10 @@ int colloids_rt_cell_list_checks(rt_t * rt, pe_t * pe, cs_t * cs,
     rt_int_parameter(rt, "vesicle_switch", &onvesicle);
     if (onvesicle) {
       rt_double_parameter(rt, "vesicle_radius", &radius_vesicle);
-      //LIGHTHOUSE
       physics_rvesicle_set(phys, radius_vesicle);
-      rmax = dmax(rmax, radius_vesicle);
+
+      // 0.5 allows the structure to deform a little without causing issues with communication
+      rmax = dmax(rmax, radius_vesicle + 0.5 );
     }
 
     rmax = dmax(rmax, 1.5); /* subgrid particles again */

@@ -595,97 +595,6 @@ static double d_peskin(double r) {
 }
 
 
-/* -----> CHEMOVESICLE V2 */
-/* Any particle with phi_production =/= 0 can produce phi */
-/* TODO: add frequency */
-
-/*****************************************************************************
- *
- *  subgrid_phi_production now obsolete because phi_production attribute is gone
- *
- *  Produce phi with a rate of phi_production at nodes around a subgrid 
- *  particle of specified index subgridp_index (uses d_peskin with drange = 1)
- *
- *****************************************************************************/
-
-//int subgrid_phi_production(colloids_info_t * cinfo, field_t * phi) {
-//
-//  int ic, jc, kc;
-//  int i, j, k, i_min, i_max, j_min, j_max, k_min, k_max;
-//  int index;
-//  int nlocal[3], offset[3];
-//  int ncell[3];
-//
-//  double r0[3], r[3];
-//  double dr;
-//  colloid_t * p_colloid;
-//
-//  assert(cinfo);
-//
-//  cs_nlocal(cinfo->cs, nlocal);
-//  cs_nlocal_offset(cinfo->cs, offset);
-//  colloids_info_ncell(cinfo, ncell);
-//
-//  /* And add up the contributions to the velocity from the lattice. */
-//
-//  for (ic = 0; ic <= ncell[X] + 1; ic++) {
-//    for (jc = 0; jc <= ncell[Y] + 1; jc++) {
-//      for (kc = 0; kc <= ncell[Z] + 1; kc++) {
-//
-//	colloids_info_cell_list_head(cinfo, ic, jc, kc, &p_colloid);
-//
-//	for ( ; p_colloid; p_colloid = p_colloid->next) {
-//
-//          if (p_colloid->s.type != COLLOID_TYPE_SUBGRID) continue;
-//	  if (p_colloid->s.phi_production == 0.0) continue;
-//	  /* Need to translate the colloid position to "local"
-//	   * coordinates, so that the correct range of lattice
-//	   * nodes is found */
-//
-//	  r0[X] = p_colloid->s.r[X] - 1.0*offset[X];
-//	  r0[Y] = p_colloid->s.r[Y] - 1.0*offset[Y];
-//	  r0[Z] = p_colloid->s.r[Z] - 1.0*offset[Z];
-//
-//	  /* Work out which local lattice sites are involved
-//	   * and loop around */
-//
-//	  i_min = imax(1,         (int) floor(r0[X] - 1));
-//	  i_max = imin(nlocal[X], (int) ceil (r0[X] + 1));
-//	  j_min = imax(1,         (int) floor(r0[Y] - 1));
-//	  j_max = imin(nlocal[Y], (int) ceil (r0[Y] + 1));
-//	  k_min = imax(1,         (int) floor(r0[Z] - 1));
-//	  k_max = imin(nlocal[Z], (int) ceil (r0[Z] + 1));
-//
-//	  for (i = i_min; i <= i_max; i++) {
-//	    for (j = j_min; j <= j_max; j++) {
-//	      for (k = k_min; k <= k_max; k++) {
-//
-//		index = cs_index(cinfo->cs, i, j, k);
-//
-//		/* Separation between r0 and the coordinate position of
-//		 * this site */
-//
-//		r[X] = r0[X] - 1.0*i;
-//		r[Y] = r0[Y] - 1.0*j;
-//		r[Z] = r0[Z] - 1.0*k;
-//
-//		dr = d_peskin(r[X])*d_peskin(r[Y])*d_peskin(r[Z]);
-//
-//		phi->data[addr_rank1(phi->nsites, 2, index, 0)] += 
-//			p_colloid->s.phi_production * dr;
-//	      }
-//	    }
-//	  }
-//	  /* Next colloid */
-//	}
-//	/* Next cell */
-//      }
-//    }
-//  }
-//
-//  return 0;
-//}
-//
 
 /*****************************************************************************
  *
@@ -705,11 +614,11 @@ int subgrid_flux_mask(pe_t * pe, colloids_info_t * cinfo, field_t * flux_mask, r
 
   double m[3] = {0., 0., 0.}, n[3] = {0., 0., 0.}, ijk[3];
   double r[3], rcentre[3], rhole[3], rortho[3], rcentre_local[3], rsq;
-  double rnorm, mnorm, nnorm;
+  double rnorm, norm_m, norm_n;
   double cosalpha, alpha, gaussalpha, std_alpha, alpha_cutoff, std_width;
   double radius, gaussr;  
   double permeability[2];
-  double psi0, kappa, dphi;
+  double kappa, kappa1, kappam1;
 
   char reaction_model[BUFSIZ];
 
@@ -774,15 +683,16 @@ int subgrid_flux_mask(pe_t * pe, colloids_info_t * cinfo, field_t * flux_mask, r
       if (p != 1) pe_fatal(pe, "Please specify chemical_reaction_model\n");
       else {
         if (strcmp(reaction_model, "uniform") == 0) {
-	  p = rt_double_parameter(rt, "rate_of_production", &dphi);
-	  if (p != 1) pe_fatal(pe, "If you choose chemical_reaction_model uniform, please specify rate_of_production\n");
+	  p = rt_double_parameter(rt, "kappa", &kappa);
+	  if (p != 1) pe_fatal(pe, "If you choose chemical_reaction_model uniform, please specify kappa\n");
 	}
-	else if (strcmp(reaction_model, "psi_creates_phi") == 0) {	
-	  rt_double_parameter(rt, "psi0", &psi0);
-	  p = rt_double_parameter(rt, "rate_of_conversion", &kappa);
-	  if (p != 1) pe_fatal(pe, "If you choose chemical_reaction_model psi_creates_phi, please specify rate_of_conversion\n");
+	else if (strcmp(reaction_model, "psi<->phi") == 0) {	
+	  p = rt_double_parameter(rt, "kappa1", &kappa1);
+	  if (p != 1) pe_fatal(pe, "If you choose chemical_reaction_model psi<->phi, please specify kappa1\n");
+	  p = rt_double_parameter(rt, "kappam1", &kappam1);
+	  if (p != 1) pe_fatal(pe, "If you choose chemical_reaction_model psi<->phi, please specify kappam1\n");
         } 
-	else pe_fatal(pe, "Key chemical_reaction_model can only take one of the following values: uniform, psi_creates_phi\n");
+	else pe_fatal(pe, "Key chemical_reaction_model can only take one of the following values: uniform, psi<->phi\n");
         
       } 
     }
@@ -813,7 +723,7 @@ int subgrid_flux_mask(pe_t * pe, colloids_info_t * cinfo, field_t * flux_mask, r
       MPI_Comm_rank(comm, &hole_id);
     }
 
-    if (pc->s.index == 27) {
+    if (pc->s.index == 164) {
       orthofound = 1;
       rortho[0] = pc->s.r[0]; 
       rortho[1] = pc->s.r[1]; 
@@ -873,14 +783,14 @@ int subgrid_flux_mask(pe_t * pe, colloids_info_t * cinfo, field_t * flux_mask, r
   cs_minimum_distance(cinfo->cs, rcentre, rhole, m);
   cs_minimum_distance(cinfo->cs, rcentre, rortho, n);
     
-  mnorm = sqrt(m[0]*m[0] + m[1]*m[1] + m[2]*m[2]);
-  nnorm = sqrt(n[0]*n[0] + n[1]*n[1] + n[2]*n[2]);
+  norm_m = sqrt(m[0]*m[0] + m[1]*m[1] + m[2]*m[2]);
+  norm_n = sqrt(n[0]*n[0] + n[1]*n[1] + n[2]*n[2]);
   //pe_verbose(cinfo->pe, "n = %f %f %f\n", n[X], n[Y], n[Z]);
   //pe_verbose(cinfo->pe, "m = %f %f %f\n", m[X], m[Y], m[Z]);
 
   for (int ia = 0; ia < 3; ia++) {
-    m[ia] /= mnorm;
-    n[ia] /= nnorm;
+    m[ia] /= norm_m;
+    n[ia] /= norm_n;
   }
 
   //pe_verbose(cinfo->pe, "rortho = %f %f %f, m = %f %f %f n = %f %f %f\n", my_id, rortho[X], rortho[Y], rortho[Z], m[0], m[1], m[2], n[0], n[1], n[2]);
@@ -923,16 +833,16 @@ int subgrid_flux_mask(pe_t * pe, colloids_info_t * cinfo, field_t * flux_mask, r
 	  if (rnorm < radius - std_width - 2) {
 
 	    if (strcmp(reaction_model, "uniform") == 0) 
-	      phi->data[addr_rank1(phi->nsites, 2, index, 0)] += dphi;
-
-	    else if (strcmp(reaction_model, "psi_creates_phi") == 0) 
-	      phi->data[addr_rank1(phi->nsites, 2, index, 0)] += kappa*(phi->data[addr_rank1(phi->nsites, 2, index, 1)] - psi0);
-
+	      phi->data[addr_rank1(phi->nsites, 2, index, 0)] += kappa;
+	    else if (strcmp(reaction_model, "psi<->phi") == 0)
+	      phi->data[addr_rank1(phi->nsites, 2, index, 0)] += kappa1*phi->data[addr_rank1(phi->nsites, 2, index, 1)] - kappam1*phi->data[addr_rank1(phi->nsites, 2, index, 0)];
+	      phi->data[addr_rank1(phi->nsites, 2, index, 1)] += -kappa1*phi->data[addr_rank1(phi->nsites, 2, index, 1)] + kappam1*phi->data[addr_rank1(phi->nsites, 2, index, 0)];
 	  }
 	}
 
 	// ASSIGN MASK VALUE
 
+	// To avoid dividing by 0
 	// Allowed because the central particle should never be near the edge of the vesicle
 	if (rnorm == 0.0) continue;
 
@@ -949,9 +859,9 @@ int subgrid_flux_mask(pe_t * pe, colloids_info_t * cinfo, field_t * flux_mask, r
           gaussr = exp(-.5*((rnorm - radius)*(rnorm - radius)) / (std_width*std_width) );
 	    
 	  if (alpha*alpha > alpha_cutoff*alpha_cutoff) {
-	    flux_mask->data[addr_rank1(flux_mask->nsites, 2, index, 0)] = 1. - gaussr*(1 - (1 - permeability[0])* gaussalpha);
+	    flux_mask->data[addr_rank1(flux_mask->nsites, 2, index, 0)] = 1. - (1. - permeability[0])*gaussr*(1 - gaussalpha);
 	  }
-	  else flux_mask->data[addr_rank1(flux_mask->nsites, 2, index, 0)] = 1. - gaussr*(1 - (1 - permeability[0])* gaussalpha);
+	  else flux_mask->data[addr_rank1(flux_mask->nsites, 2, index, 0)] = 1. - (1. - permeability[0])*gaussr*(1 - gaussalpha);
 	}
 
 
@@ -968,14 +878,13 @@ int subgrid_flux_mask(pe_t * pe, colloids_info_t * cinfo, field_t * flux_mask, r
           gaussr = exp(-.5*((rnorm - radius)*(rnorm - radius)) / (std_width*std_width) );
  
           if (alpha*alpha > alpha_cutoff*alpha_cutoff) {
-	    flux_mask->data[addr_rank1(flux_mask->nsites, 2, index, 1)] = 1. - gaussr*(1 - (1 - permeability[1])* gaussalpha);
+	    flux_mask->data[addr_rank1(flux_mask->nsites, 2, index, 0)] = 1. - (1. - permeability[0])*gaussr*(1 - gaussalpha);
 	  }
-	  else flux_mask->data[addr_rank1(flux_mask->nsites, 2, index, 1)] = 1. - gaussr*(1 - (1 - permeability[1])* gaussalpha);
+	  else flux_mask->data[addr_rank1(flux_mask->nsites, 2, index, 0)] = 1. - (1. - permeability[0])*gaussr*(1 - gaussalpha);
         }
 
 	assert(flux_mask->data[addr_rank1(flux_mask->nsites, 2, index, 0)] >= 0.0);
 	assert(flux_mask->data[addr_rank1(flux_mask->nsites, 2, index, 0)] <= 1.0);
-
 	assert(flux_mask->data[addr_rank1(flux_mask->nsites, 2, index, 1)] >= 0.0);
 	assert(flux_mask->data[addr_rank1(flux_mask->nsites, 2, index, 1)] <= 1.0);
 
@@ -1003,7 +912,7 @@ int subgrid_flux_mask_vesicle2(colloids_info_t * cinfo, field_t * flux_mask, rt_
 
   double m[3] = {0., 0., 0.}, n[3] = {0., 0., 0.}, ijk[3];
   double r[3], rcentre[3], rhole[3], rortho[3], rcentre_local[3], rsq;
-  double rnorm, mnorm, nnorm, mobility;
+  double rnorm, norm_m, norm_n, mobility;
   double cosalpha, alpha, gaussalpha;
   double rvesicle;  
 
@@ -1066,7 +975,7 @@ int subgrid_flux_mask_vesicle2(colloids_info_t * cinfo, field_t * flux_mask, rt_
       MPI_Comm_rank(comm, &hole_id);
     }
 /*
-    if (pc->s.index == 27) {
+    if (pc->s.index == 164) {
       orthofound = 1;
       rortho[0] = pc->s.r[0]; 
       rortho[1] = pc->s.r[1]; 
@@ -1126,14 +1035,14 @@ int subgrid_flux_mask_vesicle2(colloids_info_t * cinfo, field_t * flux_mask, rt_
   cs_minimum_distance(cinfo->cs, rcentre, rhole, m);
   cs_minimum_distance(cinfo->cs, rcentre, rortho, n);
     
-  mnorm = sqrt(m[0]*m[0] + m[1]*m[1] + m[2]*m[2]);
-  nnorm = sqrt(n[0]*n[0] + n[1]*n[1] + n[2]*n[2]);
+  norm_m = sqrt(m[0]*m[0] + m[1]*m[1] + m[2]*m[2]);
+  norm_n = sqrt(n[0]*n[0] + n[1]*n[1] + n[2]*n[2]);
   //pe_verbose(cinfo->pe, "n = %f %f %f\n", n[X], n[Y], n[Z]);
   //pe_verbose(cinfo->pe, "m = %f %f %f\n", m[X], m[Y], m[Z]);
 
   for (int ia = 0; ia < 3; ia++) {
-    m[ia] /= mnorm;
-    n[ia] /= nnorm;
+    m[ia] /= norm_m;
+    n[ia] /= norm_n;
   }
 
   //pe_verbose(cinfo->pe, "rortho = %f %f %f, m = %f %f %f n = %f %f %f\n", my_id, rortho[X], rortho[Y], rortho[Z], m[0], m[1], m[2], n[0], n[1], n[2]);

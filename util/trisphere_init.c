@@ -59,6 +59,7 @@ void colloid_init_write_file(const int nc, const colloid_state_t * pc,
  *****************************************************************************/
 
 int main(int argc, char ** argv) {
+  
   int from_file = 1;
   int random_positions = 0;
   int central_links = 1;
@@ -99,6 +100,7 @@ int main(int argc, char ** argv) {
 
   int lcg = 12345;      /* Random number generator initial state */
 
+
   MPI_Init(&argc, &argv);
 
   pe_create(MPI_COMM_WORLD, PE_QUIET, &pe);
@@ -116,18 +118,18 @@ int main(int argc, char ** argv) {
 
   if (from_file) {
     /* Must know number of colloids in advance */
-    nrequest = 241;
+    nrequest = 643;
   }
   else {
     nrequest=Npoly*Lpoly;
   }
-
   state = (colloid_state_t *) calloc(nrequest, sizeof(colloid_state_t));
   assert(state != NULL);
   for (int n = 0; n < nrequest; n++) {
 
     state[n].isfixedr = 0;
     state[n].isfixedv = 0;
+
     state[n].index = 1 + n;
     state[n].rebuild = 1;
     state[n].a0 = a0;
@@ -136,12 +138,14 @@ int main(int argc, char ** argv) {
     state[n].q1 = q1;
     state[n].b1 = b1;
     state[n].b2 = b2;
-    state[n].m[X] = 1.0;
-    state[n].m[Y] = 0.0;
-    state[n].m[Z] = 0.0;
-    state[n].n[X] = 0.0;
-    state[n].n[Y] = 1.0;
-    state[n].n[Z] = 0.0;
+    /*
+    state[n].m[X] = XXXmxXXX;
+    state[n].m[Y] = XXXmyXXX;
+    state[n].m[Z] = XXXmzXXX;
+    state[n].n[X] = XXXnxXXX;
+    state[n].n[Y] = XXXnyXXX;
+    state[n].n[Z] = XXXnzXXX;
+    */
     state[n].type = type;
     if (type == COLLOID_TYPE_SUBGRID) {
       state[n].al= al;
@@ -158,26 +162,27 @@ int main(int argc, char ** argv) {
   if (from_file) {
     int numcol;
     float pos[3];
-    int mi[4];
-    float r0[4];
+    int mi[7];
+    float r0[7];
     int nConnec;
     char data[256];
     char line[256];
     int iscentre, ishole, indexcentre;
 
     FILE* file;
-    file = fopen("latticeHexasphere.txt", "r");
+    file = fopen("latticeTrisphere.txt", "r");
 
-    state[0].nbonds_mesh = 240;
-    for (int ind = 0; ind < 240; ind++) {
+    state[0].nbonds_mesh = 642;
+    for (int ind = 0; ind < 642; ind++) {
       state[0].bond_mesh[ind] = ind + 2;
     }
 
     while (fgets(line, sizeof(line), file)) {
-
       strcpy(data,line);
-      sscanf(data, "%d %f %f %f %d %d %d %d %d %f %f %f %f %d %d %d",
-		 &numcol, &pos[0], &pos[1], &pos[2], &nConnec, &mi[0], &mi[1], &mi[2], &mi[3], &r0[0], &r0[1], &r0[2], &r0[3], &iscentre, &ishole, &indexcentre);
+
+      sscanf(data, "%d %f %f %f %d %d %d %d %d %d %d %d %f %f %f %f %f %f %f %d %d %d",
+		 &numcol, &pos[0], &pos[1], &pos[2], &nConnec, &mi[0], &mi[1], &mi[2], &mi[3], &mi[4], &mi[5], &mi[6], &r0[0], &r0[1], &r0[2], &r0[3], &r0[4], &r0[5], &r0[6], &iscentre, &ishole, &indexcentre);
+
 
       numcol = numcol - 1;
 
@@ -188,8 +193,7 @@ int main(int argc, char ** argv) {
       state[numcol].nbonds = 0;
       state[numcol].nbonds2 = 0;
       state[numcol].nbonds3 = 0;
-
-        /*
+      
       state[numcol].bond[0] = 0;
       state[numcol].bond[1] = 0;
       state[numcol].bond[2] = 0;
@@ -201,32 +205,35 @@ int main(int argc, char ** argv) {
       state[numcol].bond3[0] = 0;
       state[numcol].bond3[1] = 0;
       state[numcol].bond3[2] = 0;
-	*/
+
       if (numcol >= 1) {
 
         state[numcol].tuple.indices[0] = mi[0];
         state[numcol].tuple.indices[1] = mi[1];
         state[numcol].tuple.indices[2] = mi[2];
         state[numcol].tuple.indices[3] = mi[3];
-        state[numcol].tuple.indices[4] = 0;
-        state[numcol].tuple.indices[5] = 0;
-        state[numcol].tuple.indices[6] = 0;
+        state[numcol].tuple.indices[4] = mi[4];
+        state[numcol].tuple.indices[5] = mi[5];
+        state[numcol].tuple.indices[6] = mi[6];
 
         state[numcol].tuple.r0s[0] = r0[0];
         state[numcol].tuple.r0s[1] = r0[1];
         state[numcol].tuple.r0s[2] = r0[2];
         state[numcol].tuple.r0s[3] = r0[3];
-        state[numcol].tuple.r0s[4] = 0;
-        state[numcol].tuple.r0s[5] = 0;
-        state[numcol].tuple.r0s[6] = 0;
+        state[numcol].tuple.r0s[4] = r0[4];
+        state[numcol].tuple.r0s[5] = r0[5];
+        state[numcol].tuple.r0s[6] = r0[6];
 
         state[numcol].nbonds_mesh = nConnec;
         state[numcol].bond_mesh[0] = mi[0];
         state[numcol].bond_mesh[1] = mi[1];
         state[numcol].bond_mesh[2] = mi[2];
         state[numcol].bond_mesh[3] = mi[3];
+        state[numcol].bond_mesh[4] = mi[4];
+        state[numcol].bond_mesh[5] = mi[5];
+        state[numcol].bond_mesh[6] = mi[6];
 
-        for (int numbond = 4; numbond < 240; numbond++) {
+        for (int numbond = 7; numbond < 642; numbond++) {
           state[numcol].bond_mesh[numbond] = 0;
         }  
       }

@@ -108,15 +108,15 @@ __host__ int phi_force_calculation(pe_t * pe, cs_t * cs, lees_edw_t * le,
       }
       break;
     case PTH_METHOD_GRADMU:
-
       if (wall_present(wall) || is_pm) {
 	phi_grad_mu_solid(cs, phi, fe, hydro, map, subgrid_potential);
-	phi_grad_mu_external(cs, phi, hydro);
+	printf("ll\n");
+	phi_grad_mu_external_ll(cs, phi, hydro);
       }
       else {
 	/* Fluid only  */
 	phi_grad_mu_fluid(cs, phi, fe, hydro, subgrid_potential);
-	phi_grad_mu_external(cs, phi, hydro);
+	phi_grad_mu_external_ll(cs, phi, hydro);
       }
     break;
     case PTH_METHOD_STRESS_ONLY:

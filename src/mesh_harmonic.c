@@ -133,7 +133,7 @@ int mesh_harmonic_compute(colloids_info_t * cinfo, void * self) {
   mesh_harmonic_t * obj = (mesh_harmonic_t *) self;
 
   int n;
-  double r12[3];
+  double r12[3], dcentre[3];
   double r2min, r2max;
   double r2,f;
   double r2md;
@@ -155,11 +155,13 @@ int mesh_harmonic_compute(colloids_info_t * cinfo, void * self) {
     for (n = 0; n < pc->s.nbonds_mesh; n++) {
       assert(pc->bonded_mesh[n]);
       
-      if (pc->s.index == 1) continue;
+      if (pc->s.index == 1) continue; 
+      /*Force on central particle is calculated implicity by summing together the counterforce of each edge particle */
+
       if (pc->s.index > pc->bonded_mesh[n]->s.index && pc->bonded_mesh[n]->s.index != 1) continue;
       /* Compute force arising on each particle from single bond */
 
-      /* Find equilibrium distance */
+      /* Retrieve equilibrium distance */
       for (int index = 0; index < 7; index++) {
         if (pc->s.tuple.indices[index] == pc->bonded_mesh[n]->s.index) {
 
@@ -173,7 +175,8 @@ int mesh_harmonic_compute(colloids_info_t * cinfo, void * self) {
       r2 = r12[X]*r12[X] + r12[Y]*r12[Y] + r12[Z]*r12[Z];
       r2md = sqrt(r2);
 
-/*
+
+/* LIGHTHOUSE
       r2min = 4*obj->r0*obj->r0;
       r2max = 0.0;
       printf("r2min = %14.7e, r2max = %14.7e, r2 = %14.7e\n", r2min, r2max, r2);
@@ -194,13 +197,24 @@ int mesh_harmonic_compute(colloids_info_t * cinfo, void * self) {
       pc->bonded_mesh[n]->force[Z] += f*r12[Z];
 
 /* For visualization purposes */
+// Increment force/torque on the state attribute
       pc->s.fsprings[X] -= f*r12[X];
       pc->s.fsprings[Y] -= f*r12[Y];
       pc->s.fsprings[Z] -= f*r12[Z];
 
+      cs_minimum_distance(obj->cs, pc->s.r, pc->centerofmass, dcentre);
+      pc->s.tsprings[X] -= dcentre[Y]*f*r12[Z] - dcentre[Z]*f*r12[Y];
+      pc->s.tsprings[Y] -= dcentre[Z]*f*r12[X] - dcentre[X]*f*r12[Z];
+      pc->s.tsprings[Z] -= dcentre[X]*f*r12[Y] - dcentre[Y]*f*r12[X];
+
+// Increment reciprocal force/torque on the state attribute
       pc->bonded_mesh[n]->s.fsprings[X] += f*r12[X];
       pc->bonded_mesh[n]->s.fsprings[Y] += f*r12[Y];
       pc->bonded_mesh[n]->s.fsprings[Z] += f*r12[Z];
+
+      pc->bonded_mesh[n]->s.tsprings[X] += dcentre[Y]*f*r12[Z] - dcentre[Z]*f*r12[Y];
+      pc->bonded_mesh[n]->s.tsprings[Y] += dcentre[Z]*f*r12[X] - dcentre[X]*f*r12[Z];
+      pc->bonded_mesh[n]->s.tsprings[Z] += dcentre[X]*f*r12[Y] - dcentre[Y]*f*r12[X];
 
     }
   }

@@ -34,12 +34,9 @@ default:
 
 build:
 	$(MAKE) extract
-	$(MAKE) capillary
-	$(MAKE) colloid_init
 	$(MAKE) extract_colloids
-	$(MAKE) coll_squ_subgrid_init
 	$(MAKE) multi_poly_init
-	$(MAKE) multi_poly_init4
+	$(MAKE) trisphere_init
 
 colloid_init: colloid_init.o
 	$(CC) $(LDFLAGS) -o $@ $^ $(LIBS)
@@ -62,7 +59,7 @@ coll_squ_subgrid_init: coll_squ_subgrid_init.o
 multi_poly_init: multi_poly_init.o
 	$(CC) $(LDFLAGS) -o $@ $^ $(LIBS)
 
-multi_poly_init4: multi_poly_init4.o
+trisphere_init: trisphere_init.o
 	$(CC) $(LDFLAGS) -o $@ $^ $(LIBS)
 
 
@@ -71,7 +68,7 @@ multi_poly_init4: multi_poly_init4.o
 .PHONY : clean
 clean:
 	rm -f *.o colloid_init extract_colloids capillary extract \
-	coll_squ_subgrid_init multi_poly_init multi_poly_init4
+	coll_squ_subgrid_init multi_poly_init trisphere_init
 
 .SUFFIXES:
 .SUFFIXES: .c .o

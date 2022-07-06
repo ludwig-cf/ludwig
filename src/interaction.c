@@ -503,6 +503,13 @@ int colloids_update_forces_zero(colloids_info_t * cinfo) {
     pc->s.fsprings[Y] = 0.0;
     pc->s.fsprings[Z] = 0.0;
 
+    pc->s.tphi[X] = 0.0;
+    pc->s.tphi[Y] = 0.0;
+    pc->s.tphi[Z] = 0.0;
+
+    pc->s.tsprings[X] = 0.0;
+    pc->s.tsprings[Y] = 0.0;
+    pc->s.tsprings[Z] = 0.0;
   }
 
   return 0;
@@ -684,7 +691,7 @@ int colloids_update_forces_fluid_driven(colloids_info_t * cinfo,
 /*****************************************************************************
  *
  *  colloids_update_discrete_forces_phi_old
- *  Old and wrong as it uses the sum of all potentials
+ *  Old (and wrong) as it uses the sum of all potentials
  *
  *****************************************************************************/
 
@@ -794,7 +801,7 @@ int colloids_update_discrete_forces_phi_old(colloids_info_t * cinfo, field_t * p
 		if (rnorm > cutoff) continue;
 					
                 /* Retrieve phi */
-                phi_ = phi->data[addr_rank1(phi->nsites, 2, index, 0)]; //LIGHTHOUSE
+                phi_ = phi->data[addr_rank1(phi->nsites, 2, index, 0)]; 
 
                 /* Compute potential and grad of potential (grad_u) */
                 u = u0/(sqrt(2*M_PI*delta))*exp(-0.5*(rsq)/delta);
@@ -966,14 +973,15 @@ int colloids_update_discrete_forces_phi(colloids_info_t * cinfo, field_t * phi, 
 
   double phi_, u, um1, up1, u0, delta, cutoff;
   double rnorm, rsq, rsqm1, rsqp1;
-  double r0[3], r[3], grad_u[3];
+  double r0[3], r[3], grad_u[3], dcentre[3];
 
   colloid_t * pc = NULL;
   physics_t * phys = NULL;
 
 /* ------------------------- For book-keeping ------------------------------> */
-  int writefreq = 100000, timestep;
+  int writefreq = 10000000, timestep;
   double colloidforce[3], localforce[3] = {0., 0., 0.}, globalforce[3];
+  double colloidtorque[3], localtorque[3] = {0., 0., 0.}, globaltorque[3];
   FILE * fp;
 
 // time stuff
@@ -1041,6 +1049,10 @@ int colloids_update_discrete_forces_phi(colloids_info_t * cinfo, field_t * phi, 
           colloidforce[X] = 0.0;
           colloidforce[Y] = 0.0;
           colloidforce[Z] = 0.0;
+
+          colloidtorque[X] = 0.0;
+          colloidtorque[Y] = 0.0;
+          colloidtorque[Z] = 0.0;
 
           for (i = i_min; i <= i_max; i++) {
             for (j = j_min; j <= j_max; j++) {
@@ -1123,13 +1135,14 @@ int colloids_update_discrete_forces_phi(colloids_info_t * cinfo, field_t * phi, 
                 pc->s.fphi[Y] += phi_*grad_u[Y];
                 pc->s.fphi[Z] += phi_*grad_u[Z];
 
-
 		colloidforce[X] += phi_*grad_u[X];
 		colloidforce[Y] += phi_*grad_u[Y];
 		colloidforce[Z] += phi_*grad_u[Z];
 
-  		//if (timestep % writefreq == 0 && grad_u[Y] != 0.0) printf("interaction %14.7e\n", colloidforce[Y]);
-
+		cs_minimum_distance(cinfo->cs, pc->centerofmass, pc->s.r, dcentre);
+		colloidtorque[X] += dcentre[Y]*phi_*grad_u[Z] - dcentre[Z]*phi_*grad_u[Y];
+		colloidtorque[Y] += dcentre[Z]*phi_*grad_u[X] - dcentre[X]*phi_*grad_u[Z];
+		colloidtorque[Z] += dcentre[X]*phi_*grad_u[Y] - dcentre[Y]*phi_*grad_u[X];
 		/* Increment the total interaction potential for later use by cahn_hilliard and phi_force */
 
                 r[X] = - r0[X] + 1.0*i;
@@ -1147,12 +1160,9 @@ int colloids_update_discrete_forces_phi(colloids_info_t * cinfo, field_t * phi, 
             }
           }
 	
-	/* Increment the local force with the force on this colloid */
-	//printf("colloid index %d, force %f %f %f \n", pc->s.index, colloidforce[X], colloidforce[Y], colloidforce[Z]);
-	//if (pc->s.index == 1) pe_verbose(cinfo->pe, "%14.7e %14.7e %14.7e \n", colloidforce[X], colloidforce[Y], colloidforce[Z]);
+	/* Increment the force to the total local force */
 	for (ia = 0; ia < 3; ia ++) localforce[ia] += colloidforce[ia];
-        //pe_verbose(cinfo->pe, "local phi force = %f %f %f\n", localforce[X], localforce[Y], localforce[Z]);
-        //pe_verbose(cinfo->pe, "local force = %f %f %f\n", pc->force[X], pc->force[Y], pc->force[Z]);
+	for (ia = 0; ia < 3; ia ++) localtorque[ia] += colloidtorque[ia];
 
         //Next colloid
         }
@@ -1163,8 +1173,11 @@ int colloids_update_discrete_forces_phi(colloids_info_t * cinfo, field_t * phi, 
 /* Output sum of force exerted on the subgrid particles */
   if (timestep % writefreq == 0) {
     MPI_Allreduce(localforce, globalforce, 3, MPI_DOUBLE, MPI_SUM, comm);
+    MPI_Allreduce(localtorque, globaltorque, 3, MPI_DOUBLE, MPI_SUM, comm);
     fp = fopen("TOT_INTERACT_FORCE_SUBGRID.txt", "a");
     fprintf(fp, "%14.7e %14.7e %14.7e\n", globalforce[X], globalforce[Y], globalforce[Z]);
+    fp = fopen("TOT_INTERACT_TORQUE_SUBGRID.txt", "a");
+    fprintf(fp, "%14.7e %14.7e %14.7e\n", globaltorque[X], globaltorque[Y], globaltorque[Z]);
     fclose(fp);
   }
   //Next cell list

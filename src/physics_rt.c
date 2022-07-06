@@ -78,11 +78,11 @@ __host__ int physics_info(pe_t * pe, physics_t * phys) {
 	    gm0[0], gm0[1], gm0[2]);
   }
   if (gm1[0] || gm1[1] || gm1[2]) {
-    pe_info(pe, "External chem. pot. grad.    %12.5e %12.5e %12.5e\n",
+    pe_info(pe, "External PHI[0] chem. pot. grad.    %12.5e %12.5e %12.5e\n",
 	    gm1[0], gm1[1], gm1[2]);
   }
   if (gm2[0] || gm2[1] || gm2[2]) {
-    pe_info(pe, "External chem. pot. grad.    %12.5e %12.5e %12.5e\n",
+    pe_info(pe, "External PHI[1] chem. pot. grad.    %12.5e %12.5e %12.5e\n",
 	    gm2[0], gm2[1], gm2[2]);
   }
 

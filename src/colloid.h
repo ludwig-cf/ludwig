@@ -31,10 +31,10 @@ typedef enum colloid_io_version colloid_io_version_t;
 
 /* -----> CHEMOVESICLE V2 */
 /* NPAD_INT 1 = 12 - iscentre - indexcentre - ishole - NBONDMAX2(3) -nbonds2 - NBONDMAX3 (3) - nbonds3*/
-/* NPAD_DOUBLE 6 = 15 - u0 - delta - cutoff - n[3] - fphi[3] - fsprings[3] - fsub[3] */
+/* NPAD_DOUBLE -6 = 15 - u0 - delta - cutoff - n[3] - fphi[3] - fsprings[3] - fsub[3] - tphi[3] - tsprings[3] */
 /* <----- */
 
-#define NTOT_VAR (12 + 3 + 3 + 3 + 642 + 11 + 0              + 48            + 0           + 14)
+#define NTOT_VAR (12 + 3 + 3 + 240 + 642 + 11 + 0              + 54            + 0           + 14)
 //                ints nbonds 1 2 3 mesh ints pad	     double	   double pad       tuple
 
 
@@ -44,7 +44,7 @@ typedef enum colloid_io_version colloid_io_version_t;
 
 #define NBOND_MAX  3
 #define NBOND_MAX2  3
-#define NBOND_MAX3  3
+#define NBOND_MAX3  240
 #define NBOND_MAX_MESH 642 
 
 enum colloid_type_enum {COLLOID_TYPE_DEFAULT = 0,
@@ -140,6 +140,8 @@ struct colloid_state_type {
   double fsub[3]; /* Used to pass force quantities to the state so that they can be easily extracted with extract_colloids.c */
   double fphi[3]; /* idem */
   double fsprings[3]; /* idem */
+  double tphi[3];
+  double tsprings[3];
 /* <----- */
 
   double dpad[NPAD_DBL];/* Again, this pads to 512 bytes to allow

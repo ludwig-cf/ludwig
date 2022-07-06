@@ -54,7 +54,8 @@ static const int  cds_with_m  = 0;  /* Output coordinate and orientation */
 static const int  cds_with_v  = 0;  /* Output coordinate, velocity vector and magnitude */
 static const int  cds_with_both  = 0;  /* Output m and v */
 static const int  cds_with_m_v_fphi  = 0;  /* Output m, v, force and forcephi */
-static const int  cds_with_m_v_fphi_fsub_fsprings  = 1;  /* Output m, v, force and forcephi */
+static const int  cds_with_m_v_fphi_fsub_fsprings  = 0;  /* Output m, v, force and forcephi */
+static const int  cds_with_m_v_fphi_fsub_fsprings_tphi_tsprings  = 1;  /* Output m, v, force and forcephi */
 
 static const char * format3_    = "%10.5f, %10.5f, %10.5f, ";
 static const char * format3end_ = "%10.5f, %10.5f, %10.5f\n";
@@ -63,6 +64,7 @@ static const char * format7end_ = "%10.5f, %10.5f, %10.5f, %14.6e, %14.6e, %14.6
 static const char * format10end_ = "%10.5f, %10.5f, %10.5f, %10.5f, %10.5f, %10.5f, %14.6e, %14.6e, %14.6e, %14.6e\n";
 static const char * format13end_ = "%10.5f, %10.5f, %10.5f, %10.5f, %10.5f, %10.5f, %14.6e, %14.6e, %14.6e, %14.6e, %14.6e, %14.6e, %14.6e\n";
 static const char * format19end_ = "%10.5f, %10.5f, %10.5f, %10.5f, %10.5f, %10.5f, %14.6e, %14.6e, %14.6e, %14.6e, %14.6e, %14.6e, %14.6e, %14.6e, %14.6e, %14.6e, %14.6e, %14.6e, %14.6e\n";
+static const char * format25end_ = "%10.5f, %10.5f, %10.5f, %10.5f, %10.5f, %10.5f, %14.6e, %14.6e, %14.6e, %14.6e, %14.6e, %14.6e, %14.6e, %14.6e, %14.6e, %14.6e, %14.6e, %14.6e, %14.6e, %14.6e, %14.6e, %14.6e, %14.6e, %14.6e, %14.6e\n";
 
 void colloids_to_csv_header(FILE * fp);
 void colloids_to_csv_header_with_m(FILE * fp);
@@ -70,6 +72,7 @@ void colloids_to_csv_header_with_v(FILE * fp);
 void colloids_to_csv_header_with_both(FILE * fp);
 void colloids_to_csv_header_with_m_v_fphi(FILE * fp);
 void colloids_to_csv_header_with_m_v_fphi_fsub_fsprings(FILE * fp);
+void colloids_to_csv_header_with_m_v_fphi_fsub_fsprings_tphi_tsprings(FILE * fp);
 
 int main(int argc, char ** argv) {
 
@@ -109,6 +112,7 @@ int main(int argc, char ** argv) {
   if (cds_with_both) colloids_to_csv_header_with_both(fp_csv);
   if (cds_with_m_v_fphi) colloids_to_csv_header_with_m_v_fphi(fp_csv);
   if (cds_with_m_v_fphi_fsub_fsprings) colloids_to_csv_header_with_m_v_fphi_fsub_fsprings(fp_csv);
+  if (cds_with_m_v_fphi_fsub_fsprings_tphi_tsprings) colloids_to_csv_header_with_m_v_fphi_fsub_fsprings_tphi_tsprings(fp_csv);
 
   for (nf = 1; nf <= nfile; nf++) {
 
@@ -172,6 +176,11 @@ int main(int argc, char ** argv) {
       if (cds_with_m_v_fphi_fsub_fsprings) {
 	normv = sqrt(s1.v[0]*s1.v[0] + s1.v[1]*s1.v[1] + s1.v[2]*s1.v[2]);
 	fprintf(fp_csv, format19end_, s1.m[0], s1.m[1], s1.m[2], s1.n[0], s1.n[1], s1.n[2], s1.v[0], s1.v[1], s1.v[2], normv, s1.fphi[0], s1.fphi[1], s1.fphi[2], s1.fsub[0], s1.fsub[1], s1.fsub[2], s1.fsprings[0], s1.fsprings[1], s1.fsprings[2]);
+      }
+ 
+      if (cds_with_m_v_fphi_fsub_fsprings_tphi_tsprings) {
+	normv = sqrt(s1.v[0]*s1.v[0] + s1.v[1]*s1.v[1] + s1.v[2]*s1.v[2]);
+	fprintf(fp_csv, format25end_, s1.m[0], s1.m[1], s1.m[2], s1.n[0], s1.n[1], s1.n[2], s1.v[0], s1.v[1], s1.v[2], normv, s1.fphi[0], s1.fphi[1], s1.fphi[2], s1.fsub[0], s1.fsub[1], s1.fsub[2], s1.fsprings[0], s1.fsprings[1], s1.fsprings[2], s1.tphi[0], s1.tphi[1], s1.tphi[2], s1.tsprings[0], s1.tsprings[1], s1.tsprings[2]);
       }
  
       ncount += 1;
@@ -424,8 +433,50 @@ void colloids_to_csv_header_with_m_v_fphi_fsub_fsprings(FILE * fp) {
 
   double r[3];
 
-  if (id) fprintf(fp, "%s", "id, ");
-  fprintf(fp, "%s", "x, y, z, mx, my, mz, nx, ny, nz, vx, vy, vz, normv, fphix, fphiy, fphiz, fsubx, fsuby, fsubz, fspringsx, fspringsy, fspringsz\n");
+  if (id) fprintf(fp, "%s", "id,");
+  fprintf(fp, "%s", "x,y,z,mx,my,mz,nx,ny,nz,vx,vy,vz,normv,fphix,fphiy,fphiz,fsubx,fsuby,fsubz,fspringsx,fspringsy,fspringsz\n");
+
+  if (include_ref) {
+
+    r[0] = 1.0*NX - 1.0;
+    r[1] = 0.0;
+    r[2] = 0.0;
+
+    fprintf(fp, format3_, r[0], r[1], r[2]);
+    fprintf(fp, format3end_, 0, 0, 0, 0);
+
+    r[0] = 0.0;
+    r[1] = 1.0*NY - 1.0;
+    r[2] = 0.0;
+
+    fprintf(fp, format3_, r[0], r[1], r[2]);
+    fprintf(fp, format3end_, 0, 0, 0, 0);
+
+    r[0] = 0.0;
+    r[1] = 0.0;
+    r[2] = 1.0*NZ - 1.0;
+
+    fprintf(fp, format3_, r[0], r[1], r[2]);
+    fprintf(fp, format3end_, 0, 0, 0, 0);
+
+  }
+
+  return;
+}
+
+
+/*****************************************************************************
+ *
+ *  colloids_to_csv_header_with_m_v_f_fphi_fsub_fsprings
+ *
+ *****************************************************************************/
+
+void colloids_to_csv_header_with_m_v_fphi_fsub_fsprings_tphi_tsprings(FILE * fp) {
+
+  double r[3];
+
+  if (id) fprintf(fp, "%s", "id,");
+  fprintf(fp, "%s", "x,y,z,mx,my,mz,nx,ny,nz,vx,vy,vz,normv,fphix,fphiy,fphiz,fsubx,fsuby,fsubz,fspringsx,fspringsy,fspringsz,tphix,tphiy,tphiz,tspringsx,tspringsy,tspringsz\n");
 
   if (include_ref) {
 
