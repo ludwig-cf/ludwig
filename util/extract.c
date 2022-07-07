@@ -299,6 +299,8 @@ int extract_driver(const char * filename, metadata_v1_t * meta, int version) {
 	exit(-1);
       }
 
+      /* Here, we could respect the -d, -s, -x options. */
+      /* But at the moment, always 5 components ... */
       if (output_q_raw_) {
 	printf("Writing raw q to %s\n", io_data);
       }
@@ -1314,6 +1316,9 @@ int lc_transform_q5(int * nlocal, double * datasection) {
 	for (nr = 0; nr < nrec_; nr++) {
 	  *(datasection + index + nr) = qs[nr];
 	}
+	if (ifail != 0) {
+	  printf("! fail diagonalisation at %3d %3d %3d\n", ic, jc, kc);
+	}
       }
     }
   }
@@ -1358,6 +1363,8 @@ int lc_compute_scalar_ops(double q[3][3], double qs[5]) {
 
   if (ifail == 0) {
 
+    double q4 = 0.0;
+
     qs[0] = eigenvalue[0];
     qs[1] = eigenvector[0][0];
     qs[2] = eigenvector[1][0];
@@ -1368,7 +1375,12 @@ int lc_compute_scalar_ops(double q[3][3], double qs[5]) {
 
     q2 = s*s + t*t + (s + t)*(s + t);
     q3 = 3.0*s*t*(s + t);
-    qs[4] = sqrt(1 - 6.0*q3*q3 / (q2*q2*q2));
+
+    /* Note the value here can drip just below zero by about DBL_EPSILON */
+    /* So just set to zero to prevent an NaN */
+    q4 = 1.0 - 6.0*q3*q3 / (q2*q2*q2);
+    if (q4 < 0.0) q4 = 0.0;
+    qs[4] = sqrt(q4);
   }
 
   return ifail;
