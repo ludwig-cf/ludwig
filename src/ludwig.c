@@ -183,6 +183,8 @@ int ludwig_timekeeper_init(ludwig_t * ludwig);
 int free_energy_init_rt(ludwig_t * ludwig);
 int visc_model_init_rt(pe_t * pe, rt_t * rt, ludwig_t * ludwig);
 int io_replace_values(field_t * field, map_t * map, int map_id, double value);
+int io_replace_field_values(field_t * field, map_t * map, int status,
+			    double value);
 
 /*****************************************************************************
  *
@@ -1072,6 +1074,10 @@ void ludwig_run(const char * inputfile) {
     }
 
     if (ludwig->q) {
+      /* Run the replacement kernel, then copy back */
+      io_replace_field_values(ludwig->q, ludwig->map, MAP_COLLOID, 0.0);
+      field_memcpy(ludwig->q, tdpMemcpyDeviceToHost);
+
       field_io_info(ludwig->q, &iohandler);
       pe_info(ludwig->pe, "Writing q file at step %d!\n", step);
       sprintf(filename,"%sq-%8.8d", subdirectory, step);
@@ -2163,6 +2169,76 @@ int io_replace_values(field_t * field, map_t * map, int map_id, double value) {
       }
     }
   }
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  io_replace_values_kernel
+ *
+ *  To replace field values for particular map status, e.g., colloid sites.
+ *
+ *****************************************************************************/
+
+__global__ void io_replace_values_kernel(kernel_ctxt_t * ktx,
+					 field_t * field,
+					 map_t * map,
+					 int status, double value) {
+  int kindex = 0;
+  int kiterations = kernel_iterations(ktx);
+
+  for_simt_parallel(kindex, kiterations, 1) {
+    int ic = kernel_coords_ic(ktx, kindex);
+    int jc = kernel_coords_jc(ktx, kindex);
+    int kc = kernel_coords_kc(ktx, kindex);
+    int index = kernel_coords_index(ktx, ic, jc, kc);
+
+    if (map->status[addr_rank0(map->nsite, index)] == status) {
+      for (int n = 0; n < field->nf; n++) {
+	field->data[addr_rank1(field->nsites, field->nf, index, n)] = value;
+      }
+    }
+  }
+
+  return;
+}
+
+/*****************************************************************************
+ *
+ *  io_replace_field_values
+ *
+ *  Driver to replace specfic values in a field.
+ *
+ *****************************************************************************/
+
+int io_replace_field_values(field_t * field, map_t * map, int status,
+			    double value) {
+
+  int nlocal[3];
+  dim3 nblk, ntpb;
+  kernel_info_t limits;
+  kernel_ctxt_t * ctxt = NULL;
+
+  assert(field);
+  assert(map);
+
+  cs_nlocal(field->cs, nlocal);
+
+  limits.imin = 1; limits.imax = nlocal[X];
+  limits.jmin = 1; limits.jmax = nlocal[Y];
+  limits.kmin = 1; limits.kmax = nlocal[Z];
+
+  kernel_ctxt_create(field->cs, 1, limits, &ctxt);
+  kernel_ctxt_launch_param(ctxt, &nblk, &ntpb);
+
+  tdpLaunchKernel(io_replace_values_kernel, nblk, ntpb, 0, 0,
+		  ctxt->target, field->target, map->target, status, value);
+
+  tdpAssert(tdpPeekAtLastError());
+  tdpAssert(tdpDeviceSynchronize());
+
+  kernel_ctxt_free(ctxt);
 
   return 0;
 }
