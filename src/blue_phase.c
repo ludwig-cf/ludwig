@@ -1794,9 +1794,14 @@ void fe_lc_stress_v(fe_lc_t * fe, int index, double s[3][3][NSIMDVL]) {
 
   fe_lc_compute_h_v(fe, q, dq, dsq, h);
 #ifndef AMD_GPU_WORKAROUND
+  /* Standard computation. */
   fe_lc_compute_stress_v(fe, q, dq, h, s);
 #else
   {
+    /* This is avoiding what appears to be a spurious memory access
+     * error arising from the unrolled stress. It's not entirely
+     * clear where this is coming form at the moment (beyond
+     * "something to do with optimisation" */
     int ia, ib;
     double q1[3][3];
     double dq1[3][3][3];
