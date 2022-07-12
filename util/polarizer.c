@@ -52,7 +52,7 @@ typedef struct options_s {
   int cut_topbot;           /* remove cut_topbot sites at 'entry' and 'exit' */
   double xi_polarizer;      /* polariser angle (degrees) */
   double xi_analyzer;       /* analyser angle (degrees) */
-  double n_e;               /* extraordinary index od refraction */
+  double n_e;               /* extraordinary index of refraction */
   double n_o;               /* ordinary index of refraction */
   double lambda[NLAMBDA];   /* wavelengths (lattice units) */
   double weight[NLAMBDA];   /* weights (sum should be unity) */
@@ -96,6 +96,7 @@ void initialise_matrices(const options_t * opts, int ilambda, system_t * sys);
 void simulate_polarizer(const options_t * opts, int ilambda, system_t * sys);
 void output(int argc, char ** argv, const options_t * opts, system_t * sys);
 void polariser_matrix(double angle, double p[4][4]);
+void print_usage(void);
 
 /*****************************************************************************
  *
@@ -129,7 +130,7 @@ int main(int argc, char* argv[]){
     if (*argv[3] == 'z') opts.raydir = 2;
   }
   else {
-    printf("# Command line arguments after the executable are: director_filename [scalarOP_filename] ray_direction[x, y OR z]\n");
+    print_usage();
     exit(-1);
   }
 
@@ -187,6 +188,21 @@ int main(int argc, char* argv[]){
   printf("# Done\n");
 
   return 0;
+}
+
+/*****************************************************************************
+ *
+ *  print_usage
+ *
+ *  Display instructions (usually before bailing out).
+ *
+ *****************************************************************************/
+
+void print_usage(void) {
+
+  printf("Usage: ./polarizer lcd-00000000.vtk [lcs-00000000.vtk] x|y|z\n");
+
+  return;
 }
 
 /*****************************************************************************
@@ -319,7 +335,7 @@ void read_data(int argc, char** argv, const options_t * opts,
 
 
   if (argc < 2) {
-    printf("Usage:\n");
+    print_usage();
     exit(-1);
   }
   else {
