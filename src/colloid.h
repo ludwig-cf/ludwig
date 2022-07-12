@@ -28,9 +28,9 @@ typedef enum colloid_io_version colloid_io_version_t;
  * unit test consumption. The total number of variables is
  * useful to know to check the ASCII read/write. */
 
-#define NTOT_VAR (32+48)
+#define NTOT_VAR (20         +12        +38           +10)
 #define NPAD_INT  12 /* 13 - isjanus (1) */
-#define NPAD_DBL  11 /* 15 - jangle (1) - Tc (1) - Tj1 (1) - Tj2 (1) */
+#define NPAD_DBL  10 /* 15 - jangle (1) - Tc (1) - Tj1 (1) - Tj2 (1) - deltapsi */
 #define NBOND_MAX  2
 
 enum colloid_type_enum {COLLOID_TYPE_DEFAULT = 0,
@@ -86,6 +86,7 @@ struct colloid_state_type {
   double h;             /* Wetting free energy parameter H */
   double dr[3];         /* r update (pending refactor of move/build process) */
   double deltaphi;      /* order parameter bbl net; required to restart */
+  double deltapsi;      /* order parameter bbl net; required to restart */
 
   /* Charges. We allow two charge valencies (cf a general number
    * number in the electrokinetics section). q0 will be associated

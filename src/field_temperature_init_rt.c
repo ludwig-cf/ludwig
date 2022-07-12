@@ -44,6 +44,7 @@ int field_temperature_init_rt(pe_t * pe, rt_t * rt, field_t * temperature) {
   assert(temperature);
 
   p = rt_string_parameter(rt, "temperature_initialisation", value, BUFSIZ);
+  if (p == 0) pe_fatal(pe, "Please set the temperature initialisation in the input\n");
 
   /* Has to be zero everywhere (because initialization of the free energy is done at T = 0... because temperature field is initialized after the free energy) */
 

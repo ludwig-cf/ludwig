@@ -77,7 +77,7 @@ static int colloid_sums_m6(colloid_sum_t * sum, int, int, int, int);
 /* Message sizes (doubles) */
 /* NULL is a dummy zero size */
 
-static const int msize_[COLLOID_SUM_MAX] = {0, 10, 35, 7, 4, 6, 7};
+static const int msize_[COLLOID_SUM_MAX] = {0, 11, 35, 7, 4, 7, 7};
 
 /* The following are used for internal communication */
 
@@ -498,6 +498,7 @@ static int colloid_sums_m1(colloid_sum_t * sum, int ic, int jc, int kc,
       }
       sum->send[n++] = pc->deltam;
       sum->send[n++] = pc->s.deltaphi;
+      sum->send[n++] = pc->s.deltapsi;
 
       assert(n == (noff + npart + 1)*sum->msize);
     }
@@ -516,6 +517,7 @@ static int colloid_sums_m1(colloid_sum_t * sum, int ic, int jc, int kc,
       }
       pc->deltam += sum->recv[n++];
       pc->s.deltaphi += sum->recv[n++];
+      pc->s.deltapsi += sum->recv[n++];
       assert(n == (noff + npart + 1)*sum->msize);
     }
 
@@ -716,6 +718,7 @@ static int colloid_sums_m5(colloid_sum_t * sum, int ic, int jc, int kc,
     if (sum->mload == MESSAGE_LOAD) {
       sum->send[n++] = 1.0*pc->s.index;
       sum->send[n++] = pc->s.deltaphi;
+      sum->send[n++] = pc->s.deltapsi;
       sum->send[n++] = pc->dq[0];
       sum->send[n++] = pc->dq[1];
       sum->send[n++] = pc->s.sa;
@@ -732,6 +735,7 @@ static int colloid_sums_m5(colloid_sum_t * sum, int ic, int jc, int kc,
       }
 
       pc->s.deltaphi += sum->recv[n++];
+      pc->s.deltapsi += sum->recv[n++];
       pc->dq[0]      += sum->recv[n++];
       pc->dq[1]      += sum->recv[n++];
       pc->s.sa       += sum->recv[n++];

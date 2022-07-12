@@ -89,7 +89,7 @@ __host__ int physics_init_rt(rt_t * rt, physics_t * phys) {
   double eta;
   double rho0;
   double lambda;
-  double phi0;
+  double phi0, psi0;
   double vector[3];
   double frequency;
 
@@ -116,6 +116,10 @@ __host__ int physics_init_rt(rt_t * rt, physics_t * phys) {
 
   if (rt_double_parameter(rt, "phi0", &phi0)) {
     physics_phi0_set(phys, phi0);
+  }
+
+  if (rt_double_parameter(rt, "psi0", &psi0)) {
+    physics_psi0_set(phys, psi0);
   }
 
   if (rt_double_parameter(rt, "symmetric_oft_lambda", &lambda)) {

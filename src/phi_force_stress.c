@@ -192,6 +192,7 @@ __host__ int pth_stress_compute(pth_t * pth, fe_t * fe) {
 
   fe->func->target(fe, &fe_target);
 
+  //printf("stress relaxation is %d\n", fe->use_stress_relaxation);
   if (fe->use_stress_relaxation) {
     /* Antisymmetric part only required; if no antisymmetric part,
      * do nothing. */
@@ -203,7 +204,7 @@ __host__ int pth_stress_compute(pth_t * pth, fe_t * fe) {
   else {
     /* Full stress */
 //OFT 
-/* Changed vectorised to non-vectorised computation bc thermal stress does not exist in vectorised version yet  */
+/* LIGHTHOUSE Changed vectorised to non-vectorised computation bc thermal stress does not exist in vectorised version yet  */
 
     tdpLaunchKernel(pth_kernel, nblk, ntpb, 0, 0,
 //OFT

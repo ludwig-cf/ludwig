@@ -133,7 +133,7 @@ int fe_symmetric_oft_init_rt(pe_t * pe, rt_t * rt, fe_symm_oft_t * fe) {
   }
 
   /* Initialise */
-  grad_3d_27pt_solid_fe_oft_set(fe);
+  grad_3d_27pt_solid_symm_oft_set(fe);
   
   return 0;
 }

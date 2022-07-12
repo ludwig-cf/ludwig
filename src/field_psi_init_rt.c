@@ -49,7 +49,7 @@ int field_psi_init_rt(pe_t * pe, rt_t * rt, field_psi_info_t param,
 
     pe_info(pe, "Initialising psi to a uniform value psi0\n");
 
-    p = rt_double_parameter(rt, "psi_initialisation_psi0", &psi0);
+    p = rt_double_parameter(rt, "psi0", &psi0);
     if (p == 0) pe_fatal(pe, "Please specify psi0 in input\n");
 
     pe_info(pe, "Initial value psi0: %14.7e\n", psi0);

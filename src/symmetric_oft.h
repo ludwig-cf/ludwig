@@ -19,6 +19,7 @@
 #include "free_energy.h"
 #include "field.h"
 #include "field_grad.h"
+
 typedef struct fe_symm_oft_param_s fe_symm_oft_param_t;
 typedef struct fe_symm_oft_s fe_symm_oft_t;
 
@@ -55,6 +56,7 @@ __host__ int fe_symm_oft_create(pe_t * pe, cs_t * cs, field_t * f,
 __host__ int fe_symm_oft_free(fe_symm_oft_t * fe);
 __host__ int fe_symm_oft_param_set(fe_symm_oft_t * fe, fe_symm_oft_param_t values);
 __host__ int fe_symm_oft_target(fe_symm_oft_t * fe, fe_t ** target);
+__host__ int fe_surf_h_to_costheta(double h, double * costheta);
 
 __host__ __device__ int fe_symm_oft_param(fe_symm_oft_t * fe, fe_symm_oft_param_t * values);
 __host__ __device__ int fe_symm_oft_interfacial_tension(fe_symm_oft_t * fe, double * s);
@@ -66,6 +68,5 @@ __host__ __device__ int fe_symm_oft_mu(fe_symm_oft_t * fe, int index, double * m
 __host__ __device__ int fe_symm_oft_str(fe_symm_oft_t * fe, int index, double s[3][3]);
 __host__ __device__ void fe_symm_oft_str_v(fe_symm_oft_t * fe, int index,
 				       double s[3][3][NSIMDVL]);
-
 #endif
 

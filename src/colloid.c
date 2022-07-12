@@ -84,6 +84,7 @@ int colloid_state_read_ascii(colloid_state_t * ps, FILE * fp) {
   nread += fscanf(fp, sformat, &ps->h);
   nread += fscanf(fp, vformat, &ps->dr[0], &ps->dr[1], &ps->dr[2]);
   nread += fscanf(fp, sformat, &ps->deltaphi);
+  nread += fscanf(fp, sformat, &ps->deltapsi);
 
   nread += fscanf(fp, sformat, &ps->q0);
   nread += fscanf(fp, sformat, &ps->q1);
@@ -210,6 +211,7 @@ int colloid_state_write_ascii(const colloid_state_t * s, FILE * fp) {
   nwrite += fprintf(fp, sformat, s->h);
   nwrite += fprintf(fp, vformat, s->dr[0], s->dr[1], s->dr[2]);
   nwrite += fprintf(fp, sformat, s->deltaphi);
+  nwrite += fprintf(fp, sformat, s->deltapsi);
 
   nwrite += fprintf(fp, sformat, s->q0);
   nwrite += fprintf(fp, sformat, s->q1);
@@ -234,6 +236,7 @@ int colloid_state_write_ascii(const colloid_state_t * s, FILE * fp) {
 
   /* ... should be NTOT_VAR items of format + 1 characters */
 
+  if (nwrite != NTOT_VAR*25) printf("%d %d\n", nwrite, NTOT_VAR*25);
   if (nwrite != NTOT_VAR*25) ifail = 1;
 
   /* If assertions are off, responsibility passes to caller */

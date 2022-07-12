@@ -358,6 +358,7 @@ static int colloids_halo_load_list(colloid_halo_t * halo,
     /* Because delta phi is accumulated across copies at each time step,
      * we must zero the outgoing copy here to avoid overcounting */
     halo->send[noff + n].deltaphi = 0.0;
+    halo->send[noff + n].deltapsi = 0.0;
     n++;
     pc = pc->next;
   }
@@ -397,10 +398,12 @@ static int colloids_halo_unload(colloid_halo_t * halo, int nrecv) {
 
       if (pc->s.index == index) {
 	/* kludge: don't update deltaphi */
-	double phi;
+	double phi, psi;
 	phi = pc->s.deltaphi;
+	psi = pc->s.deltapsi;
 	pc->s = halo->recv[n];
 	pc->s.deltaphi = phi;
+	pc->s.deltapsi = psi;
 	exists = 1;
       }
 

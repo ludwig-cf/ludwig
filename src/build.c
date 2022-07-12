@@ -785,8 +785,9 @@ static int build_remove_fluid(lb_t * lb, int index, colloid_t * p_colloid) {
 static int build_remove_order_parameter(lb_t * lb, field_t * f, int index,
 					colloid_t * pc) {
   int ndist;
-  double phi;
+  double phi[2];
   double phi0;
+  double psi0;
   physics_t * phys = NULL;
 
   assert(f);
@@ -795,16 +796,19 @@ static int build_remove_order_parameter(lb_t * lb, field_t * f, int index,
 
   physics_ref(&phys);
   physics_phi0(phys, &phi0);
+  physics_psi0(phys, &psi0);
+
   lb_ndist(lb, &ndist);
 
   if (ndist == 2) {
-    lb_0th_moment(lb, index, LB_PHI, &phi);
+    //lb_0th_moment(lb, index, LB_PHI, &phi);
   }
   else {
-    field_scalar(f, index, &phi);
+    field_scalar_array(f, index, phi);
   }
 
-  pc->s.deltaphi += (phi - phi0);
+  pc->s.deltaphi += (phi[0] - phi0);
+  pc->s.deltapsi += (phi[1] - psi0);
 
   return 0;
 }
@@ -1021,7 +1025,7 @@ static int build_replace_order_parameter(fe_t * fe, lb_t * lb,
   double newg[NVEL];
   double phi[NQAB];
   double qs[NQAB];
-  double phi0;
+  double phi0, psi0;
 
   physics_t * phys = NULL;
   colloid_t * pcmap = NULL;
@@ -1036,6 +1040,7 @@ static int build_replace_order_parameter(fe_t * fe, lb_t * lb,
   cs_index_to_ijk(lb->cs, index, ri);
   physics_ref(&phys);
   physics_phi0(phys, &phi0);
+  physics_psi0(phys, &psi0);
 
   /* Check the surrounding sites that were linked to inode,
    * and accumulate a (weighted) average distribution. */
@@ -1044,55 +1049,55 @@ static int build_replace_order_parameter(fe_t * fe, lb_t * lb,
     newg[p] = 0.0;
   }
 
-  if (ndist == 2) {
-
-    /* Reset the distribution (distribution index 1) */
-
-    for (p = 1; p < NVEL; p++) {
-
-      indexn = cs_index(lb->cs, ri[X] + cv[p][X], ri[Y] + cv[p][Y],
-			        ri[Z] + cv[p][Z]);
-
-      /* Site must have been fluid before position update */
-
-      /* TODO Could be done with MAP_STATUS ? */
-      colloids_info_map_old(cinfo, indexn, &pcmap);
-      if (pcmap) continue;
-      map_status(map, indexn, &status);
-      if (status == MAP_BOUNDARY) continue;
-
-      for (pdash = 0; pdash < NVEL; pdash++) {
-	lb_f(lb, indexn, pdash, LB_PHI, &g);
-	newg[pdash] += wv[p]*g;
-      }
-      weight += wv[p];
-    }
-
-    /* Set new fluid distributions */
-
-    if (weight == 0.0) {
-      /* No neighbouring fluid: as there's no information, we
-       * fall back to the value that is currently stored on the
-       * lattice. This is not entirely unreasonable, as it may
-       * reflect what is nearby, or initial conditions. It could
-       * also be set as a contingency in a separate step. */
-      field_scalar(f, index, newg);
-      weight = 1.0;
-    }
-
-    weight = 1.0/weight;
-    phi[0] = 0.0;
-
-    for (p = 0; p < NVEL; p++) {
-      newg[p] *= weight;
-      lb_f_set(lb, index, p, LB_PHI, newg[p]);
-
-      /* ... and remember the new fluid properties */
-      phi[0] += newg[p];
-    }
-  }
-  else {
-
+//LIGHTHOUSE
+//  if (ndist == 2) {
+//
+//    /* Reset the distribution (distribution index 1) */
+//    for (p = 1; p < NVEL; p++) {
+//
+//      indexn = cs_index(lb->cs, ri[X] + cv[p][X], ri[Y] + cv[p][Y],
+//			        ri[Z] + cv[p][Z]);
+//
+//      /* Site must have been fluid before position update */
+//
+//      /* TODO Could be done with MAP_STATUS ? */
+//      colloids_info_map_old(cinfo, indexn, &pcmap);
+//      if (pcmap) continue;
+//      map_status(map, indexn, &status);
+//      if (status == MAP_BOUNDARY) continue;
+//
+//      for (pdash = 0; pdash < NVEL; pdash++) {
+//	lb_f(lb, indexn, pdash, LB_PHI, &g);
+//	newg[pdash] += wv[p]*g;
+//      }
+//      weight += wv[p];
+//    }
+//
+//    /* Set new fluid distributions */
+//
+//    if (weight == 0.0) {
+//      /* No neighbouring fluid: as there's no information, we
+//       * fall back to the value that is currently stored on the
+//       * lattice. This is not entirely unreasonable, as it may
+//       * reflect what is nearby, or initial conditions. It could
+//       * also be set as a contingency in a separate step. */
+//      field_scalar(f, index, newg);
+//      weight = 1.0;
+//    }
+//
+//    weight = 1.0/weight;
+//    phi[0] = 0.0;
+//
+//    for (p = 0; p < NVEL; p++) {
+//      newg[p] *= weight;
+//      lb_f_set(lb, index, p, LB_PHI, newg[p]);
+//
+//      /* ... and remember the new fluid properties */
+//      phi[0] += newg[p];
+//    }
+//  }
+//  else
+  {
     /* Replace field value(s), based on same average */
 
     nweight = 0.0;
@@ -1124,6 +1129,7 @@ static int build_replace_order_parameter(fe_t * fe, lb_t * lb,
       /* No information. For phi, use existing (solid) value. */
       if (fe->id == FE_LC) build_replace_q_local(fe, cinfo, pc, index, f);
       if (fe->id == FE_SYMMETRIC) field_scalar(f, index, phi);
+      if (fe->id == FE_SURFACTANT_OFT) field_scalar_array(f, index, phi);
     }
     else {
       weight = 1.0 / weight;
@@ -1138,6 +1144,7 @@ static int build_replace_order_parameter(fe_t * fe, lb_t * lb,
    * which we assume means nf == 1 */
 
   pc->s.deltaphi -= (phi[0] - phi0);
+  pc->s.deltapsi -= (phi[1] - psi0);
 
   return 0;
 }
@@ -1583,7 +1590,7 @@ int build_conservation_phi(colloids_info_t * cinfo, field_t * phi) {
   int p;
 
   double value;
-  double dphi;
+  double dphi, dpsi;
 
   colloid_t * colloid = NULL;
   colloid_link_t * pl = NULL;
@@ -1599,7 +1606,9 @@ int build_conservation_phi(colloids_info_t * cinfo, field_t * phi) {
      * work out what should be put back. */
 
     dphi = colloid->s.deltaphi / colloid->s.saf;
-    if (dphi == 0.0) continue;
+    dpsi = colloid->s.deltapsi / colloid->s.saf;
+
+    if (dphi == 0.0 || dpsi == 0) continue;
 
     for (pl = colloid->lnk; pl != NULL; pl = pl->next) {
 
@@ -1610,13 +1619,17 @@ int build_conservation_phi(colloids_info_t * cinfo, field_t * phi) {
 
       if (p == 1) {
 	/* Replace */
-	field_scalar(phi, pl->i, &value);
-	field_scalar_set(phi, pl->i, value + dphi);
+	//field_scalar(phi, pl->i, value); LIGHTHOUSE 
+	//field_scalar_set(phi, pl->i, value + dphi);
+
+        phi->data[addr_rank1(phi->nsites, 2, pl->i, 0)] += dphi;
+        phi->data[addr_rank1(phi->nsites, 2, pl->i, 1)] += dpsi;
       }
     }
 
     /* We may now reset deltaphi to zero. */
     colloid->s.deltaphi = 0.0;
+    colloid->s.deltapsi = 0.0;
   }
 
   return 0;

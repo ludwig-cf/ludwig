@@ -35,7 +35,7 @@ struct physics_s {
   double eta_bulk;     /* Bulk viscosity */
   double kt;           /* Isothermal "temperature" */
   double rho0;         /* Mean fluid density */
-  double phi0;         /* Mean fluid composition (binary fluid) */
+  double phi0, psi0;         /* Mean fluid composition (binary fluid) */
   double phi_noise0;   /* Initial order parameter noise amplitude */
   double fbody[3];     /* External body force on fluid */
   double e0[3];        /* Amplitude of external electric field */
@@ -297,6 +297,23 @@ __host__ __device__ int physics_phi0(physics_t * phys, double * phi0) {
 
 /*****************************************************************************
  *
+ *  physics_psi0
+ *
+ *****************************************************************************/
+
+__host__ __device__ int physics_psi0(physics_t * phys, double * psi0) {
+
+  assert(phys);
+  assert(psi0);
+
+  *psi0 = phys->psi0;
+
+  return 0;
+}
+
+
+/*****************************************************************************
+ *
  *  physics_phi0_set
  *
  *****************************************************************************/
@@ -309,6 +326,23 @@ __host__ int physics_phi0_set(physics_t * phys, double phi0) {
 
   return 0;
 }
+
+
+/*****************************************************************************
+ *
+ *  physics_psi0_set
+ *
+ *****************************************************************************/
+
+__host__ int physics_psi0_set(physics_t * phys, double psi0) {
+
+  assert(phys);
+
+  phys->psi0 = psi0;
+
+  return 0;
+}
+
 
 
 /*****************************************************************************

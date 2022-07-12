@@ -344,6 +344,39 @@ int fe_symm_oft_mu(fe_symm_oft_t * fe, int index, double * mu) {
   return 0;
 }
 
+/*****************************************************************************
+ *
+ *  fe_surf_h_to_costheta
+ *
+ *  For h = H sqrt(1.0/kappa B), return the associated cos(theta)
+ *  where theta is the theoretical wetting angle.
+ *
+ *  cos(theta) = 0.5 [-(1-h)^3/2 + (1+h)^3/2]
+ *
+ *  abs(h) >  1                     => costheta is complex
+ *  abs(h) >  sqrt(2sqrt(3) - 3)    => |costheta| >  1
+ *  abs(h) <= sqrt(2sqrt(3) - 3)    => |costheta| <= 1, i.e., a valid angle
+ *
+ *  So, evaluate, and check the return code (0 for valid).
+ *
+ *****************************************************************************/
+
+__host__ int fe_surf_h_to_costheta(double h, double * costheta) {
+
+  int ierr = 0;
+
+  if (abs(h) > 1.0) {
+    ierr = -1;
+    *costheta = -999.999;
+  }
+  else {
+    *costheta = 0.5*(-pow(1.0 - h, 1.5) + pow(1.0 + h, 1.5));
+    if (abs(h) > sqrt(2.0*sqrt(3.0) - 3.0)) ierr = -1;
+  }
+
+  return ierr;
+}
+    
 /****************************************************************************
  *
  *  fe_symm_oft_str

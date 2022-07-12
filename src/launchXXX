@@ -1,0 +1,9 @@
+#!/bin/bash
+#SBATCH --ntasks 64
+#SBATCH --cpus-per-task 1
+#SBATCH --mem 64000
+#SBATCH --time 1-0
+
+module purge
+module load gcc mvapich2 python
+srun ./Ludwig.exe
