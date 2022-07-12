@@ -1802,22 +1802,23 @@ void fe_lc_stress_v(fe_lc_t * fe, int index, double s[3][3][NSIMDVL]) {
     double dq1[3][3][3];
     double h1[3][3];
     double s1[3][3];
+
     for (iv = 0; iv < NSIMDVL; iv++) {
-    for (ia = 0; ia < 3; ia++) {
-      for (ib = 0; ib < 3; ib++) {
-        q1[ia][ib] = q[ia][ib][iv];
-	dq1[0][ia][ib] = dq[0][ia][ib][iv];
-	dq1[1][ia][ib] = dq[1][ia][ib][iv];
-	dq1[2][ia][ib] = dq[2][ia][ib][iv];
-	h1[ia][ib] = h[ia][ib][iv];
+      for (ia = 0; ia < 3; ia++) {
+	for (ib = 0; ib < 3; ib++) {
+	  q1[ia][ib] = q[ia][ib][iv];
+	  dq1[0][ia][ib] = dq[0][ia][ib][iv];
+	  dq1[1][ia][ib] = dq[1][ia][ib][iv];
+	  dq1[2][ia][ib] = dq[2][ia][ib][iv];
+	  h1[ia][ib] = h[ia][ib][iv];
+	}
       }
-    }
-    fe_lc_compute_stress(fe, q1, dq1, h1, s1);
-    for (ia = 0; ia < 3; ia++) {
-      for (ib = 0; ib < 3; ib++) {
-        s[ia][ib][iv] = s1[ia][ib];
+      fe_lc_compute_stress(fe, q1, dq1, h1, s1);
+      for (ia = 0; ia < 3; ia++) {
+	for (ib = 0; ib < 3; ib++) {
+	  s[ia][ib][iv] = s1[ia][ib];
+	}
       }
-    }
     }
   }
 #endif
