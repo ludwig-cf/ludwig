@@ -18,8 +18,8 @@ in a free energy picture.
 The code is written in standard ANSI C, and uses the Message Passing
 Interface for distributed memory parallelism. Threaded parallelism is
 also available via a lightweight abstraction layer ("Target Data Parallel"
-or "TargetDP") which currently supports either OpenMP or CUDA (NVIDIA GPUs)
-from a single source.
+or "TargetDP") which currently supports OpenMP, CUDA (NVIDIA GPUs) or
+HIP (AMD GPUs) from a single source.
 
 #### Installation
 
