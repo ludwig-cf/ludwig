@@ -263,7 +263,7 @@ __global__ void pth_kernel_v(kernel_ctxt_t * ktx, pth_t * pth, fe_t * fe) {
   int index;
   int ia, ib, iv;
 
-  double s[3][3][NSIMDVL];
+  double s[3][3][NSIMDVL] = {0};
 
   assert(ktx);
   assert(pth);
