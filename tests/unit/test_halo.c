@@ -213,7 +213,6 @@ int do_test_halo_null(pe_t * pe, cs_t * cs, const lb_data_options_t * opts) {
 
 int do_test_halo(pe_t * pe, cs_t * cs, int dim, const lb_data_options_t * opts) {
 
-  int ndevice = 0;
   int nhalo;
   int nlocal[3], n[3];
   int offset[3];
@@ -231,8 +230,6 @@ int do_test_halo(pe_t * pe, cs_t * cs, int dim, const lb_data_options_t * opts) 
   assert(cs);
   assert(dim == X || dim == Y || dim == Z);
   assert(opts);
-
-  tdpGetDeviceCount(&ndevice);
 
   lb_data_create(pe, cs, opts, &lb);
 
@@ -289,11 +286,7 @@ int do_test_halo(pe_t * pe, cs_t * cs, int dim, const lb_data_options_t * opts) 
 
   lb_memcpy(lb, tdpMemcpyHostToDevice);
   lb_halo(lb);
-
-  /* Don't overwrite the host version if not device swap */
-  if (ndevice && lb->opts.halo == LB_HALO_TARGET) {
-    lb_memcpy(lb, tdpMemcpyDeviceToHost);
-  }
+  lb_memcpy(lb, tdpMemcpyDeviceToHost);
 
   /* Check the results (all sites for distribution halo).
    * The halo regions should contain a copy of the above, while the

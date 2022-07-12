@@ -7,7 +7,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2020-2022 The University of Edinburgh
+ *  (c) 2020-2021 The University of Edinburgh
  *
  *  Contributing authors:
  *    Nikola Vasilev: did the original implementation in 2020.
@@ -248,7 +248,7 @@ __host__ tdpError_t tdpDeviceSetCacheConfig(tdpFuncCache cacheConfig) {
   return hipDeviceSetCacheConfig(cacheConfig);
 }
 
-__host__ tdpError_t tdpDeviceSynchronize(void) {
+__host__ __device__ tdpError_t tdpDeviceSynchronize(void) {
 
 #ifdef __HIP_DEVICE_COMPILE__
   /* Do nothing */
