@@ -40,7 +40,6 @@ __host__ int test0(void) {
   ifail = tdpGetDeviceProperties(&prop, mydevice);
   if (ifail != tdpSuccess) printf("FAIL!\n");
 
-  printf("Device id          %d\n", mydevice);
   printf("maxThreadsPerBlock %d\n", prop.maxThreadsPerBlock);
   printf("maxThreadsDim[0]   %d\n", prop.maxThreadsDim[0]);
   printf("maxThreadsDim[1]   %d\n", prop.maxThreadsDim[1]);
@@ -93,7 +92,7 @@ int main(int argc, char * argv[]) {
   tdpAssert(tdpMemcpy(n_h, n_d, bufsz, tdpMemcpyDeviceToHost));
 
   for (p = 0; p < NARRAY; p++) {
-    if (n_h[p] != 2*p) printf("Wrong %3d %3d\n", p, n_h[p]);
+    assert(n_h[p] == 2*p);
   }
 
   return 0;

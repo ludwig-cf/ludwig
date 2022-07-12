@@ -45,22 +45,16 @@ int test_hydro_rho(pe_t * pe);
 
 int test_hydro_suite(void) {
 
-  int ndevice = 0;
   pe_t * pe = NULL;
 
   pe_create(MPI_COMM_WORLD, PE_QUIET, &pe);
-
-  tdpGetDeviceCount(&ndevice);
 
   do_test1(pe);
   do_test_halo1(pe, 1, 1, HYDRO_U_HALO_TARGET);
   do_test_halo1(pe, 2, 2, HYDRO_U_HALO_TARGET);
   do_test_halo1(pe, 2, 1, HYDRO_U_HALO_TARGET);
-
-  if (ndevice == 0) {
-    do_test_halo1(pe, 1, 1, HYDRO_U_HALO_OPENMP);
-    do_test_halo1(pe, 2, 1, HYDRO_U_HALO_OPENMP);
-  }
+  do_test_halo1(pe, 1, 1, HYDRO_U_HALO_OPENMP);
+  do_test_halo1(pe, 2, 1, HYDRO_U_HALO_OPENMP);
 
   test_hydro_rho(pe);
 
