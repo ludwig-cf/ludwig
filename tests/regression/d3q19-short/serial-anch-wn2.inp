@@ -16,9 +16,9 @@
 #
 #  (for fixed kappa1 L) with zero, weak, or strong using
 #
-#  lc_anhcoring_w1   0.0       => w_1 / kappa L = 0
-#  lc_anchoring_w1   0.0002    => w_1 / kappa L = 0.002
-#  lc_anchoring_w1   0.02      => w_1 / kappa L = 2.0
+#  lc_wall_anchoring_w1   0.0       => w_1 / kappa L = 0
+#  lc_wall_anchoring_w1   0.0002    => w_1 / kappa L = 0.002
+#  lc_wall_anchoring_w1   0.02      => w_1 / kappa L = 2.0
 #
 #  Run for e.g., 100,000 steps to obtain a steady energy.
 #  This test is only for 1000 steps.
