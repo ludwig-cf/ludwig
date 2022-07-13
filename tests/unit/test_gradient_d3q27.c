@@ -8,7 +8,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2022
+ *  (c) 2022 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -87,7 +87,11 @@ __host__ int test_gradient_d3q27_d2(pe_t * pe, cs_t * cs) {
 
     /* Some test values */
 
+    field_memcpy(f, tdpMemcpyHostToDevice);
+
     gradient_d3q27_d2(fg);
+
+    field_grad_memcpy(fg, tdpMemcpyDeviceToHost);
 
     /* Results at probe location. */
 
