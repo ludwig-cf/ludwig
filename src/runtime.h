@@ -7,7 +7,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2010-2021 The University of Edinburgh
+ *  (c) 2010-2022 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -42,5 +42,6 @@ int rt_double_nvector(rt_t * rt, const char * key, int nv, double * v,
 int rt_key_present(rt_t * rt, const char * key);
 int rt_key_required(rt_t * rt, const char * key, rt_enum_t level);
 int rt_report_unused_keys(rt_t * rt, rt_enum_t level);
+int rt_vinfo(rt_t * rt, rt_enum_t lv, const char * fmt, ...);
 
 #endif

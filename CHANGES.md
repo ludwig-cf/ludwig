@@ -1,6 +1,21 @@
 
 ### Changes
 
+version 0.17.0
+
+- add liquid crystal anchoring "fd_gradient_calculation s7_anchoring"
+  - this is a replcement for "3d_7pt_fluid" and does a slightly better
+    job at the edges and corners by using a consistent surface normal.
+    The anchoring properties are now specifed in a slightly different
+    way.
+  - For walls, see https://ludwig.epcc.ed.ac.uk/inputs/walls.html
+
+  - The existing fd_gradient_calculation 3d_7pt_solid is retained, and
+    existing input keys for anchoring will be recognised.
+
+- add option for rectilinear grid format vtk output "extract -l"
+- add option for 2d random nematic "lc_q_initialisation random_xy"
+
 version 0.16.1
 
 - And get the version number right!

@@ -1,15 +1,30 @@
 ##############################################################################
 #
-#  Active nematic 2-d smoke test (turbulent regime)
+#  Colloid anchoring (normal)
 #
-#  See also serial-actv-s01.inp
+#  A single colloid (radius a0 = 7.5) is placed at the centre of the
+#  system which contains an ordinary nematic.
 #
-#  This one is in the turbulent regime lc_active_zeta1 0.05
+#  Relaxational dynamics only (no hydrodynamics)
+#
+#  The colloid has normal anchoring and one can identify three cases
+#  for the dimensionless parameter w_1 / kapaa a
+#
+#  lc_coll_anchoring_w1    0.0       => w_1 / kappa a  = 0
+#  lc_coll_anchoring_w1    0.00008   => w_1 / kappa a  = 0.02
+#  lc_coll_anchoring_w1    0.008     => w_1 / kappa a  = 2.0
+#
+#  corresponding to no anchoring, weak anchoring, and strong anchoring.
+#  The value below is for strong anchoring.
+#
+#  Run for e.g., 100,000 steps to obtain the fully relaxed profile
+#  as illustrated at https://ludwig.epcc.ed.ac.uk/inputs/colloid.html
+#
+#  This test only runs 2 steps.
 #
 ##############################################################################
 
-N_cycles 20
-N_start 0
+N_cycles 2
 
 ##############################################################################
 #
@@ -17,8 +32,8 @@ N_start 0
 # 
 ##############################################################################
 
-size 64_64_1
-grid 1_1_1
+size 64_64_64
+grid 2_2_2
 
 ##############################################################################
 #
@@ -26,10 +41,7 @@ grid 1_1_1
 #
 ##############################################################################
 
-viscosity 1.3333
-
-isothermal_fluctuations off
-temperature 0.00002133333
+hydrodynamics  off
 
 ##############################################################################
 #
@@ -37,27 +49,29 @@ temperature 0.00002133333
 #
 ###############################################################################
 
-free_energy lc_blue_phase
+free_energy               lc_blue_phase
 
-fd_advection_scheme_order 1
-fd_gradient_calculation 3d_7pt_fluid
+fd_gradient_calculation   s7_anchoring
 
-lc_a0      1.0
+lc_a0      0.01
 lc_gamma   3.0
 lc_q0      0.0
-lc_kappa0  0.04
-lc_kappa1  0.04
+lc_kappa0  0.000533333
+lc_kappa1  0.000533333
 lc_xi      0.7
 
-lc_Gamma   0.3375
+lc_Gamma   0.5
+lc_activity no
 
-lc_activity     yes
-lc_active_zeta0 0.333333333333333
-lc_active_zeta1 0.05
+lc_q_initialisation   nematic
+lc_init_nematic       1.0_0.0_0.0
+lc_q_init_amplitude   0.333333333333333
 
-lc_q_initialisation active_nematic_q2d_y
-lc_q_init_amplitude 0.333333333333333
-lc_init_redshift 1.0
+lc_init_redshift      1.0
+
+lc_coll_anchoring     normal
+lc_coll_anchoring_w1  0.008
+
 
 ###############################################################################
 #
@@ -65,7 +79,12 @@ lc_init_redshift 1.0
 #
 ###############################################################################
 
-colloid_init     none
+colloid_init     input_one
+
+colloid_one_a0   7.25
+colloid_one_ah   7.25
+colloid_one_r    32.0_32.0_32.0
+colloid_one_v    0.0_0.0_0.0
 
 ###############################################################################
 #
@@ -73,8 +92,7 @@ colloid_init     none
 #
 ###############################################################################
 
-periodicity    1_1_1
-boundary_walls 0_0_0
+periodicity 1_1_1
 
 ###############################################################################
 #
@@ -82,8 +100,8 @@ boundary_walls 0_0_0
 #
 ###############################################################################
 
-freq_statistics 20
-config_at_end no
+freq_statistics 2
+config_at_end   no
 
 ###############################################################################
 #

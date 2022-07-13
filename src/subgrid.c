@@ -76,6 +76,8 @@ static const double drange_ = 1.0; /* Max. range of interpolation - 1 */
  *  For each particle, accumulate the force on the relevant surrounding
  *  lattice nodes. Only nodes in the local domain are involved.
  *
+ *  If there are no subgrid particles, hydro is allowed to be NULL.
+ *
  *****************************************************************************/
 
 
@@ -94,7 +96,6 @@ int subgrid_force_from_particles(colloids_info_t * cinfo, hydro_t * hydro,
   colloid_t * presolved = NULL;  /* Resolved colloid occupuing node */
 
   assert(cinfo);
-  assert(hydro);
   assert(wall);
 
   if (cinfo->nsubgrid == 0) return 0;
@@ -112,6 +113,7 @@ int subgrid_force_from_particles(colloids_info_t * cinfo, hydro_t * hydro,
   /* While there is no device implementation, must copy back-and forth
    * the force. */
 
+  assert(hydro);
   hydro_memcpy(hydro, tdpMemcpyDeviceToHost);
 
   /* Loop through all cells (including the halo cells) */

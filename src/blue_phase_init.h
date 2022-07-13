@@ -5,7 +5,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2010-2021 The University of Edinburgh
+ *  (c) 2010-2022 The University of Edinburgh
  *
  *  Contributing authors:
  *  Oliver Henrich (o.henrich@ucl.ac.uk) wrote most of these.
@@ -39,6 +39,7 @@ int lc_active_nematic_init_q2d(cs_t * cs, fe_lc_param_t * param, field_t * q,
 int blue_phase_chi_edge(cs_t * cs, fe_lc_param_t * param, field_t * fq, int n,
 			double z0, double x0);
 int blue_phase_random_q_init(cs_t * cs, fe_lc_param_t * param, field_t * fq);
+int blue_phase_random_q_2d(cs_t * cs, fe_lc_param_t * param, field_t * fq);
 int blue_phase_random_q_rectangle(cs_t * cs, fe_lc_param_t * param,
 				  field_t * q, int rmin[3], int rmax[3]);
 int blue_phase_cf1_init(cs_t * cs, fe_lc_param_t * param, field_t * fq, int axis);

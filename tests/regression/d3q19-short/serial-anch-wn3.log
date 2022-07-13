@@ -1,0 +1,159 @@
+Welcome to Ludwig v0.16.1 (Serial version running on 1 process)
+Start time: Mon Jul  4 10:46:16 2022
+
+Compiler:
+  name:           Gnu 11.2.0
+  version-string: 11.2.0
+
+Note assertions via standard C assert() are on.
+
+Target thread model: OpenMP.
+OpenMP threads: 1; maximum number of threads: 8.
+
+Read 26 user parameters from serial-anch-wn3.inp
+
+System details
+--------------
+System size:    16 16 1
+Decomposition:  1 1 1
+Local domain:   16 16 1
+Periodic:       0 0 1
+Halo nhalo:     2
+Reorder:        true
+Initialised:    1
+
+Free energy details
+-------------------
+
+Blue phase free energy selected.
+
+Liquid crystal blue phase free energy
+Bulk parameter A0:         =  1.0000000e-02
+Magnitude of order gamma   =  3.0000000e+00
+Pitch wavevector q0        =  0.0000000e+00
+... gives pitch length     =            inf
+Elastic constant kappa0    =  6.2500000e-04
+Elastic constant kappa1    =  6.2500000e-04
+Amplitude (uniaxial) order =  3.3333333e-01
+Effective aspect ratio xi  =  7.0000000e-01
+Chirality                  =  0.0000000e+00
+Reduced temperature        =  0.0000000e+00
+Initial redshift           =  1.0000000e+00
+Dynamic redshift update    =             no
+Liquid crystal activity                  No
+
+Liquid crystal anchoring:
+Wall anchoring type:          fixed
+Preferred orientation:        1.0000000e+00  0.0000000e+00  0.0000000e+00
+Wall anchoring w1:            2.0000000e-04
+
+Using Beris-Edwards solver:
+Rotational diffusion const =  2.5000000e+00
+LC fluctuations:           =  off
+
+System properties
+----------------
+Mean fluid density:           1.00000e+00
+Shear viscosity               1.66667e-01
+Bulk viscosity                1.66667e-01
+Temperature                   0.00000e+00
+External body force density   0.00000e+00  0.00000e+00  0.00000e+00
+External E-field amplitude    0.00000e+00  0.00000e+00  0.00000e+00
+External E-field frequency    0.00000e+00
+External magnetic field       0.00000e+00  0.00000e+00  0.00000e+00
+
+Lattice Boltzmann distributions
+-------------------------------
+Model:            d3q19  
+SIMD vector len:  1
+Number of sets:   1
+Halo type:        lb_halo_target (full halo)
+Input format:     binary
+Output format:    binary
+I/O grid:         1 1 1
+
+Lattice Boltzmann collision
+---------------------------
+Relaxation time scheme:   M10
+Hydrodynamic modes:       on
+Ghost modes:              on
+Isothermal fluctuations:  off
+Shear relaxation time:    1.00000e+00
+Bulk relaxation time:     1.00000e+00
+Ghost relaxation time:    1.00000e+00
+[User   ] Random number seed: 8361236
+
+Hydrodynamics
+-------------
+Hydrodynamics: off
+
+Order parameter I/O
+-------------------
+Order parameter I/O format:   
+I/O decomposition:            1 1 1
+
+Advection scheme order: 1
+
+Boundary walls
+--------------
+Boundary walls:                  X Y -
+Boundary speed u_x (bottom):     0.0000000e+00
+Boundary speed u_x (top):        0.0000000e+00
+Boundary normal lubrication rc:  0.0000000e+00
+Wall boundary links allocated:   316
+Memory (total, bytes):           5056
+Boundary shear initialise:       0
+Gradient calculation: s7_anchoring
+
+
+Initialising Q_ab at random in (x,y)
+Initial conditions.
+
+Scalars - total mean variance min max
+[rho]         256.00  1.00000000000  2.2204460e-16  1.00000000000  1.00000000000
+[phi]  2.2385250e+01  8.7442384e-02 3.0434697e-02 -1.6666121e-01 3.3270644e-01
+[phi] -1.9573868e+00 -7.6460423e-03 3.1989956e-02 -2.4998334e-01 2.4991631e-01
+[phi]  0.0000000e+00  0.0000000e+00 0.0000000e+00 -0.0000000e+00-0.0000000e+00
+[phi]  2.0281416e+01  7.9224283e-02 3.0434697e-02 -1.6603977e-01 3.3332787e-01
+[phi]  0.0000000e+00  0.0000000e+00 0.0000000e+00  0.0000000e+00 0.0000000e+00
+
+Momentum - x y z
+[total   ]  0.0000000e+00  0.0000000e+00  0.0000000e+00
+[fluid   ]  0.0000000e+00  0.0000000e+00  0.0000000e+00
+[walls   ]  0.0000000e+00  0.0000000e+00  0.0000000e+00
+
+Starting time step loop.
+
+Scalars - total mean variance min max
+[rho]         256.00  1.00000000000  2.2204460e-16  1.00000000000  1.00000000000
+[phi]  3.4574182e+01  1.3505540e-01 2.6601803e-02 -1.5887406e-01 3.3604568e-01
+[phi] -1.4552712e+01 -5.6846531e-02 1.7934216e-02 -2.4653069e-01 2.4573024e-01
+[phi]  0.0000000e+00  0.0000000e+00 0.0000000e+00  0.0000000e+00 0.0000000e+00
+[phi]  4.8271411e+00  1.8856020e-02 2.5572584e-02 -1.6833015e-01 3.2060711e-01
+[phi]  0.0000000e+00  0.0000000e+00 0.0000000e+00  0.0000000e+00 0.0000000e+00
+
+Free energies - timestep f v f/v f_s1 fs_s2 redshift
+[fe]           1000 -1.3615060139e-02  2.5600000000e+02 -5.3183828668e-05  3.7994558242e-04  3.7604271017e-04  1.0000000000e+00
+
+Momentum - x y z
+[total   ]  0.0000000e+00  0.0000000e+00  0.0000000e+00
+[fluid   ]  0.0000000e+00  0.0000000e+00  0.0000000e+00
+[walls   ]  0.0000000e+00  0.0000000e+00  0.0000000e+00
+
+Completed cycle 1000
+
+Timer resolution: 1e-06 second
+
+Timer statistics
+             Section:       tmin       tmax      total
+               Total:      1.089      1.089      1.089   1.088602 (1 call)
+      Time step loop:      0.001      0.002      1.086   0.001086 (1000 calls)
+       phi gradients:      0.001      0.001      0.559   0.000559 (1000 calls)
+           phi halos:      0.000      0.000      0.157   0.000157 (1000 calls)
+   Force calculation:      0.000      0.000      0.000   0.000000 (1000 calls)
+          phi update:      0.001      0.001      0.527   0.000527 (1000 calls)
+BE mol field (krnl) :      0.000      0.001      0.373   0.000373 (1000 calls)
+BP BE update (krnl) :      0.000      0.000      0.153   0.000153 (1000 calls)
+               Free1:      0.000      0.000      0.001   0.000001 (1000 calls)
+End time: Mon Jul  4 10:46:18 2022
+Ludwig finished normally.

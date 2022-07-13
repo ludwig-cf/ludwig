@@ -24,7 +24,8 @@
  *  -a   Request ASCII output
  *  -b   Request binary output (the default)
  *  -i   Request coordinate indices in output (none by default)
- *  -k   Request VTK header (none by default)
+ *  -k   Request VTK header STRUCTURED_POINTS (none by default)
+ *  -l   Request VTK header RECTILINEAR_GRID
  *
  *  Options relevant to liquid crystal order parameter (only):
  *  -d   Request director output
@@ -92,7 +93,7 @@ int output_binary_ = 0;        /* Switch for format of final output */
 int is_velocity_ = 0;          /* Switch to identify velocity field */
 int output_index_ = 0;         /* For ASCII output, include (i,j,k) indices */
 int output_vtk_ = 0;           /* Write ASCII VTK header */
-
+                               /* 1 = STRUCTURED_POINTS 2 = RECTILINEAR_GRID */
 int output_lcs_ = 0;
 int output_lcd_ = 0;
 int output_lcx_ = 0;
@@ -123,8 +124,16 @@ int write_data_binary_cmf(FILE * fp, int n[3], int nrec0, int nrec, double *);
 
 int site_index(int, int, int, const int nlocal[3]);
 void read_data(FILE *, metadata_v1_t * meta, double *);
+
 int write_vtk_header(FILE * fp, int nrec, int ndim[3], const char * descript,
 		     vtk_enum_t vtk);
+int write_vtk_header_points(FILE * fp, int nrec, int ndim[3],
+			    const char * descript,
+			    vtk_enum_t vtk);
+int write_vtk_header_rectilinear(FILE * fp, int nrec, int ndim[3],
+				 const char * descript,
+				 vtk_enum_t vtk);
+
 int write_qab_vtk(int ntime, int ntargets[3], double * datasection);
 
 int copy_data(metadata_v1_t * metadata, double *, double *);
@@ -169,6 +178,10 @@ int main(int argc, char ** argv) {
     case 'k':
       output_vtk_ = 1;    /* Request VTK header */
       output_cmf_ = 1;    /* Request column-major format for Paraview */ 
+      break;
+    case 'l':
+      output_vtk_ = 2;
+      output_cmf_ = 1;    /* Request column-major format for Paraview */
       break;
     case 's':
       output_lcs_ = 1; /* Request liquid crystal scalar order parameter */
@@ -215,6 +228,7 @@ int extract_driver(const char * filename, metadata_v1_t * meta, int version) {
   FILE * fp_data;
 
   ntime = read_data_file_name(filename);
+  assert(ntime <= 0 && ntime < 1000*1000*1000);
 
   /* Work out parallel local file size */
 
@@ -273,7 +287,7 @@ int extract_driver(const char * filename, metadata_v1_t * meta, int version) {
 
   if (nrec_ == 5 && strncmp(meta->stub, "q", 1) == 0) {
 
-    if (output_vtk_ == 1) {
+    if (output_vtk_ == 1 || output_vtk_ == 2) {
       /* We mandate this is the transformed Q_ab */
       lc_transform_q5(ntargets, datasection);
       write_qab_vtk(ntime, ntargets, datasection);
@@ -286,6 +300,8 @@ int extract_driver(const char * filename, metadata_v1_t * meta, int version) {
 	exit(-1);
       }
 
+      /* Here, we could respect the -d, -s, -x options. */
+      /* But at the moment, always 5 components ... */
       if (output_q_raw_) {
 	printf("Writing raw q to %s\n", io_data);
       }
@@ -316,7 +332,7 @@ int extract_driver(const char * filename, metadata_v1_t * meta, int version) {
       snprintf(io_data, sizeof(io_data), "%s-%8.8d", tmp, ntime);
     }
 
-    if (output_vtk_ == 1) {
+    if (output_vtk_ == 1 || output_vtk_ == 2) {
 
       strcat(io_data, suf);
       fp_data = fopen(io_data, "w+b");
@@ -953,8 +969,18 @@ void le_unroll(metadata_v1_t * meta, double * data) {
  *
  *****************************************************************************/
 
-int write_vtk_header(FILE * fp, int nrec, int ndim[3], const char * descript,
+int write_vtk_header(FILE * fp, int nrec, int ndim[3], const char * des,
 		     vtk_enum_t vtk) {
+
+  if (output_vtk_ == 1) write_vtk_header_points(fp, nrec, ndim, des, vtk);
+  if (output_vtk_ == 2) write_vtk_header_rectilinear(fp, nrec, ndim, des, vtk);
+
+  return 0;
+}
+
+int write_vtk_header_points(FILE * fp, int nrec, int ndim[3],
+			    const char * descript,
+			    vtk_enum_t vtk) {
 
   assert(fp);
 
@@ -966,6 +992,60 @@ int write_vtk_header(FILE * fp, int nrec, int ndim[3], const char * descript,
   fprintf(fp, "ORIGIN %d %d %d\n", 0, 0, 0);
   fprintf(fp, "SPACING %d %d %d\n", 1, 1, 1);
   fprintf(fp, "POINT_DATA %d\n", ndim[0]*ndim[1]*ndim[2]);
+  if (vtk == VTK_SCALARS) {
+    fprintf(fp, "SCALARS %s float %d\n", descript, nrec);
+    fprintf(fp, "LOOKUP_TABLE default\n");
+  }
+  if (vtk == VTK_VECTORS) {
+    fprintf(fp, "VECTORS %s float\n", descript);
+  }
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  write_vtk_header_rectilinear
+ *
+ *  Suitable for an ascii file; to be followed by actual data.
+ *
+ *  This one is useful is cell-centre data is the best view;
+ *  we set the coordinates of the cell edges in each dimension.
+ *
+ *****************************************************************************/
+
+int write_vtk_header_rectilinear(FILE * fp, int nrec, int ndim[3],
+				 const char * descript,
+				 vtk_enum_t vtk) {
+
+  assert(fp);
+
+  fprintf(fp, "# vtk DataFile Version 2.0\n");
+  fprintf(fp, "Generated by ludwig extract.c\n");
+  fprintf(fp, "ASCII\n");
+  fprintf(fp, "DATASET RECTILINEAR_GRID\n");
+  fprintf(fp, "DIMENSIONS %d %d %d\n", ndim[0]+1, ndim[1]+1, ndim[2]+1);
+
+  fprintf(fp, "X_COORDINATES %d float\n", ndim[0]+1);
+  for (int ic = 0; ic <= ndim[0]; ic++) {
+    fprintf(fp, " %5.1f", 0.5+ic);
+  }
+  fprintf(fp, "\n");
+
+  fprintf(fp, "Y_COORDINATES %d float\n", ndim[1]+1);
+  for (int jc = 0; jc <= ndim[1]; jc++) {
+    fprintf(fp, " %5.1f", 0.5+jc);
+  }
+  fprintf(fp, "\n");
+
+  fprintf(fp, "Z_COORDINATES %d float\n", ndim[2]+1);
+  for (int kc = 0; kc <= ndim[2]; kc++) {
+    fprintf(fp, " %5.1f", 0.5+kc);
+  }
+  fprintf(fp, "\n");
+
+  fprintf(fp, "CELL_DATA %d", ndim[0]*ndim[1]*ndim[2]);
+
   if (vtk == VTK_SCALARS) {
     fprintf(fp, "SCALARS %s float %d\n", descript, nrec);
     fprintf(fp, "LOOKUP_TABLE default\n");
@@ -1237,6 +1317,9 @@ int lc_transform_q5(int * nlocal, double * datasection) {
 	for (nr = 0; nr < nrec_; nr++) {
 	  *(datasection + index + nr) = qs[nr];
 	}
+	if (ifail != 0) {
+	  printf("! fail diagonalisation at %3d %3d %3d\n", ic, jc, kc);
+	}
       }
     }
   }
@@ -1281,6 +1364,8 @@ int lc_compute_scalar_ops(double q[3][3], double qs[5]) {
 
   if (ifail == 0) {
 
+    double q4 = 0.0;
+
     qs[0] = eigenvalue[0];
     qs[1] = eigenvector[0][0];
     qs[2] = eigenvector[1][0];
@@ -1291,7 +1376,12 @@ int lc_compute_scalar_ops(double q[3][3], double qs[5]) {
 
     q2 = s*s + t*t + (s + t)*(s + t);
     q3 = 3.0*s*t*(s + t);
-    qs[4] = sqrt(1 - 6.0*q3*q3 / (q2*q2*q2));
+
+    /* Note the value here can drip just below zero by about DBL_EPSILON */
+    /* So just set to zero to prevent an NaN */
+    q4 = 1.0 - 6.0*q3*q3 / (q2*q2*q2);
+    if (q4 < 0.0) q4 = 0.0;
+    qs[4] = sqrt(q4);
   }
 
   return ifail;

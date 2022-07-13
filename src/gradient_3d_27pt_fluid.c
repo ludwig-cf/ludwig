@@ -242,6 +242,7 @@ __global__ void grad_3d_27pt_kernel(kernel_ctxt_t * ktx, int nf, int ys,
     double * __restrict__ grad;
     double * __restrict__ del2;
 
+    /* Organise the input values for either del^2 or del^4 */
     if (type == GRAD_DEL2) {
       field = f->data;
       grad = fgrad->grad;
@@ -265,6 +266,7 @@ __global__ void grad_3d_27pt_kernel(kernel_ctxt_t * ktx, int nf, int ys,
     indexp1 = lees_edw_index(le, icp1, jc, kc);
 
     for (n = 0; n < nf; n++) {
+      /* Stencil for dx */
       grad[addr_rank2(f->nsites, nf, 3, index, n, X)] = 0.5*r9*
 	(+ field[addr_rank1(f->nsites, nf, (indexp1-ys-1), n)]
 	 - field[addr_rank1(f->nsites, nf, (indexm1-ys-1), n)]
@@ -285,6 +287,7 @@ __global__ void grad_3d_27pt_kernel(kernel_ctxt_t * ktx, int nf, int ys,
 	 + field[addr_rank1(f->nsites, nf, (indexp1+ys+1), n)]
 	 - field[addr_rank1(f->nsites, nf, (indexm1+ys+1), n)]
 	 );
+      /* Stencil for dy */
       grad[addr_rank2(f->nsites, nf, 3, index, n, Y)] = 0.5*r9*
 	(+ field[addr_rank1(f->nsites, nf, (indexm1+ys-1), n)]
 	 - field[addr_rank1(f->nsites, nf, (indexm1-ys-1), n)]
@@ -305,6 +308,7 @@ __global__ void grad_3d_27pt_kernel(kernel_ctxt_t * ktx, int nf, int ys,
 	 + field[addr_rank1(f->nsites, nf, (indexp1+ys+1), n)]
 	 - field[addr_rank1(f->nsites, nf, (indexp1-ys+1), n)]
 	 );
+      /* Stencil for dz */
       grad[addr_rank2(f->nsites, nf, 3, index, n, Z)] = 0.5*r9*
 	(+ field[addr_rank1(f->nsites, nf, (indexm1-ys+1), n)]
 	 - field[addr_rank1(f->nsites, nf, (indexm1-ys-1), n)]
@@ -325,6 +329,7 @@ __global__ void grad_3d_27pt_kernel(kernel_ctxt_t * ktx, int nf, int ys,
 	 + field[addr_rank1(f->nsites, nf, (indexp1+ys+1), n)]
 	 - field[addr_rank1(f->nsites, nf, (indexp1+ys-1), n)]
 	 );
+      /* Del^2 */
       del2[addr_rank1(f->nsites, nf, index, n)] = r9*
 	(+ field[addr_rank1(f->nsites, nf, (indexm1-ys-1), n)]
 	 + field[addr_rank1(f->nsites, nf, (indexm1-ys  ), n)]
@@ -358,7 +363,6 @@ __global__ void grad_3d_27pt_kernel(kernel_ctxt_t * ktx, int nf, int ys,
 
   return;
 }
-
 
 /*****************************************************************************
  *
@@ -696,6 +700,7 @@ __host__ int grad_3d_27pt_fluid_dab_compute(lees_edw_t * le, field_grad_t * df) 
 	indexm1 = lees_edw_index(le, icm1, jc, kc);
 	indexp1 = lees_edw_index(le, icp1, jc, kc);
 
+	/* d_xx */
 	dab[addr_rank1(nsites, NSYMM, index, XX)] = 0.2*
 	 (+ 1.0*field[addr_rank0(nsites, indexp1)]
 	  + 1.0*field[addr_rank0(nsites, indexm1)]
@@ -713,6 +718,7 @@ __host__ int grad_3d_27pt_fluid_dab_compute(lees_edw_t * le, field_grad_t * df) 
 	  + 1.0*field[addr_rank0(nsites, indexm1 - 1)]
 	  - 2.0*field[addr_rank0(nsites, index - 1)]);
 
+	/* d_xy */
 	dab[addr_rank1(nsites, NSYMM, index, XY)] = r12*
 	  (+ field[addr_rank0(nsites, indexp1 + ys)]
 	   - field[addr_rank0(nsites, indexp1 - ys)]
@@ -727,6 +733,7 @@ __host__ int grad_3d_27pt_fluid_dab_compute(lees_edw_t * le, field_grad_t * df) 
 	   - field[addr_rank0(nsites, indexm1 + ys - 1)]
 	   + field[addr_rank0(nsites, indexm1 - ys - 1)]);
 
+	/* d_xz */
 	dab[addr_rank1(nsites, NSYMM, index, XZ)] = r12*
 	  (+ field[addr_rank0(nsites, indexp1 + 1)]
 	   - field[addr_rank0(nsites, indexp1 - 1)]
@@ -741,6 +748,7 @@ __host__ int grad_3d_27pt_fluid_dab_compute(lees_edw_t * le, field_grad_t * df) 
 	   - field[addr_rank0(nsites, indexm1 - ys + 1)]
 	   + field[addr_rank0(nsites, indexm1 - ys - 1)]);
 
+	/* d_yy */
 	dab[addr_rank1(nsites, NSYMM, index, YY)] = 0.2*
 	 (+ 1.0*field[addr_rank0(nsites, index + ys)]
 	  + 1.0*field[addr_rank0(nsites, index - ys)]
@@ -758,6 +766,7 @@ __host__ int grad_3d_27pt_fluid_dab_compute(lees_edw_t * le, field_grad_t * df) 
 	  + 1.0*field[addr_rank0(nsites, index - 1 - ys)]
 	  - 2.0*field[addr_rank0(nsites, index - 1 )]);
 
+	/* d_yz */
 	dab[addr_rank1(nsites, NSYMM, index, YZ)] = r12*
 	  (+ field[addr_rank0(nsites, index + ys + 1)]
 	   - field[addr_rank0(nsites, index + ys - 1)]
@@ -772,6 +781,7 @@ __host__ int grad_3d_27pt_fluid_dab_compute(lees_edw_t * le, field_grad_t * df) 
 	   - field[addr_rank0(nsites, indexm1 - ys + 1)]
 	   + field[addr_rank0(nsites, indexm1 - ys - 1)]);
 
+	/* d_zz */
 	dab[addr_rank1(nsites, NSYMM, index, ZZ)] = 0.2*
 	 (+ 1.0*field[addr_rank0(nsites, index + 1)]
 	  + 1.0*field[addr_rank0(nsites, index - 1)]
@@ -788,7 +798,6 @@ __host__ int grad_3d_27pt_fluid_dab_compute(lees_edw_t * le, field_grad_t * df) 
 	  + 1.0*field[addr_rank0(nsites, index - ys + 1)]
 	  + 1.0*field[addr_rank0(nsites, index - ys - 1)]
 	  - 2.0*field[addr_rank0(nsites, index - ys)]);
-
       }
     }
   }
