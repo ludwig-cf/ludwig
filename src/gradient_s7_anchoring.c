@@ -62,20 +62,20 @@
 
 typedef struct param_s param_t;
 
-struct grad_s7_anch_s {
-  pe_t * pe;
-  cs_t * cs;
-  param_t * param;           /* Boundary condition parameters */
-  map_t * map;               /* Supports a map */
-  fe_lc_t * fe;              /* Liquid crystal free energy */
-  colloids_info_t * cinfo;   /* Colloid information */
-  grad_s7_anch_t * target;   /* Device memory */
-};
-
 struct param_s {
   double a6inv[3][6];
   double a12inv[3][12][12];
   double a18inv[18][18];
+};
+
+struct grad_s7_anch_s {
+  pe_t * pe;
+  cs_t * cs;
+  param_t bc;                /* Boundary condition parameters */
+  map_t * map;               /* Supports a map */
+  fe_lc_t * fe;              /* Liquid crystal free energy */
+  colloids_info_t * cinfo;   /* Colloid information */
+  grad_s7_anch_t * target;   /* Device memory */
 };
 
 static grad_s7_anch_t * static_grad = NULL;
@@ -84,7 +84,6 @@ __host__ int grad_s7_anchoring_param_init(grad_s7_anch_t * anch);
 
 __global__
 void grad_s7_kernel(kernel_ctxt_t * ktx, cs_t * cs, grad_s7_anch_t * anch,
-		    param_t bcparam,
 		    fe_lc_t * fe, field_grad_t * fg, map_t * map);
 __host__ __device__
 int grad_s7_bcs_coeff(double kappa0, double kappa1, const int dn[3],
@@ -121,10 +120,6 @@ __host__ int grad_s7_anchoring_create(pe_t * pe, cs_t * cs, map_t * map,
   assert(obj);
   if (obj == NULL) pe_fatal(pe, "calloc(grad_s7_anch_t) failed\n");
 
-  obj->param = (param_t *) calloc(1, sizeof(param_t));
-  assert(obj->param);
-  if (obj->param == NULL) pe_fatal(pe, "calloc(param_t) failed\n");
-
   obj->pe = pe;
   obj->cs = cs;
   obj->map = map;
@@ -144,6 +139,9 @@ __host__ int grad_s7_anchoring_create(pe_t * pe, cs_t * cs, map_t * map,
     cs_target(obj->cs, &cstarget);
     tdpMemcpy(&obj->target->cs, &cstarget, sizeof(cs_t *),
               tdpMemcpyHostToDevice);
+
+    tdpAssert(tdpMemcpy(&obj->target->bc, &obj->bc, sizeof(param_t),
+			tdpMemcpyHostToDevice));
   }
 
   static_grad = obj;
@@ -202,7 +200,6 @@ __host__ int grad_s7_anchoring_free(grad_s7_anch_t * grad) {
 
   if (grad->target != grad) tdpFree(grad->target);
 
-  free(grad->param);
   free(grad);
 
   return 0;
@@ -222,7 +219,7 @@ __host__ int grad_s7_anchoring_d2(field_grad_t * fg) {
   int nextra;
   int nlocal[3] = {0};
   dim3 nblk, ntpb;
-  param_t bcparam = {0};
+
   cs_t * cstarget = NULL;
   kernel_info_t limits = {0};
   kernel_ctxt_t * ctxt = NULL;
@@ -248,12 +245,9 @@ __host__ int grad_s7_anchoring_d2(field_grad_t * fg) {
 
   cs_target(anch->cs, &cstarget);
 
-  /* Transfer the boundary condition parameters to arg. constant memory */
-  bcparam = *anch->param;
-
   tdpLaunchKernel(grad_s7_kernel, nblk, ntpb, 0, 0,
 		  ctxt->target, cstarget,
-		  anch->target, bcparam, anch->fe->target, fg->target,
+		  anch->target, anch->fe->target, fg->target,
 		  anch->map->target);
 
   tdpAssert(tdpPeekAtLastError());
@@ -276,7 +270,6 @@ __host__ int grad_s7_anchoring_d2(field_grad_t * fg) {
 
 __global__
 void grad_s7_kernel(kernel_ctxt_t * ktx, cs_t * cs, grad_s7_anch_t * anch,
-		    param_t bcparam,
 		    fe_lc_t * fe, field_grad_t * fg, map_t * map) {
 
   int kindex;
@@ -521,7 +514,7 @@ void grad_s7_kernel(kernel_ctxt_t * ktx, cs_t * cs, grad_s7_anch_t * anch,
 	  }
 	  
 	  b18[n1] *= bcsign[normal[0]];
-	  x18[n1] = bcparam.a6inv[normal[0]/2][n1]*b18[n1];
+	  x18[n1] = anch->bc.a6inv[normal[0]/2][n1]*b18[n1];
 	}
       }
       
@@ -569,10 +562,10 @@ void grad_s7_kernel(kernel_ctxt_t * ktx, cs_t * cs, grad_s7_anch_t * anch,
 	for (n1 = 0; n1 < 2*NSYMM; n1++) {
 	  x18[n1] = 0.0;
 	  for (n2 = 0; n2 < NSYMM; n2++) {
-	    x18[n1] += bcsign[normal[0]]*bcparam.a12inv[ia][n1][n2]*b18[n2];
+	    x18[n1] += bcsign[normal[0]]*anch->bc.a12inv[ia][n1][n2]*b18[n2];
 	  }
 	  for (n2 = NSYMM; n2 < 2*NSYMM; n2++) {
-	    x18[n1] += bcsign[normal[1]]*bcparam.a12inv[ia][n1][n2]*b18[n2];
+	    x18[n1] += bcsign[normal[1]]*anch->bc.a12inv[ia][n1][n2]*b18[n2];
 	  }
 	}
       }
@@ -623,7 +616,7 @@ void grad_s7_kernel(kernel_ctxt_t * ktx, cs_t * cs, grad_s7_anch_t * anch,
 	for (n1 = 0; n1 < 3*NSYMM; n1++) {
 	  x18[n1] = 0.0;
 	  for (n2 = 0; n2 < 3*NSYMM; n2++) {
-	    x18[n1] += bcparam.a18inv[n1][n2]*b18[n2];
+	    x18[n1] += anch->bc.a18inv[n1][n2]*b18[n2];
 	  }
 	}
       }
@@ -697,7 +690,7 @@ int grad_s7_anchoring_param_init(grad_s7_anch_t * anch) {
     grad_s7_bcs_coeff(feparam.kappa0, feparam.kappa1, bcs[2*ia + 1], bc);
 
     for (n1 = 0; n1 < NSYMM; n1++) {
-      anch->param->a6inv[ia][n1] = 1.0/bc[n1][n1][ia];
+      anch->bc.a6inv[ia][n1] = 1.0/bc[n1][n1][ia];
     }
 
     for (n1 = 0; n1 < NSYMM; n1++) {
@@ -742,14 +735,14 @@ int grad_s7_anchoring_param_init(grad_s7_anch_t * anch) {
 
   for (n1 = 0; n1 < 18; n1++) {
     for (n2 = 0; n2 < 18; n2++) {
-      anch->param->a18inv[n1][n2] = a18inv[n1][n2];
+      anch->bc.a18inv[n1][n2] = a18inv[n1][n2];
     }  
   }
 
   for (ia = 0; ia < 3; ia++) {
     for (n1 = 0; n1 < 12; n1++) {
       for (n2 = 0; n2 < 12; n2++) {
-	anch->param->a12inv[ia][n1][n2] = a12inv[ia][n1][n2];
+	anch->bc.a12inv[ia][n1][n2] = a12inv[ia][n1][n2];
       }
     }
   }
