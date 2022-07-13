@@ -2,10 +2,12 @@
  *
  *  gradient_d3q27.h
  *
+ *  Only the _d2 routine is actually available at the moment.
+ *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2022
+ *  (c) 2022 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)

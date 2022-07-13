@@ -3,13 +3,14 @@
  *  gradient_d3q27.c
  *
  *  Fluid only 27 point stencil based on weighted d3q27.
- *  No Lees-Edwards planes at this time.
+ *  No Lees-Edwards planes at this time, as this is somewhat
+ *  experimental.
  *
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2022
+ *  (c) 2022 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
