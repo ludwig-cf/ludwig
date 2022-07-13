@@ -79,14 +79,12 @@ struct param_s {
 };
 
 static grad_s7_anch_t * static_grad = NULL;
-static __constant__ param_t static_param;
-
 
 __host__ int grad_s7_anchoring_param_init(grad_s7_anch_t * anch);
-__host__ int grad_s7_anchoring_param_commit(grad_s7_anch_t * anch);
 
 __global__
 void grad_s7_kernel(kernel_ctxt_t * ktx, cs_t * cs, grad_s7_anch_t * anch,
+		    param_t bcparam,
 		    fe_lc_t * fe, field_grad_t * fg, map_t * map);
 __host__ __device__
 int grad_s7_bcs_coeff(double kappa0, double kappa1, const int dn[3],
@@ -140,13 +138,8 @@ __host__ int grad_s7_anchoring_create(pe_t * pe, cs_t * cs, map_t * map,
   }
   else {
     cs_t * cstarget = NULL;
-    param_t * tmp = NULL;
     tdpMalloc((void **) &obj->target, sizeof(grad_s7_anch_t));
     tdpMemset(obj->target, 0, sizeof(grad_s7_anch_t));
-    tdpGetSymbolAddress((void **) &tmp, tdpSymbol(static_param));
-    tdpMemcpy(&obj->target->param, (const void *) &tmp, sizeof(param_t *),
-	      tdpMemcpyHostToDevice);
-    grad_s7_anchoring_param_commit(obj);
 
     cs_target(obj->cs, &cstarget);
     tdpMemcpy(&obj->target->cs, &cstarget, sizeof(cs_t *),
@@ -217,22 +210,6 @@ __host__ int grad_s7_anchoring_free(grad_s7_anch_t * grad) {
 
 /*****************************************************************************
  *
- *  grad_s7_archoring_param_commit
- *
- *****************************************************************************/
-
-__host__ int grad_s7_anchoring_param_commit(grad_s7_anch_t * anch) {
-
-  assert(anch);
-
-  tdpMemcpyToSymbol(tdpSymbol(static_param), anch->param, sizeof(param_t), 0,
-		    tdpMemcpyHostToDevice);
-
-  return 0;
-}
-
-/*****************************************************************************
- *
  *  grad_s7_anchoring_d2
  *
  *  Driver routine (a callback).
@@ -245,6 +222,7 @@ __host__ int grad_s7_anchoring_d2(field_grad_t * fg) {
   int nextra;
   int nlocal[3] = {0};
   dim3 nblk, ntpb;
+  param_t bcparam = {0};
   cs_t * cstarget = NULL;
   kernel_info_t limits = {0};
   kernel_ctxt_t * ctxt = NULL;
@@ -266,14 +244,16 @@ __host__ int grad_s7_anchoring_d2(field_grad_t * fg) {
   kernel_ctxt_create(anch->cs, NSIMDVL, limits, &ctxt);
   kernel_ctxt_launch_param(ctxt, &nblk, &ntpb);
 
-  grad_s7_anchoring_param_commit(anch);
   fe_lc_param_commit(anch->fe);
 
   cs_target(anch->cs, &cstarget);
 
+  /* Transfer the boundary condition parameters to arg. constant memory */
+  bcparam = *anch->param;
+
   tdpLaunchKernel(grad_s7_kernel, nblk, ntpb, 0, 0,
 		  ctxt->target, cstarget,
-		  anch->target, anch->fe->target, fg->target,
+		  anch->target, bcparam, anch->fe->target, fg->target,
 		  anch->map->target);
 
   tdpAssert(tdpPeekAtLastError());
@@ -296,6 +276,7 @@ __host__ int grad_s7_anchoring_d2(field_grad_t * fg) {
 
 __global__
 void grad_s7_kernel(kernel_ctxt_t * ktx, cs_t * cs, grad_s7_anch_t * anch,
+		    param_t bcparam,
 		    fe_lc_t * fe, field_grad_t * fg, map_t * map) {
 
   int kindex;
@@ -540,7 +521,7 @@ void grad_s7_kernel(kernel_ctxt_t * ktx, cs_t * cs, grad_s7_anch_t * anch,
 	  }
 	  
 	  b18[n1] *= bcsign[normal[0]];
-	  x18[n1] = anch->param->a6inv[normal[0]/2][n1]*b18[n1];
+	  x18[n1] = bcparam.a6inv[normal[0]/2][n1]*b18[n1];
 	}
       }
       
@@ -588,10 +569,10 @@ void grad_s7_kernel(kernel_ctxt_t * ktx, cs_t * cs, grad_s7_anch_t * anch,
 	for (n1 = 0; n1 < 2*NSYMM; n1++) {
 	  x18[n1] = 0.0;
 	  for (n2 = 0; n2 < NSYMM; n2++) {
-	    x18[n1] += bcsign[normal[0]]*anch->param->a12inv[ia][n1][n2]*b18[n2];
+	    x18[n1] += bcsign[normal[0]]*bcparam.a12inv[ia][n1][n2]*b18[n2];
 	  }
 	  for (n2 = NSYMM; n2 < 2*NSYMM; n2++) {
-	    x18[n1] += bcsign[normal[1]]*anch->param->a12inv[ia][n1][n2]*b18[n2];
+	    x18[n1] += bcsign[normal[1]]*bcparam.a12inv[ia][n1][n2]*b18[n2];
 	  }
 	}
       }
@@ -642,7 +623,7 @@ void grad_s7_kernel(kernel_ctxt_t * ktx, cs_t * cs, grad_s7_anch_t * anch,
 	for (n1 = 0; n1 < 3*NSYMM; n1++) {
 	  x18[n1] = 0.0;
 	  for (n2 = 0; n2 < 3*NSYMM; n2++) {
-	    x18[n1] += anch->param->a18inv[n1][n2]*b18[n2];
+	    x18[n1] += bcparam.a18inv[n1][n2]*b18[n2];
 	  }
 	}
       }
