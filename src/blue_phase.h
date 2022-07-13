@@ -2,10 +2,13 @@
  *
  *  fe_lc.h
  *
+ *  This file name is a bit of a misnomer. It's for any LC type, not
+ *  just blue phases.
+ *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2010-2020 The University of Edinburgh
+ *  (c) 2010-2022 The University of Edinburgh
  *
  *  Contributing authors:
  *    Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -25,6 +28,8 @@
 #include "field.h"
 #include "field_grad.h"
 #include "io_harness.h"
+
+#include "lc_anchoring.h"
 
 typedef struct fe_lc_s fe_lc_t;
 typedef struct fe_lc_param_s fe_lc_param_t;
@@ -66,21 +71,16 @@ struct fe_lc_param_s {
   double w2_coll;                         /* Second anchoring parameter */
   double w1_wall;
   double w2_wall;
-  double nfix[3];                         /* Fixed anchoring orientation */
 
+  double nfix[3];                         /* Fixed anchoring orientation */
   int anchoring_coll;                     /* Colloids anchoring type */
   int anchoring_wall;                     /* Wall anchoring type */
   int is_redshift_updated;                /* Switch */
   int is_active;                          /* Switch for active fluid */
-};
 
-/* Surface anchoring types */
-enum lc_anchoring_enum {LC_ANCHORING_PLANAR = 0,
-			LC_ANCHORING_NORMAL, 
-			LC_ANCHORING_FIXED,
-			LC_ANCHORING_TYPES /* Last entry */
+  lc_anchoring_param_t coll;              /* Anchoring parameters (colloids) */
+  lc_anchoring_param_t wall;              /* Anchoring parameters (wall) */
 };
-
 
 __host__ int fe_lc_create(pe_t * pe, cs_t * cs, lees_edw_t * le,
 			  field_t * q, field_grad_t * dq, fe_lc_t ** fe);

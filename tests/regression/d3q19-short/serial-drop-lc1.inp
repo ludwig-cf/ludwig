@@ -90,8 +90,6 @@ lc_droplet_gamma 2.586
 lc_droplet_delta 0.25 
 lc_droplet_W -0.05
 
-lc_anchoring_method none
-
 ###############################################################################
 #
 #  Colloid parameters
