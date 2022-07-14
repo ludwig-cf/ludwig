@@ -52,7 +52,6 @@ lc_q_initialisation     o2
 lc_q_init_euler_angles  45_45_0
 lc_q_init_amplitude     0.3
 lc_init_redshift        0.91
-lc_anchoring_method     none
 
 ###############################################################################
 #

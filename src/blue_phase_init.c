@@ -1217,6 +1217,59 @@ int blue_phase_random_q_init(cs_t * cs, fe_lc_param_t * param, field_t * fq) {
 
 /*****************************************************************************
  *
+ *  blue_phase_random_q_2d
+ *
+ *  Set a decomposition-independent random initial Q tensor in
+ *  two dimensions (x,y).
+ *
+ *****************************************************************************/
+
+int blue_phase_random_q_2d(cs_t * cs, fe_lc_param_t * param, field_t * fq) {
+
+  int seed = DEFAULT_SEED;
+  int nlocal[3] = {0};
+
+  noise_t * rng = NULL;
+  PI_DOUBLE(pi);
+
+  assert(fq);
+
+  cs_nlocal(cs, nlocal);
+
+  noise_create(fq->pe, cs, &rng);
+  noise_init(rng, seed);
+
+  for (int ic = 1; ic <= nlocal[X]; ic++) {
+    for (int jc = 1; jc <= nlocal[Y]; jc++) {
+      for (int kc = 1; kc <= nlocal[Z]; kc++) {
+
+	int index = cs_index(cs, ic, jc, kc);
+	double ran1 = 0.0;
+	double phase1 = 0.0;
+	double n[3] = {0};
+	double q[3][3] = {0};
+
+	noise_uniform_double_reap(rng, index, &ran1);
+
+	phase1 = 2.0*pi*(0.5 - ran1);
+
+	n[X] = cos(phase1);
+	n[Y] = sin(phase1);
+	n[Z] = 0.0;
+
+	fe_lc_q_uniaxial(param, n, q);
+	field_tensor_set(fq, index, q);
+      }
+    }
+  }
+
+  noise_free(rng);
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
  *  blue_phase_random_q_rectangle
  *
  *  Within the limits of the rectanular box provided, set the initial

@@ -109,7 +109,8 @@ __host__ int pth_force_colloid(pth_t * pth, fe_t * fe, colloids_info_t * cinfo,
  *
  *  Kernel driver. Allows fluid, colloids, walls.
  *
- *  TODO: hydro == NULL case for relaxational dynamics?
+ *  Relaxational dynamics (hydro == NULL) are allowed.
+ *
  *  TODO: if no wall, wall kernel not required!
  *  TODO: Fix up a kernel for the colloids.
  *
@@ -133,8 +134,10 @@ __host__ int pth_force_driver(pth_t * pth, colloids_info_t * cinfo,
 
   assert(pth);
   assert(cinfo);
-  assert(hydro);
   assert(map);
+
+  /* Relaxational dynamics only are allowed: hydro = NULL */
+  if (hydro == NULL) return 0;
 
   cs_nlocal(pth->cs, nlocal);
   wall_target(wall, &wallt);
@@ -166,8 +169,6 @@ __host__ int pth_force_driver(pth_t * pth, colloids_info_t * cinfo,
   /* A separate kernel is requred to allow reduction of the
    * force on each particle. A truly parallel version is
    pending... */
-
-  TIMER_start(TIMER_FREE3);
 
   /* COLLOID "KERNEL" */
 
@@ -210,7 +211,6 @@ __host__ int pth_force_driver(pth_t * pth, colloids_info_t * cinfo,
     }
   }
 
-  TIMER_stop(TIMER_FREE3);
   TIMER_stop(TIMER_PHI_FORCE_CALC);
 
   return 0;

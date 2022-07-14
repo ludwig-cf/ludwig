@@ -10,7 +10,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2010-2020 The University of Edinburgh
+ *  (c) 2010-2022 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -336,6 +336,7 @@ __host__ int util_jacobi(double a[3][3], double vals[3], double vecs[3][3]) {
       }
     }
 
+    /* Successful return is zero. */
     if (sum < DBL_MIN) return 0;
 
     if (iterate < 4)
@@ -409,6 +410,8 @@ __host__ int util_jacobi(double a[3][3], double vals[3], double vecs[3][3]) {
       z[ia] = 0.0;
     }
   }
+
+  /* Exceded maximum iterations: a fail ... */
 
   return -1;
 }

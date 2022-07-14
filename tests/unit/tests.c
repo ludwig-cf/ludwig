@@ -49,6 +49,7 @@ __host__ int tests_create() {
   test_coords_suite();
 
   test_kernel_suite();
+  test_gradient_d3q27_suite();
   test_angle_cosine_suite();
   test_assumptions_suite();
   test_be_suite();
@@ -81,6 +82,7 @@ __host__ int tests_create() {
   test_lb_bc_inflow_rhou_suite();
   test_lb_bc_outflow_opts_suite();
   test_lb_bc_outflow_rhou_suite();
+  test_lc_anchoring_suite();
   test_le_suite();
   test_lubrication_suite();
   test_map_suite();
@@ -110,13 +112,6 @@ __host__ int tests_create() {
   test_fe_surfactant1_suite();
   test_fe_symmetric_suite();
   test_fe_ternary_suite();
-
-  /* Failing... pending investigation */
-
-  /* test_nernst_planck_suite(); */
-  /* test_psi_sor_suite();*/
-  /* test_phi_ch_suite(); replace by advection without CH */
-
 
   return 0;
 }

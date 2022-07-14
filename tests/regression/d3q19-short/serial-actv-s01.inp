@@ -60,8 +60,6 @@ lc_q_initialisation active_nematic_q2d_y
 lc_q_init_amplitude 0.333333333333333
 lc_init_redshift 1.0
 
-lc_anchoring_method none
-
 ###############################################################################
 #
 #  Colloid parameters
