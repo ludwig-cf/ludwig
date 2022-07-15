@@ -30,6 +30,7 @@ field_options_t field_options_default(void) {
                           .nhcomm = 0,
                           .haloscheme = FIELD_HALO_TARGET,
 			  .haloverbose = 0,
+			  .usefirsttouch = 0,
                           .iodata = io_info_args_default()};
   return opts;
 }

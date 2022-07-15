@@ -42,6 +42,7 @@ static int lb_rho_write(FILE *, int index, void * self);
 static int lb_rho_write_ascii(FILE *, int index, void * self);
 static int lb_model_param_init(lb_t * lb);
 static int lb_init(lb_t * lb);
+static int lb_data_touch(lb_t * lb);
 
 int lb_halo_dequeue_recv(lb_t * lb, const lb_halo_t * h, int irreq);
 int lb_halo_enqueue_send(const lb_t * lb, lb_halo_t * h, int irreq);
@@ -82,6 +83,10 @@ int lb_data_create(pe_t * pe, cs_t * cs, const lb_data_options_t * options,
   obj->nrelax = options->nrelax;
   obj->haloscheme = options->halo;
 
+  /* Note there is some duplication of options/parameters */
+  /* ... which should really be rationalised. */
+  obj->opts = *options;
+
   lb_model_create(obj->nvel, &obj->model);
 
   /* Storage */
@@ -108,8 +113,13 @@ int lb_data_create(pe_t * pe, cs_t * cs, const lb_data_options_t * options,
       assert(obj->fprime);
       if (obj->f      == NULL) pe_fatal(pe, "malloc(lb->f) failed\n");
       if (obj->fprime == NULL) pe_fatal(pe, "malloc(lb->fprime) failed\n");
-      memset(obj->f, 0, sz);
-      memset(obj->fprime, 0, sz);
+      if (options->usefirsttouch) {
+	lb_data_touch(obj);
+      }
+      else {
+	memset(obj->f, 0, sz);
+	memset(obj->fprime, 0, sz);
+      }
     }
   }
 
@@ -123,7 +133,6 @@ int lb_data_create(pe_t * pe, cs_t * cs, const lb_data_options_t * options,
   lb_halo_create(obj, &obj->h, obj->haloscheme);
   lb_init(obj);
 
-  obj->opts = *options;
   *lb = obj;
 
   return 0;
@@ -489,6 +498,61 @@ __host__ int lb_io_info(lb_t * lb, io_info_t ** io_info) {
   assert(io_info);
 
   *io_info = lb->io_info;
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  lb_data_touch
+ *
+ *  Kernel driver to initialise data.
+ *  A conscious choice to use limits which are the standard domain.
+ *
+ *****************************************************************************/
+
+__host__ void lb_data_touch_kernel(cs_limits_t lim, lb_t * lb) {
+
+  int nx = 1 + lim.imax - lim.imin;
+  int ny = 1 + lim.jmax - lim.jmin;
+  int nz = 1 + lim.kmax - lim.kmin;
+
+  int strz = 1;
+  int stry = strz*nz;
+  int strx = stry*ny;
+
+  #pragma omp for nowait
+  for (int ik = 0; ik < nx*ny*nz; ik++) {
+    int ic = lim.imin + (ik       )/strx;
+    int jc = lim.jmin + (ik % strx)/stry;
+    int kc = lim.kmin + (ik % stry)/strz;
+    int index = cs_index(lb->cs, ic, jc, kc);
+    for (int p = 0; p < lb->nvel; p++) {
+      int lindex = LB_ADDR(lb->nsites, lb->ndist, lb->nvel, index, 1, p);
+      lb->f[lindex] = 0.0;
+      lb->fprime[lindex] = 0.0;
+    }
+  }
+
+  return;
+}
+
+__host__ int lb_data_touch(lb_t * lb) {
+
+  int nlocal[3] = {0};
+
+  assert(lb);
+
+  cs_nlocal(lb->cs, nlocal);
+
+  {
+    cs_limits_t lim = {1, nlocal[X], 1, nlocal[Y], 1, nlocal[Z]};
+
+    #pragma omp parallel
+    {
+      lb_data_touch_kernel(lim, lb);
+    }
+  }
 
   return 0;
 }
