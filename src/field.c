@@ -358,7 +358,7 @@ __host__ void field_data_touch_kernel(cs_limits_t lim, field_t * f) {
     int kc = lim.kmin + (ik % stry)/strz;
     int index = cs_index(f->cs, ic, jc, kc);
     for (int n = 0; n < f->nf; n++) {
-      int laddr = addr_rank1(f->nsite, f->nf, index, n);
+      int laddr = addr_rank1(f->nsites, f->nf, index, n);
       f->data[laddr] = 0.0;
     }
   }
