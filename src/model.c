@@ -528,7 +528,7 @@ __host__ void lb_data_touch_kernel(cs_limits_t lim, lb_t * lb) {
     int kc = lim.kmin + (ik % stry)/strz;
     int index = cs_index(lb->cs, ic, jc, kc);
     for (int p = 0; p < lb->nvel; p++) {
-      int lindex = LB_ADDR(lb->nsites, lb->ndist, lb->nvel, index, 1, p);
+      int lindex = LB_ADDR(lb->nsite, lb->ndist, lb->nvel, index, 1, p);
       lb->f[lindex] = 0.0;
       lb->fprime[lindex] = 0.0;
     }
