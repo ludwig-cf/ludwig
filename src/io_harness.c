@@ -20,7 +20,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2007-2020 The University of Edinburgh
+ *  (c) 2007-2022 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -607,6 +607,7 @@ int io_info_format_in_set(io_info_t * obj, int form_in) {
   case IO_FORMAT_ASCII_SERIAL:
     obj->read_data = obj->read_ascii;
     obj->processor_independent = 1;
+    obj->single_file_read = 1;
     break;
   case IO_FORMAT_BINARY_SERIAL:
     obj->read_data = obj->read_binary;
