@@ -520,8 +520,6 @@ int colloids_update_forces_fluid_driven(colloids_info_t * cinfo,
 
   if (is_driven()) {
 
-    double fw[3];
-
     assert(map);
 
     cs_periodic(map->cs, periodic);
@@ -533,7 +531,7 @@ int colloids_update_forces_fluid_driven(colloids_info_t * cinfo,
     
     for (ia = 0; ia < 3; ia++) {
       f[ia] = -1.0*fd[ia]*rvolume*periodic[ia];
-      fw[ia] = -1.0*fd[ia]*(1.0 - periodic[ia])/(1.0*pe_mpi_size(map->pe));
+      /* Wall accounting adjustment should be -fd (1 - periodic) / nprocs */
     }
 
     physics_fbody_set(phys, f);
