@@ -30,6 +30,9 @@ test:
 	$(MAKE) -C target test
 	$(MAKE) -C tests test
 
+unit:
+	$(MAKE) -C tests/unit test
+
 clean:
 	$(MAKE) -C mpi_s clean
 	$(MAKE) -C target clean
