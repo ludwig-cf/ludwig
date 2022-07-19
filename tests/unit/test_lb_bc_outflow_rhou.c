@@ -147,6 +147,9 @@ __host__ int test_lb_bc_outflow_rhou_update(pe_t * pe, cs_t * cs, int nvel) {
  *
  *  test_lb_bc_outflow_rhou_impose
  *
+ *  This involves a halo swap for which the flow must be in the x-direction
+ *  at the moment.
+ *
  *****************************************************************************/
 
 __host__ int test_lb_bc_outflow_rhou_impose(pe_t * pe, cs_t * cs, int nvel) {
@@ -158,7 +161,7 @@ __host__ int test_lb_bc_outflow_rhou_impose(pe_t * pe, cs_t * cs, int nvel) {
   int noffset[3] = {0};
 
   lb_bc_outflow_opts_t options = {.nvel = nvel,
-                                  .flow = {0, 0, 1},
+                                  .flow = {1, 0, 0},
                                   .rho0 = 3.0};
   lb_bc_outflow_rhou_t * outflow = NULL;
   lb_t * lb = NULL;
@@ -166,7 +169,7 @@ __host__ int test_lb_bc_outflow_rhou_impose(pe_t * pe, cs_t * cs, int nvel) {
   hydro_options_t hopts = hydro_options_default();
   hydro_t * hydro = NULL;
 
-  double u0[3] = {0.0, 0.0, 0.01}; /* Domain outflow in z-direction */
+  double u0[3] = {0.01, 0.0, 0.0}; /* Domain outflow in x-direction */
 
   assert(pe);
   assert(cs);
@@ -188,9 +191,9 @@ __host__ int test_lb_bc_outflow_rhou_impose(pe_t * pe, cs_t * cs, int nvel) {
   cs_nlocal(cs, nlocal);
   cs_nlocal_offset(cs, noffset);
 
-  if (noffset[Z] + nlocal[Z] == ntotal[Z]) {
+  if (noffset[X] + nlocal[X] == ntotal[X]) {
 
-    cs_limits_t limits = {1, nlocal[X], 1, nlocal[Y], nlocal[Z], nlocal[Z]};
+    cs_limits_t limits = {nlocal[X], nlocal[X], 1, nlocal[Y], 1, nlocal[Z]};
 
     for (int ic = limits.imin; ic <= limits.imax; ic++) {
       for (int jc = limits.jmin; jc <= limits.jmax; jc++) {
@@ -208,10 +211,10 @@ __host__ int test_lb_bc_outflow_rhou_impose(pe_t * pe, cs_t * cs, int nvel) {
   lb_bc_outflow_rhou_update(outflow, hydro);
   lb_bc_outflow_rhou_impose(outflow, hydro, lb);
 
-  if (noffset[Z] + nlocal[Z] == ntotal[Z]) {
+  if (noffset[X] + nlocal[X] == ntotal[X]) {
 
-    int kcbound = nlocal[Z] + 1;
-    cs_limits_t limits = {1, nlocal[X], 1, nlocal[Y], kcbound, kcbound};
+    int icbound = nlocal[X] + 1;
+    cs_limits_t limits = {icbound, icbound, 1, nlocal[Y], 1, nlocal[Z]};
 
     for (int ic = limits.imin; ic <= limits.imax; ic++) {
       for (int jc = limits.jmin; jc <= limits.jmax; jc++) {
@@ -223,18 +226,18 @@ __host__ int test_lb_bc_outflow_rhou_impose(pe_t * pe, cs_t * cs, int nvel) {
 
 	    double f = 0.0;
 
-	    if (lb->model.cv[p][Z] != -1) continue;
-	    if (noffset[X] + ic + lb->model.cv[p][X] < 1) continue;
+	    if (lb->model.cv[p][X] != -1) continue;
 	    if (noffset[Y] + jc + lb->model.cv[p][Y] < 1) continue;
-	    if (noffset[X] + ic + lb->model.cv[p][X] > ntotal[X]) continue;
+	    if (noffset[Z] + kc + lb->model.cv[p][Z] < 1) continue;
 	    if (noffset[Y] + jc + lb->model.cv[p][Y] > ntotal[Y]) continue;
+	    if (noffset[Z] + kc + lb->model.cv[p][Z] > ntotal[Z]) continue;
 
 	    lb_f(lb, index, p, LB_RHO, &f);
 
 	    {
-	      double uz   = u0[Z];
+	      double ux   = u0[X];
 	      double rho0 = outflow->options.rho0;
-	      double fp   = lb->model.wv[p]*rho0*(1.0 - 3.0*uz + 3.0*uz*uz);
+	      double fp   = lb->model.wv[p]*rho0*(1.0 - 3.0*ux + 3.0*ux*ux);
 	      assert(fabs(f - fp) < DBL_EPSILON);
 	      if (fabs(f - fp) > DBL_EPSILON) ierr += 1;
 	    }
