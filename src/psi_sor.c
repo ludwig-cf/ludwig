@@ -12,12 +12,11 @@
  *  where psi is the potential, rho_elec is the free charge density, and
  *  epsilon is a permeability.
  *
- *  $Id$
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2013-2017 The University of Edinburgh
+ *  (c) 2013-2022 The University of Edinburgh
  *
  *  Contributing Authors:
  *    Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -32,10 +31,8 @@
 
 #include "pe.h"
 #include "coords.h"
-#include "physics.h"
 #include "psi_s.h"
 #include "psi_sor.h"
-#include "control.h"
 #include "util.h"
 
 /*****************************************************************************
@@ -47,12 +44,12 @@
  *
  *****************************************************************************/
 
-int psi_sor_solve(psi_t * obj, fe_t * fe, f_vare_t fepsilon) {
+int psi_sor_solve(psi_t * obj, fe_t * fe, f_vare_t fepsilon, int its) {
 
   assert(obj);
 
-  if (fepsilon == NULL) psi_sor_poisson(obj);
-  if (fepsilon != NULL) psi_sor_vare_poisson(obj, (fe_es_t *) fe, fepsilon);
+  if (fepsilon == NULL) psi_sor_poisson(obj, its);
+  if (fepsilon != NULL) psi_sor_vare_poisson(obj, (fe_es_t *) fe, fepsilon, its);
 
   return 0;
 }
@@ -87,11 +84,13 @@ int psi_sor_solve(psi_t * obj, fe_t * fe, f_vare_t fepsilon) {
  *  of the iteration. If neither criterion is met, the iteration will
  *  finish after 'niteration' iterations.
  *
+ *  "its" is the time step for statistics purposes.
+ *
  *  See, e.g., Press et al. Chapter 19.
  *
  *****************************************************************************/
 
-int psi_sor_poisson(psi_t * obj) {
+int psi_sor_poisson(psi_t * obj, int its) {
 
   int niteration = 1000;       /* Maximum number of iterations */
   const int ncheck = 5;        /* Check global residual every n iterations */
@@ -116,11 +115,8 @@ int psi_sor_poisson(psi_t * obj) {
   double tol_abs;              /* Absolute tolerance */
   double eunit, beta;
   double ltot[3];
-  physics_t * phys = NULL;
 
   MPI_Comm comm;               /* Cartesian communicator */
-
-  physics_ref(&phys);
 
   cs_ltot(obj->cs, ltot);
   cs_nhalo(obj->cs, &nhalo);
@@ -241,7 +237,7 @@ int psi_sor_poisson(psi_t * obj) {
 
       if (rnorm[1] < tol_abs) {
 
-	if (physics_control_timestep(phys) % obj->nfreq == 0) {
+	if (its % obj->nfreq == 0) {
 	  pe_info(obj->pe, "\n");
 	  pe_info(obj->pe, "SOR solver converged to absolute tolerance\n");
 	  pe_info(obj->pe, "SOR residual per site %14.7e at %d iterations\n",
@@ -252,7 +248,7 @@ int psi_sor_poisson(psi_t * obj) {
 
       if (rnorm[1] < tol_abs || rnorm[1] < tol_rel*rnorm[0]) {
 
-	if (physics_control_timestep(phys) % obj->nfreq == 0) {
+	if (its % obj->nfreq == 0) {
 	  pe_info(obj->pe, "\n");
 	  pe_info(obj->pe, "SOR solver converged to relative tolerance\n");
 	  pe_info(obj->pe, "SOR residual per site %14.7e at %d iterations\n",
@@ -285,7 +281,7 @@ int psi_sor_poisson(psi_t * obj) {
  *
  ****************************************************************************/
 
-int psi_sor_vare_poisson(psi_t * obj, fe_es_t * fe, f_vare_t fepsilon) {
+int psi_sor_vare_poisson(psi_t * obj, fe_es_t * fe, f_vare_t fepsilon, int its) {
 
   int niteration = 2000;       /* Maximum number of iterations */
   const int ncheck = 1;        /* Check global residual every n iterations */
@@ -315,13 +311,10 @@ int psi_sor_vare_poisson(psi_t * obj, fe_es_t * fe, f_vare_t fepsilon) {
   double ltot[3];
   double eunit, beta;
 
-  physics_t * phys = NULL;
   MPI_Comm comm;               /* Cartesian communicator */
 
   assert(obj);
   assert(fepsilon);
-
-  physics_ref(&phys);
 
   cs_ltot(obj->cs, ltot);
   cs_nlocal(obj->cs, nlocal);
@@ -338,7 +331,7 @@ int psi_sor_vare_poisson(psi_t * obj, fe_es_t * fe, f_vare_t fepsilon) {
 
   /* Compute initial norm of the residual */
 
-  radius = 1.0 - 0.5*pow(4.0*atan(1.0)/imax(ltot[X],ltot[Z]), 2);
+  radius = 1.0 - 0.5*pow(4.0*atan(1.0)/dmax(ltot[X],ltot[Z]), 2);
 
   psi_reltol(obj, &tol_rel);
   psi_abstol(obj, &tol_abs);
@@ -486,7 +479,7 @@ int psi_sor_vare_poisson(psi_t * obj, fe_es_t * fe, f_vare_t fepsilon) {
 
       if (rnorm[1] < tol_abs) {
 
-	if (physics_control_timestep(phys) % obj->nfreq == 0) {
+	if (its % obj->nfreq == 0) {
 	  pe_info(obj->pe, "\n");
 	  pe_info(obj->pe, "SOR (heterogeneous) solver converged to absolute tolerance\n");
 	  pe_info(obj->pe, "SOR residual per site %14.7e at %d iterations\n",
@@ -497,7 +490,7 @@ int psi_sor_vare_poisson(psi_t * obj, fe_es_t * fe, f_vare_t fepsilon) {
 
       if (rnorm[1] < tol_rel*rnorm[0]) {
 
-	if (physics_control_timestep(phys) % obj->nfreq == 0) {
+	if (its % obj->nfreq == 0) {
 	  pe_info(obj->pe, "\n");
 	  pe_info(obj->pe, "SOR (heterogeneous) solver converged to relative tolerance\n");
 	  pe_info(obj->pe, "SOR residual per site %14.7e at %d iterations\n",
