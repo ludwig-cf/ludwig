@@ -2,8 +2,6 @@
  *
  *  psi_s.h
  *
- *  $Id$
- *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
@@ -14,8 +12,8 @@
  *
  *****************************************************************************/
 
-#ifndef PSI_S_H
-#define PSI_S_H
+#ifndef LUDWIG_PSI_S_H
+#define LUDWIG_PSI_S_H
 
 #include <mpi.h>
 #include "io_harness.h"
@@ -59,6 +57,7 @@ struct psi_s {
   int nfreq_io;             /* Field output */
   int nfreq;                /* Residual statisics output */
   double diffacc;           /* Number of substeps in charge dynamics */
+  double e0[3];             /* External electric field */
   MPI_Datatype psihalo[3];  /* psi field halo */
   MPI_Datatype rhohalo[3];  /* charge densities halo */
   io_info_t * info;         /* I/O informtation */
