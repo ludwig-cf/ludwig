@@ -10,3 +10,7 @@ script:
   - make
   - export OMP_NUM_THREADS=1
   - make test
+  - make clean
+  - cp config/travis-mpicc.mk ./config.mk
+  - make
+  - make unit
