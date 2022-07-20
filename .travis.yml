@@ -1,6 +1,7 @@
 language: c
 cache:
   - directories:
+    - mpi
 before_install:
   - bash ./config/build-mpi.sh
 script:
