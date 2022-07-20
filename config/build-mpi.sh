@@ -1,4 +1,3 @@
-#!/bin/sh
+#!/bin/bash
 
-which bash
-which mpicc
+printf "Installation script at %s\n" "$(date)"
