@@ -6,11 +6,11 @@ printf "MPI installation script at %s\n" "$(date)"
 
 my_prefix=$(pwd)/mpi
 
-if [ -d mpi ]; then
+if [ -f mpi/bin/mpicc ]; then
     export PATH=${my_prefix}/bin:${PATH}
     printf "Added existing local mpi to path:\n"
     printf "PATH is %s\n" "${PATH}"
-    ls -R mpi
+    which mpicc
 else
     printf "%s %s\n" "Install MPI to prefix" "${my_prefix}"
     wget https://download.open-mpi.org/release/open-mpi/v4.1/openmpi-4.1.4.tar.gz
