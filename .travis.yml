@@ -1,4 +1,9 @@
 language: c
+cache:
+  - directories:
+    - mpi
+before_install:
+  - sh ./config/build-mpi.sh
 script:
   - cp config/travis-gcc.mk ./config.mk
   - make serial
