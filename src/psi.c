@@ -33,7 +33,6 @@
 #include "map.h"
 #include "psi_s.h"
 #include "psi_gradients.h"
-#include "physics.h"
 
 static const double  e_unit_default = 1.0;              /* Default unit charge */
 static const double  reltol_default = FLT_EPSILON;      /* Solver tolerance */
@@ -100,6 +99,7 @@ int psi_create(pe_t * pe, cs_t * cs, int nk, psi_t ** pobj) {
 
   psi->nfreq_io = INT_MAX;
   psi->nfreq = INT_MAX;
+  psi->beta = 1.0;                      /* Not zero default */
 
   coords_field_init_mpi_indexed(cs, nhalo, 1, MPI_DOUBLE, psi->psihalo);
   coords_field_init_mpi_indexed(cs, nhalo, psi->nk, MPI_DOUBLE, psi->rhohalo);
@@ -238,6 +238,25 @@ int psi_diffusivity(psi_t * obj, int n, double * diff) {
   assert(diff);
 
   *diff = obj->diffusivity[n];
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  psi_e0_set
+ *
+ *  Set external electric field.
+ *
+ *****************************************************************************/
+
+int psi_e0_set(psi_t * psi, const double e0[3]) {
+
+  assert(psi);
+
+  psi->e0[X] = e0[X];
+  psi->e0[Y] = e0[Y];
+  psi->e0[Z] = e0[Z];
 
   return 0;
 }
@@ -1117,10 +1136,8 @@ int psi_halo_psijump(psi_t * psi) {
   int mpi_cartsz[3];
   int mpicoords[3];
   int periodic[3];
-  double e0[3];
   double eps;
   double beta;
-  physics_t * phys = NULL;
 
   assert(psi);
 
@@ -1132,8 +1149,6 @@ int psi_halo_psijump(psi_t * psi) {
   cs_cart_coords(psi->cs, mpicoords);
   cs_periodic(psi->cs, periodic);
 
-  physics_ref(&phys);
-  physics_e0(phys, e0);
   psi_epsilon(psi, &eps);
   psi_beta(psi, &beta);
 
@@ -1146,7 +1161,7 @@ int psi_halo_psijump(psi_t * psi) {
 	  index = cs_index(psi->cs, 0 - nh, jc, kc);
 
 	  if (periodic[X]) {
-	    psi->psi[addr_rank0(psi->nsites, index)] += e0[X]*ntotal[X];   
+	    psi->psi[addr_rank0(psi->nsites, index)] += psi->e0[X]*ntotal[X];
 	  }
 	  else{
 	    index1 = cs_index(psi->cs, 1, jc, kc);
@@ -1168,7 +1183,7 @@ int psi_halo_psijump(psi_t * psi) {
 	  index = cs_index(psi->cs, nlocal[0] + 1 + nh, jc, kc);
 
 	  if (periodic[X]) {
-	    psi->psi[addr_rank0(psi->nsites, index)] -= e0[X]*ntotal[X];   
+	    psi->psi[addr_rank0(psi->nsites, index)] -= psi->e0[X]*ntotal[X];
 	  }
 	  else {
 	    index1 = cs_index(psi->cs, nlocal[0], jc, kc);
@@ -1189,9 +1204,9 @@ int psi_halo_psijump(psi_t * psi) {
 	  index = cs_index(psi->cs, ic, 0 - nh, kc);
 
 	    if (periodic[Y]) {
-	      psi->psi[addr_rank0(psi->nsites, index)] += e0[Y]*ntotal[Y];   
+	      psi->psi[addr_rank0(psi->nsites, index)] += psi->e0[Y]*ntotal[Y];
 	    }
-	    else{
+	    else {
 	      index1 = cs_index(psi->cs, ic, 1, kc);
 	      psi->psi[addr_rank0(psi->nsites, index)] =
 		psi->psi[addr_rank0(psi->nsites, index1)];   
@@ -1208,13 +1223,13 @@ int psi_halo_psijump(psi_t * psi) {
       for (ic = 1 - nhalo; ic <= nlocal[X] + nhalo; ic++) {
 	for (kc = 1 - nhalo; kc <= nlocal[Z] + nhalo; kc++) {
 
-	  index = cs_index(psi->cs, ic, nlocal[1] + 1 + nh, kc);
+	  index = cs_index(psi->cs, ic, nlocal[Y] + 1 + nh, kc);
 
 	  if (periodic[Y]) {
-	    psi->psi[addr_rank0(psi->nsites, index)] -= e0[Y]*ntotal[Y];   
+	    psi->psi[addr_rank0(psi->nsites, index)] -= psi->e0[Y]*ntotal[Y];
 	  }
 	  else {
-	    index1 = cs_index(psi->cs, ic, nlocal[1], kc);
+	    index1 = cs_index(psi->cs, ic, nlocal[Y], kc);
 	    psi->psi[addr_rank0(psi->nsites, index)] =
 	      psi->psi[addr_rank0(psi->nsites, index1)];   
 	  }
@@ -1233,7 +1248,7 @@ int psi_halo_psijump(psi_t * psi) {
 	  index = cs_index(psi->cs, ic, jc, 0 - nh);
 
 	  if (periodic[Z]) {
-	    psi->psi[addr_rank0(psi->nsites, index)] += e0[Z]*ntotal[Z];   
+	    psi->psi[addr_rank0(psi->nsites, index)] += psi->e0[Z]*ntotal[Z];
 	  }
 	  else {
 	    index1 = cs_index(psi->cs, ic, jc, 1);
@@ -1252,10 +1267,10 @@ int psi_halo_psijump(psi_t * psi) {
       for (ic = 1 - nhalo; ic <= nlocal[X] + nhalo; ic++) {
 	for (jc = 1 - nhalo; jc <= nlocal[Y] + nhalo; jc++) {
 
-	  index = cs_index(psi->cs, ic, jc, nlocal[2] + 1 + nh);
+	  index = cs_index(psi->cs, ic, jc, nlocal[Z] + 1 + nh);
 
 	  if (periodic[Z]) {
-	    psi->psi[addr_rank0(psi->nsites, index)] -= e0[Z]*ntotal[Z];   
+	    psi->psi[addr_rank0(psi->nsites, index)] -= psi->e0[Z]*ntotal[Z];
 	  }
 	  else{
 	    index1 = cs_index(psi->cs, ic, jc, nlocal[2]);
@@ -1323,14 +1338,11 @@ int psi_nfreq_set(psi_t * psi, int nfreq) {
  *
  *****************************************************************************/
 
-int psi_output_step(psi_t * psi) {
-
-  physics_t * phys = NULL;
+int psi_output_step(psi_t * psi, int its) {
 
   assert(psi);
 
-  physics_ref(&phys);
-  return (physics_control_timestep(phys) % psi->nfreq_io == 0);
+  return (its % psi->nfreq_io == 0);
 }
 
 /*****************************************************************************
