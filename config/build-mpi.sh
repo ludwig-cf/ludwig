@@ -3,7 +3,6 @@
 set -e
 
 printf "MPI installation script at %s\n" "$(date)"
-ls
 
 my_prefix=$(pwd)/mpi
 
@@ -17,7 +16,7 @@ else
     wget https://download.open-mpi.org/release/open-mpi/v4.1/openmpi-4.1.4.tar.gz
     tar xf openmpi-4.1.4.tar.gz
     cd openmpi-4.1.4
-    ./configure CC=gcc-11 CXX=g++-11    \
+    ./configure CC=gcc CXX=g++    \
                 --enable-mpi-fortran=no \
                 --prefix=${my_prefix}
     make -j 2
