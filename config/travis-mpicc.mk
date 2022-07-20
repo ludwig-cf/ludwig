@@ -17,7 +17,7 @@ ARFLAGS = -cru
 LDFLAGS =
 
 LAUNCH_SERIAL_CMD =
-LAUNCH_MPIRUN_CMD = mpirun
+LAUNCH_MPIRUN_CMD = mpirun --oversubscribe
 MPIRUN_NTASK_FLAG = -np
 
 # Unit tests only
