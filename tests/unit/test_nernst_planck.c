@@ -7,7 +7,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2012-2017 The University of Edinburgh
+ *  (c) 2012-2022 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -222,7 +222,7 @@ static int do_test_gouy_chapman(pe_t * pe) {
   for (tstep = 1; tstep <= tmax; tstep++) {
 
     psi_halo_psi(psi);
-    psi_sor_poisson(psi);
+    psi_sor_poisson(psi, tstep);
     psi_halo_rho(psi);
     /* The test is run with no hydrodynamics, hence NULL here. */
     nernst_planck_driver(psi, (fe_t *) fe, NULL, map);
