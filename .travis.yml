@@ -11,6 +11,7 @@ script:
   - export OMP_NUM_THREADS=1
   - make test
   - make clean
+  - export PATH=$(pwd)/mpi/bin:${PATH}
   - cp config/travis-mpicc.mk ./config.mk
   - make
   - make unit
