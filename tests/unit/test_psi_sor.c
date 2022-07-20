@@ -7,7 +7,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2012-2020 The University of Edinburgh
+ *  (c) 2012-2022 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -22,7 +22,6 @@
 
 #include "pe.h"
 #include "coords.h"
-#include "physics.h"
 #include "control.h"
 #include "psi_s.h"
 #include "psi_sor.h"
@@ -33,13 +32,14 @@
 
 #define fe_fake_t void
 
-static int do_test_sor1(pe_t * pe);
+int test_psi_sor_poisson(pe_t * pe);
+int test_psi_sor_vare_poisson(pe_t * pe);
+
 static int test_charge1_set(psi_t * psi);
 static int test_charge1_exact(psi_t * obj, f_vare_t fepsilon);
 
 #define REF_PERMEATIVITY 1.0
 static int fepsilon_constant(fe_fake_t * fe, int index, double * epsilon);
-static int fepsilon_sinz(fe_fake_t * fe, int index, double * epsilon);
 
 /*****************************************************************************
  *
@@ -50,12 +50,11 @@ static int fepsilon_sinz(fe_fake_t * fe, int index, double * epsilon);
 int test_psi_sor_suite(void) {
 
   pe_t * pe = NULL;
-  physics_t * phys = NULL;
 
   pe_create(MPI_COMM_WORLD, PE_QUIET, &pe);
-  physics_ref(&phys);
 
-  do_test_sor1(pe);
+  test_psi_sor_poisson(pe);
+  test_psi_sor_vare_poisson(pe);
 
   pe_info(pe, "PASS     ./unit/test_psi_sor\n");
   pe_free(pe);
@@ -65,7 +64,7 @@ int test_psi_sor_suite(void) {
 
 /*****************************************************************************
  *
- *  do_test_sor1
+ *  test_psi_sor_poisson
  *
  *  Set rho(z = 1)  = + (1/2NxNy)
  *      rho(z = Lz) = + (1/2NxNy)
@@ -75,44 +74,87 @@ int test_psi_sor_suite(void) {
  *
  *****************************************************************************/
 
-static int do_test_sor1(pe_t * pe) {
+int test_psi_sor_poisson(pe_t * pe) {
 
-  int mpi_cartsz[3];
   cs_t * cs = NULL;
   psi_t * psi = NULL;
+  int ntotal[3] = {4, 4, 64};
 
   assert(pe);
 
   cs_create(pe, &cs);
   cs_nhalo_set(cs, 1);
+  cs_ntotal_set(cs, ntotal);
   cs_init(cs);
-
-  cs_cartsz(cs, mpi_cartsz);
 
   psi_create(pe, cs, 2, &psi);
   assert(psi);
-  psi_valency_set(psi, 0, +1.0);
-  psi_valency_set(psi, 1, -1.0);
+
+  psi_valency_set(psi, 0, +1);
+  psi_valency_set(psi, 1, -1);
+  psi_beta_set(psi, 1.0);
   psi_epsilon_set(psi, REF_PERMEATIVITY);
 
   test_charge1_set(psi);
+
   psi_halo_psi(psi);
   psi_halo_rho(psi);
-  psi_sor_poisson(psi);
 
-  if (mpi_cartsz[Z] == 1) test_charge1_exact(psi, fepsilon_constant);
+  /* Time step is -1 for no output. */
+  psi_sor_poisson(psi, -1);
 
-  /* Varying permeativity */
+  test_charge1_exact(psi, fepsilon_constant);
+
+  psi_free(psi);
+  cs_free(cs);
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  test_psi_sor_vare_poisson
+ *
+ *  Same problem as above, but use variable epsilon solver (albeit with
+ *  fixed epsilon here).
+ *
+ *  Note this needs something slightly tighter than the default tolerance
+ *  cf. the uniform case.
+ *
+ *****************************************************************************/
+
+int test_psi_sor_vare_poisson(pe_t * pe) {
+
+  cs_t * cs = NULL;
+  psi_t * psi = NULL;
+  int ntotal[3] = {4, 4, 64};
+
+  assert(pe);
+
+  cs_create(pe, &cs);
+  cs_nhalo_set(cs, 1);
+  cs_ntotal_set(cs, ntotal);
+  cs_init(cs);
+
+  psi_create(pe, cs, 2, &psi);
+  assert(psi);
+
+  psi_valency_set(psi, 0, +1);
+  psi_valency_set(psi, 1, -1);
+  psi_beta_set(psi, 1.0);
+  psi_reltol_set(psi, 0.01*FLT_EPSILON);
+  psi_epsilon_set(psi, REF_PERMEATIVITY);
 
   test_charge1_set(psi);
+
   psi_halo_psi(psi);
   psi_halo_rho(psi);
 
-  /* Following broken in latest vare solver */
-  psi_sor_vare_poisson(psi, NULL, fepsilon_sinz);
-  /*
-  if (cart_size(Z) == 1) test_charge1_exact(psi, fepsilon_sinz);
-  */
+  /* Time step is -1 to avoid output */
+  psi_sor_vare_poisson(psi, NULL, fepsilon_constant, -1);
+
+  test_charge1_exact(psi, fepsilon_constant);
+
   psi_free(psi);
   cs_free(cs);
 
@@ -265,7 +307,7 @@ static int test_charge1_exact(psi_t * obj, f_vare_t fepsilon) {
 
   int k, kp1, km1, index;
   int nlocal[3];
-  int n;
+  int nz;
   int ifail;
 
   double * epsilon = NULL;             /* 1-d e = e(z) from fepsilon */
@@ -278,33 +320,32 @@ static int test_charge1_exact(psi_t * obj, f_vare_t fepsilon) {
 
   double * a = NULL;                   /* A is matrix for linear system */
   double * b = NULL;                   /* B is RHS / solution vector */
-  double * c = NULL;                   /* Copy of the original RHS. */
+
+  assert(obj);
 
   cs_nlocal(obj->cs, nlocal);
 
-  /* assert(cart_size(Z) == 1); Rewrite elsewhere? */
-  n = nlocal[Z];
+  nz = nlocal[Z];
 
   /* Compute and store the permeativity values for convenience */
 
-  epsilon = (double *) calloc(n, sizeof(double));
+  epsilon = (double *) calloc(nz, sizeof(double));
   assert(epsilon);
   if (epsilon == NULL) pe_fatal(obj->pe, "calloc(epsilon) failed\n");
 
-  for (k = 0; k < n; k++) {
+  for (k = 0; k < nz; k++) {
     index = cs_index(obj->cs, 1, 1, 1+k);
     fepsilon(NULL, index, epsilon + k);
   }
 
   /* Allocate space for exact solution */
 
-  a = (double *) calloc((size_t) n*n, sizeof(double));
-  b = (double *) calloc(n, sizeof(double));
-  c = (double *) calloc(n, sizeof(double));
-  assert(a && b && c);
+  a = (double *) calloc((size_t) nz*nz, sizeof(double));
+  b = (double *) calloc(nz, sizeof(double));
+  assert(a);
+  assert(b);
   if (a == NULL) pe_fatal(obj->pe, "calloc(a) failed\n");
   if (b == NULL) pe_fatal(obj->pe, "calloc(b) failed\n");
-  if (c == NULL) pe_fatal(obj->pe, "calloc(c) failed\n");
 
   /* Set tridiagonal elements for periodic solution for the
    * three-point stencil. The logic is to remove the perioidic end
@@ -312,65 +353,73 @@ static int test_charge1_exact(psi_t * obj, f_vare_t fepsilon) {
    * effectively sets a Dirichlet boundary condition with psi = 0
    * at both ends. */
 
-  for (k = 0; k < n; k++) {
+  for (k = 0; k < nz; k++) {
     
     kp1 = k + 1;
     km1 = k - 1;
     if (k == 0) km1 = kp1;
-    if (k == n-1) kp1 = km1;
+    if (k == nz-1) kp1 = km1;
 
     eph = 0.5*(epsilon[k] + epsilon[kp1]);
     emh = 0.5*(epsilon[km1] + epsilon[k]);
 
-    a[k*n + kp1] = eph;
-    a[k*n + km1] = emh;
-    a[k*n + k] = -(eph + emh);
+    a[k*nz + kp1] = eph;
+    a[k*nz + km1] = emh;
+    a[k*nz + k  ] = -(eph + emh);
   }
 
   /* Set the right hand side and solve the linear system. */
 
-  for (k = 0; k < n; k++) {
+  for (k = 0; k < nz; k++) {
     index = cs_index(obj->cs, 1, 1, k + 1);
     psi_rho_elec(obj, index, b + k);
     b[k] *= -1.0; /* Minus sign in RHS Poisson equation */
-
-    c[k] = b[k];
   }
 
-  ifail = util_gauss_jordan(n, a, b);
-  test_assert(ifail == 0);
+  ifail = util_gauss_jordan(nz, a, b);
+  assert(ifail == 0);
 
-  /* Check the Gauss Jordan answer against the answer from psi_t */
+  /* Check the Gauss Jordan answer b[] against the answer from psi_t */
 
   psi_abstol(obj, &tolerance);
   rhotot = 0.0;
   psi0 = 0.0;
 
-  for (k = 0; k < n; k++) {
+  for (k = 0; k < nz; k++) {
     index = cs_index(obj->cs, 1, 1, 1+k);
     psi_psi(obj, index, &psi);
     if (k == 0) psi0 = psi;
 
-    test_assert(fabs(b[k] + psi0 - psi) < tolerance);
-    
+    assert(fabs(b[k] - (psi - psi0)) < tolerance);
+
+    /* Extra check on the differencing terms */
+
     kp1 = k + 1;
     km1 = k - 1;
     if (k == 0) km1 = kp1;
-    if (k == n-1) kp1 = km1;
+    if (k == nz-1) kp1 = km1;
 
     eph = 0.5*(epsilon[k] + epsilon[kp1]);
     emh = 0.5*(epsilon[km1] + epsilon[k]);
-    rhodiff = emh*obj->psi[index-1] - (emh + eph)*obj->psi[index]
-      + eph*obj->psi[index+1];
+    {
+      double psim1 = 0.0;
+      double psip1 = 0.0;
+      double rho0  = 0.0;
 
-    test_assert(fabs(c[k] - rhodiff) < tolerance);
-    rhotot += c[k];
+      psi_psi(obj, index-1, &psim1);
+      psi_psi(obj, index+1, &psip1);
+      psi_rho_elec(obj, index, &rho0);
+
+      rhodiff = -(emh*psim1 - (emh + eph)*psi + eph*psip1);
+
+      assert(fabs(rho0 - rhodiff) < tolerance);
+      rhotot += rho0;
+    }
   }
 
   /* Total rho should be unchanged at zero. */
   test_assert(fabs(rhotot) < tolerance);
 
-  free(c);
   free(b);
   free(a);
   free(epsilon);
@@ -406,21 +455,3 @@ static int fepsilon_constant(fe_fake_t * fe, int index, double * epsilon) {
  *  The - 0.5 is to make it symmetric about the centre line.
  *
  *****************************************************************************/
-
-static int fepsilon_sinz(fe_fake_t * fe, int index, double * epsilon) {
-  test_assert(0);
-#ifdef OLD_PENDING_REFACTOR
-  int coords[3];
-  double ltot[3];
-  cs_t * cs = NULL;
-  PI_DOUBLE(pi);
-  assert(0);
-
-  cs_ref(&cs); /* SHIT */
-  cs_index_to_ijk(cs, index, coords);
-  cs_ltot(cs, ltot);
-
-  *epsilon = REF_PERMEATIVITY*sin(pi*(1.0*coords[Z] - 0.5)/ltot[Z]);
-#endif
-  return 0;
-}

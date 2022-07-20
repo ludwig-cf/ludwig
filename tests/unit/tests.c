@@ -99,6 +99,7 @@ __host__ int tests_create() {
   test_phi_bc_outflow_free_suite();
   test_polar_active_suite();
   test_psi_suite();
+  test_psi_sor_suite();
   test_lb_prop_suite();
   test_random_suite();
   test_rt_suite();
