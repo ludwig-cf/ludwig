@@ -1,5 +1,5 @@
 Welcome to Ludwig v0.14.0 (Serial version running on 1 process)
-Start time: Sun Nov 28 09:51:00 2021
+Start time: Sun Nov 28 09:50:53 2021
 
 Compiler:
   name:           Gnu 10.2.0
@@ -10,7 +10,7 @@ Note assertions via standard C assert() are on.
 Target thread model: OpenMP.
 OpenMP threads: 1; maximum number of threads: 8.
 
-Read 21 user parameters from serial-spin-lb4.inp
+Read 21 user parameters from serial-spin-lb3.inp
 
 System details
 --------------
@@ -53,7 +53,7 @@ Lattice Boltzmann distributions
 Model:            d3q19  
 SIMD vector len:  1
 Number of sets:   2
-Halo type:        full
+Halo type:        lb_halo_target (full halo)
 Input format:     binary
 Output format:    binary
 I/O grid:         1 1 1
@@ -62,7 +62,7 @@ Lattice Boltzmann collision
 ---------------------------
 Relaxation time scheme:   M10
 Hydrodynamic modes:       on
-Ghost modes:              off
+Ghost modes:              on
 Isothermal fluctuations:  on
 Shear relaxation time:    6.87500e-01
 Bulk relaxation time:     6.87500e-01
@@ -92,23 +92,23 @@ Momentum - x y z
 Starting time step loop.
 
 Scalars - total mean variance min max
-[rho]       32768.00  1.00000000000  4.4472565e-05  0.97222445743  1.03062534838
-[phi] -5.9892076e+00 -1.8277611e-04 3.6967262e-04 -4.8035217e-02 4.5935574e-02
+[rho]       32768.00  1.00000000000  9.9597356e-05  0.95230376702  1.04087652512
+[phi] -5.9892076e+00 -1.8277611e-04 3.6853965e-04 -4.7965671e-02 4.5798476e-02
 
 Free energy density - timestep total fluid
-[fed]             50 -9.8415186845e-07 -9.8415186845e-07
+[fed]             50 -9.8117268521e-07 -9.8117268521e-07
 
 Momentum - x y z
-[total   ] -2.1035257e-14 -2.3689384e-14 -2.0754232e-14
-[fluid   ] -2.1035257e-14 -2.3689384e-14 -2.0754232e-14
+[total   ]  4.8055310e-14 -1.9560742e-14 -4.0339260e-14
+[fluid   ]  4.8055310e-14 -1.9560742e-14 -4.0339260e-14
 
 Velocity - x y z
-[minimum ] -1.5523149e-02 -1.6441568e-02 -1.7255303e-02
-[maximum ]  1.4837300e-02  1.5602961e-02  1.4439107e-02
+[minimum ] -2.2498220e-02 -2.2167032e-02 -2.4382195e-02
+[maximum ]  2.5669501e-02  2.4492983e-02  2.5988498e-02
 
 Isothermal fluctuations
-[eqipart.]  1.3442637e-05  1.3529021e-05  1.3636680e-05
-[measd/kT]  4.0608338e-05  1.0000000e-04
+[eqipart.]  3.3924567e-05  3.3410483e-05  3.2749954e-05
+[measd/kT]  1.0008500e-04  1.0000000e-04
 
 Completed cycle 50
 
@@ -116,16 +116,16 @@ Timer resolution: 1e-06 second
 
 Timer statistics
              Section:       tmin       tmax      total
-               Total:      3.864      3.864      3.864   3.864059 (1 call)
-      Time step loop:      0.075      0.079      3.765   0.075298 (50 calls)
-         Propagation:      0.016      0.017      0.815   0.016301 (50 calls)
-    Propagtn (krnl) :      0.016      0.017      0.815   0.016297 (50 calls)
-           Collision:      0.039      0.041      1.941   0.038821 (50 calls)
-   Collision (krnl) :      0.039      0.041      1.941   0.038817 (50 calls)
-       Lattice halos:      0.004      0.005      0.198   0.003956 (50 calls)
-       phi gradients:      0.015      0.018      0.774   0.015485 (50 calls)
-           phi halos:      0.000      0.000      0.010   0.000192 (50 calls)
+               Total:      3.942      3.942      3.942   3.941857 (1 call)
+      Time step loop:      0.076      0.079      3.842   0.076850 (50 calls)
+         Propagation:      0.016      0.017      0.815   0.016303 (50 calls)
+    Propagtn (krnl) :      0.016      0.017      0.815   0.016299 (50 calls)
+           Collision:      0.040      0.041      2.027   0.040546 (50 calls)
+   Collision (krnl) :      0.040      0.041      2.027   0.040542 (50 calls)
+       Lattice halos:      0.004      0.005      0.192   0.003834 (50 calls)
+       phi gradients:      0.015      0.016      0.772   0.015430 (50 calls)
+           phi halos:      0.000      0.000      0.009   0.000190 (50 calls)
                  BBL:      0.000      0.000      0.000   0.000001 (50 calls)
-               Free1:      0.000      0.045      0.045   0.000905 (50 calls)
-End time: Sun Nov 28 09:51:04 2021
+               Free1:      0.000      0.044      0.045   0.000890 (50 calls)
+End time: Sun Nov 28 09:50:57 2021
 Ludwig finished normally.

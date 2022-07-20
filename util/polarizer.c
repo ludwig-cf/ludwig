@@ -156,10 +156,15 @@ int main(int argc, char* argv[]){
   for (int skip = 0; skip < 4; skip++) {
     pl = fgets(line, BUFSIZ, dirinput);
     assert(pl);
+    if (skip == 1) printf("Director input: %s\n", pl);
   }
 
   nread = fscanf(dirinput, "%s %d %d %d", dummy, &sys.Lx, &sys.Ly, &sys.Lz);
   assert(nread == 4);
+  if (nread != 4) {
+    printf("File %s: unexpected format\n", filename);
+  }
+
 
   for (int skip = 5; skip < 10; skip++) {
     pl = fgets(line, BUFSIZ, dirinput);

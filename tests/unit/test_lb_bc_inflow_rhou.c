@@ -254,10 +254,10 @@ __host__ int test_lb_bc_inflow_rhou_impose(pe_t * pe, cs_t * cs, int nvel) {
 
 	    /* Only distributions ending in the local domain ... */
 	    if (lb->model.cv[p][X] != +1) continue;
-	    if (noffset[Y] + jc + lb->model.cv[p][Y] < 1) continue;
-	    if (noffset[Z] + kc + lb->model.cv[p][Z] < 1) continue;
-	    if (noffset[Y] + jc + lb->model.cv[p][Y] > ntotal[Y]) continue;
-	    if (noffset[Z] + kc + lb->model.cv[p][Z] > ntotal[Z]) continue;
+	    if (jc + lb->model.cv[p][Y] < 1) continue;
+	    if (kc + lb->model.cv[p][Z] < 1) continue;
+	    if (jc + lb->model.cv[p][Y] > nlocal[Y]) continue;
+	    if (kc + lb->model.cv[p][Z] > nlocal[Z]) continue;
 
 	    lb_f(lb, index, p, LB_RHO, &f);
 	    {

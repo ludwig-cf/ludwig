@@ -32,7 +32,7 @@ static int do_test0(pe_t * pe);
 static int do_test1(pe_t * pe);
 static int do_test3(pe_t * pe);
 static int do_test5(pe_t * pe);
-static int do_test_io(pe_t * pe, int nf, int io_format);
+static int do_test_io(pe_t * pe, int nf, int io_format_in, int io_format_out);
 static int test_field_halo(cs_t * cs, field_t * phi);
 
 int do_test_device1(pe_t * pe);
@@ -58,10 +58,10 @@ int test_field_suite(void) {
   do_test5(pe);
   do_test_device1(pe);
 
-  do_test_io(pe, 1, IO_FORMAT_ASCII);
-  do_test_io(pe, 1, IO_FORMAT_BINARY);
-  do_test_io(pe, 5, IO_FORMAT_ASCII);
-  do_test_io(pe, 5, IO_FORMAT_BINARY);
+  do_test_io(pe, 1, IO_FORMAT_ASCII_SERIAL, IO_FORMAT_ASCII);
+  do_test_io(pe, 1, IO_FORMAT_BINARY_SERIAL, IO_FORMAT_BINARY);
+  do_test_io(pe, 5, IO_FORMAT_ASCII_SERIAL, IO_FORMAT_ASCII);
+  do_test_io(pe, 5, IO_FORMAT_BINARY_SERIAL, IO_FORMAT_BINARY);
 
   test_field_halo_create(pe);
 
@@ -380,8 +380,9 @@ static int test_field_halo(cs_t * cs, field_t * phi) {
  *
  *****************************************************************************/
 
-static int do_test_io(pe_t * pe, int nf, int io_format) {
+static int do_test_io(pe_t * pe, int nf, int io_format_in, int io_format_out) {
 
+  int ntotal[3] = {16, 16, 8};
   int grid[3] = {1, 1, 1};
   int nhalo;
   const char * filename = "phi-test-io";
@@ -396,23 +397,19 @@ static int do_test_io(pe_t * pe, int nf, int io_format) {
   assert(pe);
 
   cs_create(pe, &cs);
+  cs_ntotal_set(cs, ntotal);
   cs_init(cs);
   cs_nhalo(cs, &nhalo);
   cs_cart_comm(cs, &comm);
-
-  if (pe_mpi_size(pe) == 8) {
-    grid[X] = 2;
-    grid[Y] = 2;
-    grid[Z] = 2;
-  }
 
   opts.ndata = nf;
   opts.nhcomm = nhalo;
   field_create(pe, cs, NULL, "phi-test", &opts, &phi);
 
-  field_init_io_info(phi, grid, io_format, io_format); 
+  field_init_io_info(phi, grid, io_format_in, io_format_out);
 
   test_coords_field_set(cs, nf, phi->data, MPI_DOUBLE, test_ref_double1);
+
   field_io_info(phi, &iohandler);
   assert(iohandler);
 
@@ -422,16 +419,22 @@ static int do_test_io(pe_t * pe, int nf, int io_format) {
   MPI_Barrier(comm);
 
   field_create(pe, cs, NULL, "phi-test", &opts,&phi);
-  field_init_io_info(phi, grid, io_format, io_format);
+  field_init_io_info(phi, grid, io_format_in, io_format_out);
 
   field_io_info(phi, &iohandler);
   assert(iohandler);
+
+  /* Make sure the input format is handled correctly. */
+  io_info_format_in_set(iohandler, io_format_in);
+  io_info_single_file_set(iohandler);
+
   io_read_data(iohandler, filename, phi);
 
   field_halo(phi);
   test_coords_field_check(cs, 0, nf, phi->data, MPI_DOUBLE, test_ref_double1);
 
   MPI_Barrier(comm);
+
   io_remove(filename, iohandler);
   io_remove_metadata(iohandler, "phi-test");
 

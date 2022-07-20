@@ -7,7 +7,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2012-2021 The University of Edinburgh
+ *  (c) 2012-2022 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -30,7 +30,7 @@
 static int do_test1(pe_t * pe);
 static int do_test2(pe_t * pe);
 static int do_test_halo(pe_t * pe, int ndata);
-static int do_test_io(pe_t * pe, int ndata, int io_format);
+static int do_test_io(pe_t * pe, int ndata, int io_form_in, int io_form_out);
 
 /*****************************************************************************
  *
@@ -49,10 +49,10 @@ int test_map_suite(void) {
   do_test_halo(pe, 1);
   do_test_halo(pe, 2);
 
-  do_test_io(pe, 0, IO_FORMAT_BINARY);
-  do_test_io(pe, 0, IO_FORMAT_ASCII);
-  do_test_io(pe, 2, IO_FORMAT_BINARY);
-  do_test_io(pe, 2, IO_FORMAT_ASCII);
+  do_test_io(pe, 0, IO_FORMAT_BINARY_SERIAL, IO_FORMAT_BINARY);
+  do_test_io(pe, 0, IO_FORMAT_ASCII_SERIAL,  IO_FORMAT_ASCII);
+  do_test_io(pe, 2, IO_FORMAT_BINARY_SERIAL, IO_FORMAT_BINARY);
+  do_test_io(pe, 2, IO_FORMAT_ASCII_SERIAL,  IO_FORMAT_ASCII);
 
   pe_info(pe, "PASS     ./unit/test_map\n");
   pe_free(pe);
@@ -230,7 +230,7 @@ int do_test_halo(pe_t * pe, int ndata) {
  *
  *****************************************************************************/
 
-static int do_test_io(pe_t * pe, int ndata, int io_format) {
+static int do_test_io(pe_t * pe, int ndata, int io_form_in, int io_form_out) {
 
   int grid[3];
   const char * filename = "map-io-test";
@@ -248,18 +248,12 @@ static int do_test_io(pe_t * pe, int ndata, int io_format) {
   grid[Y] = 1;
   grid[Z] = 1;
 
-  if (pe_mpi_size(pe) == 8) {
-    grid[X] = 2;
-    grid[Y] = 2;
-    grid[Z] = 2;
-  }
-
   cs_create(pe, &cs);
   cs_init(cs);
   map_create(pe, cs, ndata, &map);
   assert(map);
 
-  map_init_io_info(map, grid, io_format, io_format);
+  map_init_io_info(map, grid, io_form_in, io_form_out);
   map_io_info(map, &iohandler);
   assert(iohandler);
 
@@ -277,9 +271,12 @@ static int do_test_io(pe_t * pe, int ndata, int io_format) {
   map_create(pe, cs, ndata, &map);
   assert(map);
 
-  map_init_io_info(map, grid, io_format, io_format);
+  map_init_io_info(map, grid, io_form_in, io_form_out);
   map_io_info(map, &iohandler);
   assert(iohandler);
+
+  /* Must set this explicitly at the moment */
+  io_info_set_processor_independent(iohandler);
 
   io_read_data(iohandler, filename, map);
   test_coords_field_check(cs, 0, 1, map->status, MPI_CHAR, test_ref_char1);
