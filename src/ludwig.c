@@ -633,7 +633,7 @@ void ludwig_run(const char * inputfile) {
 #ifdef PETSC
 	psi_petsc_solve(ludwig->psi, ludwig->fe, ludwig->epsilon);
 #else
-	psi_sor_solve(ludwig->psi, ludwig->fe, ludwig->epsilon);
+	psi_sor_solve(ludwig->psi, ludwig->fe, ludwig->epsilon, step);
 #endif
 	TIMER_stop(TIMER_ELECTRO_POISSON);
       }
