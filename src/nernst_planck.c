@@ -115,10 +115,12 @@ int nernst_planck_driver(psi_t * psi, fe_t * fel, map_t * map) {
   psi_nk(psi, &nk);
   cs_nsites(psi->cs, &nsites);
 
- /* Allocate fluxes and initialise to zero */
-  fe = (double*) calloc(nsites*nk, sizeof(double));
-  fy = (double*) calloc(nsites*nk, sizeof(double));
-  fz = (double*) calloc(nsites*nk, sizeof(double));
+  /* Allocate fluxes and initialise to zero */
+
+  fe = (double*) calloc((size_t) nsites*nk, sizeof(double));
+  fy = (double*) calloc((size_t) nsites*nk, sizeof(double));
+  fz = (double*) calloc((size_t) nsites*nk, sizeof(double));
+
   if (fe == NULL) pe_fatal(psi->pe, "calloc(fe) failed\n");
   if (fy == NULL) pe_fatal(psi->pe, "calloc(fy) failed\n");
   if (fz == NULL) pe_fatal(psi->pe, "calloc(fz) failed\n");
