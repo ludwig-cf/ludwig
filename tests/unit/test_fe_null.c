@@ -15,7 +15,7 @@
 #include <float.h>
 #include <math.h>
 
-#include "fe_null.c"
+#include "fe_null.h"
 
 int test_fe_null_create(pe_t * pe);
 int test_fe_null_fed(pe_t * pe);
