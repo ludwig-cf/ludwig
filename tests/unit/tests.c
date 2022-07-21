@@ -64,6 +64,7 @@ __host__ int tests_create() {
   test_colloids_info_suite();
   test_colloids_halo_suite();
   test_ewald_suite();
+  test_fe_null_suite();
   test_fe_electro_suite();
   test_fe_electro_symm_suite();
   test_fe_lc_droplet_suite();
@@ -98,6 +99,7 @@ __host__ int tests_create() {
   test_phi_bc_inflow_fixed_suite();
   test_phi_bc_outflow_opts_suite();
   test_phi_bc_outflow_free_suite();
+  test_phi_ch_suite();
   test_polar_active_suite();
   test_psi_suite();
   test_psi_sor_suite();
