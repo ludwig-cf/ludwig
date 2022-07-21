@@ -34,7 +34,7 @@
 #include "nernst_planck.h"
 #include "tests.h"
 
-static int do_test_gouy_chapman(pe_t * pe);
+static int test_nernst_planck_driver(pe_t * pe);
 static int test_io(cs_t * cs, psi_t * psi, int tstep);
 
 /*****************************************************************************
@@ -49,7 +49,7 @@ int test_nernst_planck_suite(void) {
 
   pe_create(MPI_COMM_WORLD, PE_QUIET, &pe);
 
-  do_test_gouy_chapman(pe);
+  test_nernst_planck_driver(pe);
 
   pe_info(pe, "PASS     ./unit/test_nernst_planck\n");
   pe_free(pe);
@@ -59,7 +59,9 @@ int test_nernst_planck_suite(void) {
 
 /*****************************************************************************
  *
- *  do_test_gouy_chapman
+ *  test_nernst_planck_driver
+ *
+ *  This is the Gouy-Chapman problem.
  *
  *  A theory exists for symmetric electrolytes near a flat surface
  *  owing to Gouy and Chapman. (See Lyklema "Fundamentals of
@@ -80,21 +82,20 @@ int test_nernst_planck_suite(void) {
  *  where D_eff ~= D_k e beta rho_k (from the Nernst Planck
  *  equation). The parameters make 20,000 steps reasonable.
  *
- *  The tolerances on the SOR could be investigated.
  *
- *  This is a test of the Gouy-Chapman theory.
+ *  This is a test of the Gouy-Chapman theory if one runs a significant
+ *  number of time steps...
  *
  *****************************************************************************/
 
-static int do_test_gouy_chapman(pe_t * pe) {
+static int test_nernst_planck_driver(pe_t * pe) {
 
-  int nk = 2;          /* Number of species */
+  int ntotal[3] = {64, 4, 4};  /* Quasi-one-dimensional system */
+  int nk = 2;                  /* Number of species */
 
-  int ic, jc, kc, index;
   int nlocal[3];
   int noffst[3];
   int test_output_required = 0;
-  int tstep;
   int mpi_cartsz[3];
   int mpi_cartcoords[3];
 
@@ -108,23 +109,15 @@ static int do_test_gouy_chapman(pe_t * pe) {
   double eunit = 1.;           /* Unit charge, ... */
   double epsilon = 3.3e3;      /* ... epsilon, and ... */
   double beta = 3.0e4;         /* ... the Boltzmann factor i.e., t ~ 10^5 */
-  double lb;                   /* ... make up the Bjerrum length */
-  double ldebye;               /* Debye length */
   double rho_el = 1.0e-3;      /* charge density */
-  double yd;                   /* Dimensionless surface potential */
   double ltot[3];
 
-  int ntotal[3] = {64, 4, 4};  /* Quasi-one-dimensional system */
-  int grid[3];                 /* Processor decomposition */
-
-  int tmax = 200;
 
   cs_t * cs = NULL;
   map_t * map = NULL;
   psi_t * psi = NULL;
   physics_t * phys = NULL;
   fe_electro_t * fe = NULL;
-  MPI_Comm comm;
 
   assert(pe);
 
@@ -133,13 +126,13 @@ static int do_test_gouy_chapman(pe_t * pe) {
   cs_create(pe, &cs);
   cs_nhalo_set(cs, 1);
   cs_ntotal_set(cs, ntotal);
-  cs_cart_comm(cs, &comm);
 
-  grid[X] = pe_mpi_size(pe);
-  grid[Y] = 1;
-  grid[Z] = 1;
-  cs_decomposition_set(cs, grid);
-
+  {
+    /* If parallel, make sure the decomposition is in x-direction */
+    int grid[3] = {pe_mpi_size(pe), 1, 1};
+    cs_decomposition_set(cs, grid);
+  }
+  
   cs_init(cs);
 
   cs_ltot(cs, ltot);
@@ -162,6 +155,8 @@ static int do_test_gouy_chapman(pe_t * pe) {
   psi_epsilon_set(psi, epsilon);
   psi_beta_set(psi, beta);
 
+  /* Care. the free energy gets the temperatue from global physics_t. */
+  physics_kt_set(phys, 1.0/beta);
   fe_electro_create(pe, psi, &fe);
 
   /* wall charge density */
@@ -172,11 +167,11 @@ static int do_test_gouy_chapman(pe_t * pe) {
 
 
   /* apply counter charges & electrolyte */
-  for (ic = 1; ic <= nlocal[X]; ic++) {
-    for (jc = 1; jc <= nlocal[Y]; jc++) {
-      for (kc = 1; kc <= nlocal[Z]; kc++) {
+  for (int ic = 1; ic <= nlocal[X]; ic++) {
+    for (int jc = 1; jc <= nlocal[Y]; jc++) {
+      for (int kc = 1; kc <= nlocal[Z]; kc++) {
 
-	index = cs_index(cs, ic, jc, kc);
+	int index = cs_index(cs, ic, jc, kc);
 
 	psi_psi_set(psi, index, 0.0);
 	psi_rho_set(psi, index, 0, rho_el);
@@ -188,11 +183,11 @@ static int do_test_gouy_chapman(pe_t * pe) {
 
   /* apply wall charges */
   if (mpi_cartcoords[X] == 0) {
-    ic = 1;
-    for (jc = 1; jc <= nlocal[Y]; jc++) {
-      for (kc = 1; kc <= nlocal[Z]; kc++) {
+    int ic = 1;
+    for (int jc = 1; jc <= nlocal[Y]; jc++) {
+      for (int kc = 1; kc <= nlocal[Z]; kc++) {
 
-	index = cs_index(cs, ic, jc, kc);
+	int index = cs_index(cs, ic, jc, kc);
 	map_status_set(map, index, MAP_BOUNDARY); 
 
 	psi_rho_set(psi, index, 0, rho_w);
@@ -203,11 +198,11 @@ static int do_test_gouy_chapman(pe_t * pe) {
   }
 
   if (mpi_cartcoords[X] == mpi_cartsz[X] - 1) {
-    ic = nlocal[X];
-    for (jc = 1; jc <= nlocal[Y]; jc++) {
-      for (kc = 1; kc <= nlocal[Z]; kc++) {
+    int ic = nlocal[X];
+    for (int jc = 1; jc <= nlocal[Y]; jc++) {
+      for (int kc = 1; kc <= nlocal[Z]; kc++) {
 
-	index = cs_index(cs, ic, jc, kc);
+	int index = cs_index(cs, ic, jc, kc);
 	map_status_set(map, index, MAP_BOUNDARY);
 
 	psi_rho_set(psi, index, 0, rho_w);
@@ -217,54 +212,58 @@ static int do_test_gouy_chapman(pe_t * pe) {
     }
   }
 
+  /* Make a single update ... */
+
   map_halo(map);
 
-  for (tstep = 1; tstep <= tmax; tstep++) {
+  psi_halo_psi(psi);
+  psi_sor_poisson(psi, -1);
+  psi_halo_rho(psi);
 
-    psi_halo_psi(psi);
-    psi_sor_poisson(psi, tstep);
-    psi_halo_rho(psi);
-    /* The test is run with no hydrodynamics, hence NULL here. */
-    nernst_planck_driver(psi, (fe_t *) fe, NULL, map);
+  nernst_planck_driver(psi, (fe_t *) fe, map);
 
-    if (tstep % 1000 == 0) {
-
-      pe_info(pe, "%d\n", tstep);
-      psi_stats_info(psi);
-      if (test_output_required) test_io(cs, psi, tstep);
-    }
-  }
+  if (test_output_required) test_io(cs, psi, 0);
 
   /* We adopt a rather simple way to extract the answer from the
    * MPI task holding the centre of the system. The charge
    * density must be > 0 to compute the debye length and the
    * surface potential. */
 
-  jc = 2;
-  kc = 2;
-
   rho_b_local = 0.0;
 
-  for (ic = 1; ic <= nlocal[X]; ic++) {
+  for (int ic = 1; ic <= nlocal[X]; ic++) {
 
-    index = cs_index(cs, ic, jc, kc);
+    int jc = 2;
+    int kc = 2;
+    int index = cs_index(cs, ic, jc, kc);
  
     if (noffst[X] + ic == ntotal[X] / 2) {
       psi_ionic_strength(psi, index, &rho_b_local);
     }
   }
 
-  MPI_Allreduce(&rho_b_local, &rho_b, 1, MPI_DOUBLE, MPI_SUM, comm);
+  {
+    MPI_Comm comm = MPI_COMM_NULL;
+    cs_cart_comm(cs, &comm);
+    MPI_Allreduce(&rho_b_local, &rho_b, 1, MPI_DOUBLE, MPI_SUM, comm);
+  }
 
-  psi_bjerrum_length(psi, &lb);
-  psi_debye_length(psi, rho_b, &ldebye);
-  psi_surface_potential(psi, rho_w, rho_b, &yd);
+  {
+    double lb = 0.0;                /* Bjerrum length */
+    double ldebye = 0.0;            /* Debye length */
+    double yd = 0.0;                /* Dimensionless surface potential */
 
-  assert(tmax == 200);
-  assert(ntotal[X] == 64);
-  assert(fabs(lb     - 7.2343156e-01) < FLT_EPSILON);
-  assert(fabs(ldebye - 6.0648554e+00) < FLT_EPSILON);
-  assert(fabs(yd     - 5.1997576e-05) < FLT_EPSILON);
+    psi_bjerrum_length(psi, &lb);
+    psi_debye_length(psi, rho_b, &ldebye);
+    psi_surface_potential(psi, rho_w, rho_b, &yd);
+
+    /* Only the surface potential has really changed compared with the
+     * initial conditions ... */
+
+    assert(fabs(lb     - 7.23431560e-01) < FLT_EPSILON);
+    assert(fabs(ldebye - 6.04727364e+00) < FLT_EPSILON);
+    assert(fabs(yd     - 5.18713579e-05) < FLT_EPSILON);
+  }
 
   map_free(map);
   fe_electro_free(fe);
