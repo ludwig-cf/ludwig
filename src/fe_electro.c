@@ -127,10 +127,16 @@ __host__ int fe_electro_create(pe_t * pe, psi_t * psi, fe_electro_t ** pobj) {
     fe->target = fe;
   }
   else {
-    fe_vt_t * vt;
-    /* Device implementation pending */
+    /* Allow this to go forward on the basis that no device calls are
+     * available. */
+    fe_vt_t * vt = NULL;
+
+    tdpAssert(tdpMalloc((void **) &fe->target, sizeof(fe_electro_t)));
+    tdpMemset(fe->target, 0, sizeof(fe_electro_t));
+
     tdpGetSymbolAddress((void **) &vt, tdpSymbol(fe_electro_dvt));
-    pe_fatal(pe, "No device implementation for fe_electro\n");
+    tdpAssert(tdpMemcpy(&fe->target->super.func, &vt, sizeof(fe_vt_t *),
+			tdpMemcpyHostToDevice));
   }
 
   *pobj = fe;
@@ -146,7 +152,12 @@ __host__ int fe_electro_create(pe_t * pe, psi_t * psi, fe_electro_t ** pobj) {
 
 __host__ int fe_electro_free(fe_electro_t * fe) {
 
+  int ndevice = 0;
+
   assert(fe);
+
+  tdpAssert(tdpGetDeviceCount(&ndevice));
+  if (ndevice > 0) tdpAssert(tdpFree(fe->target));
 
   if (fe->mu_ref) free(fe->mu_ref);
   free(fe);
