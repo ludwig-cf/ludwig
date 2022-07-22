@@ -18,7 +18,6 @@
 #include <assert.h>
 #include <float.h>
 #include <math.h>
-#include <stdio.h>
 #include <stdlib.h>
 
 #include "pe.h"
@@ -32,6 +31,7 @@
 #include "psi_stats.h"
 #include "fe_electro.h"
 #include "nernst_planck.h"
+#include "util_fopen.h"
 #include "tests.h"
 
 static int test_nernst_planck_driver(pe_t * pe);
@@ -346,7 +346,7 @@ static int test_io(cs_t * cs, psi_t * psi, int tstep) {
   if (cs_cart_rank(cs) == 0) {
 
     sprintf(filename, "np_test-%d.dat", tstep);
-    out = fopen(filename, "w");
+    out = util_fopen(filename, "w");
     if (out == NULL) pe_fatal(psi->pe, "Could not open %s\n", filename);
 
     for (ic = 1; ic <= ntotal[X]; ic++) {
