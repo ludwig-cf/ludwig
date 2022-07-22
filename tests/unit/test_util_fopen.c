@@ -94,7 +94,9 @@ int test_util_fopen(void) {
     }
     else {
       char buf[BUFSIZ] = {0};
-      fgets(buf, BUFSIZ-1, fp);
+      char * pl = NULL;
+      pl = fgets(buf, BUFSIZ, fp);
+      if (pl == NULL) ifail = -1;
       fclose(fp);
     }
   }
