@@ -46,7 +46,7 @@ int test_lb_prop_suite(void) {
   cs_create(pe, &cs);
   cs_init(cs);
 
-  tdpAssert(tdpGetDeviceCount(&ndevice));
+  tdpGetDeviceCount(&ndevice);
 
   do_test_velocity(pe, cs, 1, LB_HALO_TARGET);
   do_test_velocity(pe, cs, 2, LB_HALO_TARGET);

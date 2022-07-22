@@ -156,7 +156,7 @@ __host__ int fe_electro_free(fe_electro_t * fe) {
 
   assert(fe);
 
-  tdpAssert(tdpGetDeviceCount(&ndevice));
+  tdpGetDeviceCount(&ndevice);
   if (ndevice > 0) tdpAssert(tdpFree(fe->target));
 
   if (fe->mu_ref) free(fe->mu_ref);
