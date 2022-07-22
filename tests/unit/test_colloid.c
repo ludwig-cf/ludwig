@@ -7,18 +7,19 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
+ *  (c) 2010-2022 The University of Edinburgh
+ *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
- *  (c) 2010-2021 The University of Edinburgh
  *
  *****************************************************************************/
 
 #include <assert.h>
 #include <math.h>
-#include <stdio.h>
 #include <stdlib.h>
 
 #include "mpi.h"
 #include "colloid.h"
+#include "util_fopen.h"
 #include "tests.h"
 
 #define TOLERANCE 1.0e-14
@@ -96,7 +97,7 @@ void test_colloid_ascii_io(colloid_state_t * sref, const char * filename) {
 
   assert(sref);
 
-  fp = fopen(filename, "w");
+  fp = util_fopen(filename, "w");
 
   if (fp == NULL) {
     printf("fopen(%s) failed\n", filename);
@@ -108,7 +109,7 @@ void test_colloid_ascii_io(colloid_state_t * sref, const char * filename) {
   }
 
   fp = NULL;
-  fp = fopen(filename, "r");
+  fp = util_fopen(filename, "r");
 
   if (fp == NULL) {
     printf("fopen(%s) failed\n", filename);
@@ -138,7 +139,7 @@ void test_colloid_binary_io(colloid_state_t * sref, const char * filename) {
 
   assert(sref);
 
-  fp = fopen(filename, "w");
+  fp = util_fopen(filename, "w");
   if (fp == NULL) {
     printf("fopen(%s) failed\n", filename);
   }
@@ -149,7 +150,7 @@ void test_colloid_binary_io(colloid_state_t * sref, const char * filename) {
   }
 
   fp = NULL;
-  fp = fopen(filename, "r");
+  fp = util_fopen(filename, "r");
   if (fp == NULL) {
     printf("fopen(%s) failed\n", filename);
   }

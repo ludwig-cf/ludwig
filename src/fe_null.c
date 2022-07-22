@@ -87,6 +87,9 @@ __host__ int fe_null_create(pe_t * pe, fe_null_t ** p) {
   else {
     fe_vt_t * vt = NULL;
 
+    tdpAssert(tdpMalloc((void **) &fe->target, sizeof(fe_null_t)));
+    tdpAssert(tdpMemset(fe->target, 0, sizeof(fe_null_t)));
+
     tdpGetSymbolAddress((void **) &vt, tdpSymbol(fe_null_dvt));
     tdpAssert(tdpMemcpy(&fe->target->super.func, &vt, sizeof(fe_vt_t *),
 			tdpMemcpyHostToDevice));
