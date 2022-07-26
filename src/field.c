@@ -37,6 +37,8 @@
 #include "util.h"
 #include "field.h"
 
+#include "mpi-ext.h"
+
 static int field_write(FILE * fp, int index, void * self);
 static int field_write_ascii(FILE * fp, int index, void * self);
 static int field_read(FILE * fp, int index, void * self);
@@ -1198,6 +1200,10 @@ int create_send_graph(const field_t * field, field_halo_t * h) {
     kernelNodeParams.extra = NULL;
     cudaGraphAddKernelNode(&kernelNode, h->send_graph->graph, NULL,
                              0, &kernelNodeParams);
+
+#if defined(MPIX_CUDA_AWARE_SUPPORT) && MPIX_CUDA_AWARE_SUPPORT
+
+#else
     int i = 1 + h->cv[h->nvel - ireq][X];
     int j = 1 + h->cv[h->nvel - ireq][Y];
     int k = 1 + h->cv[h->nvel - ireq][Z];
@@ -1220,13 +1226,13 @@ int create_send_graph(const field_t * field, field_halo_t * h) {
                               &kernelNode, 
                               1, &memcpyParams);
 
-      cudaGraphNode_t hostNode;
-      h->send_graph->hostCallbackArgs[ireq][0] = (intptr_t)field;
-      h->send_graph->hostCallbackArgs[ireq][1] = (intptr_t)h;
-      h->send_graph->hostCallbackArgs[ireq][2] = (intptr_t)ireq;
-      cudaHostNodeParams hostParams = {0};
-      hostParams.fn = field_halo_send_callback;
-      hostParams.userData = &h->send_graph->hostCallbackArgs[ireq];
+      // cudaGraphNode_t hostNode;
+      // h->send_graph->hostCallbackArgs[ireq][0] = (intptr_t)field;
+      // h->send_graph->hostCallbackArgs[ireq][1] = (intptr_t)h;
+      // h->send_graph->hostCallbackArgs[ireq][2] = (intptr_t)ireq;
+      // cudaHostNodeParams hostParams = {0};
+      // hostParams.fn = field_halo_send_callback;
+      // hostParams.userData = &h->send_graph->hostCallbackArgs[ireq];
       // printf("create_send() hostParams.userData = %d\n", hostParams.userData);
       // intptr_t* tmp = (intptr_t*)hostParams.userData;
       // printf("create_send() field = %d, h = %d, ireq = %d, h->send[ireq] = %d\n", field, h, ireq, h->send[ireq]);
@@ -1237,6 +1243,7 @@ int create_send_graph(const field_t * field, field_halo_t * h) {
       //                       &memcpyNode,
       //                       1, &hostParams);
     }
+#endif
   }
   // char errLog[1000];
   cudaGraphInstantiate(&h->send_graph->graphExec, h->send_graph->graph, NULL, NULL, 0);
@@ -1250,6 +1257,9 @@ int create_recv_graph(const field_t * field, field_halo_t * h) {
   cudaGraphCreate(&h->recv_graph->graph, 0);
   for (int ireq = 1; ireq < h->nvel; ireq++) {
     int rcount = field->nf*field_halo_size(h->rlim[ireq]);
+#if defined(MPIX_CUDA_AWARE_SUPPORT) && MPIX_CUDA_AWARE_SUPPORT
+
+#else
     cudaGraphNode_t memcpyNode;
     int i = 1 + h->cv[h->nvel - ireq][X];
     int j = 1 + h->cv[h->nvel - ireq][Y];
@@ -1268,6 +1278,7 @@ int create_recv_graph(const field_t * field, field_halo_t * h) {
       memcpyParams.kind = cudaMemcpyHostToDevice;
       cudaGraphAddMemcpyNode(&memcpyNode, h->recv_graph->graph, NULL, 0, &memcpyParams);
     }
+#endif
     cudaGraphNode_t node;
     cudaKernelNodeParams kernelNodeParams = {0};
     // h->recv_graph->kernelArgs[ireq][0] = (intptr_t)field->target;
@@ -1284,6 +1295,10 @@ int create_recv_graph(const field_t * field, field_halo_t * h) {
     kernelNodeParams.sharedMemBytes = 0;
     kernelNodeParams.kernelParams = (void **)kernelArgs;
     kernelNodeParams.extra = NULL;
+#if defined(MPIX_CUDA_AWARE_SUPPORT) && MPIX_CUDA_AWARE_SUPPORT
+    cudaGraphAddKernelNode(&node, h->recv_graph->graph, NULL,
+                             0, &kernelNodeParams);
+#else
     if (h->nbrrank[i][j][k] != h->nbrrank[1][1][1]) {
       cudaGraphAddKernelNode(&node, h->recv_graph->graph, &memcpyNode,
                              1, &kernelNodeParams);
@@ -1291,6 +1306,7 @@ int create_recv_graph(const field_t * field, field_halo_t * h) {
       cudaGraphAddKernelNode(&node, h->recv_graph->graph, NULL,
                              0, &kernelNodeParams);
     }
+#endif
   }
   cudaGraphInstantiate(&h->recv_graph->graphExec, h->recv_graph->graph, NULL, NULL, 0);
   return 0;
@@ -1416,6 +1432,10 @@ int field_halo_create(const field_t * field, field_halo_t * h) {
   }
   tdpStreamCreate(&h->stream);
 
+  for (int i = 0; i < 2 * h->nvel; i++) {
+    h->request[i] = MPI_REQUEST_NULL;
+  }
+
   // Device
   int ndevice = 0;
   tdpGetDeviceCount(&ndevice);
@@ -1470,8 +1490,13 @@ int field_halo_post(const field_t * field, field_halo_t * h) {
 
     if (h->nbrrank[i][j][k] == h->nbrrank[1][1][1]) continue; //mcount = 0;
 
-    MPI_Irecv(h->recv[ireq], mcount, MPI_DOUBLE, h->nbrrank[i][j][k],
+#if defined(MPIX_CUDA_AWARE_SUPPORT) && MPIX_CUDA_AWARE_SUPPORT
+    MPI_Irecv(h->recv_d[ireq], mcount, MPI_DOUBLE, h->nbrrank[i][j][k],
 	      tagbase + ireq, h->comm, h->request + ireq);
+#else
+    MPI_Irecv(h->recv[ireq], mcount, MPI_DOUBLE, h->nbrrank[i][j][k],
+            tagbase + ireq, h->comm, h->request + ireq);
+#endif
   }
 
   TIMER_stop(TIMER_FIELD_HALO_IRECV);
@@ -1508,8 +1533,13 @@ int field_halo_post(const field_t * field, field_halo_t * h) {
 
     if (h->nbrrank[i][j][k] == h->nbrrank[1][1][1]) continue;// mcount = 0;
 
-    MPI_Isend(h->send[ireq], mcount, MPI_DOUBLE, h->nbrrank[i][j][k],
+#if defined(MPIX_CUDA_AWARE_SUPPORT) && MPIX_CUDA_AWARE_SUPPORT
+    MPI_Isend(h->send_d[ireq], mcount, MPI_DOUBLE, h->nbrrank[i][j][k],
 	      tagbase + ireq, h->comm, h->request + 27 + ireq);
+#else
+  MPI_Isend(h->send[ireq], mcount, MPI_DOUBLE, h->nbrrank[i][j][k],
+	      tagbase + ireq, h->comm, h->request + 27 + ireq);
+#endif
   }
 // #endif
   TIMER_stop(TIMER_FIELD_HALO_ISEND);
