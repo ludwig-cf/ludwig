@@ -5,7 +5,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2018-2021 The University of Edinburgh
+ *  (c) 2018-2022 The University of Edinburgh
  *
  *  Contributing authors:
  *  Alan Gray (alang@epcc.ed.ac.uk)
@@ -30,6 +30,13 @@ typedef enum tdpMemcpyKind_enum {
   tdpMemcpyDeviceToDevice = 3,
   tdpMemcpyDefault = 4}
   tdpMemcpyKind;
+
+typedef enum tdpDeviceP2PAttr {
+  tdpDevP2PAttrPerformanceRank = 1,
+  tdpDevP2PAttrAccessSupported = 2,
+  tdpDevP2pAttrNativeAtomicSupported = 3,
+  tdpDevP2PAttrArrayAccessSupported = 4
+} tdpDeviceP2PAttr;
 
 /* Device attributes (potentially a lot of them) */
 
@@ -146,6 +153,7 @@ typedef int * tdpStream_t;            /* an opaque handle */
 struct tdpDeviceProp {
   int maxThreadsPerBlock;
   int maxThreadsDim[3];
+  char name[256];
 };
 
 
