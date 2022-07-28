@@ -25,8 +25,13 @@ typedef hipFuncCache_t tdpFuncCache;
 #define tdpFuncCachePreferL1     hipFuncCachePreferL1
 #define tdpFuncCahcePreferEqual  hipFuncCachePreferEqual
 
-typedef hipMemcpyKind tdpMemcpyKind;
-typedef hipDeviceAttribute_t tdpDeviceAttr;
+/* enums */
+
+typedef hipMemcpyKind            tdpMemcpyKind;
+typedef hipDeviceAttribute_t     tdpDeviceAttr;
+typedef hipDeviceP2PAttr         tdpDeviceP2PAttr;
+
+/* defines */
 
 #define tdpDeviceProp hipDeviceProp_t
 
