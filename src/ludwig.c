@@ -447,6 +447,25 @@ static int ludwig_rt(ludwig_t * ludwig) {
  *****************************************************************************/
 
 void ludwig_run(const char * inputfile) {
+#ifdef __NVCC__
+  {
+    int local_rank = -1;
+    {
+        int rank;
+        MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+        MPI_Comm local_comm;
+        MPI_Comm_split_type(MPI_COMM_WORLD, MPI_COMM_TYPE_SHARED, rank, MPI_INFO_NULL, &local_comm);
+        MPI_Comm_rank(local_comm, &local_rank);
+        MPI_Comm_free(&local_comm);
+    }
+    /* Pending a more formal approach */
+    int nd = 0; /* GPU devices per node */
+    int id = 0; /* Assume MPI ranks per node == nd */
+    cudaGetDeviceCount(&nd);
+    id = local_rank % nd;
+    cudaSetDevice(id);
+  }
+#endif
 
   char    filename[FILENAME_MAX];
   char    subdirectory[FILENAME_MAX/2];
@@ -471,16 +490,7 @@ void ludwig_run(const char * inputfile) {
 
   pe_create(MPI_COMM_WORLD, PE_VERBOSE, &ludwig->pe);
   pe_mpi_comm(ludwig->pe, &comm);
-#ifdef __NVCC__
-  {
-    /* Pending a more formal approach */
-    int nd = 0; /* GPU devices per node */
-    int id = 0; /* Assume MPI ranks per node == nd */
-    cudaGetDeviceCount(&nd);
-    id = pe_mpi_rank(ludwig->pe) % nd;
-    cudaSetDevice(id);
-  }
-#endif
+
   rt_create(ludwig->pe, &ludwig->rt);
   rt_read_input_file(ludwig->rt, inputfile);
   rt_info(ludwig->rt);
