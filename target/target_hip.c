@@ -246,7 +246,7 @@ __host__ __device__ tdpError_t tdpDeviceGetCacheConfig(tdpFuncCache * cache) {
 __host__ tdpError_t tdpDeviceGetP2PAttribute(int * value,
 					     tdpDeviceP2PAttr attr,
 					     int srcDevice, int dstDevice) {
-  return cudaDeviceGetP2PAttribute(value, attr, srcDevice, dstDevice);
+  return hipDeviceGetP2PAttribute(value, attr, srcDevice, dstDevice);
 }
 
 __host__ tdpError_t tdpDeviceSetCacheConfig(tdpFuncCache cacheConfig) {
