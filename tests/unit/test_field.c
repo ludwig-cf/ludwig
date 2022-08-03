@@ -17,6 +17,7 @@
 #include <assert.h>
 #include <float.h>
 #include <stdio.h>
+#include <string.h>
 #include <math.h>
 
 #include "pe.h"
@@ -37,6 +38,8 @@ static int test_field_halo(cs_t * cs, field_t * phi);
 
 int do_test_device1(pe_t * pe);
 int test_field_halo_create(pe_t * pe);
+int test_field_write_buf(pe_t * pe);
+int test_field_write_buf_ascii(pe_t * pe);
 
 __global__ void do_test_field_kernel1(field_t * phi);
 
@@ -64,6 +67,10 @@ int test_field_suite(void) {
   do_test_io(pe, 5, IO_FORMAT_BINARY_SERIAL, IO_FORMAT_BINARY);
 
   test_field_halo_create(pe);
+
+  /* Experimental ... */
+  test_field_write_buf(pe);
+  test_field_write_buf_ascii(pe);
 
   pe_info(pe, "PASS     ./unit/test_field\n");
   pe_free(pe);
@@ -479,6 +486,104 @@ int test_field_halo_create(pe_t * pe) {
   test_coords_field_check(cs, 2, 2, field->data, MPI_DOUBLE, test_ref_double1);
 
   field_halo_free(&h);
+
+  field_free(field);
+  cs_free(cs);
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  test_field_write_buf
+ *
+ *  It is convenient to test field_read_buf() at the same time.
+ *
+ *****************************************************************************/
+
+int test_field_write_buf(pe_t * pe) {
+
+  int nf = 3; /* Test field */
+
+  cs_t * cs = NULL;
+  field_t * field = NULL;
+  field_options_t options = field_options_ndata_nhalo(nf, 1);
+
+  assert(pe);
+
+  cs_create(pe, &cs);
+  cs_init(cs);
+  field_create(pe, cs, NULL, "test_write_buf", &options, &field);
+
+  {
+    double array[nf] = {1.0, 2.0, 3.0};
+    char buf[nf*sizeof(double)] = {0};
+    int index = cs_index(cs, 2, 3, 4);
+
+    field_scalar_array_set(field, index, array);
+    field_write_buf(field, index, buf);
+
+    {
+      double val[nf] = {0};
+
+      field_read_buf(field, index + 1, buf);
+      field_scalar_array(field, index + 1, val);
+
+      assert(fabs(val[0] - array[0]) < DBL_EPSILON);
+      assert(fabs(val[1] - array[1]) < DBL_EPSILON);
+      assert(fabs(val[2] - array[2]) < DBL_EPSILON);
+    }
+  }
+
+  field_free(field);
+  cs_free(cs);
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  test_field_write_buf_ascii
+ *
+ *  It is convenient to test field_read_buf_ascii() at the same time.
+ *
+ *****************************************************************************/
+
+int test_field_write_buf_ascii(pe_t * pe) {
+
+  int nf = 5; /* Test field */
+
+  cs_t * cs = NULL;
+  field_t * field = NULL;
+  field_options_t options = field_options_ndata_nhalo(nf, 1);
+
+  cs_create(pe, &cs);
+  cs_init(cs);
+  field_create(pe, cs, NULL, "test_field_write_buf_ascii", &options, &field);
+
+  {
+    double array[nf] = {1.0, 3.0, 2.0, -4.0, -5.0};
+    char buf[BUFSIZ] = {0};
+    int index = cs_index(cs, 1, 2, 3);
+
+    field_scalar_array_set(field, index, array);
+    field_write_buf_ascii(field, index, buf);
+    assert(strnlen(buf, BUFSIZ) == (23*nf + 1)*sizeof(char));
+
+    /* Put the values back in a different location and check */
+
+    {
+      double val[nf] = {0};
+      field_read_buf_ascii(field, index + 1, buf);
+      field_scalar_array(field, index + 1, val);
+
+      assert((val[0] - array[0]) < DBL_EPSILON);
+      assert((val[1] - array[1]) < DBL_EPSILON);
+      assert((val[2] - array[2]) < DBL_EPSILON);
+      assert((val[3] - array[3]) < DBL_EPSILON);
+      assert((val[4] - array[4]) < DBL_EPSILON);      
+    }
+  }
 
   field_free(field);
   cs_free(cs);

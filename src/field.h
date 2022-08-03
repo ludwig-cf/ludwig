@@ -5,7 +5,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2012-2021 The University of Edinburgh
+ *  (c) 2012-2022 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -103,5 +103,11 @@ __host__ __device__ int field_scalar_array(field_t * obj, int index,
 					   double * array);
 __host__ __device__ int field_scalar_array_set(field_t * obj, int index,
 					       const double * array);
+
+
+int field_read_buf(field_t * field, int index, const char * buf);
+int field_read_buf_ascii(field_t * field, int index, const char * buf);
+int field_write_buf(field_t * field, int index, char * buf);
+int field_write_buf_ascii(field_t * field, int index, char * buf);
 
 #endif

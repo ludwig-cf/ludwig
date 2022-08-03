@@ -951,6 +951,83 @@ static int field_write(FILE * fp, int index, void * self) {
   return 0;
 }
 
+int field_write_buf(field_t * field, int index, char * buf) {
+
+  /* const field_t * field = (const field_t *) self;*/
+  double array[NQAB] = {0};
+
+  assert(field);
+
+  field_scalar_array(field, index, array);
+  memcpy(buf, array, field->nf*sizeof(double));
+
+  return 0;
+}
+
+int field_read_buf(field_t * field, int index, const char * buf) {
+
+  double array[NQAB] = {0};
+
+  assert(field);
+  assert(buf);
+
+  memcpy(array, buf, field->nf*sizeof(double));
+  field_scalar_array_set(field, index, array);
+
+  return 0;
+}
+
+int field_write_buf_ascii(field_t * field, int index, char * buf) {
+
+  /* const field_t * field = (const field_t *) self;*/
+  double array[NQAB] = {0};
+
+  int nbyte = 23;
+  int ifail = 0;
+
+  assert(field);
+  assert(buf);
+
+  field_scalar_array(field, index, array);
+
+  /* We will overwrite any `\0` coming from sprintf() */
+  /* Use tmp with +1 to allow for the \0 */
+
+  for (int n = 0; n < field->nf; n++) {
+    char tmp[nbyte + 1] = {0};
+    int np = snprintf(tmp, nbyte + 1, " %22.15e", array[n]);
+    if (np != nbyte) ifail = 1;
+    memcpy(buf + n*nbyte, tmp, nbyte*sizeof(char));
+    if (n == field->nf - 1) {
+      np = snprintf(tmp, 2, "\n");
+      if (np != 1) ifail = 2;
+      memcpy(buf + field->nf*nbyte, tmp, sizeof(char)); 
+    }
+  }
+
+  return ifail;
+}
+
+int field_read_buf_ascii(field_t * field, int index, const char * buf) {
+
+  double array[NQAB] = {0};
+
+  int nbyte = 23;
+  int ifail = 0;
+
+  assert(field);
+  assert(buf);
+
+  for (int n = 0; n < field->nf; n++) {
+    int nr = sscanf(buf + n*nbyte, "%le", array + n);
+    if (nr != 1) ifail = 1;
+  }
+
+  field_scalar_array_set(field, index, array);
+
+  return ifail;
+}
+
 /*****************************************************************************
  *
  *  field_write_ascii
