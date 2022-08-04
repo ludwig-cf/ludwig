@@ -979,10 +979,9 @@ int field_read_buf(field_t * field, int index, const char * buf) {
 
 int field_write_buf_ascii(field_t * field, int index, char * buf) {
 
-  /* const field_t * field = (const field_t *) self;*/
-  double array[NQAB] = {0};
+  const int nbyte = 23;
 
-  int nbyte = 23;
+  double array[NQAB] = {0};
   int ifail = 0;
 
   assert(field);
@@ -994,7 +993,7 @@ int field_write_buf_ascii(field_t * field, int index, char * buf) {
   /* Use tmp with +1 to allow for the \0 */
 
   for (int n = 0; n < field->nf; n++) {
-    char tmp[nbyte + 1] = {0};
+    char tmp[BUFSIZ] = {0};
     int np = snprintf(tmp, nbyte + 1, " %22.15e", array[n]);
     if (np != nbyte) ifail = 1;
     memcpy(buf + n*nbyte, tmp, nbyte*sizeof(char));
@@ -1010,9 +1009,9 @@ int field_write_buf_ascii(field_t * field, int index, char * buf) {
 
 int field_read_buf_ascii(field_t * field, int index, const char * buf) {
 
-  double array[NQAB] = {0};
+  const int nbyte = 23;
 
-  int nbyte = 23;
+  double array[NQAB] = {0};
   int ifail = 0;
 
   assert(field);

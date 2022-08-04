@@ -516,15 +516,15 @@ int test_field_write_buf(pe_t * pe) {
   field_create(pe, cs, NULL, "test_write_buf", &options, &field);
 
   {
-    double array[nf] = {1.0, 2.0, 3.0};
-    char buf[nf*sizeof(double)] = {0};
+    double array[3] = {1.0, 2.0, 3.0};
+    char buf[3*sizeof(double)] = {0};
     int index = cs_index(cs, 2, 3, 4);
 
     field_scalar_array_set(field, index, array);
     field_write_buf(field, index, buf);
 
     {
-      double val[nf] = {0};
+      double val[3] = {0};
 
       field_read_buf(field, index + 1, buf);
       field_scalar_array(field, index + 1, val);
@@ -562,7 +562,7 @@ int test_field_write_buf_ascii(pe_t * pe) {
   field_create(pe, cs, NULL, "test_field_write_buf_ascii", &options, &field);
 
   {
-    double array[nf] = {1.0, 3.0, 2.0, -4.0, -5.0};
+    double array[5] = {1.0, 3.0, 2.0, -4.0, -5.0};
     char buf[BUFSIZ] = {0};
     int index = cs_index(cs, 1, 2, 3);
 
@@ -573,7 +573,7 @@ int test_field_write_buf_ascii(pe_t * pe) {
     /* Put the values back in a different location and check */
 
     {
-      double val[nf] = {0};
+      double val[5] = {0};
       field_read_buf_ascii(field, index + 1, buf);
       field_scalar_array(field, index + 1, val);
 
