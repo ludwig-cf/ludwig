@@ -14,6 +14,7 @@
 #ifndef LUDWIG_IO_AGGR_BUF_H
 #define LUDWIG_IO_AGGR_BUF_H
 
+#include <stdlib.h>
 #include "cs_limits.h"
 
 typedef struct io_aggr_buf_s io_aggr_buf_t;
