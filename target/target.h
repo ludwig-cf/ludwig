@@ -35,6 +35,10 @@
 
 /* Device management */
 
+__host__ tdpError_t tdpDeviceGetP2PAttribute(int * value,
+					     tdpDeviceP2PAttr attr,
+					     int srcDevice,
+					     int dstDevice);
 __host__ tdpError_t tdpDeviceSetCacheConfig(tdpFuncCache cacheConfig);
 __host__ tdpError_t tdpGetDeviceProperties(struct tdpDeviceProp * prop, int);
 __host__ tdpError_t tdpSetDevice(int device);
@@ -75,6 +79,11 @@ __host__ tdpError_t tdpMemcpy(void * dst, const void * src, size_t count,
 			      tdpMemcpyKind kind);
 __host__ tdpError_t tdpMemcpyAsync(void * dst, const void * src, size_t count,
 				   tdpMemcpyKind kind, tdpStream_t stream);
+__host__ tdpError_t tdpMemcpyPeer(void * dst, int dstDevice, const void * src,
+				  int srcDevice, size_t count);
+__host__ tdpError_t tdpMemcpyPeerAsync(void * dst, int dstDevice,
+				       const void * src, int srcDevice,
+				       size_t count, tdpStream_t stream);
 __host__ tdpError_t tdpMemset(void * devPtr, int value, size_t count);
 
 
@@ -95,6 +104,14 @@ __host__ tdpError_t tdpMemcpyToSymbol(void * symbol, const void * src,
 				      size_t count, size_t offset,
 				      tdpMemcpyKind kind);
 #endif
+
+/* Peer memory access */
+
+__host__ tdpError_t tdpDeviceCanAccessPeer(int * canAccessPeer, int device,
+					   int peerDevice);
+__host__ tdpError_t tdpDeviceDisablePeerAccess(int peerDevice);
+__host__ tdpError_t tdpDeviceEnablePeerAccess(int peerDevice,
+					      unsigned int flags);
 
 /* Additional API */
 

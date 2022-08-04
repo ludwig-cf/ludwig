@@ -235,6 +235,12 @@ __host__ __device__ tdpError_t tdpDeviceGetCacheConfig(tdpFuncCache * cache) {
   return cudaDeviceGetCacheConfig(cache);
 }
 
+__host__ tdpError_t tdpDeviceGetP2PAttribute(int * value,
+					     tdpDeviceP2PAttr attr,
+					     int srcDevice, int dstDevice) {
+  return cudaDeviceGetP2PAttribute(value, attr, srcDevice, dstDevice);
+}
+
 __host__ tdpError_t tdpDeviceSetCacheConfig(tdpFuncCache cacheConfig) {
 
   return cudaDeviceSetCacheConfig(cacheConfig);
@@ -334,6 +340,20 @@ __host__ tdpError_t tdpMemcpyAsync(void * dst, const void * src, size_t count,
   return cudaMemcpyAsync(dst, src, count, kind, stream);
 }
 
+__host__ tdpError_t tdpMemcpyPeer(void * dst, int dstDevice, const void * src,
+				  int srcDevice, size_t count) {
+
+  return cudaMemcpyPeer(dst, dstDevice, src, srcDevice, count);
+}
+
+__host__ tdpError_t tdpMemcpyPeerAsync(void * dst, int dstDevice,
+				       const void * src, int srcDevice,
+				       size_t count, tdpStream_t stream) {
+
+  return cudaMemcpyPeerAsync(dst, dstDevice, src, srcDevice, count, stream);
+}
+
+
 __host__ __device__ tdpError_t tdpMalloc(void ** devptr, size_t size) {
 
   return cudaMalloc(devptr, size);
@@ -353,4 +373,21 @@ __host__ tdpError_t tdpHostAlloc(void ** phost, size_t size,
 				 unsigned int flags) {
 
   return cudaHostAlloc(phost, size, flags);
+}
+
+__host__ tdpError_t tdpDeviceCanAccessPeer(int * canAccessPeer, int device,
+					   int peerDevice) {
+
+  return cudaDeviceCanAccessPeer(canAccessPeer, device, peerDevice);
+}
+
+__host__ tdpError_t tdpDeviceDisablePeerAccess(int peerDevice) {
+
+  return cudaDeviceDisablePeerAccess(peerDevice);
+}
+
+__host__ tdpError_t tdpDeviceEnablePeerAccess(int peerDevice,
+					      unsigned int flags) {
+
+  return cudaDeviceEnablePeerAccess(peerDevice, flags);
 }

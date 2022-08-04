@@ -25,18 +25,32 @@ typedef cudaFuncCache tdpFuncCache;
 #define tdpFuncCachePreferL1     cudaFuncCachePreferL1
 #define tdpFuncCahcePreferEqual  cudaFuncCachePreferEqual
 
-typedef cudaMemcpyKind tdpMemcpyKind;
-typedef cudaDeviceAttr tdpDeviceAttr;
+/* enums */
 
-#define tdpDeviceProp cudaDeviceProp
+typedef cudaMemcpyKind    tdpMemcpyKind;
+typedef cudaDeviceAttr    tdpDeviceAttr;
+typedef cudaDeviceP2PAttr tdpDeviceP2PAttr;
 
+/* defines */
+
+#define tdpDeviceProp           cudaDeviceProp
 #define tdpDevAttrManagedMemory cudaDevAttrManagedMemory
+#define tdpSuccess              cudaSuccess
 
-#define tdpSuccess cudaSuccess
+/* cudaMemcpyKind */
+
 #define tdpMemcpyHostToDevice cudaMemcpyHostToDevice
 #define tdpMemcpyDeviceToHost cudaMemcpyDeviceToHost
 #define tdpMemcpyHostToHost cudaMemcpyHostToHost
 #define tdpMemcpyDeviceToDevice cudaMemcpyDeviceToDevice
+
+/* cudaDeviceP2PAttr */
+/* Note "tdpDevP@PAttrArray..." */
+
+#define tdpDevP2PAttrPerformanceRank       cudaDevP2PAttrPerformanceRank
+#define tdpDevP2PAttrAccessSupported       cudaDevP2PAttrAccessSupported
+#define tdpDevP2PAttrNativeAtomicSupported cudaDevP2PAttrNativeAtomicSupported
+#define tdpDevP2PAttrArrayAccessSupported  cudaDevP2PAttrCudaArrayAccessSupported
 
 #define tdpMemAttachHost   cudaMemAttachHost
 #define tdpMemAttachGlobal cudaMemAttachGlobal
