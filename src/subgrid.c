@@ -611,6 +611,7 @@ int subgrid_flux_mask(pe_t * pe, colloids_info_t * cinfo, field_t * flux_mask, r
   int my_id, id, totnum_ids, hole_id = -1, ortho_id = -1, centre_id = -1;
   int centrefound = 0, holefound = 0, orthofound = 0;
   int mask_phi_switch, mask_psi_switch, vesicle_switch, reaction_switch;
+  int timestep, writefreq;
 
   double m[3] = {0., 0., 0.}, n[3] = {0., 0., 0.}, ijk[3];
   double r[3], rcentre[3], rhole[3], rortho[3], rcentre_local[3], rsq;
@@ -619,18 +620,24 @@ int subgrid_flux_mask(pe_t * pe, colloids_info_t * cinfo, field_t * flux_mask, r
   double radius, gaussr;  
   double permeability[2];
   double kappa, kappa1, kappam1;
+  double totphi_vesicle_local = 0.0, totphi_box_local = 0.0, totphi_vesicle, totphi_box;
 
   char reaction_model[BUFSIZ];
+
+  FILE * fp;
+
+  colloid_t * pc;
+  physics_t * phys = NULL;
 
   MPI_Comm comm;
   MPI_Status status;
   cs_cart_comm(cinfo->cs, &comm);
 
-  colloid_t * pc;
-  physics_t * phys = NULL;
 
   physics_ref(&phys);
   physics_rvesicle(phys, &radius);
+
+  timestep = physics_control_timestep(phys);
 
   cs_nlocal_offset(cinfo->cs, offset);
   cs_nlocal(cinfo->cs, nlocal);
@@ -639,6 +646,7 @@ int subgrid_flux_mask(pe_t * pe, colloids_info_t * cinfo, field_t * flux_mask, r
   MPI_Comm_size(comm, &totnum_ids);
   
   assert(cinfo);
+
 
   /* Loop through all cells (including the halo cells) and set
    * the mask at each node to 1 */
@@ -652,6 +660,7 @@ int subgrid_flux_mask(pe_t * pe, colloids_info_t * cinfo, field_t * flux_mask, r
     }
   }
 
+  rt_int_parameter(rt, "freq_write", &writefreq);
   vesicle_switch = rt_switch(rt, "vesicle_switch");
 
   if (vesicle_switch) {
@@ -840,6 +849,13 @@ int subgrid_flux_mask(pe_t * pe, colloids_info_t * cinfo, field_t * flux_mask, r
 	  }
 	}
 
+	if (timestep % writefreq == 0) {
+	  totphi_box_local += phi->data[addr_rank1(phi->nsites, 2, index, 0)];
+	  if (rnorm < radius - std_width - 2) {
+	    totphi_vesicle_local += phi->data[addr_rank1(phi->nsites, 2, index, 0)];
+	  }
+	}
+
 	// ASSIGN MASK VALUE
 
 	// To avoid dividing by 0
@@ -892,6 +908,17 @@ int subgrid_flux_mask(pe_t * pe, colloids_info_t * cinfo, field_t * flux_mask, r
     }
   }
 
+  // COMMUNICATE TOTPHI
+
+  if (timestep % writefreq == 0) {
+    MPI_Reduce(&totphi_vesicle_local, &totphi_vesicle, 1, MPI_DOUBLE, MPI_SUM, 0, comm);
+    MPI_Reduce(&totphi_box_local, &totphi_box, 1, MPI_DOUBLE, MPI_SUM, 0, comm);
+    if (my_id == 0) {
+      fp = fopen("totphi.txt", "a");
+      fprintf(fp, "%14.7e,       %14.7e\n", totphi_vesicle, totphi_box);
+      fclose(fp);
+    }
+  }
   return 0;
 }
 
