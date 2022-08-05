@@ -40,6 +40,11 @@ int do_test_device1(pe_t * pe);
 int test_field_halo_create(pe_t * pe);
 int test_field_write_buf(pe_t * pe);
 int test_field_write_buf_ascii(pe_t * pe);
+int test_field_io_aggr_pack(pe_t * pe);
+
+int util_field_data_check(field_t * field);
+int util_field_data_check_set(field_t * field);
+
 
 __global__ void do_test_field_kernel1(field_t * phi);
 
@@ -71,6 +76,7 @@ int test_field_suite(void) {
   /* Experimental ... */
   test_field_write_buf(pe);
   test_field_write_buf_ascii(pe);
+  test_field_io_aggr_pack(pe);
 
   pe_info(pe, "PASS     ./unit/test_field\n");
   pe_free(pe);
@@ -587,6 +593,160 @@ int test_field_write_buf_ascii(pe_t * pe) {
 
   field_free(field);
   cs_free(cs);
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ * test_field_io_aggr_pack
+ *
+ *****************************************************************************/
+
+int test_field_io_aggr_pack(pe_t * pe) {
+
+  int nf = 5; /* Test field */
+
+  cs_t * cs = NULL;
+  field_t * field = NULL;
+  field_options_t options = field_options_ndata_nhalo(nf, 1);
+
+  assert(pe);
+
+  cs_create(pe, &cs);
+  cs_init(cs);
+  field_create(pe, cs, NULL, "test_field_io_aggr_pack", &options, &field);
+
+  /* This should be elsewhere as part of test_field_create() */
+  {
+    /* Note one can use == with pre-defined data types */
+    assert(field->aggr.asc_etype == MPI_CHAR);
+    assert(field->aggr.bin_etype == MPI_DOUBLE);
+    assert(field->aggr.asc_esize == 23*sizeof(char));
+    assert(field->aggr.bin_esize == field->nf*sizeof(double));
+  }
+
+  {
+    int nlocal[3] = {0};
+    cs_nlocal(cs, nlocal);
+    {
+      cs_limits_t lim = {1, nlocal[X], 1, nlocal[Y], 1, nlocal[Z]};
+      io_aggr_buf_t buf = {0};
+
+      io_aggr_buf_create(field->aggr.bin_esize, lim, &buf);
+
+      util_field_data_check_set(field);
+      field_io_aggr_pack(field, buf);
+
+      /* Are the values in the buffer correct? */
+      /* Clear existing values and unpack. */
+
+      memset(field->data, 0, field->nsites*field->nf*sizeof(double));
+
+      field_io_aggr_unpack(field, buf);
+      util_field_data_check(field);
+
+      io_aggr_buf_free(&buf);
+    }
+  }
+
+  field_free(field);
+  cs_free(cs);
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  field_unique_value
+ *
+ *  Set a unique value based on global position.
+ *
+ *****************************************************************************/
+
+int64_t field_unique_value(field_t * f, int ic, int jc, int kc, int n) {
+
+  int64_t ival = INT64_MIN;
+
+  int ntotal[3] = {0};
+  int nlocal[3] = {0};
+  int noffset[3] = {0};
+
+  assert(f);
+
+  cs_ntotal(f->cs, ntotal);
+  cs_nlocal_offset(f->cs, noffset);
+  cs_nlocal(f->cs, nlocal);
+
+  {
+    int strz = 1;
+    int stry = strz*ntotal[Z];
+    int strx = stry*ntotal[Y];
+    int nstr = strx*f->nf;
+    int ix = noffset[X] + ic;
+    int iy = noffset[Y] + jc;
+    int iz = noffset[Z] + kc;
+    ival = nstr*n + strx*ix + stry*iy + strz*iz;
+  }
+
+  return ival;
+}
+
+/*****************************************************************************
+ *
+ *  util_field_data_check_set
+ *
+ *****************************************************************************/
+
+int util_field_data_check_set(field_t * field) {
+
+  int nlocal[3] = {0};
+
+  assert(field);
+
+  cs_nlocal(field->cs, nlocal);
+
+  for (int ic = 1; ic <= nlocal[X]; ic++) {
+    for (int jc = 1; jc <= nlocal[Y]; jc++) {
+      for (int kc = 1; kc <= nlocal[Z]; kc++) {
+	int index = cs_index(field->cs, ic, jc, kc);
+	for (int n = 0; n < field->nf; n++) {
+	  int faddr = addr_rank1(field->nsites, field->nf, index, n);
+	  field->data[faddr] = 1.0*field_unique_value(field, ic, jc, kc, n);
+	}
+      }
+    }
+  }
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  util_field_data_check
+ *
+ *****************************************************************************/
+
+int util_field_data_check(field_t * field) {
+
+  int nlocal[3] = {0};
+
+  assert(field);
+
+  cs_nlocal(field->cs, nlocal);
+
+  for (int ic = 1; ic <= nlocal[X]; ic++) {
+    for (int jc = 1; jc <= nlocal[Y]; jc++) {
+      for (int kc = 1; kc <= nlocal[Z]; kc++) {
+	int index = cs_index(field->cs, ic, jc, kc);
+	for (int n = 0; n < field->nf; n++) {
+	  int faddr = addr_rank1(field->nsites, field->nf, index, n);
+	  double fval = 1.0*field_unique_value(field, ic, jc, kc, n);
+	  assert(fabs(field->data[faddr] - fval) < DBL_EPSILON);
+	}
+      }
+    }
+  }
 
   return 0;
 }

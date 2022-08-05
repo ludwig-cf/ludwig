@@ -98,6 +98,14 @@ __host__ int field_create(pe_t * pe, cs_t * cs, lees_edw_t * le,
   field_halo_create(obj, &obj->h);
   obj->opts = *opts;
 
+  /* I/O aggregator */
+  {
+    obj->aggr.asc_etype = MPI_CHAR;
+    obj->aggr.bin_etype = MPI_DOUBLE;
+    obj->aggr.asc_esize = 23*sizeof(char); /* 23 to be rationalised */
+    obj->aggr.bin_esize = obj->opts.ndata*sizeof(double);
+  }
+
   if (obj->opts.haloverbose) field_halo_info(obj);
 
   *pobj = obj;
@@ -951,9 +959,16 @@ static int field_write(FILE * fp, int index, void * self) {
   return 0;
 }
 
+/*****************************************************************************
+ *
+ *  field_write_buf
+ *
+ *  Per-lattice site binary write.
+ *
+ *****************************************************************************/
+
 int field_write_buf(field_t * field, int index, char * buf) {
 
-  /* const field_t * field = (const field_t *) self;*/
   double array[NQAB] = {0};
 
   assert(field);
@@ -963,6 +978,14 @@ int field_write_buf(field_t * field, int index, char * buf) {
 
   return 0;
 }
+
+/*****************************************************************************
+ *
+ *  field_read_buf
+ *
+ *  Per lattice site read (binary)
+ *
+ *****************************************************************************/
 
 int field_read_buf(field_t * field, int index, const char * buf) {
 
@@ -976,6 +999,14 @@ int field_read_buf(field_t * field, int index, const char * buf) {
 
   return 0;
 }
+
+/*****************************************************************************
+ *
+ *  field_write_buf_ascii
+ *
+ *  Per lattice site write (binary).
+ *
+ *****************************************************************************/
 
 int field_write_buf_ascii(field_t * field, int index, char * buf) {
 
@@ -1007,6 +1038,14 @@ int field_write_buf_ascii(field_t * field, int index, char * buf) {
   return ifail;
 }
 
+/*****************************************************************************
+ *
+ *  field_read_buf_ascii
+ *
+ *  Per lattice site read (ascii).
+ *
+ *****************************************************************************/
+
 int field_read_buf_ascii(field_t * field, int index, const char * buf) {
 
   const int nbyte = 23;
@@ -1026,6 +1065,78 @@ int field_read_buf_ascii(field_t * field, int index, const char * buf) {
 
   return ifail;
 }
+
+/*****************************************************************************
+ *
+ *  field_io_aggr_pack
+ *
+ *  Aggregator for packing the field to io_aggr_buf_t.
+ *
+ *****************************************************************************/
+
+int field_io_aggr_pack(field_t * field, io_aggr_buf_t aggr) {
+
+  assert(field);
+  assert(aggr.buf);
+
+  #pragma omp parallel
+  {
+    int iasc = field->opts.iodata.output.iorformat == IO_RECORD_ASCII;
+    int ibin = field->opts.iodata.output.iorformat == IO_RECORD_BINARY;
+
+    #pragma omp for
+    for (int ib = 0; ib < cs_limits_size(aggr.lim); ib++) {
+      int ic = cs_limits_ic(aggr.lim, ib);
+      int jc = cs_limits_jc(aggr.lim, ib);
+      int kc = cs_limits_kc(aggr.lim, ib);
+
+      /* Read/write data for (ic,jc,kc) */
+      int index = cs_index(field->cs, ic, jc, kc);
+      int offset = ib*aggr.szelement;
+      if (iasc) field_write_buf_ascii(field, index, aggr.buf + offset);
+      if (ibin) field_write_buf(field, index, aggr.buf + offset);
+    }
+  }
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  field_io_aggr_unpack
+ *
+ *  Aggregator for the upack (read) stage.
+ *
+ *****************************************************************************/
+
+int field_io_aggr_unpack(field_t * field, io_aggr_buf_t aggr) {
+
+  assert(field);
+  assert(aggr.buf);
+
+  #pragma omp parallel
+  {
+    int iasc = field->opts.iodata.input.iorformat == IO_RECORD_ASCII;
+    int ibin = field->opts.iodata.input.iorformat == IO_RECORD_BINARY;
+    assert(iasc ^ ibin); /* one or other */
+
+    #pragma omp for
+    for (int ib = 0; ib < cs_limits_size(aggr.lim); ib++) {
+      int ic = cs_limits_ic(aggr.lim, ib);
+      int jc = cs_limits_jc(aggr.lim, ib);
+      int kc = cs_limits_kc(aggr.lim, ib);
+
+      /* Read/write data for (ic,jc,kc) */
+      int index = cs_index(field->cs, ic, jc, kc);
+      int offset = ib*aggr.szelement;
+      if (iasc) field_read_buf_ascii(field, index, aggr.buf + offset);
+      if (ibin) field_read_buf(field, index, aggr.buf + offset);
+    }
+  }
+
+  return 0;
+}
+
 
 /*****************************************************************************
  *
