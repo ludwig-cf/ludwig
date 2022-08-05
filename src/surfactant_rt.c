@@ -25,7 +25,6 @@
 #include "field_phi_init_rt.h"
 #include "field_psi_init_rt.h"
 
-int field_init_combine_insert(field_t * array, field_t * scalar, int nfin);
 
 /****************************************************************************
  *

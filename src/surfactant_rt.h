@@ -24,4 +24,5 @@ __host__ int fe_surf_phi_init_rt(pe_t * pe, rt_t * rt, fe_surf_t * fe,
 				 field_t * phi);
 __host__ int fe_surf_psi_init_rt(pe_t * pe, rt_t * rt, fe_surf_t * fe,
 				 field_t * phi);
+int field_init_combine_insert(field_t * array, field_t * scalar, int nfin);
 #endif
