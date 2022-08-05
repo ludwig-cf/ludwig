@@ -9,6 +9,8 @@
  *
  *  From an idea appearing in LAMMPS.
  *
+ *  (c) 2022 The University of Edinburgh
+ *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *
  *****************************************************************************/
@@ -31,6 +33,8 @@ typedef MPI_Handle MPI_Datatype;
 typedef MPI_Handle MPI_Request;
 typedef MPI_Handle MPI_Op;
 typedef MPI_Handle MPI_Errhandler;
+typedef MPI_Handle MPI_File;
+typedef MPI_Handle MPI_Info;
 
 typedef struct {
   int MPI_SOURCE;
@@ -41,9 +45,11 @@ typedef struct {
 #define MPI_STATUSES_IGNORE ((MPI_Status *) 0)
 
 /* MPI_Aint is a signed integer. Prefer intmax_t over intptr_t as
-   the latter is optional in the standard. */ 
+   the latter is optional in the standard. */
+/* MPI_Offset is a large integer. */
 
 typedef intmax_t MPI_Aint;
+typedef intmax_t MPI_Offset;
 
 /* Defined constants (see Annex A.2) */
 
@@ -102,6 +108,8 @@ enum reserved_communicators{MPI_COMM_WORLD, MPI_COMM_SELF};
 #define MPI_REQUEST_NULL    -4
 #define MPI_OP_NULL         -5
 #define MPI_ERRHANDLER_NULL -6
+#define MPI_FILE_NULL       -7
+#define MPI_INFO_NULL       -8
 
 /* Special values */
 
@@ -113,6 +121,22 @@ enum reserved_communicators{MPI_COMM_WORLD, MPI_COMM_SELF};
 #define MPI_THREAD_FUNNELED    2
 #define MPI_THREAD_SERIALIZED  3
 #define MPI_THREAD_MULTIPLE    4
+
+/* MPI_ORDER  */
+
+enum mpi_order_enum {MPI_ORDER_C, MPI_ORDER_FORTRAN};
+
+/* MPI File amodes (bitmask) */
+
+#define MPI_MODE_RDONLY            1
+#define MPI_MODE_RDWR              2
+#define MPI_MODE_WRONLY            4
+#define MPI_MODE_CREATE            8
+#define MPI_MODE_EXCL             16
+#define MPI_MODE_DELETE_ON_CLOSE  32
+#define MPI_MODE_UNIQUE_OPEN      64
+#define MPI_MODE_SEQUENTIAL      128
+#define MPI_MODE_APPEND          256
 
 /* Interface */
 
@@ -226,6 +250,26 @@ int MPI_Type_create_struct(int count, int * arry_of_blocklens,
 int MPI_Type_create_resized(MPI_Datatype oldtype, MPI_Aint ub, MPI_Aint extent,
 			    MPI_Datatype * newtype);
 int MPI_Type_get_extent(MPI_Datatype handle, MPI_Aint * lb, MPI_Aint *extent);
+
+/* MPI IO related */
+
+int MPI_File_open(MPI_Comm comm, const char * filename, int amode,
+		  MPI_Info info, MPI_File * fh);
+int MPI_File_close(MPI_File * fh);
+int MPI_File_delete(const char * filename, MPI_Info info);
+int MPI_Type_create_subarray(int ndims, const int * array_of_sizes,
+			     const int * array_of_subsizes,
+			     const int * array_of_starts,
+			     int order,
+			     MPI_Datatype oldtype,
+			     MPI_Datatype * newtype);
+int MPI_File_set_view(MPI_File fh, MPI_Offset disp, MPI_Datatype etype,
+		      MPI_Datatype filetype, const char * datarep,
+		      MPI_Info info);
+int MPI_File_read_all(MPI_File fh, void * buf, int count,
+		      MPI_Datatype datatype, MPI_Status * status);
+int MPI_File_write_all(MPI_File fh, const void * buf, int count,
+		       MPI_Datatype datatype, MPI_Status * status);
 
 #ifdef __cplusplus
 }

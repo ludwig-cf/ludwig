@@ -10,6 +10,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#include <unistd.h>
+
 #include "mpi.h"
 
 static MPI_Comm comm_ = MPI_COMM_WORLD;
@@ -21,6 +23,7 @@ static int test_mpi_allgather(void);
 static int test_mpi_type_contiguous(void);
 static int test_mpi_type_create_struct(void);
 static int test_mpi_op_create(void);
+static int test_mpi_file_open(void);
 
 int main (int argc, char ** argv) {
 
@@ -40,6 +43,8 @@ int main (int argc, char ** argv) {
   test_mpi_type_contiguous();
   test_mpi_type_create_struct();
   test_mpi_op_create();
+
+  test_mpi_file_open();
 
   ireturn = MPI_Finalize();
   assert(ireturn == MPI_SUCCESS);
@@ -334,4 +339,56 @@ static int test_mpi_op_create(void) {
   assert(op == MPI_OP_NULL);
 
   return MPI_SUCCESS;
+}
+
+/*****************************************************************************
+ *
+ *  test_mpi_file_open
+ *
+ *****************************************************************************/
+
+int test_mpi_file_open(void) {
+
+  MPI_Comm comm = MPI_COMM_WORLD;
+  MPI_Info info = MPI_INFO_NULL;
+
+  {
+    /* fopen "r". We must have an existing file. */
+    MPI_File fh = MPI_FILE_NULL;
+    MPI_File_open(comm, "/dev/null", MPI_MODE_RDONLY, info, &fh);
+    assert(fh != MPI_FILE_NULL);
+    MPI_File_close(&fh);
+    assert(fh == MPI_FILE_NULL);
+  }
+
+  {
+    /* fopen "w" */
+    MPI_File fh = MPI_FILE_NULL;
+    MPI_File_open(comm, "zw.dat", MPI_MODE_WRONLY+MPI_MODE_CREATE, info, &fh);
+    assert(fh != MPI_FILE_NULL);
+    MPI_File_close(&fh);
+    assert(fh == MPI_FILE_NULL);
+    unlink("zw.dat");
+  }
+
+  {
+    /* fopen "a" */
+    MPI_File fh = MPI_FILE_NULL;
+    MPI_File_open(comm, "z.dat",  MPI_MODE_WRONLY+MPI_MODE_APPEND, info, &fh);
+    assert(fh != MPI_FILE_NULL);
+    MPI_File_close(&fh);
+    assert(fh == MPI_FILE_NULL);
+  }
+
+  {
+    /* fopen "r+" */
+    MPI_File fh = MPI_FILE_NULL;
+    MPI_File_open(comm, "z.dat", MPI_MODE_RDWR, info, &fh);
+    assert(fh != MPI_FILE_NULL);
+    MPI_File_close(&fh);
+    assert(fh == MPI_FILE_NULL);
+    unlink("z.dat");
+  }
+
+  return 0;
 }

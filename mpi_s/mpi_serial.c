@@ -4,18 +4,21 @@
  *
  *  Library to replace MPI in serial.
  *
- *  From an idea appearing in, for example,  LAMMPS.
+ *  From an idea appearing in, for example, LAMMPS, and elsewhere.
  *
- *    Point-to-point communications: will terminate.
+ *    Point-to-point communications: may terminate.
  *    Collective communications: copy for basic datatypes
  *    Groups, Contexts, Comunicators: mostly no-operations
  *    Process Topologies: no operations
  *    Environmental inquiry: mostly operational
+ *    MPI-IO: basic operations
+ *
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2021 The University of Edinburgh
+ *  (c) 2021-2022 The University of Edinburgh
+ *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *
  *****************************************************************************/
@@ -42,18 +45,27 @@
 
 #define MAX_CART_COMM  16
 #define MAX_USER_DT    32
+#define MAX_USER_FILE  16
 
 /* We are not going to deal with all possible data types; encode
  * what we have ... */
 enum dt_flavour {DT_NOT_IMPLEMENTED = 0, DT_CONTIGUOUS, DT_VECTOR, DT_STRUCT};
 
 typedef struct internal_data_type_s data_t;
+typedef struct internal_file_view_s file_t;
 
 struct internal_data_type_s {
   MPI_Datatype handle;       /* User space handle [in suitable range] */
   int          bytes;        /* sizeof */
   int          commit;       /* Commited? */
   int          flavour;      /* Contiguous types only at present */
+};
+
+struct internal_file_view_s {
+  FILE * fp;                    /* file pointer */
+  MPI_Offset   disp;            /* e.g., from MPI_File_set_view() */
+  MPI_Datatype etype;
+  MPI_Datatype filetype;
 };
 
 typedef struct mpi_info_s mpi_info_t;
@@ -66,6 +78,8 @@ struct mpi_info_s {
   data_t dt[MAX_USER_DT];        /* Internal information per data type */
   int ndatatypelast;             /* Current free list extent */
   int dtfreelist[MAX_USER_DT];   /* Free list */
+
+  FILE * filelist[MAX_USER_FILE]; /* Open file handle -> pointer table */
 };
 
 static mpi_info_t * mpi_info = NULL;
@@ -78,6 +92,9 @@ static int mpi_data_type_add(mpi_info_t * ctxt, const data_t * dt,
 			     MPI_Datatype * newtype);
 static int mpi_data_type_free(mpi_info_t * ctxt, MPI_Datatype * handle);
 static int mpi_data_type_handle(mpi_info_t * ctxt, MPI_Datatype handle);
+
+static MPI_File mpi_file_handle_retain(mpi_info_t * ctxt, FILE * fp);
+static FILE *   mpi_file_handle_release(mpi_info_t * ctxt, MPI_File handle);
 
 /*****************************************************************************
  *
@@ -140,6 +157,10 @@ int MPI_Init(int * argc, char *** argv) {
   }
   mpi_info->ndatatype = 0;
   mpi_info->ndatatypelast = 0;
+
+  for (int ih = 0; ih < MAX_USER_FILE; ih++) {
+    mpi_info->filelist[ih] = NULL;
+  }
 
   return MPI_SUCCESS;
 }
@@ -1248,6 +1269,208 @@ int MPI_Type_get_extent(MPI_Datatype datatype, MPI_Aint * lb,
   return MPI_SUCCESS;
 }
 
+/*****************************************************************************
+ *
+ *  MPI_File_open
+ *
+ *****************************************************************************/
+
+int MPI_File_open(MPI_Comm comm, const char * filename, int amode,
+		  MPI_Info info, MPI_File * fh) {
+
+  int flags = 0;
+  FILE * fp = NULL;
+  const char * fdmode = NULL;
+
+  assert(mpi_is_valid_comm(comm));
+  assert(filename);
+  assert(fh);
+
+  /* Exactly one of RDONLY, WRONLY, or RDWR must be present. */
+  /* RDONLY => no CREATE or EXCL. */
+  /* RDWR   => no SEQUENTIAL */
+
+  {
+    int have_rdonly = (amode & MPI_MODE_RDONLY) ? 1 : 0;
+    int have_wronly = (amode & MPI_MODE_WRONLY) ? 2 : 0;
+    int have_rdwr   = (amode & MPI_MODE_RDWR)   ? 4 : 0;
+
+    int have_create = (amode & MPI_MODE_CREATE);
+    int have_excl   = (amode & MPI_MODE_EXCL);
+    int have_append = (amode & MPI_MODE_APPEND);
+
+    switch (have_rdonly + have_wronly + have_rdwr) {
+    case (1):
+      /* Read only */
+      fdmode = "r";
+      /*
+      flags = O_RDONLY;
+      */
+      if (have_create) printf("No create with RDONLY\n");
+      if (have_excl)   printf("No excl   with RDONLY\n");
+      break;
+    case (2):
+      /* Write only  */
+      fdmode = "w";
+      /*
+      flags = O_WRONLY;
+      if (have_create) flags = flags | O_CREAT;
+      if (have_excl)   flags = flags | O_EXCL;
+      if (have_append) flags = flags | O_APPEND;
+      */
+      if (have_append) fdmode = "a";
+      break;
+    case (4):
+      /* Read write */
+      fdmode = "r+";
+      /*
+      flags = O_RDWR;
+      if (have_create) flags = flags | O_CREAT;
+      if (have_excl)   flags = flags | O_EXCL;
+      if (have_append) flags = flags | O_APPEND;
+      */
+      if (have_append) fdmode = "a+";
+      break;
+    default:
+      printf("Please specify exactly one of MPI_MODE_RDONLY, MPI_MODE_WRONLY, "
+	     "or MPI_MODE_RDWR\n");
+    }
+  }
+
+  assert(flags == 0); /* Do something with flags */
+
+  fp = fopen(filename, fdmode);
+
+  if (fp == NULL) {
+    printf("MPI_File_open: attempt to open %s mode %s failed\n", filename,
+	   fdmode);
+    exit(0);
+  }
+
+  *fh = mpi_file_handle_retain(mpi_info, fp);
+
+  return MPI_SUCCESS;
+}
+
+/*****************************************************************************
+ *
+ *  MPI_File_close
+ *
+ *****************************************************************************/
+
+int MPI_File_close(MPI_File * fh) {
+
+  assert(fh);
+
+  {
+    FILE * fp = NULL;
+    MPI_File handle = *fh;
+
+    fp = mpi_file_handle_release(mpi_info, handle);
+
+    fclose(fp);
+    *fh = MPI_FILE_NULL;
+  }
+
+  return MPI_SUCCESS;
+}
+
+/*****************************************************************************
+ *
+ *  MPI_File_delete
+ *
+ *****************************************************************************/
+
+int MPI_File_delete(const char * filename, MPI_Info info) {
+
+  assert(filename);
+  assert(0);
+
+  return MPI_SUCCESS;
+}
+
+/*****************************************************************************
+ *
+ *  MPI_Type_create_subarray
+ *
+ *****************************************************************************/
+
+int MPI_Type_create_subarray(int ndims, const int * array_of_sizes,
+			     const int * array_of_subsizes,
+			     const int * array_of_starts,
+			     int order,
+			     MPI_Datatype oldtype,
+			     MPI_Datatype * newtype) {
+  assert(array_of_sizes);
+  assert(array_of_subsizes);
+  assert(array_of_starts);
+  assert(order == MPI_ORDER_C || order == MPI_ORDER_FORTRAN);
+  assert(newtype);
+
+  return MPI_SUCCESS;
+}
+
+/*****************************************************************************
+ *
+ *  MPI_File_set_view
+ *
+ *****************************************************************************/
+
+int MPI_File_set_view(MPI_File fh, MPI_Offset disp, MPI_Datatype etype,
+		      MPI_Datatype filetype, const char * datarep,
+		      MPI_Info info) {
+
+  /* datarep may be 'NULL' => defaults to "native" */
+
+  return MPI_SUCCESS;
+}
+
+/*****************************************************************************
+ *
+ *  MPI_File_read_all
+ *
+ *****************************************************************************/
+
+int MPI_File_read_all(MPI_File fh, void * buf, int count,
+		      MPI_Datatype datatype, MPI_Status * status) {
+  assert(buf);
+  assert(status);
+
+  return MPI_SUCCESS;
+}
+
+/*****************************************************************************
+ *
+ *  MPI_File_write_all
+ *
+ *****************************************************************************/
+
+int MPI_File_write_all(MPI_File fh, const void * buf, int count,
+		       MPI_Datatype datatype, MPI_Status * status) {
+
+  assert(0 < fh && fh < MAX_USER_FILE);
+  assert(buf);
+  assert(status);
+
+  /* Translate to a simple fwrite() */
+
+  FILE * fp     = mpi_info->filelist[fh];
+  size_t size   = mpi_sizeof(datatype);
+  size_t nitems = count;
+
+  assert(fp); /* Replace with check on fh */
+
+  fwrite(buf, size, nitems, fp);
+
+  if (ferror(fp)) {
+    perror("perror: ");
+    printf("MPI_File_write_all() failed\n");
+    exit(0);
+  }
+
+  return MPI_SUCCESS;
+}
+
 #endif /* _DO_NOT_INCLUDE_MPI2_INTERFACE */
 
 /*****************************************************************************
@@ -1347,4 +1570,62 @@ static int mpi_data_type_handle(mpi_info_t * ctxt, MPI_Datatype handle) {
   }
 
   return index;
+}
+
+/*****************************************************************************
+ *
+ *  mpi_file_handle_retain
+ *
+ *  Implementation of file open.
+ *  Success returns a valie MPI_FIle handle.
+ *
+ *****************************************************************************/
+
+static MPI_File mpi_file_handle_retain(mpi_info_t * mpi, FILE * fp) {
+  
+  int handle = MPI_FILE_NULL;
+
+  assert(mpi);
+  assert(fp);
+
+  for (int ih = 1; ih < MAX_USER_FILE; ih++) {
+    if (mpi->filelist[ih] == NULL) {
+      handle = ih;
+      break;
+    }
+  }
+
+  if (handle == MPI_FILE_NULL) {
+    printf("Run out of MPI file handles\n");
+    exit(0);
+  }
+
+  /* Record the pointer against the handle */
+  mpi->filelist[handle] = fp;
+
+  return handle;
+}
+
+/*****************************************************************************
+ *
+ *  mpi_file_handle_release
+ *
+ *****************************************************************************/
+
+static FILE *  mpi_file_handle_release(mpi_info_t * mpi, MPI_File handle) {
+
+  FILE * fp = NULL;
+
+  assert(mpi);
+  assert(1 <= handle && handle < MAX_USER_FILE);
+
+  if (mpi->filelist[handle] == NULL) {
+    printf("Attempt to release NULL mpi file handle");
+    exit(0);
+  }
+
+  fp = mpi->filelist[handle];
+  mpi->filelist[handle] = NULL;
+
+  return fp;
 }
