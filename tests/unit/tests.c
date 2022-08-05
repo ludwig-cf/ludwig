@@ -48,6 +48,7 @@ __host__ int tests_create() {
 
   test_pe_suite();
   test_coords_suite();
+  test_cs_limits_suite();
 
   test_kernel_suite();
   test_gradient_d3q27_suite();

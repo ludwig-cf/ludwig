@@ -38,6 +38,7 @@ int test_colloid_suite(void);
 int test_colloids_info_suite(void);
 int test_colloids_halo_suite(void);
 int test_coords_suite(void);
+int test_cs_limits_suite(void);
 int test_ewald_suite(void);
 int test_fe_null_suite(void);
 int test_fe_electro_suite(void);
