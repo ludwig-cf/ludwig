@@ -138,6 +138,8 @@ enum mpi_order_enum {MPI_ORDER_C, MPI_ORDER_FORTRAN};
 #define MPI_MODE_SEQUENTIAL      128
 #define MPI_MODE_APPEND          256
 
+#define MPI_MAX_DATAREP_STRING   128   /* E.g., "native" */
+
 /* Interface */
 
 int MPI_Barrier(MPI_Comm comm);
@@ -263,6 +265,8 @@ int MPI_Type_create_subarray(int ndims, const int * array_of_sizes,
 			     int order,
 			     MPI_Datatype oldtype,
 			     MPI_Datatype * newtype);
+int MPI_File_get_view(MPI_File fh, MPI_Offset * disp, MPI_Datatype * etype,
+		      MPI_Datatype * filetype, char * datarep);
 int MPI_File_set_view(MPI_File fh, MPI_Offset disp, MPI_Datatype etype,
 		      MPI_Datatype filetype, const char * datarep,
 		      MPI_Info info);

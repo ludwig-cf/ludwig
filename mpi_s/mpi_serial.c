@@ -66,6 +66,7 @@ struct internal_file_view_s {
   MPI_Offset   disp;            /* e.g., from MPI_File_set_view() */
   MPI_Datatype etype;
   MPI_Datatype filetype;
+  char datarep[MPI_MAX_DATAREP_STRING];
 };
 
 typedef struct mpi_info_s mpi_info_t;
@@ -79,7 +80,7 @@ struct mpi_info_s {
   int ndatatypelast;             /* Current free list extent */
   int dtfreelist[MAX_USER_DT];   /* Free list */
 
-  FILE * filelist[MAX_USER_FILE]; /* Open file handle -> pointer table */
+  file_t filelist[MAX_USER_FILE]; /* MPI_File information for open files */
 };
 
 static mpi_info_t * mpi_info = NULL;
@@ -95,6 +96,7 @@ static int mpi_data_type_handle(mpi_info_t * ctxt, MPI_Datatype handle);
 
 static MPI_File mpi_file_handle_retain(mpi_info_t * ctxt, FILE * fp);
 static FILE *   mpi_file_handle_release(mpi_info_t * ctxt, MPI_File handle);
+static FILE *   mpi_file_handle_to_fp(mpi_info_t * info, MPI_File handle);
 
 /*****************************************************************************
  *
@@ -159,7 +161,11 @@ int MPI_Init(int * argc, char *** argv) {
   mpi_info->ndatatypelast = 0;
 
   for (int ih = 0; ih < MAX_USER_FILE; ih++) {
-    mpi_info->filelist[ih] = NULL;
+    mpi_info->filelist[ih].fp    = NULL;
+    mpi_info->filelist[ih].disp  = 0;
+    mpi_info->filelist[ih].etype = MPI_BYTE;
+    mpi_info->filelist[ih].filetype = MPI_BYTE;
+    strncpy(mpi_info->filelist[ih].datarep, "native", MPI_MAX_DATAREP_STRING);
   }
 
   return MPI_SUCCESS;
@@ -1360,14 +1366,17 @@ int MPI_File_open(MPI_Comm comm, const char * filename, int amode,
 
 int MPI_File_close(MPI_File * fh) {
 
+  FILE * fp = NULL;
+
   assert(fh);
 
-  {
-    FILE * fp = NULL;
-    MPI_File handle = *fh;
+  fp = mpi_file_handle_release(mpi_info, *fh);
 
-    fp = mpi_file_handle_release(mpi_info, handle);
-
+  if (fp == NULL) {
+    printf("MPI_File_close: invalid file handle\n");
+    exit(0);
+  }
+  else {
     fclose(fp);
     *fh = MPI_FILE_NULL;
   }
@@ -1412,6 +1421,39 @@ int MPI_Type_create_subarray(int ndims, const int * array_of_sizes,
 
 /*****************************************************************************
  *
+ *  MPI_File_get_view
+ *
+ *****************************************************************************/
+
+int MPI_File_get_view(MPI_File fh, MPI_Offset * disp, MPI_Datatype * etype,
+		      MPI_Datatype * filetype, char * datarep) {
+
+  FILE * fp = NULL;
+
+  assert(disp);
+  assert(etype);
+  assert(filetype);
+  assert(datarep);
+  assert(mpi_info);
+
+  fp = mpi_file_handle_to_fp(mpi_info, fh);
+
+  if (fp == NULL) {
+    printf("MPI_File_get_view: invalid file handle\n");
+    exit(0);
+  }
+  else {
+    file_t * file = &mpi_info->filelist[fh];
+    *disp = file->disp;
+    *etype = file->etype;
+    *filetype = file->filetype;
+    strncpy(datarep, file->datarep, MPI_MAX_DATAREP_STRING-1);
+  }
+
+  return MPI_SUCCESS;
+}
+/*****************************************************************************
+ *
  *  MPI_File_set_view
  *
  *****************************************************************************/
@@ -1420,7 +1462,26 @@ int MPI_File_set_view(MPI_File fh, MPI_Offset disp, MPI_Datatype etype,
 		      MPI_Datatype filetype, const char * datarep,
 		      MPI_Info info) {
 
-  /* datarep may be 'NULL' => defaults to "native" */
+  FILE * fp = NULL;
+
+  assert(datarep);
+  assert(mpi_info);
+
+  fp = mpi_file_handle_to_fp(mpi_info, fh);
+
+  if (fp == NULL) {
+    printf("MPI_File_set_view: invalid file handle\n");
+    exit(0);
+  }
+  else {
+    file_t * file = &mpi_info->filelist[fh];
+    file->disp = disp;
+    file->etype = etype;
+    file->filetype = filetype;
+    /* Could demand "native" ... */
+    strncpy(file->datarep, datarep, MPI_MAX_DATAREP_STRING-1);
+    /* info is currently discarded */
+  }
 
   return MPI_SUCCESS;
 }
@@ -1448,24 +1509,31 @@ int MPI_File_read_all(MPI_File fh, void * buf, int count,
 int MPI_File_write_all(MPI_File fh, const void * buf, int count,
 		       MPI_Datatype datatype, MPI_Status * status) {
 
-  assert(0 < fh && fh < MAX_USER_FILE);
+  FILE * fp = NULL;
+
   assert(buf);
   assert(status);
 
-  /* Translate to a simple fwrite() */
+  fp = mpi_file_handle_to_fp(mpi_info, fh);
 
-  FILE * fp     = mpi_info->filelist[fh];
-  size_t size   = mpi_sizeof(datatype);
-  size_t nitems = count;
-
-  assert(fp); /* Replace with check on fh */
-
-  fwrite(buf, size, nitems, fp);
-
-  if (ferror(fp)) {
-    perror("perror: ");
-    printf("MPI_File_write_all() failed\n");
+  if (fp == NULL) {
+    printf("MPI_File_write_all: invalid_file handle");
     exit(0);
+  }
+  else {
+
+    /* Translate to a simple fwrite() */
+
+    size_t size   = mpi_sizeof(datatype);
+    size_t nitems = count;
+
+    fwrite(buf, size, nitems, fp);
+
+    if (ferror(fp)) {
+      perror("perror: ");
+      printf("MPI_File_write_all() file operation failed\n");
+      exit(0);
+    }
   }
 
   return MPI_SUCCESS;
@@ -1577,55 +1645,74 @@ static int mpi_data_type_handle(mpi_info_t * ctxt, MPI_Datatype handle) {
  *  mpi_file_handle_retain
  *
  *  Implementation of file open.
- *  Success returns a valie MPI_FIle handle.
+ *  Success returns a valid MPI_FIle handle.
  *
  *****************************************************************************/
 
 static MPI_File mpi_file_handle_retain(mpi_info_t * mpi, FILE * fp) {
   
-  int handle = MPI_FILE_NULL;
+  MPI_File fh = MPI_FILE_NULL;
 
   assert(mpi);
   assert(fp);
 
   for (int ih = 1; ih < MAX_USER_FILE; ih++) {
-    if (mpi->filelist[ih] == NULL) {
-      handle = ih;
+    if (mpi->filelist[ih].fp == NULL) {
+      fh = ih;
       break;
     }
   }
 
-  if (handle == MPI_FILE_NULL) {
+  if (fh == MPI_FILE_NULL) {
     printf("Run out of MPI file handles\n");
     exit(0);
   }
 
   /* Record the pointer against the handle */
-  mpi->filelist[handle] = fp;
+  mpi->filelist[fh].fp = fp;
 
-  return handle;
+  return fh;
 }
 
 /*****************************************************************************
  *
  *  mpi_file_handle_release
  *
+ *  Release handle, and return the file pointer.
+ *
  *****************************************************************************/
 
-static FILE *  mpi_file_handle_release(mpi_info_t * mpi, MPI_File handle) {
+static FILE *  mpi_file_handle_release(mpi_info_t * mpi, MPI_File fh) {
 
   FILE * fp = NULL;
 
   assert(mpi);
-  assert(1 <= handle && handle < MAX_USER_FILE);
 
-  if (mpi->filelist[handle] == NULL) {
-    printf("Attempt to release NULL mpi file handle");
-    exit(0);
+  if (1 <= fh && fh < MAX_USER_FILE) {
+    fp = mpi->filelist[fh].fp;
+    mpi->filelist[fh].fp = NULL; /* Release */
   }
 
-  fp = mpi->filelist[handle];
-  mpi->filelist[handle] = NULL;
+  return fp;
+}
+
+/*****************************************************************************
+ *
+ *  mpi_file_handle_to_fp
+ *
+ *  Valid handles return relevant FILE * fp (or NULL).
+ *
+ *****************************************************************************/
+
+static FILE * mpi_file_handle_to_fp(mpi_info_t * mpi, MPI_File fh) {
+
+  FILE * fp = NULL;
+
+  assert(mpi);
+
+  if (1 <= fh && fh < MAX_USER_FILE) {
+    fp = mpi->filelist[fh].fp;
+  }
 
   return fp;
 }

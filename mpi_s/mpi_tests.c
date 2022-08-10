@@ -9,6 +9,7 @@
 #include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 #include <unistd.h>
 
@@ -24,6 +25,8 @@ static int test_mpi_type_contiguous(void);
 static int test_mpi_type_create_struct(void);
 static int test_mpi_op_create(void);
 static int test_mpi_file_open(void);
+static int test_mpi_file_get_view(void);
+static int test_mpi_file_set_view(void);
 
 int main (int argc, char ** argv) {
 
@@ -45,6 +48,8 @@ int main (int argc, char ** argv) {
   test_mpi_op_create();
 
   test_mpi_file_open();
+  test_mpi_file_get_view();
+  test_mpi_file_set_view();
 
   ireturn = MPI_Finalize();
   assert(ireturn == MPI_SUCCESS);
@@ -389,6 +394,82 @@ int test_mpi_file_open(void) {
     assert(fh == MPI_FILE_NULL);
     unlink("z.dat");
   }
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  test_mpi_file_get_view
+ *
+ *****************************************************************************/
+
+static int test_mpi_file_get_view(void) {
+
+  MPI_File fh = MPI_FILE_NULL;
+  MPI_Comm comm = MPI_COMM_WORLD;
+  MPI_Info info = MPI_INFO_NULL;
+
+  MPI_File_open(comm, "mpif.dat", MPI_MODE_WRONLY+MPI_MODE_CREATE, info, &fh);
+
+  {
+    MPI_Offset disp = 1;
+    MPI_Datatype etype = MPI_DATATYPE_NULL;
+    MPI_Datatype filetype = MPI_DATATYPE_NULL;
+    char datarep[MPI_MAX_DATAREP_STRING] = {0};
+
+    MPI_File_get_view(fh, &disp, &etype, &filetype, datarep);
+    assert(disp == 0);
+    assert(etype == MPI_BYTE);
+    assert(filetype == MPI_BYTE);
+    assert(strncmp(datarep, "native", MPI_MAX_DATAREP_STRING-1) == 0);
+  }
+
+  MPI_File_close(&fh);
+  unlink("mpif.dat");
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  test_mpi_file_set_view
+ *
+ *****************************************************************************/
+
+int test_mpi_file_set_view(void) {
+
+
+  MPI_File fh = MPI_FILE_NULL;
+  MPI_Comm comm = MPI_COMM_WORLD;
+  MPI_Info info = MPI_INFO_NULL;
+
+  MPI_File_open(comm, "mpif.dat", MPI_MODE_WRONLY+MPI_MODE_CREATE, info, &fh);
+
+  {
+    /* Thge values here aren't really meaningful, but they will do ... */
+    MPI_Offset disp = 1;
+    MPI_Datatype etype = MPI_DOUBLE;
+    MPI_Datatype filetype = MPI_INT;
+
+    MPI_File_set_view(fh, disp, etype, filetype, "native", info);
+  }
+
+  {
+    MPI_Offset disp = 0;
+    MPI_Datatype etype = MPI_DATATYPE_NULL;
+    MPI_Datatype filetype = MPI_DATATYPE_NULL;
+    char datarep[MPI_MAX_DATAREP_STRING] = {0};
+
+    MPI_File_get_view(fh, &disp, &etype, &filetype, datarep);
+    assert(disp == 1);
+    assert(etype == MPI_DOUBLE);
+    assert(filetype == MPI_INT);
+    assert(strncmp(datarep, "native", MPI_MAX_DATAREP_STRING-1) == 0);
+  }
+
+  MPI_File_close(&fh);
+  unlink("mpif.dat");
 
   return 0;
 }
