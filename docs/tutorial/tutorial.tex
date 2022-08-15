@@ -288,7 +288,7 @@ $ ./extract -k phi.001-001.meta phi-00010000.001-001
 raw data files and time steps (with appropriate start, increment and end in the \texttt{for} loop):
 \begin{lstlisting}
 #!/bin/bash
-for i in `seq 1000 1000 10000`;
+for i in $(seq 1000 1000 10000);
 do
   tstep=$(printf "%08d" $i)
   ./extract -k vel.001-001.meta vel-${tstep}.001-001  
@@ -429,7 +429,7 @@ be seen in addition to the \texttt{.vtk} files for the velocity, order parameter
 \item Again, a bash script like this one below can be used for convenient post-processing of multiple raw data files and time steps (with appropriate start, increment and end in the \texttt{for} loop):
 \begin{lstlisting}
 #!/bin/bash
-for i in `seq 1000 1000 10000`;
+for i in $(seq 1000 1000 10000);
 do
   tstep=$(printf "%08d" $i)
   ./extract -k vel.001-001.meta vel-${tstep}.001-001  
