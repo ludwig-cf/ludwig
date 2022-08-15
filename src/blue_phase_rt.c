@@ -176,11 +176,11 @@ __host__ int blue_phase_init_rt(pe_t * pe, rt_t *rt,
   rt_double_parameter(rt, "lc_dielectric_anisotropy", &epsilon);
   fe_param.epsilon = epsilon;
 
-  n = rt_double_parameter_vector(rt, "electric_e0", fe_param.e0coswt);
+  n = rt_double_parameter_vector(rt, "electric_e0", fe_param.e0);
 
   if (n == 1) {
-    double ered;
-    fe_lc_dimensionless_field_strength(fe, &ered);
+    double ered = 0.0;
+    fe_lc_dimensionless_field_strength(&fe_param, &ered);
     pe_info(pe, "Dielectric anisotropy      = %14.7e\n", epsilon);
     pe_info(pe, "Dimensionless field e      = %14.7e\n", ered);
   }
