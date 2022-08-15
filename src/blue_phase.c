@@ -8,7 +8,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2011-2021 The University of Edinburgh
+ *  (c) 2011-2022 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -209,21 +209,17 @@ __host__ int fe_lc_target(fe_lc_t * fe, fe_t ** target) {
 
 __host__ int fe_lc_param_commit(fe_lc_t * fe) {
 
-  int ia;
   double e0_freq, t;
-  double e0[3];
   physics_t * phys = NULL;
   PI_DOUBLE(pi);
 
   assert(fe);
 
   physics_ref(&phys);
-  physics_e0(phys, e0);
   physics_e0_frequency(phys, &e0_freq);
   physics_control_time(phys, &t);
-  for (ia = 0; ia < 3; ia++) {
-    fe->param->e0coswt[ia] = cos(2.0*pi*e0_freq*t)*e0[ia];
-  }
+
+  fe->param->coswt = cos(2.0*pi*e0_freq*t);
 
   tdpMemcpyToSymbol(tdpSymbol(const_param), fe->param, sizeof(fe_lc_param_t),
 		    0, tdpMemcpyHostToDevice);
@@ -388,8 +384,10 @@ __host__ __device__ int fe_lc_compute_fed(fe_lc_t * fe, double gamma,
 
   efield = 0.0;
   for (ia = 0; ia < 3; ia++) {
+    double ea = fe->param->e0[ia]*fe->param->coswt;
     for (ib = 0; ib < 3; ib++) {
-      efield += fe->param->e0coswt[ia]*q[ia][ib]*fe->param->e0coswt[ib];
+      double eb = fe->param->e0[ib]*fe->param->coswt;
+      efield += ea*q[ia][ib]*eb;
     }
   }
 
@@ -1094,13 +1092,15 @@ int fe_lc_compute_h(fe_lc_t * fe, double gamma, double q[3][3],
 
   e2 = 0.0;
   for (ia = 0; ia < 3; ia++) {
-    e2 += fe->param->e0coswt[ia]*fe->param->e0coswt[ia];
+    double ea = fe->param->e0[ia]*fe->param->coswt;
+    e2 += ea*ea;
   }
 
   for (ia = 0; ia < 3; ia++) {
+    double ea = fe->param->e0[ia]*fe->param->coswt;
     for (ib = 0; ib < 3; ib++) {
-      h[ia][ib] +=  fe->param->epsilon
-	*(fe->param->e0coswt[ia]*fe->param->e0coswt[ib] - r3*d[ia][ib]*e2);
+      double eb = fe->param->e0[ib]*fe->param->coswt;
+      h[ia][ib] +=  fe->param->epsilon*(ea*eb - r3*d[ia][ib]*e2);
     }
   }
 
@@ -1294,42 +1294,36 @@ int fe_lc_reduced_temperature(fe_lc_t * fe, double * tau) {
 
 /*****************************************************************************
  *
- *  fe_lc_dimensionless_field_strength
+ *  fe_lc_dimensonless_field_strength
  *
- *  Return the dimensionless field strength which is
- *      e^2 = (27 epsilon / 32 pi A_O gamma) E_a E_a
+ *  Return the dimensionless (or reduced) field strength which is
+ *      ered^2 = (27 epsilon / 32 pi A_O gamma) E_a E_a
+ *
+ *  The external field is e0[3] in lattice units. No phase.
  *
  *****************************************************************************/
 
-__host__ __device__
-int fe_lc_dimensionless_field_strength(fe_lc_t * fe, double * ered) {
+__host__ int fe_lc_dimensionless_field_strength(const fe_lc_param_t * param,
+						double * ered) {
 
-  int ia;
-  double a0;
-  double gamma;
-  double epsilon;
-  double fieldsq;
-  double e0[3];
-  physics_t * phys = NULL;
+  double fieldsq = 0.0;
   PI_DOUBLE(pi);
 
-  assert(fe);
+  assert(param);
 
-  physics_ref(&phys);
-  physics_e0(phys, e0);
-
-  fieldsq = 0.0;
-  for (ia = 0; ia < 3; ia++) {
-    fieldsq += e0[ia]*e0[ia];
+  for (int ia = 0; ia < 3; ia++) {
+    fieldsq += param->e0[ia]*param->e0[ia];
   }
 
   /* Remember epsilon is stored with factor (1/12pi) */ 
 
-  a0 = fe->param->a0;
-  gamma = fe->param->gamma;
-  epsilon = 12.0*pi*fe->param->epsilon;
+  {
+    double a0 = param->a0;
+    double gamma = param->gamma;
+    double epsilon = 12.0*pi*param->epsilon;
 
-  *ered = sqrt(27.0*epsilon*fieldsq/(32.0*pi*a0*gamma));
+    *ered = sqrt(27.0*epsilon*fieldsq/(32.0*pi*a0*gamma));
+  }
 
   return 0;
 }
@@ -2059,9 +2053,11 @@ void fe_lc_compute_fed_v(fe_lc_t * fe,
   for_simd_v(iv, NSIMDVL)  efield[iv] = 0.0;
 
   for (ia = 0; ia < 3; ia++) {
+    double ea = fe->param->e0[ia]*fe->param->coswt;
     for (ib = 0; ib < 3; ib++) {
+      double eb = fe->param->e0[ib]*fe->param->coswt;
       for_simd_v(iv, NSIMDVL) {
-	efield[iv] += fe->param->e0coswt[ia]*q[ia][ib][iv]*fe->param->e0coswt[ib];
+	efield[iv] += ea*q[ia][ib][iv]*eb;
       }
     }
   }
@@ -2252,16 +2248,18 @@ void fe_lc_compute_h_v(fe_lc_t * fe,
   for_simd_v(iv, NSIMDVL) e2[iv] = 0.0;
 
   for (ia = 0; ia < 3; ia++) {
+    double ea = fe->param->e0[ia]*fe->param->coswt;
     for_simd_v(iv, NSIMDVL) {
-      e2[iv] += fe->param->e0coswt[ia]*fe->param->e0coswt[ia];
+      e2[iv] += ea*ea;
     }
   }
 
   for (ia = 0; ia < 3; ia++) {
+    double ea = fe->param->e0[ia]*fe->param->coswt;
     for (ib = 0; ib < 3; ib++) {
+      double eb = fe->param->e0[ib]*fe->param->coswt;
       for_simd_v(iv, NSIMDVL) {
-	h[ia][ib][iv] +=  fe->param->epsilon*
-	  (fe->param->e0coswt[ia]*fe->param->e0coswt[ib] - r3*d[ia][ib]*e2[iv]);
+	h[ia][ib][iv] +=  fe->param->epsilon*(ea*eb - r3*d[ia][ib]*e2[iv]);
       }
     }
   }
