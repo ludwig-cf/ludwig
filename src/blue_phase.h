@@ -1,3 +1,4 @@
+
 /*****************************************************************************
  *
  *  fe_lc.h
@@ -65,7 +66,8 @@ struct fe_lc_param_s {
   double rredshift;                       /* Reciprocal redshift */
   double epsilon;                         /* Dielectric anistropy */
   double amplitude0;                      /* Initial amplitude from input */
-  double e0coswt[3];                      /* Electric field */
+  double e0[3];                           /* Electric field (external) */
+  double coswt;                           /* Electtric field (phase) */
 
   double w1_coll;                         /* Anchoring strength parameter */
   double w2_coll;                         /* Second anchoring parameter */
@@ -148,9 +150,6 @@ __host__ __device__
 int fe_lc_reduced_temperature(fe_lc_t * fe,  double * tau);
 
 __host__ __device__
-int fe_lc_dimensionless_field_strength(fe_lc_t * fe, double * edm);
-
-__host__ __device__
 void fe_lc_mol_field_v(fe_lc_t * fe, int index, double h[3][3][NSIMDVL]);
 
 __host__ __device__
@@ -183,6 +182,9 @@ int fe_lc_grad_stress(fe_lc_t * fe, int index, double sgrad[3][3]);
 
 
 /* Function of the parameters only */
+
+__host__ int fe_lc_dimensionless_field_strength(const fe_lc_param_t * param,
+						double * e0);
 
 __host__ __device__
 int fe_lc_amplitude_compute(fe_lc_param_t * param, double * a);
