@@ -1,6 +1,11 @@
 
 ### Changes
 
+version 0.18.0
+
+- Bug fix (issue #197). The liquid crystal reduced field strength was reported
+  incorrectly in the output (always zero). Thanks to Oliver H. for spotting.
+
 version 0.17.0
 
 - add liquid crystal anchoring "fd_gradient_calculation s7_anchoring"
