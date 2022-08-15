@@ -40,6 +40,7 @@ static int test_o8m_struct(pe_t * pe, cs_t * cs, lees_edw_t * le, fe_lc_t * fe,
 			   field_t * fq,
 			   field_grad_t * fqgrad);
 static int test_bp_nonfield(void);
+int test_fe_lc_dimensionless_field_strength(pe_t * pe);
 
 
 __host__ int do_test_fe_lc_device1(pe_t * pe, cs_t * cs, fe_lc_t * fe);
@@ -69,6 +70,7 @@ int test_bp_suite(void) {
   lees_edw_create(pe, cs, NULL, &le);
 
   test_bp_nonfield();
+  test_fe_lc_dimensionless_field_strength(pe);
 
   {
     field_options_t opts = field_options_ndata_nhalo(NQAB, nhalo);
@@ -193,11 +195,9 @@ int test_o8m_struct(pe_t * pe, cs_t * cs, lees_edw_t * le, fe_lc_t * fe,
   double h[3][3];
   double field[3];
   double value, vtest;
-  double e;
   double ltot[3];
   fe_lc_param_t param = {0};
   physics_t * phys = NULL;
-  PI_DOUBLE(pi_);
 
   assert(pe);
   assert(le);
@@ -788,46 +788,14 @@ int test_o8m_struct(pe_t * pe, cs_t * cs, lees_edw_t * le, fe_lc_t * fe,
 
   /* Electric field test */
 
-  /* Default electric field should be zero */
-
-  field[X] = 0.0;
-  field[Y] = 0.0;
-  field[Z] = 1.0;
-
-  physics_e0_set(phys, field);
-  fe_lc_param_commit(fe);
-
-
-  e = sqrt(27.0*epsilon*1.0/(32.0*pi_*a0*gamma));
-
-  /* Electric field (0.0, 0.0, 1.0) gives dimensionless field */
-  fe_lc_dimensionless_field_strength(fe, &value);
-  test_assert(fabs(value - e) < TEST_FLOAT_TOLERANCE);
-
-  field[X] = 1.0;
-  field[Y] = 1.0;
-  field[Z] = 1.0;
-
-  physics_e0_set(phys, field);
-
-  e = sqrt(27.0*epsilon*3.0/(32.0*pi_*a0*gamma));
-
-  fe_lc_dimensionless_field_strength(fe, &value);
-  /* Electric field (1.0, 1.0, 1.0) gives dimensionless field ... */
-  test_assert(fabs(value - e) < TEST_FLOAT_TOLERANCE);
-
   /* Set dimensionless field to 0.2 for these parameters */
 
   field[X] = 0.012820969/sqrt(3.0);
   field[Y] = field[X];
   field[Z] = field[X];
 
-
   physics_e0_set(phys, field);
-
-  fe_lc_dimensionless_field_strength(fe, &value);
   fe_lc_param_commit(fe);
-  test_assert(fabs(value - 0.2) < TEST_FLOAT_TOLERANCE);
 
   /* Note the electric field remains switched on so... */
 
@@ -859,16 +827,13 @@ int test_o8m_struct(pe_t * pe, cs_t * cs, lees_edw_t * le, fe_lc_t * fe,
   fe_lc_compute_fed(fe, gamma, q, dq, &value);
   test_assert(fabs(value - 6.7087074e-04) < TEST_FLOAT_TOLERANCE);
 
+  /* Dimensionless field 0.2 */
   field[X] = 0.012820969;
   field[Y] = 0.0;
   field[Z] = 0.0;
 
   physics_e0_set(phys, field);
   fe_lc_param_commit(fe);
-
-  fe_lc_dimensionless_field_strength(fe, &value);
-  test_assert(fabs(value - 0.2) < TEST_FLOAT_TOLERANCE);
-
 
   /* Note the electric field now changed so... */
 
@@ -1024,4 +989,48 @@ __global__ void do_test_fe_lc_kernel1(fe_lc_t * fe, fe_lc_param_t ref) {
   test_assert(fabs(p.redshift - ref.redshift) < DBL_EPSILON);
 
   return;
+}
+
+/*****************************************************************************
+ *
+ *  test_fe_lc_dimensionless_field_strength
+ *
+ *  Function of only the dielectric anistropy epsilon, gamma, A0, and the
+ *  external field.
+ *
+ *****************************************************************************/
+
+int test_fe_lc_dimensionless_field_strength(pe_t * pe) {
+
+  int ifail = 0;
+  PI_DOUBLE(pi);
+
+  assert(pe);
+
+  {
+    /* Default must be zero */
+    fe_lc_param_t param = {.a0 = 1.0, .gamma = 3.0};
+    double ered = -1.0;
+    fe_lc_dimensionless_field_strength(&param, &ered);
+    assert(fabs(ered - 0.0) < DBL_EPSILON);
+    if (fabs(ered - 0.0) < DBL_EPSILON) ifail += 1;
+  }
+
+  {
+    /* epsilon = 1 in reduced units should give reference value eref */
+    double e[3] = {1.0, 1.0, 1.0};
+    double a0 = 1.0;
+    double gamma = 2.7;
+    double epsilon = 1.0/(12.0*pi);
+    double eref = sqrt(27.0*3.0/(32.0*pi*a0*gamma));
+
+    fe_lc_param_t param = {.a0 = a0, .gamma = gamma, .epsilon = epsilon,
+                           .e0 = {e[X], e[Y], e[Z]}};
+    double ered = -1.0;
+    fe_lc_dimensionless_field_strength(&param, &ered);
+    assert(fabs(ered - eref) < DBL_EPSILON);
+    if (fabs(ered - eref) < DBL_EPSILON) ifail += 1;
+  }
+
+  return ifail;
 }
