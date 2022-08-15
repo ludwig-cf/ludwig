@@ -67,7 +67,7 @@ struct fe_lc_param_s {
   double epsilon;                         /* Dielectric anistropy */
   double amplitude0;                      /* Initial amplitude from input */
   double e0[3];                           /* Electric field (external) */
-  double coswt;                           /* Electtric field (phase) */
+  double coswt;                           /* Electric field (phase) */
 
   double w1_coll;                         /* Anchoring strength parameter */
   double w2_coll;                         /* Second anchoring parameter */
