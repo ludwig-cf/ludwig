@@ -1130,6 +1130,7 @@ static int build_replace_order_parameter(fe_t * fe, lb_t * lb,
       if (fe->id == FE_LC) build_replace_q_local(fe, cinfo, pc, index, f);
       if (fe->id == FE_SYMMETRIC) field_scalar(f, index, phi);
       if (fe->id == FE_SURFACTANT_OFT) field_scalar_array(f, index, phi);
+      if (fe->id == FE_TWO_SYMM_OFT) field_scalar_array(f, index, phi);
     }
     else {
       weight = 1.0 / weight;
@@ -1606,9 +1607,8 @@ int build_conservation_phi(colloids_info_t * cinfo, field_t * phi) {
      * work out what should be put back. */
 
     dphi = colloid->s.deltaphi / colloid->s.saf;
-    dpsi = colloid->s.deltapsi / colloid->s.saf;
 
-    if (dphi == 0.0 || dpsi == 0) continue;
+    if (dphi == 0.0) continue;
 
     for (pl = colloid->lnk; pl != NULL; pl = pl->next) {
 
@@ -1623,14 +1623,42 @@ int build_conservation_phi(colloids_info_t * cinfo, field_t * phi) {
 	//field_scalar_set(phi, pl->i, value + dphi);
 
         phi->data[addr_rank1(phi->nsites, 2, pl->i, 0)] += dphi;
-        phi->data[addr_rank1(phi->nsites, 2, pl->i, 1)] += dpsi;
       }
     }
 
     /* We may now reset deltaphi to zero. */
     colloid->s.deltaphi = 0.0;
+  }
+
+  for (; colloid != NULL; colloid = colloid->nextall) {
+
+    /* Add any contribution form previous steps (all copies);
+     * work out what should be put back. */
+
+    dpsi = colloid->s.deltapsi / colloid->s.saf;
+
+    if (dpsi == 0.0) continue;
+
+    for (pl = colloid->lnk; pl != NULL; pl = pl->next) {
+
+      if (pl->status != LINK_FLUID) continue;
+
+      p = pl->p;
+      p = cv[p][X]*cv[p][X] + cv[p][Y]*cv[p][Y] + cv[p][Z]*cv[p][Z];
+
+      if (p == 1) {
+	/* Replace */
+	//field_scalar(phi, pl->i, value); LIGHTHOUSE 
+	//field_scalar_set(phi, pl->i, value + dphi);
+
+        phi->data[addr_rank1(phi->nsites, 2, pl->i, 1)] += dpsi;
+      }
+    }
+
+    /* We may now reset deltaphi to zero. */
     colloid->s.deltapsi = 0.0;
   }
+
 
   return 0;
 }
