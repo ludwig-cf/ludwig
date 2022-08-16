@@ -589,7 +589,7 @@ __host__ __device__ int physics_mobility(physics_t * phys, double * mobility) {
 
 __host__ int physics_lambda_set(physics_t * phys, double lambda) {
 
-  assert(lambda);
+  assert(lambda>=0);
 
   phys->lambda = lambda;
 
@@ -606,7 +606,7 @@ __host__ int physics_lambda_set(physics_t * phys, double lambda) {
 __host__ __device__ int physics_lambda(physics_t * phys, double * lambda) {
 
   assert(phys);
-  assert(lambda);
+  assert(lambda>=0);
 
   *lambda = phys->lambda;
  

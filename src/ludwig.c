@@ -75,6 +75,8 @@
 #include "symmetric_oft_rt.h"
 #include "surfactant_oft.h"
 #include "surfactant_oft_rt.h"
+#include "two_symm_oft.h"
+#include "two_symm_oft_rt.h"
 //OFT
 /* Dynamics */
 #include "cahn_hilliard.h"
@@ -168,6 +170,7 @@ struct ludwig_s {
   //OFT
   fe_symm_oft_t * fe_symm_oft; /* Temperature-dependant symmetric free energy */
   fe_surf_oft_t * fe_surf_oft; /* Temperature-dependant symmetric free energy */
+  fe_two_symm_oft_t * fe_two_symm_oft; /* Temperature-dependant symmetric free energy */
   //OFT
   fe_surf_t * fe_surf;         /* Surfactant (van der Graf etc) */
   fe_ternary_t * fe_ternary;   /* Ternary (Semprebon et al.) */
@@ -309,6 +312,11 @@ static int ludwig_rt(ludwig_t * ludwig) {
     fe_surf_oft_phi_init_rt(pe, rt, ludwig->fe_surf_oft, ludwig->phi);
     fe_surf_oft_psi_init_rt(pe, rt, ludwig->fe_surf_oft, ludwig->phi);
     fe_surf_oft_temperature_init_rt(pe, rt, ludwig->fe_surf_oft, ludwig->temperature);
+  }
+  if (ludwig->fe_two_symm_oft) {
+    fe_two_symm_oft_phi_init_rt(pe, rt, ludwig->fe_two_symm_oft, ludwig->phi);
+    fe_two_symm_oft_psi_init_rt(pe, rt, ludwig->fe_two_symm_oft, ludwig->phi);
+    fe_two_symm_oft_temperature_init_rt(pe, rt, ludwig->fe_two_symm_oft, ludwig->temperature);
   }
 // OFT 
   if (ludwig->fe_braz) {
@@ -621,14 +629,14 @@ void ludwig_run(const char * inputfile) {
       field_halo(ludwig->phi);
       TIMER_stop(TIMER_PHI_HALO);
       field_grad_compute(ludwig->phi_grad);
-      //OFT 
-      if (ludwig->temperature) {
+    }
+
+    if (ludwig->temperature) {
 	TIMER_start(TIMER_TEMPERATURE_HALO);
 	field_halo(ludwig->temperature);
 	TIMER_stop(TIMER_TEMPERATURE_HALO);
-      }
-      //OFT
     }
+
     if (ludwig->p) {
       field_halo(ludwig->p);
       field_grad_compute(ludwig->p_grad);
@@ -649,7 +657,6 @@ void ludwig_run(const char * inputfile) {
      * gradients for phi) */
 
     if (ludwig->psi) {
-      printf("I shouldn't be there\n");
       /* Set charge distribution according to updated map */     
       psi_colloid_rho_set(ludwig->psi, ludwig->collinfo);
 
@@ -1493,8 +1500,84 @@ int free_energy_init_rt(ludwig_t * ludwig) {
     
   }
 
+  else if (strcmp(description, "two_symm_oft") == 0) {
+
+    fe_two_symm_oft_param_t param;
+    ch_info_t options = {};
+    heq_info_t heq_options = {};
+    fe_two_symm_oft_t * fe = NULL;
+    lees_edw_t * le = NULL;
+
+    nf = 2;       /* Composition, surfactant: "phi" and "psi" */
+    nhalo = 2;
+    ngrad = 2;
+
+    cs_nhalo_set(cs, nhalo);
+    coords_init_rt(pe, rt, cs);
+    /* No Lees Edwards for the time being */
+
+    lees_edw_create(pe, cs, info, &le);
+
+    field_create(pe, cs, nf, "phi", &ludwig->phi);
+    field_init(ludwig->phi, nhalo, le);
+
+    field_create(pe, cs, 1, "temperature", &ludwig->temperature);
+    field_init(ludwig->temperature, nhalo, le);
+
+    field_grad_create(pe, ludwig->phi, ngrad, &ludwig->phi_grad);
+
+
+    pe_info(pe, "\n");
+    pe_info(pe, "Temperature-dependent two binary mixtures free energy\n");
+    pe_info(pe, "----------------------\n");
+
+    fe_two_symm_oft_param_rt(pe, rt, &param); 
+    fe_two_symm_oft_create(pe, cs, ludwig->phi, ludwig->phi_grad, ludwig->temperature, param, &fe); 
+    grad_3d_27pt_solid_two_symm_oft_set(fe);
+
+    fe_two_symm_oft_info(fe); 
+
+    /* Cahn Hilliard */
+
+    options.nfield = nf;
+
+    n = rt_double_parameter(rt, "two_symm_oft_mobility_phi", &options.mobility[0]);
+    if (n == 0) pe_fatal(pe, "Please set two_symm_oft_mobility_phi in the input\n");
+
+    n = rt_double_parameter(rt, "two_symm_oft_mobility_psi", &options.mobility[1]);
+    if (n == 0) pe_fatal(pe, "Please set two_symm_oft_mobility_psi in the input\n");
+
+    rt_int_parameter(rt, "heat_equation_options_conserve", &heq_options.conserve);
+
+    /* TODO: maybe add conservation of PHI as an option for ch */
+
+    ch_create(pe, cs, options, &ludwig->ch);
+    heq_create(pe, cs, le, &heq_options, &ludwig->heq);
+
+    n = rt_double_parameter(rt, "two_symm_oft_lambda", &value);
+    if (n == 0) pe_fatal(pe, "Please set two_symm_oft_lambda in the input\n");
+
+    physics_lambda_set(ludwig->phys, value);
+    pe_info(pe, "Thermal diffusivity lambda            = %12.5e\n", value);
+
+    pe_info(pe, "\n");
+    pe_info(pe, "Using Cahn-Hilliard solver:\n");
+    ch_info(ludwig->ch);
+
+    /* Coupling between momentum and free energy */
+    /* Hydrodynamics sector (move to hydro_rt?) */
+
+    n = rt_switch(rt, "hydrodynamics");
+
+    {
+      int method = (n == 0) ? PTH_METHOD_NO_FORCE : PTH_METHOD_DIVERGENCE;
+      pth_create(pe, cs, method, &ludwig->pth);
+    }
+    ludwig->fe_two_symm_oft = fe;
+    ludwig->fe = (fe_t *) fe;
+  }
+
 //OFT
- 
 
   else if (strcmp(description, "symmetric") == 0 ||
 	   strcmp(description, "symmetric_noise") == 0) {
@@ -2218,7 +2301,7 @@ static int ludwig_colloids_update_low_freq(ludwig_t * ludwig) {
   interact_compute(ludwig->interact, ludwig->collinfo, ludwig->map,
         	     ludwig->psi, ludwig->ewald);
 
-  subgrid_force_from_particles(ludwig->collinfo, ludwig->hydro, ludwig->wall);
+  //subgrid_force_from_particles(ludwig->collinfo, ludwig->hydro, ludwig->wall);
 
   return 0;
 }
@@ -2299,7 +2382,7 @@ int ludwig_colloids_update(ludwig_t * ludwig) {
 
   interact_compute(ludwig->interact, ludwig->collinfo, ludwig->map,
 		   ludwig->psi, ludwig->ewald);
-  subgrid_force_from_particles(ludwig->collinfo, ludwig->hydro, ludwig->wall);
+  //subgrid_force_from_particles(ludwig->collinfo, ludwig->hydro, ludwig->wall);
 
   TIMER_stop(TIMER_FORCES);
 

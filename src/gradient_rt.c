@@ -121,6 +121,14 @@ int gradient_rt_init(pe_t * pe, rt_t * rt, const char * fieldname,
       assert(map);
       grad_3d_27pt_solid_map_set(map);
     }
+    else if (strcmp(keyvalue, "3d_27pt_solid_two_symm_oft") == 0) {
+      pe_info(pe, "3d_27pt_solid_two_symm_oft\n");
+      f2 = grad_3d_27pt_solid_d2_two_symm_oft;
+      f4 = NULL;
+      field_grad_dab_set(grad, grad_3d_27pt_solid_dab);
+      assert(map);
+      grad_3d_27pt_solid_map_set(map);
+    }
 //OFT
     else if (strcmp(keyvalue, "2d_ternary_solid") == 0) {
       pe_info(pe, "2d_ternary_solid\n");

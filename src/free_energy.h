@@ -34,7 +34,8 @@ enum fe_id_enum {FE_SYMMETRIC,
 		 FE_LC_DROPLET,
                  FE_TERNARY,
 		 FE_SYMM_OFT,
-		 FE_SURFACTANT_OFT};
+		 FE_SURFACTANT_OFT,
+		 FE_TWO_SYMM_OFT};
 
 typedef struct fe_s fe_t;
 typedef struct fe_vt_s fe_vt_t;

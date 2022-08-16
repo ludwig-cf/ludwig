@@ -51,6 +51,7 @@ typedef struct solid_s {
   fe_symm_t * fe_symm;
 //OFT
   fe_symm_oft_t * fe_symm_oft;
+  fe_two_symm_oft_t * fe_two_symm_oft;
   fe_surf_oft_t * fe_surf_oft;
 //OFT
 } solid_t;
@@ -230,6 +231,68 @@ __host__ int grad_3d_27pt_solid_d2_surf_oft(field_grad_t * fgrad) {
 
   return 0;
 }
+
+/*****************************************************************************
+ *
+ *  grad_3d_27pt_solid_two_symm_oft_set (with two_symm_oft)
+ *
+ *****************************************************************************/
+
+__host__ int grad_3d_27pt_solid_two_symm_oft_set(fe_two_symm_oft_t * fe) {
+
+  assert(fe);
+
+  static_solid.fe_two_symm_oft = fe;
+  static_solid.rkappa = 1.0/fe->param->phi_kappa0; //LIGHTHOUSE: be careful if want to implement wetting with phi / psi
+  static_solid.c = fe->param->c;
+  static_solid.h = fe->param->h;
+  if (static_solid.map == NULL) static_solid.uniform = 1;
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  grad_3d_27pt_solid_d2_two_symm_oft
+ *
+ *****************************************************************************/
+
+__host__ int grad_3d_27pt_solid_d2_two_symm_oft(field_grad_t * fgrad) {
+
+  int nextra;
+  int nlocal[3];
+  dim3 nblk, ntpb;
+  kernel_info_t limits;
+  kernel_ctxt_t * ctxt = NULL;
+  fe_two_symm_oft_param_t param;
+
+  cs_nhalo(fgrad->field->cs, &nextra);
+  nextra -= 1;
+  cs_nlocal(fgrad->field->cs, nlocal);
+
+  assert(nextra >= 0);
+  assert(static_solid.map);
+  assert(static_solid.fe_two_symm_oft);
+
+  fe_two_symm_oft_param(static_solid.fe_two_symm_oft, &param);
+
+  limits.imin = 1 - nextra; limits.imax = nlocal[X] + nextra;
+  limits.jmin = 1 - nextra; limits.jmax = nlocal[Y] + nextra;
+  limits.kmin = 1 - nextra; limits.kmax = nlocal[Z] + nextra;
+
+  kernel_ctxt_create(fgrad->field->cs, NSIMDVL, limits, &ctxt);
+  kernel_ctxt_launch_param(ctxt, &nblk, &ntpb);
+
+  tdpLaunchKernel(grad_3d_27pt_solid_kernel, nblk, ntpb, 0, 0,
+		  ctxt->target,
+		  fgrad->target, static_solid.map->target, static_solid);
+  tdpDeviceSynchronize();
+
+  kernel_ctxt_free(ctxt);
+
+  return 0;
+}
+
 //OFT
 
 

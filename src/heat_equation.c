@@ -195,6 +195,29 @@ int heat_equation(heq_t * heq, field_t * temperature,
   /* Diffusive fluxes */
   heq_flux_mu1(heq, temperature); 
 
+/*
+  int i = 11, j = 11, k = 12;
+  double t, tm1, tm2;
+  int index = cs_index(hydro->cs, i, j, k);
+  int indexm1 = cs_index(hydro->cs, i, j-1, k);
+  int indexm2 = cs_index(hydro->cs, i, j-2, k);
+  field_scalar(temperature, index, &t);
+  field_scalar(temperature, indexm1, &tm1);
+  field_scalar(temperature, indexm2, &tm2);
+   
+  if (map->status[indexm2] == MAP_COLLOID) printf("9 is COLLOID ");
+  if (map->status[indexm2] == MAP_FLUID) printf("9 is FLUID ");
+  printf("T = %14.7e\n", tm2);
+
+  if (map->status[indexm1] == MAP_COLLOID) printf("10 is COLLOID ");
+  if (map->status[indexm1] == MAP_FLUID) printf("10 is FLUID ");
+  printf("T = %14.7e\n", tm1);
+ 
+  if (map->status[index] == MAP_COLLOID) printf("11 is COLLOID ");
+  if (map->status[index] == MAP_FLUID) printf("11 is FLUID ");
+  printf("T = %14.7e\n", t);
+*/
+
   /* No flux boundaries  */
   if (map) {
     advection_bcs_no_normal_flux(nf, heq->flux, map);
@@ -204,7 +227,7 @@ int heat_equation(heq_t * heq, field_t * temperature,
   /* Sum fluxes and update */
   heq_update_forward_step(heq, temperature, map);
 
-  return 0;
+    return 0;
 }
 
 /*****************************************************************************
@@ -236,9 +259,9 @@ static int heq_colloid(heq_t * heq, field_t * temperature, colloids_info_t * cin
   physics_ref(&phys);
   physics_lambda(phys, &lambda);
 
-  limits.imin = 1; limits.imax = nlocal[X];
-  limits.jmin = 1; limits.jmax = nlocal[Y];
-  limits.kmin = 1; limits.kmax = nlocal[Z];
+  limits.imin = 0; limits.imax = nlocal[X] + 1;
+  limits.jmin = 0; limits.jmax = nlocal[Y] + 1;
+  limits.kmin = 0; limits.kmax = nlocal[Z] + 1;
 
   kernel_ctxt_create(heq->cs, 1, limits, &ctxt);
   kernel_ctxt_launch_param(ctxt, &nblk, &ntpb);
@@ -294,13 +317,15 @@ __global__ void heq_colloid_kernel(kernel_ctxt_t * ktx,
     index = kernel_coords_index(ktx, ic, jc, kc);
     
     colloids_info_map(cinfo, index, &pc); 
+
   /*  
-    if (ic == 20) { 
+    if (ic == 20) LIGHTHOUSE { 
       if (pc == NULL) printf("%d %d %d pc is NULL\n", ic, jc, kc);
       else printf("%d %d %d pc is not NULL\n", ic, jc, kc);
     }
   */
-    if (pc && pc->s.type != COLLOID_TYPE_SUBGRID && pc->s.isjanus) {
+
+    if (pc && pc->s.isjanus) {
       double r[3], r0[3], rb[3], m[3];
       double janus, cosine, norm_rb, norm_m;
       int ia;
@@ -330,7 +355,6 @@ __global__ void heq_colloid_kernel(kernel_ctxt_t * ktx,
 
       else {
         cosine = dot_product(rb, m) / (norm_rb*norm_m+0.0001);
-	//printf("%f\n", cosine);
         assert(cosine <= 1.0);
         assert(cosine >= -1.0);
       } 
@@ -379,7 +403,7 @@ static int heq_flux_mu1(heq_t * heq, field_t * temperature) {
   physics_ref(&phys);
   physics_lambda(phys, &lambda);
 
-  limits.imin = 0; limits.imax = nlocal[X];
+  limits.imin = 1; limits.imax = nlocal[X];
   limits.jmin = 0; limits.jmax = nlocal[Y];
   limits.kmin = 0; limits.kmax = nlocal[Z];
 
@@ -422,6 +446,9 @@ __global__ void heq_flux_mu1_kernel(kernel_ctxt_t * ktx,
   assert(flux);
 
   kiterations = kernel_iterations(ktx);
+
+  int noffset[3];
+  cs_nlocal_offset(temperature->cs, noffset);
 
   for_simt_parallel(kindex, kiterations, 1) {
 
@@ -556,6 +583,8 @@ __global__ void heq_flux_mu1_solid_kernel(kernel_ctxt_t * ktx,
     icp1 = lees_edw_ic_to_buff(le, ic, +1);
 
     index0 = lees_edw_index(le, ic, jc, kc);
+ 
+
     if (map->status[index0] == MAP_FLUID) {
       field_scalar(temperature, index0, &T0);
 
@@ -714,8 +743,18 @@ __global__ void heq_ufs_kernel(kernel_ctxt_t * ktx, lees_edw_t *le,
     kc = kernel_coords_kc(ktx, kindex);
     index = lees_edw_index(le, ic, jc, kc);
     /* no update of the solid nodes */
+    
     if (map->status[index] == MAP_FLUID) {
       field_scalar(field, index, &temperature);
+/*
+      if (ic == 11 && jc == 10 && kc == 12) printf("+e %f, -w %f, +y %f, -y %f, +z %f -z %f\n",
+ 	flux->fe[addr_rank0(flux->nsite, index)],
+      - flux->fw[addr_rank0(flux->nsite, index)],
+      + flux->fy[addr_rank0(flux->nsite, index)],
+      - flux->fy[addr_rank0(flux->nsite, index - ys)],
+      + wz*flux->fz[addr_rank0(flux->nsite, index)],
+      - wz*flux->fz[addr_rank0(flux->nsite, index - 1)]);
+*/
       temperature -= (+ flux->fe[addr_rank0(flux->nsite, index)]
 	    - flux->fw[addr_rank0(flux->nsite, index)]
 	    + flux->fy[addr_rank0(flux->nsite, index)]
