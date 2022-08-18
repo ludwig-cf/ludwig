@@ -1,7 +1,7 @@
 
 ### Changes
 
-version 0.18.0
+version 0.17.1
 
 - Bug fix (issue #197). The liquid crystal reduced field strength was reported
   incorrectly in the output (always zero). Thanks to Oliver H. for spotting.
