@@ -37,8 +37,6 @@
 #include "util.h"
 #include "field.h"
 
-#include "mpi-ext.h"
-
 static int field_write(FILE * fp, int index, void * self);
 static int field_write_ascii(FILE * fp, int index, void * self);
 static int field_read(FILE * fp, int index, void * self);
