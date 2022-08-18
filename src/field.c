@@ -1152,18 +1152,12 @@ void field_halo_dequeue_recv_kernel(field_t * field, const field_halo_t * h, int
 
 #if defined(__NVCC__)
 void CUDART_CB field_halo_send_callback(void *data) {
-  // printf("callback() data = %d\n", data);
   const static int tagbase = 2022;
 
   intptr_t *tmp = (intptr_t *)data;
   field_t *field = (field_t *)(tmp[0]);
-  // printf("callback() field = %d\n", field);
   field_halo_t *h = (field_halo_t *)(tmp[1]);
-  // printf("callback() h = %d\n", h);
   int ireq = tmp[2];
-  // printf("callback() ireq = %d\n", ireq);
-  // printf("callback() h->send = %d\n", h->send);
-  // printf("callback() h->send[ireq] = %d\n", h->send[ireq]);
 
   int i = 1 + h->cv[ireq][X];
   int j = 1 + h->cv[ireq][Y];
@@ -1176,8 +1170,6 @@ void CUDART_CB field_halo_send_callback(void *data) {
   
   MPI_Isend(h->send[ireq], mcount, MPI_DOUBLE, h->nbrrank[i][j][k],
       tagbase + ireq, h->comm, h->request + 27 + ireq);
-  // MPI_Ssend(h->send[ireq], mcount, MPI_DOUBLE, h->nbrrank[i][j][k],
-  //     tagbase + ireq, h->comm);
 }
 
 int create_send_graph(const field_t * field, field_halo_t * h) {
@@ -1225,30 +1217,10 @@ int create_send_graph(const field_t * field, field_halo_t * h) {
                               h->send_graph->graph, 
                               &kernelNode, 
                               1, &memcpyParams);
-
-      // cudaGraphNode_t hostNode;
-      // h->send_graph->hostCallbackArgs[ireq][0] = (intptr_t)field;
-      // h->send_graph->hostCallbackArgs[ireq][1] = (intptr_t)h;
-      // h->send_graph->hostCallbackArgs[ireq][2] = (intptr_t)ireq;
-      // cudaHostNodeParams hostParams = {0};
-      // hostParams.fn = field_halo_send_callback;
-      // hostParams.userData = &h->send_graph->hostCallbackArgs[ireq];
-      // printf("create_send() hostParams.userData = %d\n", hostParams.userData);
-      // intptr_t* tmp = (intptr_t*)hostParams.userData;
-      // printf("create_send() field = %d, h = %d, ireq = %d, h->send[ireq] = %d\n", field, h, ireq, h->send[ireq]);
-      // printf("create_send() tmp[0] = %d, tmp[1] = %d, tmp[2] = %d, h->send[ireq] = %d\n", tmp[0], tmp[1], tmp[2], h->send[ireq]);
-
-      // printf("create_send() %d -> %d\n", h->nbrrank[1][1][1], h->nbrrank[i][j][k]);
-      // cudaGraphAddHostNode(&hostNode, h->send_graph->graph,
-      //                       &memcpyNode,
-      //                       1, &hostParams);
     }
 #endif
   }
-  // char errLog[1000];
   cudaGraphInstantiate(&h->send_graph->graphExec, h->send_graph->graph, NULL, NULL, 0);
-  // errLog[999] = '\0';
-  // printf("send graph log: %s\n", errLog);
   return 0;
 }
 
@@ -1281,9 +1253,6 @@ int create_recv_graph(const field_t * field, field_halo_t * h) {
 #endif
     cudaGraphNode_t node;
     cudaKernelNodeParams kernelNodeParams = {0};
-    // h->recv_graph->kernelArgs[ireq][0] = (intptr_t)field->target;
-    // h->recv_graph->kernelArgs[ireq][1] = (intptr_t)h->target;
-    // h->recv_graph->kernelArgs[ireq][2] = (intptr_t)ireq;
     void *kernelArgs[3] = {(void*)&field->target, 
                             (void*)&h->target, 
                             (void*)&ireq};
@@ -1522,7 +1491,7 @@ int field_halo_post(const field_t * field, field_halo_t * h) {
   TIMER_stop(TIMER_FIELD_HALO_PACK);
 
   TIMER_start(TIMER_FIELD_HALO_ISEND);
-// #ifndef __NVCC__
+
   h->request[27] = MPI_REQUEST_NULL;
 
   for (int ireq = 1; ireq < h->nvel; ireq++) {
@@ -1541,7 +1510,7 @@ int field_halo_post(const field_t * field, field_halo_t * h) {
 	      tagbase + ireq, h->comm, h->request + 27 + ireq);
 #endif
   }
-// #endif
+
   TIMER_stop(TIMER_FIELD_HALO_ISEND);
 
   return 0;
