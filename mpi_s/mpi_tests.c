@@ -27,6 +27,8 @@ static int test_mpi_op_create(void);
 static int test_mpi_file_open(void);
 static int test_mpi_file_get_view(void);
 static int test_mpi_file_set_view(void);
+static int test_mpi_type_create_subarray(void);
+static int test_mpi_file_write_all(void);
 
 int main (int argc, char ** argv) {
 
@@ -50,6 +52,8 @@ int main (int argc, char ** argv) {
   test_mpi_file_open();
   test_mpi_file_get_view();
   test_mpi_file_set_view();
+  test_mpi_type_create_subarray();
+  test_mpi_file_write_all();
 
   ireturn = MPI_Finalize();
   assert(ireturn == MPI_SUCCESS);
@@ -447,7 +451,7 @@ int test_mpi_file_set_view(void) {
   MPI_File_open(comm, "mpif.dat", MPI_MODE_WRONLY+MPI_MODE_CREATE, info, &fh);
 
   {
-    /* Thge values here aren't really meaningful, but they will do ... */
+    /* The values here aren't really meaningful, but they will do ... */
     MPI_Offset disp = 1;
     MPI_Datatype etype = MPI_DOUBLE;
     MPI_Datatype filetype = MPI_INT;
@@ -472,4 +476,135 @@ int test_mpi_file_set_view(void) {
   unlink("mpif.dat");
 
   return 0;
+}
+
+/*****************************************************************************
+ *
+ *  test_mpi_type_create_subarray
+ *
+ *****************************************************************************/
+
+int test_mpi_type_create_subarray(void) {
+
+  {
+    /* two dimensional (contiguous) */
+    int ndims = 2;
+    int sizes[2] = {128, 64};
+    int subsizes[2] = {128, 64};
+    int starts[2] = {0, 0};
+    MPI_Datatype oldtype = MPI_CHAR;
+    MPI_Datatype newtype = MPI_DATATYPE_NULL;
+
+    MPI_Type_create_subarray(ndims, sizes, subsizes, starts, MPI_ORDER_C,
+			     oldtype, &newtype);
+    MPI_Type_commit(&newtype);
+    assert(newtype != MPI_DATATYPE_NULL);
+    MPI_Type_free(&newtype);
+  }
+
+  {
+    /* three dimensional (contiguous) */
+    int ndims = 3;
+    int sizes[3] = {16, 8, 4};
+    int subsizes[3] = {16, 8, 4};
+    int starts[3] = {0, 0};
+    MPI_Datatype oldtype = MPI_DOUBLE;
+    MPI_Datatype newtype = MPI_DATATYPE_NULL;
+
+    MPI_Type_create_subarray(ndims, sizes, subsizes, starts, MPI_ORDER_C,
+			     oldtype, &newtype);
+    MPI_Type_commit(&newtype);
+    assert(newtype != MPI_DATATYPE_NULL);
+    MPI_Type_free(&newtype);
+  }
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  test_mpi_file_write_all
+ *
+ *  It is convenient to test MPI_File_read_all() at the same time.
+ *
+ *****************************************************************************/
+
+int test_mpi_file_write_all(void) {
+
+#define NX 23
+#define NY 12
+
+  int ifail = 0; /* return value */
+
+  const char * filename = "mpi-file-write-all.dat";
+  MPI_Comm comm = MPI_COMM_WORLD;
+  MPI_Info info = MPI_INFO_NULL;
+
+  /* Some very synthetic data */
+  int ndims = 2;
+  int sizes[2] = {NX, NY};
+  int subsizes[2] = {NX, NY};
+  int starts[2] = {0, 0};
+
+  /* Create a subarray type */
+
+  MPI_Datatype etype = MPI_DOUBLE;
+  MPI_Datatype filetype = MPI_DATATYPE_NULL;
+
+  MPI_Type_create_subarray(ndims, sizes, subsizes, starts, MPI_ORDER_C,
+			     etype, &filetype);
+  MPI_Type_commit(&filetype);
+  
+  {
+    /* Write */
+
+    MPI_File fh = MPI_FILE_NULL; 
+    MPI_Offset disp = 0;
+
+    int count = 1;
+    double wbuf[NX*NY] = {0};
+
+    /* Some test values */
+    for (int id = 0; id < NX*NY; id++) {
+      wbuf[id] = 1.0*id;
+    }
+
+    MPI_File_open(comm, filename, MPI_MODE_WRONLY+MPI_MODE_CREATE, info, &fh);
+
+    /* Set the view */
+    /* As this is serial the datetype is the filetype */
+
+    MPI_File_set_view(fh, disp, etype, filetype, "native", info);
+
+    MPI_File_write_all(fh, wbuf, count, filetype, MPI_STATUS_IGNORE);
+    MPI_File_close(&fh);
+  }
+
+
+  {
+    /* Re-read the same file */
+    MPI_File fh = MPI_FILE_NULL;
+    MPI_Offset disp = 0;
+
+    int count = 1;
+    double rbuf[NX*NY] = {0};
+
+    MPI_File_open(comm, filename, MPI_MODE_RDONLY, info, &fh);
+
+    /* Set the view */
+    MPI_File_set_view(fh, disp, etype, filetype, "native", info);
+
+    MPI_File_read_all(fh, rbuf, count, filetype, MPI_STATUS_IGNORE);
+    MPI_File_close(&fh);
+
+    for (int id = 0; id < NX*NY; id++) {
+      assert(fabs(rbuf[id] - 1.0*id) < DBL_EPSILON);
+      if (fabs(rbuf[id] - 1.0*id) > DBL_EPSILON) ifail += 1;
+    }
+  }
+
+  MPI_Type_free(&filetype);
+  unlink(filename);
+
+  return ifail;
 }

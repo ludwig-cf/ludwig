@@ -49,7 +49,8 @@
 
 /* We are not going to deal with all possible data types; encode
  * what we have ... */
-enum dt_flavour {DT_NOT_IMPLEMENTED = 0, DT_CONTIGUOUS, DT_VECTOR, DT_STRUCT};
+enum dt_flavour {DT_NOT_IMPLEMENTED = 0, DT_CONTIGUOUS, DT_VECTOR, DT_STRUCT,
+                 DT_SUBARRAY};
 
 typedef struct internal_data_type_s data_t;
 typedef struct internal_file_view_s file_t;
@@ -1410,12 +1411,30 @@ int MPI_Type_create_subarray(int ndims, const int * array_of_sizes,
 			     int order,
 			     MPI_Datatype oldtype,
 			     MPI_Datatype * newtype) {
+
+  int nelements = 0;
+
+  assert(ndims == 2 || ndims == 3); /* We accept this is not general */
   assert(array_of_sizes);
   assert(array_of_subsizes);
   assert(array_of_starts);
   assert(order == MPI_ORDER_C || order == MPI_ORDER_FORTRAN);
   assert(newtype);
 
+  /* Assume this is a contiguous block of elements of oldtype */
+  nelements = array_of_sizes[0]*array_of_sizes[1];
+  if (ndims == 3) nelements *= array_of_sizes[2];
+
+  {
+    data_t dt = {0};
+
+    dt.handle  = MPI_DATATYPE_NULL;
+    dt.bytes   = mpi_sizeof(oldtype)*nelements;
+    dt.commit  = 0;
+    dt.flavour = DT_SUBARRAY;
+
+    mpi_data_type_add(mpi_info, &dt, newtype);
+  }
   return MPI_SUCCESS;
 }
 
@@ -1494,8 +1513,31 @@ int MPI_File_set_view(MPI_File fh, MPI_Offset disp, MPI_Datatype etype,
 
 int MPI_File_read_all(MPI_File fh, void * buf, int count,
 		      MPI_Datatype datatype, MPI_Status * status) {
+  FILE * fp = NULL;
+
   assert(buf);
-  assert(status);
+
+  fp = mpi_file_handle_to_fp(mpi_info, fh);
+
+  if (fp == NULL) {
+    printf("MPI_File_read_all: invalid_file handle\n");
+    exit(0);
+  }
+  else {
+
+    /* Translate to a simple fread() */
+
+    size_t size   = mpi_sizeof(datatype);
+    size_t nitems = count;
+
+    fread(buf, size, nitems, fp);
+
+    if (ferror(fp)) {
+      perror("perror: ");
+      printf("MPI_File_read_all() file operation failed\n");
+      exit(0);
+    }
+  }
 
   return MPI_SUCCESS;
 }
@@ -1512,7 +1554,6 @@ int MPI_File_write_all(MPI_File fh, const void * buf, int count,
   FILE * fp = NULL;
 
   assert(buf);
-  assert(status);
 
   fp = mpi_file_handle_to_fp(mpi_info, fh);
 
