@@ -28,6 +28,7 @@ struct fe_two_symm_oft_param_s {
   double phi_b;              /* Symmetric b */
   double phi_kappa0;         /* Symmetric kappa */
   double phi_kappa1;         /* Symmetric kappa1 */
+  double phi_kappa2;         /* Symmetric kappa2 */
 
   double psi_a;              /* Symmetric a */
   double psi_b;              /* Symmetric b */

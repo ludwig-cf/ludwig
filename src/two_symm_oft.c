@@ -321,7 +321,7 @@ __host__ int fe_two_symm_oft_fed(fe_two_symm_oft_t * fe, int index, double * fed
 
   /* We have the symmetric piece followed by terms in psi */
  
-  phi_kappa_oft = fe->param->phi_kappa0 + fe->param->phi_kappa1*temperature + fe->param->phi_kappa2*temperature;
+  phi_kappa_oft = fe->param->phi_kappa0 + fe->param->phi_kappa1*temperature + fe->param->phi_kappa2*temperature*temperature;
 
   *fed = 0.5*fe->param->phi_a*phi*phi + 0.25*fe->param->phi_b*phi*phi*phi*phi
     + 0.5*phi_kappa_oft*dphisq;
@@ -368,7 +368,7 @@ __host__ int fe_two_symm_oft_mu(fe_two_symm_oft_t * fe, int index, double * mu) 
   psi = field[1];
 
   /* mu_phi */
-  phi_kappa_oft = fe->param->phi_kappa0 + fe->param->phi_kappa1*temperature + fe->param->phi_kappa2*temperature;
+  phi_kappa_oft = fe->param->phi_kappa0 + fe->param->phi_kappa1*temperature + fe->param->phi_kappa2*temperature*temperature;
   mu[0] = fe->param->phi_a*phi + fe->param->phi_b*phi*phi*phi
     - phi_kappa_oft*delsq[0];
 
@@ -417,7 +417,7 @@ __host__ int fe_two_symm_oft_str(fe_two_symm_oft_t * fe, int index, double s[3][
   phi = field[0];
   psi = field[1];
 
-  phi_kappa_oft = fe->param->phi_kappa0 + fe->param->phi_kappa1*temperature + fe->param->phi_kappa2*temperature;
+  phi_kappa_oft = fe->param->phi_kappa0 + fe->param->phi_kappa1*temperature + fe->param->phi_kappa2*temperature*temperature;
 
   p0 = 0.5*fe->param->phi_a*phi*phi + 0.75*fe->param->phi_b*phi*phi*phi*phi
     - phi_kappa_oft*(phi*delsq[0] - 0.5*dot_product(grad[0], grad[0]))
