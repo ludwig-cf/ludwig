@@ -158,6 +158,51 @@ int field_phi_init_block(field_t * phi, double xi) {
 
 /*****************************************************************************
  *
+ *  field_phi_init_one_interface
+ *
+ *  Initialise two blocks with interface at z = 1/2 ltot[Z] 
+ *  Better use z-normal walls if you don't want spurious flows on the edges
+ *
+ *****************************************************************************/
+			
+int field_phi_init_one_interface(field_t * phi, double xi) {
+
+  int nlocal[3];
+  int noffset[3];
+  int ic, jc, kc, index;
+  double z, zhalf;
+  double phi0;
+
+  double ltot[3];
+
+  assert(phi);
+
+  cs_nlocal(phi->cs, nlocal);
+  cs_nlocal_offset(phi->cs, noffset);
+  cs_ltot(phi->cs, ltot);
+
+  zhalf = 0.5*ltot[Z];
+
+  for (ic = 1; ic <= nlocal[X]; ic++) {
+    for (jc = 1; jc <= nlocal[Y]; jc++) { 
+      for (kc = 1; kc <= nlocal[Z]; kc++) {
+
+	index = cs_index(phi->cs, ic, jc, kc);
+	z = noffset[Z] + kc;
+	phi0 = tanh((z-zhalf)/xi);
+	field_scalar_set(phi, index, phi0);
+
+      }
+    }
+  }
+
+  return 0;
+}
+
+
+
+/*****************************************************************************
+ *
  *  field_phi_init_block_X
  *
  *  Initialise one block of chosen thickness at central position on X

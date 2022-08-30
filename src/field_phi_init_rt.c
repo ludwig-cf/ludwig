@@ -95,6 +95,12 @@ int field_phi_init_rt(pe_t * pe, rt_t * rt, field_phi_info_t param,
     field_phi_init_block(phi, param.xi0);
   }
 
+  if (p != 0 && strcmp(value, "one_interface") == 0) {
+    pe_info(pe, "Initialisng phi as one_interface\n");
+    field_phi_init_one_interface(phi, param.xi0);
+  }
+
+
   if (p != 0 && strcmp(value, "block_X") == 0) {
     double block_dimension = 10.0;
     rt_double_parameter(rt, "phi_init_block_dimension", &block_dimension);

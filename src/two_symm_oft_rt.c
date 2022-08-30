@@ -50,6 +50,7 @@ __host__ int fe_two_symm_oft_param_rt(pe_t * pe, rt_t * rt, fe_two_symm_oft_para
   rt_double_parameter(rt, "phi_B",       &p->phi_b);
   rt_double_parameter(rt, "phi_kappa0",   &p->phi_kappa0);
   rt_double_parameter(rt, "phi_kappa1",   &p->phi_kappa1);
+  rt_double_parameter(rt, "phi_kappa2",   &p->phi_kappa2);
 
   rt_double_parameter(rt, "psi_A",       &p->psi_a);
   rt_double_parameter(rt, "psi_B",       &p->psi_b);

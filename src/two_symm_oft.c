@@ -171,6 +171,7 @@ __host__ int fe_two_symm_oft_info(fe_two_symm_oft_t * fe) {
   pe_info(pe, "Bulk parameter phi_B      = %12.5e\n", fe->param->phi_b);
   pe_info(pe, "Surface penalty phi_kappa0 = %12.5e\n", fe->param->phi_kappa0);
   pe_info(pe, "Surface penalty phi_kappa1 = %12.5e\n", fe->param->phi_kappa1);
+  pe_info(pe, "Surface penalty phi_kappa2 = %12.5e\n", fe->param->phi_kappa2);
 
   pe_info(pe, "Bulk parameter psi_A      = %12.5e\n", fe->param->psi_a);
   pe_info(pe, "Bulk parameter psi_B      = %12.5e\n", fe->param->psi_b);
@@ -291,7 +292,7 @@ __host__ int fe_two_symm_oft_xi0(fe_two_symm_oft_t * fe, double * phi_xi, double
  *  fe_two_symm_oft_fed
  *
  *  This is:
- *     (1/2) phi_A \phi^2 + (1/4) phi_B \phi^4 + (1/2) (phi_kappa0 + phi_kappa1 * T) (\nabla\phi)^2
+ *     (1/2) phi_A \phi^2 + (1/4) phi_B \phi^4 + (1/2) (phi_kappa0 + phi_kappa1 * T + phi_kappa2 * T) (\nabla\phi)^2
  *   + (1/2) psi_A \psi^2 + (1/4) psi_B \psi^4 + (1/2) psi_kappa (\nabla\psi)^2
  *
  ****************************************************************************/
@@ -320,7 +321,7 @@ __host__ int fe_two_symm_oft_fed(fe_two_symm_oft_t * fe, int index, double * fed
 
   /* We have the symmetric piece followed by terms in psi */
  
-  phi_kappa_oft = fe->param->phi_kappa0 + fe->param->phi_kappa1*temperature;
+  phi_kappa_oft = fe->param->phi_kappa0 + fe->param->phi_kappa1*temperature + fe->param->phi_kappa2*temperature;
 
   *fed = 0.5*fe->param->phi_a*phi*phi + 0.25*fe->param->phi_b*phi*phi*phi*phi
     + 0.5*phi_kappa_oft*dphisq;
@@ -367,7 +368,7 @@ __host__ int fe_two_symm_oft_mu(fe_two_symm_oft_t * fe, int index, double * mu) 
   psi = field[1];
 
   /* mu_phi */
-  phi_kappa_oft = fe->param->phi_kappa0 + fe->param->phi_kappa1*temperature;
+  phi_kappa_oft = fe->param->phi_kappa0 + fe->param->phi_kappa1*temperature + fe->param->phi_kappa2*temperature;
   mu[0] = fe->param->phi_a*phi + fe->param->phi_b*phi*phi*phi
     - phi_kappa_oft*delsq[0];
 
@@ -416,7 +417,7 @@ __host__ int fe_two_symm_oft_str(fe_two_symm_oft_t * fe, int index, double s[3][
   phi = field[0];
   psi = field[1];
 
-  phi_kappa_oft = fe->param->phi_kappa0 + fe->param->phi_kappa1*temperature;
+  phi_kappa_oft = fe->param->phi_kappa0 + fe->param->phi_kappa1*temperature + fe->param->phi_kappa2*temperature;
 
   p0 = 0.5*fe->param->phi_a*phi*phi + 0.75*fe->param->phi_b*phi*phi*phi*phi
     - phi_kappa_oft*(phi*delsq[0] - 0.5*dot_product(grad[0], grad[0]))

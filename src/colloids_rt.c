@@ -1055,7 +1055,7 @@ int colloids_init_halo_range_check(pe_t * pe, cs_t * cs,
   if (2.0*a0max >= 1.0*(nlocal[Y] - nhalo)) ifail = 1;
   if (2.0*a0max >= 1.0*(nlocal[Z] - nhalo)) ifail = 1;
   if (ifail == 1) {
-    pe_fatal(pe, "Particle diameter larger than (nlocal - 1) domain size\n");
+    pe_fatal(pe, "Particle diameter %f larger than (nlocal %d- %d) domain size\n", 2.0*a0max, nlocal[X], nhalo);
   }
 
   if (lcell[X] <= a0max) ifail = 1;
@@ -1082,7 +1082,7 @@ int colloids_init_halo_range_check(pe_t * pe, cs_t * cs,
   if (lcell[Z] < (a0max + nhalo - 0.5)) ifail = 1;
 
   if (ifail == 1) {
-    pe_fatal(pe, "Must have cell width > a0_max + nhalo\n");
+    pe_fatal(pe, "Must have cell width ( %f %f %f )  > a0_max ( %f ) + nhalo ( %d )\n", lcell[X], lcell[Y], lcell[Z], a0max, nhalo);
   }
 
   return ifail;

@@ -29,6 +29,7 @@ int field_phi_init_drop(field_t * phi, double xi, double radius,
 			double phistar);
 int field_phi_init_uniform(field_t * phi, double phi0);
 int field_phi_init_block(field_t * phi, double xi);
+int field_phi_init_one_interface(field_t * phi, double xi);
 int field_phi_init_block_X(field_t * phi, double xi, double block_dimension);
 int field_phi_init_block_Y(field_t * phi, double xi, double block_dimension);
 int field_phi_init_block_Z(field_t * phi, double xi, double block_dimension);
