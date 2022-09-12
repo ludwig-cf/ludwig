@@ -794,8 +794,9 @@ int test_o8m_struct(pe_t * pe, cs_t * cs, lees_edw_t * le, fe_lc_t * fe,
   field[Y] = field[X];
   field[Z] = field[X];
 
-  physics_e0_set(phys, field);
-  fe_lc_param_commit(fe);
+  fe->param->e0[X] = field[X];
+  fe->param->e0[Y] = field[Y];
+  fe->param->e0[Z] = field[Z];
 
   /* Note the electric field remains switched on so... */
 
@@ -832,8 +833,9 @@ int test_o8m_struct(pe_t * pe, cs_t * cs, lees_edw_t * le, fe_lc_t * fe,
   field[Y] = 0.0;
   field[Z] = 0.0;
 
-  physics_e0_set(phys, field);
-  fe_lc_param_commit(fe);
+  fe->param->e0[X] = field[X];
+  fe->param->e0[Y] = field[Y];
+  fe->param->e0[Z] = field[Z];
 
   /* Note the electric field now changed so... */
 
