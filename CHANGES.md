@@ -1,6 +1,12 @@
 
 ### Changes
 
+version 0.17.2
+
+- Bug fix (issue #204) prevent crashes with s7_anchoring related to
+  proximity of wall/colloid or colloid/colloid. Advice added to
+  documentation on avoiding such close approaches.
+
 version 0.17.1
 
 - Bug fix (issue #197). The liquid crystal reduced field strength was reported

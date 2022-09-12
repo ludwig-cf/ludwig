@@ -421,15 +421,22 @@ void grad_s7_kernel(kernel_ctxt_t * ktx, cs_t * cs, grad_s7_anch_t * anch,
 
 	/* Combine the outward normals to produce a unique outward
 	 * normal at the edge */
+	/* Cases to trap: status[0] != status[1] (e.g., one wall, one
+         * colloid). Default to MAP_BOUNDARY, then check have same
+	 * status. */
+
 	int bcse[3] = {0, 0, 0};
 	int nn0 = normal[0];
 	int nn1 = normal[1];
+	int mystatus = MAP_BOUNDARY;
+
 	bcse[X] = bcs[nn0][X] + bcs[nn1][X];
 	bcse[Y] = bcs[nn0][Y] + bcs[nn1][Y];
 	bcse[Z] = bcs[nn0][Z] + bcs[nn1][Z];
 
-	grad_s7_boundary_c(fe->param, anch, ic, jc, kc, status[normal[1]], qs,
-			   bcse, c);
+	if (status[nn0] == status[nn1]) mystatus = status[nn0];
+
+	grad_s7_boundary_c(fe->param, anch, ic, jc, kc, mystatus, qs, bcse, c);
 
 	/* Overwrite the existing values, and add new ones, which are
 	 * the same. */
@@ -460,13 +467,17 @@ void grad_s7_kernel(kernel_ctxt_t * ktx, cs_t * cs, grad_s7_anch_t * anch,
 	int nn0 = normal[0];
 	int nn1 = normal[1];
 	int nn2 = normal[2];
+	int mystatus = MAP_BOUNDARY;
 
 	bcse[X] = bcs[nn0][X] + bcs[nn1][X] + bcs[nn2][X];
 	bcse[Y] = bcs[nn0][Y] + bcs[nn1][Y] + bcs[nn2][Y];
 	bcse[Z] = bcs[nn0][Z] + bcs[nn1][Z] + bcs[nn2][Z];
 
-	grad_s7_boundary_c(fe->param, anch, ic, jc, kc, status[normal[2]], qs,
-			   bcse, c);
+	if (status[nn0] == status[nn1] && status[nn0] == status[nn2]) {
+	  mystatus = status[nn0];
+	}
+
+	grad_s7_boundary_c(fe->param, anch, ic, jc, kc, mystatus, qs, bcse, c);
 
 	b18[0*NSYMM + XX] = -1.0*c[X][X];
 	b18[0*NSYMM + XY] = -2.0*c[X][Y];
@@ -1042,13 +1053,26 @@ __host__ __device__ int grad_s7_boundary_c(fe_lc_param_t * param,
     {
       int index = cs_index(anch->cs, ic - di[X], jc - di[Y], kc - di[Z]);
       colloid_t * pc = anch->cinfo->map_new[index];
-      assert(pc);
-      dr[X] = 1.0*(noffset[X] + ic) - pc->s.r[X];
-      dr[Y] = 1.0*(noffset[Y] + jc) - pc->s.r[Y];
-      dr[Z] = 1.0*(noffset[Z] + kc) - pc->s.r[Z];
-    }
 
-    grad_s7_boundary_coll(param, qs, dr, c);
+      if (pc) {
+	dr[X] = 1.0*(noffset[X] + ic) - pc->s.r[X];
+	dr[Y] = 1.0*(noffset[Y] + jc) - pc->s.r[Y];
+	dr[Z] = 1.0*(noffset[Z] + kc) - pc->s.r[Z];
+	grad_s7_boundary_coll(param, qs, dr, c);
+      }
+      else {
+	/* There is a case to trap here, where a diagonal di[] crosses
+	 * the gap between two different colloids. This will give a
+	 * fluid site. It's not clear there is any 'correct' answer
+	 * to what to do in this case as there is no unique surface normal.
+	 * So set c = 0. */
+	for (int ia = 0; ia < 3; ia++) {
+	  for (int ib = 0; ib < 3; ib++) {
+	    c[ia][ib] = 0.0;
+	  }
+	}
+      }
+    }
   }
   else {
     /* Should not be here. */
