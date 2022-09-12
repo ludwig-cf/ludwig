@@ -35,6 +35,7 @@ struct lb_data_options_s {
   lb_relaxation_enum_t nrelax;
   lb_halo_enum_t halo;
   int reportimbalance;
+  int usefirsttouch;
 
   io_info_args_t data;
   io_info_args_t rho;

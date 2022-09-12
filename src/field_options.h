@@ -31,6 +31,7 @@ struct field_options_s {
 
   field_halo_enum_t haloscheme;         /* Halo swap method */
   int haloverbose;                      /* Halo information level */
+  int usefirsttouch;                    /* First touch for data? */
 
   io_info_args_t iodata;                /* I/O information */
 };

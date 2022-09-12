@@ -198,6 +198,7 @@ int lb_run_time_prev(pe_t * pe, cs_t * cs, rt_t * rt, lb_t ** lb) {
     }
 
     options.reportimbalance = rt_switch(rt, "lb_halo_report_imbalance");
+    options.usefirsttouch   = rt_switch(rt, "lb_data_use_first_touch");
 
     if (lb_data_options_valid(&options) == 0) {
       pe_fatal(pe, "lb_data_options are invalid. Please check halo.\n");
@@ -236,6 +237,9 @@ int lb_run_time_prev(pe_t * pe, cs_t * cs, rt_t * rt, lb_t ** lb) {
   }
   if (options.reportimbalance) {
     pe_info(pe, "Imbalance time:   %s\n", "reported");
+  }
+  if (options.usefirsttouch) {
+    pe_info(pe, "First touch:      %s\n", "yes");
   }
 
   if (strcmp("BINARY_SERIAL", string) == 0) {
