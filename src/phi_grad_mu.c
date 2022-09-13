@@ -133,7 +133,7 @@ __host__ int phi_grad_mu_external(cs_t * cs, field_t * phi, hydro_t * hydro) {
   int nlocal[3];
   int is_grad_mu = 0;     /* Short circuit the kernel if not required. */
   dim3 nblk, ntpb;
-  double3 grad_mu = {0};
+  double3 grad_mu = {0.0,0.0,0.0};
 
   kernel_info_t limits;
   kernel_ctxt_t * ctxt = NULL;

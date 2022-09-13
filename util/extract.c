@@ -228,7 +228,7 @@ int extract_driver(const char * filename, metadata_v1_t * meta, int version) {
   FILE * fp_data;
 
   ntime = read_data_file_name(filename);
-  assert(ntime <= 0 && ntime < 1000*1000*1000);
+  assert(0 <= ntime && ntime < 1000*1000*1000);
 
   /* Work out parallel local file size */
 

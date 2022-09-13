@@ -2,18 +2,17 @@
  *
  *  psi.h
  *
- *  $Id$
- *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
+ *  (c) 2012-2022 The University of Edinburgh
+ *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
- *  (c) 2012 The University of Edinburgh
  *
  *****************************************************************************/
 
-#ifndef PSI_H
-#define PSI_H
+#ifndef LUDWIG_PSI_H
+#define LUDWIG_PSI_H
 
 #include "pe.h"
 #include "coords.h"
@@ -38,6 +37,7 @@ typedef struct psi_s psi_t;
 
 /* f_vare_t describes the signature of the function expected
  * to return the permittivity as a function of position index. */
+
 typedef int (* f_vare_t)(void * fe, int index, double * epsilon);
 
 int psi_create(pe_t * pe, cs_t * cs, int nk, psi_t ** pobj);
@@ -50,6 +50,7 @@ int psi_valency(psi_t * obj, int n, int * iv);
 int psi_valency_set(psi_t * obj, int n, int iv);
 int psi_diffusivity(psi_t * obj, int n, double * diff);
 int psi_diffusivity_set(psi_t * obj, int n, double diff);
+int psi_e0_set(psi_t * psi, const double e0[3]);
 int psi_halo_psi(psi_t * obj);
 int psi_halo_psijump(psi_t * obj);
 int psi_halo_rho(psi_t * obj);
@@ -81,7 +82,7 @@ int psi_reltol_set(psi_t * obj, double reltol);
 int psi_abstol_set(psi_t * obj, double abstol);
 int psi_maxits_set(psi_t * obj, int maxits);
 int psi_nfreq_set(psi_t * psi, int nfreq);
-int psi_output_step(psi_t * psi);
+int psi_output_step(psi_t * psi, int its);
 
 int psi_multisteps(psi_t * obj, int * multisteps);
 int psi_multisteps_set(psi_t * obj, int multisteps);
@@ -95,4 +96,5 @@ int psi_force_method(psi_t * obj, int * flag);
 int psi_force_method_set(psi_t * obj, int flag);
 
 int psi_electroneutral(psi_t * obj, map_t * map);
+
 #endif

@@ -101,6 +101,7 @@ int do_test_io_info_struct(pe_t * pe, cs_t * cs) {
   io_write_data(io_info, stubp, &data);
   MPI_Barrier(MPI_COMM_WORLD);
 
+  io_info_format_in_set(io_info, IO_FORMAT_BINARY_SERIAL);
   io_read_data(io_info, stubp, &data);
   MPI_Barrier(MPI_COMM_WORLD);
 
@@ -116,6 +117,7 @@ int do_test_io_info_struct(pe_t * pe, cs_t * cs) {
   io_write_data(io_info, stubp, &data);
   MPI_Barrier(MPI_COMM_WORLD);
 
+  io_info_format_in_set(io_info, IO_FORMAT_ASCII_SERIAL);
   io_read_data(io_info, stubp, &data);
   MPI_Barrier(MPI_COMM_WORLD);
 

@@ -7,7 +7,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2020-2021 The University of Edinburgh
+ *  (c) 2020-2022 The University of Edinburgh
  *
  *  Contributing authors:
  *    Nikola Vasilev: did the original implementation in 2020.
@@ -243,12 +243,18 @@ __host__ __device__ tdpError_t tdpDeviceGetCacheConfig(tdpFuncCache * cache) {
 #endif
 }
 
+__host__ tdpError_t tdpDeviceGetP2PAttribute(int * value,
+					     tdpDeviceP2PAttr attr,
+					     int srcDevice, int dstDevice) {
+  return hipDeviceGetP2PAttribute(value, attr, srcDevice, dstDevice);
+}
+
 __host__ tdpError_t tdpDeviceSetCacheConfig(tdpFuncCache cacheConfig) {
 
   return hipDeviceSetCacheConfig(cacheConfig);
 }
 
-__host__ __device__ tdpError_t tdpDeviceSynchronize(void) {
+__host__ tdpError_t tdpDeviceSynchronize(void) {
 
 #ifdef __HIP_DEVICE_COMPILE__
   /* Do nothing */
@@ -377,6 +383,19 @@ __host__ tdpError_t tdpMemcpyAsync(void * dst, const void * src, size_t count,
   return hipMemcpyAsync(dst, src, count, kind, stream);
 }
 
+__host__ tdpError_t tdpMemcpyPeer(void * dst, int dstDevice, const void * src,
+				  int srcDevice, size_t count) {
+
+  return hipMemcpyPeer(dst, dstDevice, src, srcDevice, count);
+}
+
+__host__ tdpError_t tdpMemcpyPeerAsync(void * dst, int dstDevice,
+				       const void * src, int srcDevice,
+				       size_t count, tdpStream_t stream) {
+
+  return hipMemcpyPeerAsync(dst, dstDevice, src, srcDevice, count, stream);
+}
+
 __host__ __device__ tdpError_t tdpMalloc(void ** devptr, size_t size) {
 
 #ifdef __HIP_DEVICE_COMPILE__
@@ -406,4 +425,23 @@ __host__ tdpError_t tdpHostAlloc(void ** phost, size_t size,
 				 unsigned int flags) {
 
   return hipHostMalloc(phost, size, flags);
+}
+
+/* Peer device memory access */
+
+__host__ tdpError_t tdpDeviceCanAccessPeer(int * canAccessPeer, int device,
+					   int peerDevice) {
+
+  return hipDeviceCanAccessPeer(canAccessPeer, device, peerDevice);
+}
+
+__host__ tdpError_t tdpDeviceDisablePeerAccess(int peerDevice) {
+
+  return hipDeviceDisablePeerAccess(peerDevice);
+}
+
+__host__ tdpError_t tdpDeviceEnablePeerAccess(int peerDevice,
+					      unsigned int flags) {
+
+  return hipDeviceEnablePeerAccess(peerDevice, flags);
 }

@@ -9,7 +9,7 @@
  *  Edinburgh Soft Matter and Statistical Physics and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2011-2021 The University of Edinburgh
+ *  (c) 2011-2022 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -221,6 +221,11 @@ __host__ int wall_info(wall_t * wall) {
 	    wall->param->utop[X]);
     pe_info(pe, "Boundary normal lubrication rc: %14.7e\n",
 	    wall->param->lubr_rc[X]);
+    /* Print only if non-zero for backwards compatibility in tests ...*/
+    if (wall->param->lubr_dh[X] > 0.0) {
+    pe_info(pe, "Boundary normal lubrication dh: %14.7e\n",
+	    wall->param->lubr_dh[X]);
+    }
 
     pe_info(pe, "Wall boundary links allocated:   %d\n",  nlink);
     pe_info(pe, "Memory (total, bytes):           %zu\n", 4*nlink*sizeof(int));
@@ -1496,7 +1501,9 @@ __host__ int wall_shear_init(wall_t * wall) {
  *  This operates in parallel by computing the absolute distance between
  *  the side of the system (walls nominally at Lmin and (Lmax + Lmin)),
  *  and applying the cutoff.
- * 
+ *
+ *  An offset lubr_dh is available at each end [defaults to zero].
+ *
  *  Normal force is added to the diagonal of drag matrix \zeta^FU_xx etc
  *  (No tangential force would be added to \zeta^FU_xx and \zeta^FU_yy)
  *
@@ -1505,13 +1512,10 @@ __host__ int wall_shear_init(wall_t * wall) {
 __host__ int wall_lubr_sphere(wall_t * wall, double ah, const double r[3],
 			      double drag[3]) {
 
-  double hlub;
-  double h;
   double eta;
   double lmin[3];
   double ltot[3];
   physics_t * phys = NULL;
-  PI_DOUBLE(pi);
 
   drag[X] = 0.0;
   drag[Y] = 0.0;
@@ -1528,28 +1532,52 @@ __host__ int wall_lubr_sphere(wall_t * wall, double ah, const double r[3],
   /* Lower, then upper wall X, Y, and Z */
 
   if (wall->param->isboundary[X]) {
-    hlub = wall->param->lubr_rc[X];
-    h = r[X] - lmin[X] - ah; 
-    if (h < hlub) drag[X] = -6.0*pi*eta*ah*ah*(1.0/h - 1.0/hlub);
-    h = lmin[X] + ltot[X] - r[X] - ah;
-    if (h < hlub) drag[X] = -6.0*pi*eta*ah*ah*(1.0/h - 1.0/hlub);
+    double dh = wall->param->lubr_dh[X];
+    double hlub = wall->param->lubr_rc[X];
+    double hb = r[X] - (lmin[X] + dh)  - ah;
+    double ht = lmin[X] + (ltot[X] - dh) - r[X] - ah;
+    drag[X] += wall_lubr_drag(eta, ah, hb, hlub);
+    drag[X] += wall_lubr_drag(eta, ah, ht, hlub);
   }
 
   if (wall->param->isboundary[Y]) {
-    hlub = wall->param->lubr_rc[Y];
-    h = r[Y] - lmin[Y] - ah; 
-    if (h < hlub) drag[Y] = -6.0*pi*eta*ah*ah*(1.0/h - 1.0/hlub);
-    h = lmin[Y] + ltot[Y] - r[Y] - ah;
-    if (h < hlub) drag[Y] = -6.0*pi*eta*ah*ah*(1.0/h - 1.0/hlub);
+    double dh = wall->param->lubr_dh[Y];
+    double hlub = wall->param->lubr_rc[Y];
+    double hb = r[Y] - (lmin[Y] + dh)  - ah;
+    double ht = lmin[Y] + (ltot[Y] - dh) - r[Y] - ah;
+    drag[Y] += wall_lubr_drag(eta, ah, hb, hlub);
+    drag[Y] += wall_lubr_drag(eta, ah, ht, hlub);
   }
 
   if (wall->param->isboundary[Z]) {
-    hlub = wall->param->lubr_rc[Z];
-    h = r[Z] - lmin[Z] - ah; 
-    if (h < hlub) drag[Z] = -6.0*pi*eta*ah*ah*(1.0/h - 1.0/hlub);
-    h = lmin[Z] + ltot[Z] - r[Z] - ah;
-    if (h < hlub) drag[Z] = -6.0*pi*eta*ah*ah*(1.0/h - 1.0/hlub);
+    double dh = wall->param->lubr_dh[Z];
+    double hlub = wall->param->lubr_rc[Z];
+    double hb = r[Z] - (lmin[Z] + dh) - ah;
+    double ht = lmin[Z] + (ltot[Z] - dh) - r[Z] - ah;
+    drag[Z] += wall_lubr_drag(eta, ah, hb, hlub);
+    drag[Z] += wall_lubr_drag(eta, ah, ht, hlub);
   }
 
   return 0;
+}
+
+/*****************************************************************************
+ *
+ *  wall_lubr_drag
+ *
+ *  Return drag correction for sphere hydrodynamic radius ah.
+ *  The separation h should be less than the cut off hc, or
+ *  else zero is returned. Both h and hc should be +ve.
+ *
+ *  eta is the dynamic viscosity (lattice units).
+ *
+ *****************************************************************************/
+
+__host__ double wall_lubr_drag(double eta, double ah, double h, double hc) {
+
+  double zeta = 0.0;
+  PI_DOUBLE(pi);
+
+  if (h < hc) zeta = -6.0*pi*eta*ah*ah*(1.0/h - 1.0/hc);
+  return zeta;
 }

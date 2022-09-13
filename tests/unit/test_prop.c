@@ -38,6 +38,7 @@ __host__ int do_test_source_destination(pe_t * pe, cs_t * cs, int ndist,
 
 int test_lb_prop_suite(void) {
 
+  int ndevice = 0;
   pe_t * pe = NULL;
   cs_t * cs = NULL;
 
@@ -45,15 +46,21 @@ int test_lb_prop_suite(void) {
   cs_create(pe, &cs);
   cs_init(cs);
 
+  tdpGetDeviceCount(&ndevice);
+
   do_test_velocity(pe, cs, 1, LB_HALO_TARGET);
   do_test_velocity(pe, cs, 2, LB_HALO_TARGET);
-  do_test_velocity(pe, cs, 1, LB_HALO_OPENMP_FULL);
-  do_test_velocity(pe, cs, 1, LB_HALO_OPENMP_REDUCED);
+  if (ndevice == 0) {
+    do_test_velocity(pe, cs, 1, LB_HALO_OPENMP_FULL);
+    do_test_velocity(pe, cs, 1, LB_HALO_OPENMP_REDUCED);
+  }
 
   do_test_source_destination(pe, cs, 1, LB_HALO_TARGET);
   do_test_source_destination(pe, cs, 2, LB_HALO_TARGET);
-  do_test_source_destination(pe, cs, 1, LB_HALO_OPENMP_FULL);
-  do_test_source_destination(pe, cs, 1, LB_HALO_OPENMP_REDUCED);
+  if (ndevice == 0) {
+    do_test_source_destination(pe, cs, 1, LB_HALO_OPENMP_FULL);
+    do_test_source_destination(pe, cs, 1, LB_HALO_OPENMP_REDUCED);
+  }
 
   pe_info(pe, "PASS     ./unit/test_prop\n");
   cs_free(cs);

@@ -499,7 +499,7 @@ int colloids_update_forces_fluid_gravity(colloids_info_t * cinfo,
  *****************************************************************************/
 
 int colloids_update_forces_fluid_driven(colloids_info_t * cinfo,
-                                         map_t * map) {
+					map_t * map) {
 
   int nc;
   int ia;
@@ -507,7 +507,6 @@ int colloids_update_forces_fluid_driven(colloids_info_t * cinfo,
   double rvolume;
   int periodic[3];
   double fd[3], f[3];
-  /* double fw[3]; */
   physics_t * phys = NULL;
 
   return 0; /* This routine needs an MOT before use. */
@@ -522,6 +521,8 @@ int colloids_update_forces_fluid_driven(colloids_info_t * cinfo,
   if (is_driven()) {
 
     assert(map);
+
+    cs_periodic(map->cs, periodic);
     map_volume_allreduce(map, MAP_FLUID, &nsfluid);
     rvolume = 1.0/nsfluid;
 
@@ -530,7 +531,7 @@ int colloids_update_forces_fluid_driven(colloids_info_t * cinfo,
     
     for (ia = 0; ia < 3; ia++) {
       f[ia] = -1.0*fd[ia]*rvolume*periodic[ia];
-      /* fw[ia] = -1.0*fd[ia]*(1.0 - periodic[ia])/(1.0*pe_size());*/
+      /* Wall accounting adjustment should be -fd (1 - periodic) / nprocs */
     }
 
     physics_fbody_set(phys, f);

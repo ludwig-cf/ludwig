@@ -633,7 +633,7 @@ void ludwig_run(const char * inputfile) {
 #ifdef PETSC
 	psi_petsc_solve(ludwig->psi, ludwig->fe, ludwig->epsilon);
 #else
-	psi_sor_solve(ludwig->psi, ludwig->fe, ludwig->epsilon);
+	psi_sor_solve(ludwig->psi, ludwig->fe, ludwig->epsilon, step);
 #endif
 	TIMER_stop(TIMER_ELECTRO_POISSON);
       }
@@ -1604,6 +1604,9 @@ int free_energy_init_rt(ludwig_t * ludwig) {
 	opts.haloscheme = FIELD_HALO_OPENMP;
 	opts.haloverbose = rt_switch(rt, "field_halo_verbose");
       }
+      if (rt_switch(rt, "field_data_use_first_touch")) {
+	opts.usefirsttouch = 1;
+      }
       field_create(pe, cs, le, "q", &opts, &ludwig->q);
       field_grad_create(pe, ludwig->q, ngrad, &ludwig->q_grad);
     }
@@ -1711,6 +1714,9 @@ int free_energy_init_rt(ludwig_t * ludwig) {
 	opts.haloscheme = FIELD_HALO_OPENMP;
 	opts.haloverbose = rt_switch(rt, "field_halo_verbose");
       }
+      if (rt_switch(rt, "field_data_use_first_touch")) {
+	opts.usefirsttouch = 1;
+      }
       field_create(pe, cs, le, "phi", &opts, &ludwig->phi);
       field_grad_create(pe, ludwig->phi, ngrad, &ludwig->phi_grad);
       phi_ch_create(pe, cs, le, &ch_options, &ludwig->pch);
@@ -1748,6 +1754,9 @@ int free_energy_init_rt(ludwig_t * ludwig) {
       if (rt_switch(rt, "field_halo_openmp")) {
 	opts.haloscheme = FIELD_HALO_OPENMP;
 	opts.haloverbose = rt_switch(rt, "field_halo_verbose");
+      }
+      if (rt_switch(rt, "field_data_use_first_touch")) {
+	opts.usefirsttouch = 1;
       }
       field_create(pe, cs, le, "q", &opts, &ludwig->q);
       field_grad_create(pe, ludwig->q, ngrad, &ludwig->q_grad);

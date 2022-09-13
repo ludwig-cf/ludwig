@@ -7,7 +7,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2018 The University of Edinburgh
+ *  (c) 2018-2022 The University of Edinburgh
  *
  *  Contributing authors:
  *  Alan Gray (Late of this parish)
@@ -140,6 +140,18 @@ tdpError_t tdpDeviceGetCacheConfig(tdpFuncCache * cacheConfig) {
   return tdpSuccess;
 }
 
+/*****************************************************************************
+ *
+ *  tdpDeviceGetP2PAttribute
+ *
+ *****************************************************************************/
+
+tdpError_t tdpDeviceGetP2PAttribute(int * value, tdpDeviceP2PAttr attr,
+				    int srcDevice, int peerDevice) {
+  *value = 0;
+
+  return tdpSuccess;
+}
 
 /*****************************************************************************
  *
@@ -260,6 +272,7 @@ tdpError_t tdpGetDeviceProperties(struct tdpDeviceProp * prop, int device) {
   prop->maxThreadsDim[0]   = TARGET_MAX_THREADS_PER_BLOCK;
   prop->maxThreadsDim[1]   = 1;
   prop->maxThreadsDim[2]   = 1;
+  strncpy(prop->name, "host", 256);
 
   return tdpSuccess;
 }
@@ -509,6 +522,47 @@ tdpError_t tdpMemcpyFromSymbol(void * dst, const void * symbol,
 
 /*****************************************************************************
  *
+ *  tdpMemcpyPeer
+ *
+ *****************************************************************************/
+
+__host__ tdpError_t tdpMemcpyPeer(void * dst, int dstDevice, const void * src,
+				  int srcDevice, size_t count) {
+
+
+  error_return_if(dst == NULL, tdpErrorInvalidValue);
+  error_return_if(src == NULL, tdpErrorInvalidValue);
+
+  /* Probably to be avoided. */
+
+  error_return(tdpErrorInvalidDevice);
+
+  return tdpSuccess;
+}
+
+/*****************************************************************************
+ *
+ *  tdpMemcpyPeerAsync
+ *
+ *****************************************************************************/
+
+__host__ tdpError_t tdpMemcpyPeerAsync(void * dst, int dstDevice,
+				       const void * src, int srcDevice,
+				       size_t count, tdpStream_t stream) {
+
+  error_return_if(dst == NULL, tdpErrorInvalidValue);
+  error_return_if(src == NULL, tdpErrorInvalidValue);
+
+  /* Probably to be avoided as well. */
+
+  error_return(tdpErrorInvalidDevice);
+
+  return tdpSuccess;
+}
+
+
+/*****************************************************************************
+ *
  *  tdpMemcpyToSymbol
  *
  *  CUDA  wants "const void * symbol", but this is avoided as we need
@@ -616,6 +670,44 @@ tdpError_t tdpMemcpyAsync(void * dst, const void * src, size_t count,
   /* Just ignore the stream argument and copy immediately */
 
   return tdpMemcpy(dst, src, count, kind);
+}
+
+/*****************************************************************************
+ *
+ *  tdpDeviceCanAccessPeer
+ *
+ *****************************************************************************/
+
+tdpError_t tdpDeviceCanAccessPeer(int * canAccessPeer, int device,
+				  int peerDevice) {
+
+  *canAccessPeer = 0;
+
+  return tdpSuccess;
+}
+
+/*****************************************************************************
+ *
+ *  tdpDeviceDisablePeerAccess
+ *
+ *****************************************************************************/
+
+tdpError_t tdpDeviceDisablePeerAccess(int peerDevice) {
+
+  return tdpSuccess;
+}
+
+/*****************************************************************************
+ *
+ *  tdpDeviceEnablePeerAccess
+ *
+ *****************************************************************************/
+
+tdpError_t tdpDeviceEnablePeerAccess(int peerDevice, unsigned int flags) {
+
+  assert(flags == 0);
+
+  return tdpSuccess;
 }
 
 static int int_max(int a, int b) {return (a > b) ?a :b;}

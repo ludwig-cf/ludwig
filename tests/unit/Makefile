@@ -12,7 +12,7 @@
 #  Edinburgh Soft Matter and Statistical Physics Group and
 #  Edinburgh Parallel Computing Centre
 #
-#  (c) 2010-2020 The University of Edinburgh
+#  (c) 2010-2022 The University of Edinburgh
 #
 #  Contributing authors:
 #  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -22,7 +22,8 @@
 include ../../Makefile.mk
 
 ifeq (${BUILD},parallel)
-MPIRUN_NTASKS=1
+MPIRUN_NTASK_UNIT ?= 1
+MPIRUN_NTASKS=$(MPIRUN_NTASK_UNIT)
 endif
 
 #------------------------------------------------------------------------------

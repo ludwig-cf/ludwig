@@ -8,7 +8,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2011-2018 The University of Edinburgh
+ *  (c) 2011-2022 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -330,7 +330,14 @@ static int stats_ahydro_measure(stats_ahydro_t * stat) {
 
   if (pc) {
     for (ia = 0; ia < 3; ia++) {
-      stat->fbar[ia] += pc->force[ia];
+      if (pc->s.type == COLLOID_TYPE_SUBGRID) {
+	/* The validity of this computation might be questioned ... */
+	stat->fbar[ia] += pc->force[ia];
+      }
+      else {
+	/* We need the diagnostic from bbl */
+	stat->fbar[ia] += pc->diagnostic.fhydro[ia];
+      }
       upart[ia] = pc->s.v[ia];
     }
   }

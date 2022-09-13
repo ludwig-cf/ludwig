@@ -9,7 +9,7 @@
  * Edinburgh Soft Matter and Statistical Physics Group and
  * Edinburgh Parallel Computing Centre
  *
- * (c) 2020-2021 The University of Edinburgh
+ * (c) 2020-2022 The University of Edinburgh
  *
  * Contributing authors:
  * Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -23,6 +23,7 @@
 
 #include "pe.h"
 #include "wall.h"
+#include "util.h"
 #include "tests.h"
 
 __host__ int wall_link_normal(wall_t * wall, int n, int wn[3]);
@@ -36,6 +37,7 @@ __host__ int test_wall_link_slip(pe_t * pe, cs_t * cs);
 __host__ int test_wall_commit1(pe_t * pe, cs_t * cs);
 __host__ int test_wall_commit2(pe_t * pe, cs_t * cs);
 
+__host__ int test_wall_lubr_drag(void);
 
 /*****************************************************************************
  *
@@ -64,6 +66,8 @@ __host__ int test_wall_suite(void) {
 
   test_wall_commit1(pe, cs);
   test_wall_commit2(pe, cs);
+
+  test_wall_lubr_drag();
 
   pe_info(pe, "PASS     ./unit/test_wall\n");
 
@@ -437,4 +441,38 @@ __host__ int test_wall_commit2(pe_t * pe, cs_t * cs) {
   lb_free(lb);
 
   return 0;
+}
+
+/*****************************************************************************
+ *
+ *  test_wall_lubr_drag
+ *
+ *****************************************************************************/
+
+__host__ int test_wall_lubr_drag(void) {
+
+  int ifail = 0;
+  PI_DOUBLE(pi);
+
+  {
+    /* h > hc => zeta = 0. */
+    double eta = 0.1;
+    double ah  = 1.25;
+    double h   = 1.2;
+    double hc  = 1.0;
+    double zeta = wall_lubr_drag(eta, ah, h, hc);
+    assert(fabs(zeta) < DBL_EPSILON);
+    if (fabs(zeta) < DBL_EPSILON) ifail = 1;
+  }
+  {
+    /* h < hc */
+    double eta = 0.1;
+    double ah  = 1.25;
+    double h   = 1.0;
+    double hc  = 1.2;
+    double zeta = wall_lubr_drag(eta, ah, h, hc);
+    assert(fabs(zeta - -6.0*pi*eta*ah*ah*(1.0/h - 1.0/hc)) < DBL_EPSILON);
+  }
+
+  return ifail;
 }

@@ -10,7 +10,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2012-2018 The University of Edinburgh
+ *  (c) 2012-2022 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -134,6 +134,14 @@ int psi_rt_init_param(pe_t * pe, rt_t * rt, psi_t * obj) {
   pe_info(pe, "Absolute tolerance:  %20.7e\n", tolerance);
   psi_maxits(obj, &niteration);
   pe_info(pe, "Max. no. of iterations:  %16d\n", niteration);
+
+  /* External electric field */
+
+  {
+    double e0[3] = {0};
+    rt_double_parameter_vector(rt, "electric_e0", e0);
+    psi_e0_set(obj, e0);
+  }
 
   /* Output */
 

@@ -24,7 +24,8 @@
 
 #include "memory.h"
 
-enum fe_id_enum {FE_SYMMETRIC,
+enum fe_id_enum {FE_NULL,
+                 FE_SYMMETRIC,
 		 FE_BRAZOVSKII,
                  FE_SURFACTANT,
 		 FE_POLAR,

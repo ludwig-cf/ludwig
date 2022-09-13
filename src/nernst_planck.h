@@ -2,18 +2,17 @@
  *
  *  nernst_planck.h
  *
- *  $Id$
- *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
+ *  (c) 2012-2022 The University of Edinburgh
+ *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
- *  (c) 2012-2016 The University of Edinburgh
  *
  *****************************************************************************/
 
-#ifndef NERNST_PLANCK_H
-#define NERNST_PLANCK_H
+#ifndef LUDWIG_NERNST_PLANCK_H
+#define LUDWIG_NERNST_PLANCK_H
 
 #include "psi.h"
 #include "free_energy.h"
@@ -21,7 +20,7 @@
 #include "map.h"
 #include "colloids.h"
 
-int nernst_planck_driver(psi_t * psi, fe_t * fe, hydro_t * hydro, map_t * map);
+int nernst_planck_driver(psi_t * psi, fe_t * fe, map_t * map);
 int nernst_planck_driver_d3qx(psi_t * psi, fe_t * fe, hydro_t * hydro,
 			      map_t * map, colloids_info_t * cinfo);
 int nernst_planck_adjust_multistep(psi_t * psi);
