@@ -5,7 +5,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2015-2020 The University of Edinburgh
+ *  (c) 2015-2022 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -58,6 +58,10 @@ int wall_rt_init(pe_t * pe, cs_t * cs, rt_t * rt, lb_t * lb, map_t * map,
     rt_double_parameter(rt, "boundary_lubrication_rcnormal", &p.lubr_rc[X]);
     p.lubr_rc[Y] = p.lubr_rc[X];
     p.lubr_rc[Z] = p.lubr_rc[X];
+
+    rt_double_parameter(rt, "boundary_lubrication_dhnormal", &p.lubr_dh[X]);
+    p.lubr_dh[Y] = p.lubr_dh[X];
+    p.lubr_dh[Z] = p.lubr_dh[X];
   }
 
   /* Slip properties [optional] */

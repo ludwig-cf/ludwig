@@ -1,6 +1,17 @@
 
 ### Changes
 
+version 0.18.0
+
+- Added a lubrication correction offset to allow an option for keeping
+  particles clear of plane walls.
+  See XXX
+- Added options for arranging 'first touch' on allocation of memory
+  for LB data and field componenents.
+  See XXX
+
+- Various minor code improvements.
+
 version 0.17.2
 
 - Bug fix (issue #204) prevent crashes with s7_anchoring related to
