@@ -331,7 +331,7 @@ static int stats_ahydro_measure(stats_ahydro_t * stat) {
   if (pc) {
     for (ia = 0; ia < 3; ia++) {
       if (pc->s.type == COLLOID_TYPE_SUBGRID) {
-	/* The validity of theis computation might be questioned ... */
+	/* The validity of this computation might be questioned ... */
 	stat->fbar[ia] += pc->force[ia];
       }
       else {
