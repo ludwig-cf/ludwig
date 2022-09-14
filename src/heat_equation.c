@@ -43,6 +43,7 @@ static int heq_flux_mu1(heq_t * heq, field_t * temperature);
 static int heq_flux_mu1_solid(heq_t * heq, field_t * temperature, map_t * map);
 static int heq_colloid(heq_t * heq, field_t * temperature, colloids_info_t * cinfo);
 static int heq_update_forward_step(heq_t * heq, field_t * temperaturef, map_t * map);
+static int heq_update_forward_step_conserve(heq_t * heq, field_t * temperaturef, map_t * map);
 
 /* Utility container */
 
@@ -72,7 +73,7 @@ __global__ void heq_ufs_kernel(kernel_ctxt_t * ktx, lees_edw_t *le,
 				  int ys, double wz);
 __global__ void heq_csum_kernel(kernel_ctxt_t * ktx, lees_edw_t *le,
 				   field_t * field, advflux_t * flux,
-				   field_t * csum, int ys, double wz);
+				   map_t * map, field_t * csum, int ys, double wz);
 
 /*****************************************************************************
  *
@@ -102,7 +103,7 @@ __host__ int heq_create(pe_t * pe, cs_t * cs, lees_edw_t * le,
   obj->info = *options;
   advflux_le_create(pe, cs, le, 1, &obj->flux);
 
-  if (obj->info.conserve) {
+  if (obj->info.conserve == 1) {
     field_create(pe, cs, 1, "compensated sum", &obj->csum);
     field_init(obj->csum, 0, NULL);
   }
@@ -225,7 +226,13 @@ int heat_equation(heq_t * heq, field_t * temperature,
   }
 
   /* Sum fluxes and update */
-  heq_update_forward_step(heq, temperature, map);
+  /* LIGHTHOUSOE Conserve does not seem to work so use conserve = 0 */
+  if (heq->info.conserve == 1) {
+    heq_update_forward_step_conserve(heq, temperature, map);
+  }
+  else {
+    heq_update_forward_step(heq, temperature, map);
+  }
 
     return 0;
 }
@@ -688,6 +695,8 @@ static int heq_update_forward_step(heq_t * heq, field_t * temperature, map_t * m
 
   lees_edw_nlocal(heq->le, nlocal);
   lees_edw_target(heq->le, &le);
+  lees_edw_strides(heq->le, &xs, &ys, &zs);
+
   maptarget = map->target;
 
   lees_edw_strides(heq->le, &xs, &ys, &zs);
@@ -768,9 +777,65 @@ __global__ void heq_ufs_kernel(kernel_ctxt_t * ktx, lees_edw_t *le,
 }
 
 
+/*****************************************************************************
+ *
+ *  heq_update_forward_step_conserve
+ *
+ *  Update phi_site at each site in turn via the divergence of the
+ *  fluxes. This is an Euler forward step:
+ *
+ *  phi new = phi old - dt*(flux_out - flux_in)
+ *
+ *  The time step is the LB time step dt = 1. All sites are processed
+ *  to include solid-stored values in the case of Langmuir-Hinshelwood.
+ *  It also avoids a conditional on solid/fluid status.
+ *
+ *****************************************************************************/
+
+static int heq_update_forward_step_conserve(heq_t * heq, field_t * temperature, map_t * map) {
+
+  int nlocal[3];
+  int xs, ys, zs;
+  dim3 nblk, ntpb;
+  double wz = 1.0;
+
+  lees_edw_t * le = NULL;
+  kernel_info_t limits;
+  kernel_ctxt_t * ctxt = NULL;
+  map_t * maptarget = NULL;
+
+  lees_edw_nlocal(heq->le, nlocal);
+  lees_edw_target(heq->le, &le);
+  lees_edw_strides(heq->le, &xs, &ys, &zs);
+
+  maptarget = map->target;
+
+  lees_edw_strides(heq->le, &xs, &ys, &zs);
+  limits.imin = 1; limits.imax = nlocal[X];
+  limits.jmin = 1; limits.jmax = nlocal[Y];
+  limits.kmin = 1; limits.kmax = nlocal[Z];
+  if (nlocal[Z] == 1) wz = 0.0;
+
+  kernel_ctxt_create(heq->cs, 1, limits, &ctxt);
+  kernel_ctxt_launch_param(ctxt, &nblk, &ntpb);
+
+  tdpLaunchKernel(heq_csum_kernel, nblk, ntpb, 0, 0,
+		  ctxt->target, le, temperature->target, heq->flux->target, maptarget, heq->csum->target, ys, wz);
+
+  tdpAssert(tdpPeekAtLastError());
+  tdpAssert(tdpDeviceSynchronize());
+
+  kernel_ctxt_free(ctxt);
+
+  return 0;
+}
+
+
+
+
 /******************************************************************************
  *
- *  heq_ufs_kernel
+ *  heq_csum_kernel
  *
  *  In 2-d systems need to eliminate the z fluxes (no chemical
  *  potential computed in halo region for 2d_5pt_fluid): this
@@ -780,7 +845,7 @@ __global__ void heq_ufs_kernel(kernel_ctxt_t * ktx, lees_edw_t *le,
 
 __global__ void heq_csum_kernel(kernel_ctxt_t * ktx, lees_edw_t *le,
 				   field_t * field, advflux_t * flux,
-				   field_t * csum, int ys, double wz) {
+				   map_t * map, field_t * csum, int ys, double wz) {
   int kindex;
   int kiterations;
   int ic, jc, kc, index;
