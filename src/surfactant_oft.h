@@ -28,6 +28,7 @@ struct fe_surfactant_oft_param_s {
   double b;              /* Symmetric b */
   double kappa;          /* Symmetric kappa */
   double kappa1;          /* Symmetric kappa1 */
+  double kappa2;          /* Symmetric kappa2 */
 
   double kt;             /* Surfactant kT */
   double epsilon;        /* Surfactant epsilon */

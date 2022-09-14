@@ -51,6 +51,7 @@ __host__ int fe_surf_oft_param_rt(pe_t * pe, rt_t * rt, fe_surf_oft_param_t * p)
   rt_double_parameter(rt, "surf_oft_B",       &p->b);
   rt_double_parameter(rt, "surf_oft_kappa",   &p->kappa);
   rt_double_parameter(rt, "surf_oft_kappa1",   &p->kappa1);
+  rt_double_parameter(rt, "surf_oft_kappa2",   &p->kappa2);
 
   rt_double_parameter(rt, "surf_oft_kT",      &p->kt);
   rt_double_parameter(rt, "surf_oft_epsilon", &p->epsilon);

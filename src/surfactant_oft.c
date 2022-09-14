@@ -186,6 +186,7 @@ __host__ int fe_surf_oft_info(fe_surf_oft_t * fe) {
   pe_info(pe, "Bulk parameter B      = %12.5e\n", fe->param->b);
   pe_info(pe, "Surface penalty kappa = %12.5e\n", fe->param->kappa);
   pe_info(pe, "Surface penalty 1st order in temperature kappa1 = %12.5e\n", fe->param->kappa1);
+  pe_info(pe, "Surface penalty 2nd order in temperature kappa2 = %12.5e\n", fe->param->kappa2);
   pe_info(pe, "Scale energy kT       = %12.5e\n", fe->param->kt);
   pe_info(pe, "Surface adsorption e  = %12.5e\n", fe->param->epsilon);
   pe_info(pe, "Surface psi^2 beta    = %12.5e\n", fe->param->beta);
@@ -257,7 +258,7 @@ __host__ int fe_surf_oft_param(fe_surf_oft_t * fe, fe_surf_oft_param_t * values)
 
 __host__ int fe_surf_oft_sigma(fe_surf_oft_t * fe,  double * sigma0) {
 
-  double a, b, kappa, kappa1;
+  double a, b, kappa;
 
   assert(fe);
   assert(sigma0);
@@ -265,7 +266,6 @@ __host__ int fe_surf_oft_sigma(fe_surf_oft_t * fe,  double * sigma0) {
   a = fe->param->a;
   b = fe->param->b;
   kappa = fe->param->kappa;
-  kappa1 = fe->param->kappa1;
 
   *sigma0 = sqrt(-8.0*kappa*a*a*a/(9.0*b*b));
 
@@ -351,7 +351,7 @@ __host__ int fe_surf_oft_fed(fe_surf_oft_t * fe, int index, double * fed) {
 
   /* We have the symmetric piece followed by terms in psi */
  
-  kappaoft = fe->param->kappa + fe->param->kappa1*temperature;
+  kappaoft = fe->param->kappa + fe->param->kappa1*temperature + fe->param->kappa2*temperature*temperature;
 
   *fed = 0.5*fe->param->a*phi*phi + 0.25*fe->param->b*phi*phi*phi*phi
     + 0.5*kappaoft*dphisq;
@@ -406,7 +406,7 @@ __host__ int fe_surf_oft_mu(fe_surf_oft_t * fe, int index, double * mu) {
   psi = field[1];
 
   /* mu_phi */
-  kappaoft = fe->param->kappa + fe->param->kappa1*temperature;
+  kappaoft = fe->param->kappa + fe->param->kappa1*temperature + fe->param->kappa2*temperature*temperature;
 
   mu[0] = fe->param->a*phi + fe->param->b*phi*phi*phi
     - kappaoft*delsq[0]
@@ -472,7 +472,7 @@ __host__ int fe_surf_oft_str(fe_surf_oft_t * fe, int index, double s[3][3]) {
 
   assert(psi < 1.0);
   
-  kappaoft = fe->param->kappa + fe->param->kappa1*temperature;
+  kappaoft = fe->param->kappa + fe->param->kappa1*temperature + fe->param->kappa2*temperature*temperature;
 
   p0 = 0.5*fe->param->a*phi*phi + 0.75*fe->param->b*phi*phi*phi*phi
     - kappaoft*(phi*delsq[0] - 0.5*dot_product(grad[0], grad[0]))
