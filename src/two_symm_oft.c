@@ -167,18 +167,22 @@ __host__ int fe_two_symm_oft_info(fe_two_symm_oft_t * fe) {
 
   pe_info(pe, "Surfactant free energy parameters:\n");
 
-  pe_info(pe, "Bulk parameter phi_A      = %12.5e\n", fe->param->phi_a);
-  pe_info(pe, "Bulk parameter phi_B      = %12.5e\n", fe->param->phi_b);
-  pe_info(pe, "Surface penalty phi_kappa0 = %12.5e\n", fe->param->phi_kappa0);
-  pe_info(pe, "Surface penalty phi_kappa1 = %12.5e\n", fe->param->phi_kappa1);
-  pe_info(pe, "Surface penalty phi_kappa2 = %12.5e\n", fe->param->phi_kappa2);
+  pe_info(pe, "Bulk parameter phi_A0      = %12.5e\n", fe->param->phi_a0);
+  pe_info(pe, "Bulk parameter phi_A1      = %12.5e\n", fe->param->phi_a1);
+  pe_info(pe, "Bulk parameter phi_A2      = %12.5e\n", fe->param->phi_a2);
+  pe_info(pe, "Bulk parameter phi_B0      = %12.5e\n", fe->param->phi_b0);
+  pe_info(pe, "Bulk parameter phi_B1      = %12.5e\n", fe->param->phi_b1);
+  pe_info(pe, "Bulk parameter phi_B2      = %12.5e\n", fe->param->phi_b2);
+  pe_info(pe, "Surface penalty phi_Kappa0 = %12.5e\n", fe->param->phi_kappa0);
+  pe_info(pe, "Surface penalty phi_Kappa1 = %12.5e\n", fe->param->phi_kappa1);
+  pe_info(pe, "Surface penalty phi_Kappa2 = %12.5e\n", fe->param->phi_kappa2);
 
   pe_info(pe, "Bulk parameter psi_A      = %12.5e\n", fe->param->psi_a);
   pe_info(pe, "Bulk parameter psi_B      = %12.5e\n", fe->param->psi_b);
-  pe_info(pe, "Surface penalty psi_kappa = %12.5e\n", fe->param->psi_kappa);
+  pe_info(pe, "Surface penalty psi_Kappa = %12.5e\n", fe->param->psi_kappa);
 
-  pe_info(pe, "Wetting term c      = %12.5e\n", fe->param->c);
-  pe_info(pe, "Wetting term h      = %12.5e\n", fe->param->h);
+  pe_info(pe, "Wetting term C      = %12.5e\n", fe->param->c);
+  pe_info(pe, "Wetting term H      = %12.5e\n", fe->param->h);
 
   pe_info(pe, "\n");
   pe_info(pe, "Derived quantities\n");
@@ -245,22 +249,22 @@ __host__ int fe_two_symm_oft_param(fe_two_symm_oft_t * fe, fe_two_symm_oft_param
 
 __host__ int fe_two_symm_oft_sigma(fe_two_symm_oft_t * fe,  double * phi_sigma, double * psi_sigma) {
 
-  double phi_a, phi_b, phi_kappa0;
+  double phi_a0, phi_b0, phi_kappa0;
   double psi_a, psi_b, psi_kappa;
 
   assert(fe);
   assert(phi_sigma);
   assert(psi_sigma);
 
-  phi_a = fe->param->phi_a;
-  phi_b = fe->param->phi_b;
+  phi_a0 = fe->param->phi_a0;
+  phi_b0 = fe->param->phi_b0;
   phi_kappa0 = fe->param->phi_kappa0; 
 
   psi_a = fe->param->psi_a;
   psi_b = fe->param->psi_b;
   psi_kappa = fe->param->psi_kappa;
 
-  *phi_sigma = sqrt(-8.0*phi_kappa0*phi_a*phi_a*phi_a/(9.0*phi_b*phi_b));
+  *phi_sigma = sqrt(-8.0*phi_kappa0*phi_a0*phi_a0*phi_a0/(9.0*phi_b0*phi_b0));
   *psi_sigma = sqrt(-8.0*psi_kappa*psi_a*psi_a*psi_a/(9.0*psi_b*psi_b));
 
   return 0;
@@ -280,7 +284,7 @@ __host__ int fe_two_symm_oft_xi0(fe_two_symm_oft_t * fe, double * phi_xi, double
   assert(phi_xi);
   assert(phi_xi);
 
-  *phi_xi = sqrt(-2.0*fe->param->phi_kappa0/fe->param->phi_a);
+  *phi_xi = sqrt(-2.0*fe->param->phi_kappa0/fe->param->phi_a0);
   *psi_xi = sqrt(-2.0*fe->param->psi_kappa/fe->param->psi_a);
 
   return 0;
@@ -305,7 +309,7 @@ __host__ int fe_two_symm_oft_fed(fe_two_symm_oft_t * fe, int index, double * fed
   double temperature;
   double dphi[2][3];
   double dphisq;
-  double phi_kappa_oft;
+  double phi_a_oft, phi_b_oft, phi_kappa_oft;
 
   assert(fe);
 
@@ -321,9 +325,15 @@ __host__ int fe_two_symm_oft_fed(fe_two_symm_oft_t * fe, int index, double * fed
 
   /* We have the symmetric piece followed by terms in psi */
  
+  phi_a_oft = fe->param->phi_a0 + fe->param->phi_a1*temperature + fe->param->phi_a2*temperature*temperature;
+  phi_b_oft = fe->param->phi_b0 + fe->param->phi_b1*temperature + fe->param->phi_b2*temperature*temperature;
   phi_kappa_oft = fe->param->phi_kappa0 + fe->param->phi_kappa1*temperature + fe->param->phi_kappa2*temperature*temperature;
 
-  *fed = 0.5*fe->param->phi_a*phi*phi + 0.25*fe->param->phi_b*phi*phi*phi*phi
+  assert(phi_kappa_oft > 0);
+  assert(phi_a_oft < 0);
+  assert(phi_b_oft > 0);
+
+  *fed = 0.5*phi_a_oft*phi*phi + 0.25*phi_b_oft*phi*phi*phi*phi
     + 0.5*phi_kappa_oft*dphisq;
 
   return 0;
@@ -354,7 +364,7 @@ __host__ int fe_two_symm_oft_mu(fe_two_symm_oft_t * fe, int index, double * mu) 
   double field[2];
   double grad[2][3];
   double delsq[2];
-  double phi_kappa_oft;
+  double phi_a_oft, phi_b_oft, phi_kappa_oft;
 
   assert(fe);
   assert(mu); assert(mu + 1);
@@ -368,8 +378,15 @@ __host__ int fe_two_symm_oft_mu(fe_two_symm_oft_t * fe, int index, double * mu) 
   psi = field[1];
 
   /* mu_phi */
+  phi_a_oft = fe->param->phi_a0 + fe->param->phi_a1*temperature + fe->param->phi_a2*temperature*temperature;
+  phi_b_oft = fe->param->phi_b0 + fe->param->phi_b1*temperature + fe->param->phi_b2*temperature*temperature;
   phi_kappa_oft = fe->param->phi_kappa0 + fe->param->phi_kappa1*temperature + fe->param->phi_kappa2*temperature*temperature;
-  mu[0] = fe->param->phi_a*phi + fe->param->phi_b*phi*phi*phi
+
+  assert(phi_kappa_oft > 0);
+  assert(phi_a_oft < 0);
+  assert(phi_b_oft > 0);
+
+  mu[0] = phi_a_oft*phi + phi_b_oft*phi*phi*phi
     - phi_kappa_oft*delsq[0];
 
   /* mu_psi */
@@ -404,7 +421,7 @@ __host__ int fe_two_symm_oft_str(fe_two_symm_oft_t * fe, int index, double s[3][
   double delsq[2];
   double grad[2][3];
   double p0;
-  double phi_kappa_oft;
+  double phi_a_oft, phi_b_oft, phi_kappa_oft;
   KRONECKER_DELTA_CHAR(d);
 
   assert(fe);
@@ -417,9 +434,16 @@ __host__ int fe_two_symm_oft_str(fe_two_symm_oft_t * fe, int index, double s[3][
   phi = field[0];
   psi = field[1];
 
+  phi_a_oft = fe->param->phi_a0 + fe->param->phi_a1*temperature + fe->param->phi_a2*temperature*temperature;
+  phi_b_oft = fe->param->phi_b0 + fe->param->phi_b1*temperature + fe->param->phi_b2*temperature*temperature;
   phi_kappa_oft = fe->param->phi_kappa0 + fe->param->phi_kappa1*temperature + fe->param->phi_kappa2*temperature*temperature;
 
-  p0 = 0.5*fe->param->phi_a*phi*phi + 0.75*fe->param->phi_b*phi*phi*phi*phi
+  assert(phi_kappa_oft > 0);
+  assert(phi_a_oft < 0);
+  assert(phi_b_oft > 0);
+
+
+  p0 = 0.5*phi_a_oft*phi*phi + 0.75*phi_b_oft*phi*phi*phi*phi
     - phi_kappa_oft*(phi*delsq[0] - 0.5*dot_product(grad[0], grad[0]))
      + 0.5*fe->param->psi_a*psi*psi + 0.75*fe->param->psi_b*psi*psi*psi*psi
     - fe->param->psi_kappa*(psi*delsq[1] - 0.5*dot_product(grad[1], grad[1]));

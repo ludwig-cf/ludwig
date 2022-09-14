@@ -46,11 +46,17 @@ __host__ int fe_two_symm_oft_param_rt(pe_t * pe, rt_t * rt, fe_two_symm_oft_para
   double theta = 0.0;
   /* Parameters */
 
-  rt_double_parameter(rt, "phi_A",       &p->phi_a);
-  rt_double_parameter(rt, "phi_B",       &p->phi_b);
-  rt_double_parameter(rt, "phi_kappa0",   &p->phi_kappa0);
-  rt_double_parameter(rt, "phi_kappa1",   &p->phi_kappa1);
-  rt_double_parameter(rt, "phi_kappa2",   &p->phi_kappa2);
+  rt_double_parameter(rt, "phi_A0",       &p->phi_a0);
+  rt_double_parameter(rt, "phi_A1",       &p->phi_a1);
+  rt_double_parameter(rt, "phi_A2",       &p->phi_a2);
+
+  rt_double_parameter(rt, "phi_B0",       &p->phi_b0);
+  rt_double_parameter(rt, "phi_B1",       &p->phi_b1);
+  rt_double_parameter(rt, "phi_B2",       &p->phi_b2);
+
+  rt_double_parameter(rt, "phi_Kappa0",   &p->phi_kappa0);
+  rt_double_parameter(rt, "phi_Kappa1",   &p->phi_kappa1);
+  rt_double_parameter(rt, "phi_Kappa2",   &p->phi_kappa2);
 
   rt_double_parameter(rt, "psi_A",       &p->psi_a);
   rt_double_parameter(rt, "psi_B",       &p->psi_b);
@@ -58,8 +64,8 @@ __host__ int fe_two_symm_oft_param_rt(pe_t * pe, rt_t * rt, fe_two_symm_oft_para
 
 /* <-------------- CHECK WETTING PARAMETERS -------------------> */
   /* Uniform wetting */
-  rt_double_parameter(rt, "c", &p->c);
-  rt_double_parameter(rt, "h", &p->h);
+  rt_double_parameter(rt, "C", &p->c);
+  rt_double_parameter(rt, "H", &p->h);
 
   /* For the two_symm should have... */
 

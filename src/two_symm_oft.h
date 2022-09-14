@@ -24,8 +24,14 @@ typedef struct fe_two_symm_oft_s fe_two_symm_oft_t;
 typedef struct fe_two_symm_oft_param_s fe_two_symm_oft_param_t;
 
 struct fe_two_symm_oft_param_s {
-  double phi_a;              /* Symmetric phia */
-  double phi_b;              /* Symmetric b */
+  double phi_a0;              /* Symmetric phia */
+  double phi_a1;              /* Symmetric phia */
+  double phi_a2;              /* Symmetric phia */
+
+  double phi_b0;              /* Symmetric b */
+  double phi_b1;              /* Symmetric b */
+  double phi_b2;              /* Symmetric b */
+
   double phi_kappa0;         /* Symmetric kappa */
   double phi_kappa1;         /* Symmetric kappa1 */
   double phi_kappa2;         /* Symmetric kappa2 */
