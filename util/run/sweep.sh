@@ -23,13 +23,14 @@ time=1
 
 # EXTRACTION PARAMETERS
 freq=10
+freq_vel=100
+
 nstart=$freq
 nend=$N_cycles
 nint=$freq
 
-
 # SYSTEM PARAMETERS
-size=40_40_40
+size=60_60_60
 boundary_walls=0_0_0
 periodicity=1_1_1
 
@@ -40,67 +41,35 @@ viscosity=0.5
 fd_advection_scheme_order=1
 
 # FREE ENERGY
-symmetric_ll_a1=0.1
-symmetric_ll_b1=0.0
-symmetric_ll_kappa1=0.0
+phi_A=-0.0128
+phi_B=0.0128
+phi_kappa0=0.04
+phi_kappa1=-0.004
+phi_kappa2=1e-4
 
-symmetric_ll_a2=0.1
-symmetric_ll_b2=0.0
-symmetric_ll_kappa2=0.0
+psi_A=0.0
+psi_B=0.0
+psi_kappa=0.0
 
-symmetric_ll_mobility_phi=1.0
-symmetric_ll_mobility_psi=1.0
+two_symm_oft_mobility_phi=0.5
+two_symm_oft_mobility_psi=0.5
 
-phi0=0.5
-psi0=0.5
-
-cahn_hilliard_options_conserve=0
+two_symm_oft_lambda=0.1
 
 
 # VESICLE 
-isfixedr=0
-XSHIFT=20
-YSHIFT=20
-ZSHIFT=20
 
-mx=1
-my=0
-mz=0
+colloid_one_a0=8.0
+colloid_one_ah=8.0
 
-phi_subgrid_switch=1
-u0=1e-6
-delta=3.0
-cutoff=6.0
+colloid_one_r=15.0_30.0_30.0
+colloid_one_m=1.0_0.0_0.0
 
-vesicle_radius=10.0
-mesh_harmonic_k=1e-2
+colloid_one_isfixedr=0
+colloid_one_isfixeds=1
 
-
-# MASK / PERMEABILITY
-mask_phi_switch=1
-mask_psi_switch=1
-
-mask_phi_permeability=0.1
-mask_psi_permeability=0.1
-
-mask_std_width=1.0
-mask_std_alpha=0.8
-mask_alpha_cutoff=1.0
-
-
-# CHEMICAL REACTION
-chemical_reaction_switch=0
-chemical_reaction_model="uniform"
-
-kappa=0.0001
-kappa1=0.0001
-kappam1=0.0001
-
-
-# EXTERNAL FIELDS
-grad_mu_phi=0.0_0.0_0.0
-grad_mu_psi=0.0_0.0_0.0
-
+colloid_one_Tj1=0.0
+colloid_one_Tj2=2.0
 
 
 # SWEEPING PARAMETER
@@ -131,35 +100,6 @@ for param in ${sweepingRange[@]}; do
   declare "${sweepingParam}"=$param
   echo "Running simulation with "${sweepingParam}"=$param"
 
-  ### CREATE VESICLE INPUT FILE "latticeTrisphere.txt" ### 
-  cd $UTIL_DIR
-
-  sed "s/XXXvesicle_radiusXXX/$vesicle_radius/g" init/write_trisphereXXX.py > write_trisphere.py;
-  sed -i "s/XXXXSHIFTXXX/$XSHIFT/g" write_trisphere.py;
-  sed -i "s/XXXYSHIFTXXX/$YSHIFT/g" write_trisphere.py;
-  sed -i "s/XXXZSHIFTXXX/$ZSHIFT/g" write_trisphere.py; 
-
-  sed -i "s/XXXmxXXX/$mx/g" write_trisphere.py
-  sed -i "s/XXXmyXXX/$my/g" write_trisphere.py
-  sed -i "s/XXXmzXXX/$mz/g" write_trisphere.py
-
-  cp init/rawfiles/trisphere.xyz .
-  python3 write_trisphere.py > /dev/null
-
-
-  ### CREATE  "config.cds.init001-001" with "trisphere_init.c" ###
-  sed "s/XXXu0XXX/$u0/g" init/trisphere_initXXX.c > trisphere_init.c;
-  sed -i "s/XXXcutoffXXX/$cutoff/g" trisphere_init.c; 
-  sed -i "s/XXXdeltaXXX/$delta/g" trisphere_init.c; 
-  sed -i "s/XXXisfixedrXXX/$isfixedr/g" trisphere_init.c;
-
-  make clean > /dev/null; make > /dev/null;
-  chmod u+x trisphere_init; ./trisphere_init > /dev/null
-
-  cp config.cds.init.001-001 $SWEEP_DIR
-  cd $SWEEP_DIR
-
-
 ## CREATE INPUT FILE ###
   sed "s/XXXN_startXXX/$N_start/g" $"$UTIL_DIR"/init/inputXXX"" > input;
 
@@ -171,47 +111,37 @@ for param in ${sweepingRange[@]}; do
   sed -i "s/XXXperiodicityXXX/$periodicity/g" input;
   sed -i "s/XXXviscosityXXX/$viscosity/g" input;
 
+  sed -i "s/XXXphi_AXXX/$phi_A/g" input;
+  sed -i "s/XXXphi_BXXX/$phi_B/g" input;
+
+  sed -i "s/XXXphi_kappa0XXX/$phi_kappa0/g" input;
+  sed -i "s/XXXphi_kappa1XXX/$phi_kappa1/g" input;
+  sed -i "s/XXXphi_kappa2XXX/$phi_kappa2/g" input;
+
+  sed -i "s/XXXpsi_AXXX/$psi_A/g" input;
+  sed -i "s/XXXpsi_BXXX/$psi_B/g" input;
+  sed -i "s/XXXpsi_kappaXXX/$psi_kappa/g" input;
+
+  sed -i "s/XXXtwo_symm_oft_mobility_phiXXX/$two_symm_oft_mobility_phi/g" input;
+  sed -i "s/XXXtwo_symm_oft_mobility_psiXXX/$two_symm_oft_mobility_psi/g" input;
+  sed -i "s/XXXtwo_symm_oft_lambdaXXX/$two_symm_oft_lambda/g" input;
+
   sed -i "s/XXXfd_advection_scheme_orderXXX/$fd_advection_scheme_order/g" input;
+
+  sed -i "s/XXXcolloid_one_Tj1XXX/$colloid_one_Tj1/g" input;
+  sed -i "s/XXXcolloid_one_Tj2XXX/$colloid_one_Tj2/g" input;
+
+  sed -i "s/XXXcolloid_one_a0XXX/$colloid_one_a0/g" input;
+  sed -i "s/XXXcolloid_one_ahXXX/$colloid_one_ah/g" input;
+
+  sed -i "s/XXXcolloid_one_rXXX/$colloid_one_r/g" input;
+  sed -i "s/XXXcolloid_one_mXXX/$colloid_one_m/g" input;
+
+  sed -i "s/XXXcolloid_one_isfixedrXXX/$colloid_one_isfixedr/g" input;
+  sed -i "s/XXXcolloid_one_isfixedsXXX/$colloid_one_isfixeds/g" input;
+
   sed -i "s/XXXfreqXXX/$freq/g" input;
-
-  sed -i "s/XXXsymmetric_ll_a1XXX/$symmetric_ll_a1/g" input;
-  sed -i "s/XXXsymmetric_ll_b1XXX/$symmetric_ll_b1/g" input;
-  sed -i "s/XXXsymmetric_ll_kappa1XXX/$symmetric_ll_kappa1/g" input;
-
-  sed -i "s/XXXsymmetric_ll_a2XXX/$symmetric_ll_a2/g" input;
-  sed -i "s/XXXsymmetric_ll_b2XXX/$symmetric_ll_b2/g" input;
-  sed -i "s/XXXsymmetric_ll_kappa2XXX/$symmetric_ll_kappa2/g" input;
-
-  sed -i "s/XXXsymmetric_ll_mobility_phiXXX/$symmetric_ll_mobility_phi/g" input;
-  sed -i "s/XXXsymmetric_ll_mobility_psiXXX/$symmetric_ll_mobility_psi/g" input;
-
-  sed -i "s/XXXphi0XXX/$phi0/g" input;
-  sed -i "s/XXXpsi0XXX/$psi0/g" input;
-  sed -i "s/XXXcahn_hilliard_options_conserveXXX/$cahn_hilliard_options_conserve/g" input;
-
-  sed -i "s/XXXphi_subgrid_switchXXX/$phi_subgrid_switch/g" input; 
-  sed -i "s/XXXvesicle_radiusXXX/$vesicle_radius/g" input; 
-  sed -i "s/XXXmesh_harmonic_kXXX/$mesh_harmonic_k/g" input; 
- 
-  sed -i "s/XXXmask_phi_switchXXX/$mask_phi_switch/g" input; 
-  sed -i "s/XXXmask_psi_switchXXX/$mask_psi_switch/g" input; 
-
-  sed -i "s/XXXmask_phi_permeabilityXXX/$mask_phi_permeability/g" input; 
-  sed -i "s/XXXmask_psi_permeabilityXXX/$mask_phi_permeability/g" input; 
-
-  sed -i "s/XXXmask_std_widthXXX/$mask_std_width/g" input; 
-  sed -i "s/XXXmask_std_alphaXXX/$mask_std_alpha/g" input; 
-  sed -i "s/XXXmask_alpha_cutoffXXX/$mask_alpha_cutoff/g" input; 
-
-  sed -i "s/XXXchemical_reaction_switchXXX/$chemical_reaction_switch/g" input; 
-  sed -i "s/XXXchemical_reaction_modelXXX/$chemical_reaction_model/g" input; 
-
-  sed -i "s/XXXkappaXXX/$kappa/g" input; 
-  sed -i "s/XXXkappa1XXX/$kappa1/g" input; 
-  sed -i "s/XXXkappam1XXX/$kappam1/g" input; 
-
-  sed -i "s/XXXgrad_mu_phiXXX/$grad_mu_phi/g" input; 
-  sed -i "s/XXXgrad_mu_psiXXX/$grad_mu_psi/g" input; 
+  sed -i "s/XXXfreq_velXXX/$freq_vel/g" input;
 
 
 ## CREATE LAUNCH FILE ##
@@ -220,7 +150,7 @@ for param in ${sweepingRange[@]}; do
   sed -i "s/XXXmemoryXXX/$memory/g" $simname; 
   sed -i "s/XXXtimeXXX/$time/g" $simname;
   
-  cp $simname input config.cds.init.001-001 $datafolder
+  cp $simname input  $datafolder
   cp $LUDWIG_DIR"/src/Ludwig.exe" $datafolder
 
   cd $datafolder
@@ -231,4 +161,4 @@ for param in ${sweepingRange[@]}; do
 done
 
 cd $SWEEP_DIR
-rm -rf Ludwig.exe trisphere.xyz latticeTrisphere.txt LB_* latticeTrisphere2.txt write_trisphere.py write_trisphere2.txt input trisphere_init.c config.cds.init.001-001 || true
+rm -rf Ludwig.exe LB_* input config.cds.init.001-001 || true

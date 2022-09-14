@@ -30,8 +30,7 @@ for param in ${sweepingRange[@]}; do
   datafolder=$prefix"_"$param
   cd $datafolder
   
-  if [[ "$(ls phi*-001 | wc -l)" -ne "$nfiles" || "$(ls config.cds0* | wc -l)" -ne "$nfiles" || "$(ls vel*-001 | wc -l)" -ne "$nfiles" 
-					       || "$(ls temperature* | wc -l)" -ne "$nfiles" ]]; 
+  if [[ "$(ls phi*-001 | wc -l)" -ne "$nfiles" || "$(ls config.cds0* | wc -l)" -ne "$nfiles" || "$(ls temperature*-001 | wc -l)" -ne "$nfiles" ]]; 
   then
     echo "Number of files not matching in "$datafolder
   else 
@@ -60,7 +59,7 @@ for param in ${sweepingRange[@]}; do
   cp $UTIL_DIR"extraction/extract.py" $datafolder
   cd $datafolder
 
-  python3 extract.py -pmvc --nstart $nstart --nend $nend --nint $nint
+  python3 extract.py -ptvc --nstart $nstart --nend $nend --nint $nint
   rm extract.py extract extract_colloids 
 
   cd $SWEEP_DIR

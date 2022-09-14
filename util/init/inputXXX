@@ -1,24 +1,48 @@
 ##############################################################################
 #
-#  Ludwig chemovesicle input file
-#  Reference.
+#  Surfactant model test (with hydrodynamics)
 #
-#  Make sure to update with each new version.
+#  See also serial-surf-t01.inp
+#
+#  In two dimensions, intialise a drop (ie, a circle)
+#  in the composition with uniform surfactant.
+#
+#  Hydrodynamics is on, and the force on the fluid from
+#  the thermodynamics is via phi grad mu (the only way
+#  available at the time of writing; there's no option).
+#
+#  Some 100,000 time steps are required to reach equilibrium
+#  in this case (no change at precision of standard  output).
 #
 ##############################################################################
 
-N_start  XXXN_startXXX
+##############################################################################
+#
+#  Run duration
+#
+###############################################################################
+
+N_start XXXN_startXXX
 N_cycles XXXN_cyclesXXX
 
 ##############################################################################
 #
-#  System and MPI
-# 
+#  System
+#
 ##############################################################################
 
 size XXXsizeXXX
 grid XXXgridXXX
-reduced_halo no
+
+###############################################################################
+#
+#  Periodic conditions / boundaries
+#
+###############################################################################
+
+boundary_walls_on yes
+boundary_walls XXXboundary_wallsXXX
+periodicity XXXperiodicityXXX
 
 ##############################################################################
 #
@@ -26,10 +50,7 @@ reduced_halo no
 #
 ##############################################################################
 
-fluid_rho0 1 
 viscosity XXXviscosityXXX
-isothermal_fluctuations off
-temperature 1e-6
 
 ##############################################################################
 #
@@ -37,140 +58,78 @@ temperature 1e-6
 #
 ###############################################################################
 
-free_energy symmetric_ll
+free_energy two_symm_oft
 
-symmetric_ll_a1 XXXsymmetric_ll_a1XXX
-symmetric_ll_b1 XXXsymmetric_ll_b1XXX
-symmetric_ll_kappa1 XXXsymmetric_ll_kappa1XXX 
+phi_A       XXXphi_AXXX
+phi_B       XXXphi_BXXX
+phi_kappa0    XXXphi_kappa0XXX
+phi_kappa1    XXXphi_kappa1XXX
+phi_kappa2    XXXphi_kappa2XXX
 
-symmetric_ll_a2 XXXsymmetric_ll_a2XXX
-symmetric_ll_b2 XXXsymmetric_ll_b2XXX
-symmetric_ll_kappa2 XXXsymmetric_ll_kappa2XXX
-
-phi0 XXXphi0XXX
-psi0 XXXpsi0XXX
-
-phi_ll_initialisation uniform
-psi_ll_initialisation uniform
-
-symmetric_ll_mobility_phi XXXsymmetric_ll_mobility_phiXXX
-symmetric_ll_mobility_psi XXXsymmetric_ll_mobility_psiXXX
-
-# No conservation subroutines in cahn hilliard for now 
-cahn_hilliard_options_conserve XXXcahn_hilliard_options_conserveXXX
+# set the values of kappa's such that sigma can factorise in the form sigma = sigma0 - sigma1 * T
 
 
-##############################################################################
-#
-#  Vesicle parameters
-#
-###############################################################################
+psi_A       XXXpsi_AXXX
+psi_B       XXXpsi_BXXX
+psi_kappa    XXXpsi_kappaXXX
 
-phi_subgrid_switch XXXphi_subgrid_switchXXX
+c 	  0.0
+h 	  0.0
 
-# For corresponding cell size and key query checks
-vesicle_switch 1 
+two_symm_oft_mobility_phi  XXXtwo_symm_oft_mobility_phiXXX
+two_symm_oft_mobility_psi  XXXtwo_symm_oft_mobility_psiXXX
 
-# Cell size contstraint
-vesicle_radius XXXvesicle_radiusXXX
+two_symm_oft_lambda XXXtwo_symm_oft_lambdaXXX
 
+phi_initialisation        one_interface
+#phi0        0.0
 
-##############################################################################
-#
-#  Mask parameters
-#
-###############################################################################
+#phi_init_drop_radius      8.0
+#phi_init_drop_amplitude   0.01
 
-mask_phi_switch XXXmask_phi_switchXXX
-mask_psi_switch XXXmask_psi_switchXXX
+#psi_initialisation        surfactant
+psi_initialisation        uniform
+psi0   0.0
 
-mask_phi_permeability XXXmask_phi_permeabilityXXX
-mask_psi_permeability XXXmask_psi_permeabilityXXX
+temperature_initialisation uniform
+T0 0.0
+#temperature_init_drop_radius 5.0
+#temperature_init_drop_amplitude 1.0
+#temperature_init_drop_xi 2.0
 
-mask_std_width XXXmask_std_widthXXX
-mask_std_alpha XXXmask_std_alphaXXX
-mask_alpha_cutoff XXXmask_alpha_cutoffXXX
-
-
-##############################################################################
-#
-#  Chemical reaction parameters
-#  This will only be used if vesicle_switch is on
-#
-#  There are currently 2 models of reaction:
-#	-> uniform (PHI += rate_of_production inside vesicle)
-#	chemical_reaction_model uniform
-#	rate_of_production 0.0001
-#
-#	-> psi<->phi (PHI += rate_of_conversion*(psi-psi0) inside vesicle)
-#	chemical_reaction_model psi<->phi
-#	kappa1 0.0001
-#	kappam1 0.0001
-#
-###############################################################################
-
-chemical_reaction_switch XXXchemical_reaction_switchXXX
-chemical_reaction_model XXXchemical_reaction_modelXXX
-
-kappa XXXkappaXXX
-kappa1 XXXkappa1XXX
-kappam1 XXXkappam1XXX
-
-
-##############################################################################
-#
-#  External fields
-#
-###############################################################################
-
-grad_mu_phi XXXgrad_mu_phiXXX
-grad_mu_psi XXXgrad_mu_psiXXX
-
-colloid_gravity  0.0_0.0_0.0
+hydrodynamics             yes
+fd_gradient_calculation   3d_27pt_solid_two_symm_oft
+fd_advection_scheme order XXXfd_advection_scheme_orderXXX
 
 ###############################################################################
 #
 #  Colloid parameters
-#  Only use subgrid type in this version
 #
 ###############################################################################
 
-colloid_init     from_file
+colloid_init        input_one
 
-mesh_harmonic_on 1
-mesh_harmonic_k XXXmesh_harmonic_kXXX
+colloid_gravity 0.0_0.0_0.0
+colloid_one_janus_colloid_on 1
+colloid_one_jangle 1.57
 
-# Dummy
-mesh_harmonic_r0 1.0
+colloid_one_Tj1 XXXcolloid_one_Tj1XXX
+colloid_one_Tj2 XXXcolloid_one_Tj2XXX
 
-##############################################################################
-#
-#  Numerical methods
-#
-###############################################################################
+### COLLOID TEMPERATURE ###
+#colloid_temperature 2.0
 
-# For PHI and PSI gradients (SOLID and FLUID work) 
-fd_gradient_calculation 3d_symmetric_ll_solid
+colloid_one_type        inactive
+colloid_one_rho0        1.0
 
-# For PHI and PSI advection
-# Could change later for increased accuracy 
-fd_advection_scheme_order XXXfd_advection_scheme_orderXXX
+colloid_one_a0   XXXcolloid_one_a0XXX
+colloid_one_ah   XXXcolloid_one_ahXXX
 
-# 0 = "grad mu" method for the divergence of the force is the only that can add the PHI force 
-# for now 
-fd_force_divergence 0 
+colloid_one_r    XXXcolloid_one_rXXX
+colloid_one_m    XXXcolloid_one_mXXX
 
-################################################################################
-#
-#  Periodic conditions / boundaries
-#
-################################################################################
-
-boundary_walls_on yes
-
-boundary_walls XXXboundary_wallsXXX
-periodicity XXXperiodicityXXX
-
+colloid_one_isfixedr XXXcolloid_one_isfixedrXXX
+colloid_one_isfixeds XXXcolloid_one_isfixedsXXX
 
 ###############################################################################
 #
@@ -178,33 +137,23 @@ periodicity XXXperiodicityXXX
 #
 ###############################################################################
 
-# Console stats
-#freq_statistics XXXfreqXXX
-
-# Output all files 
-#freq_config XXXfreq_configXXX
-
-# ? 
-#freq_measure 100000
+freq_statistics 100000000
+freq_config 10000000
 
 freq_phi XXXfreqXXX
-freq_mask XXXfreqXXX
+freq_temperature XXXfreqXXX
 colloid_io_freq XXXfreqXXX
-freq_vel XXXfreqXXX
 
-phi_format BINARY
+freq_vel XXXfreq_velXXX
 
-colloid_io_format_input  ASCII_SERIAL
-colloid_io_format_output ASCII
-colloid_io_grid 1_1_1
-
-config_at_end yes 
+config_at_end   yes
 
 ###############################################################################
 #
 #  Miscellaneous
 #
+#  random_seed  +ve integer is the random number generator seed
+#
 ###############################################################################
 
-random_seed 7361237
-
+random_seed 8361235
