@@ -180,6 +180,8 @@ __host__ int pth_force_driver(pth_t * pth, colloids_info_t * cinfo,
  
   for ( ; pc; pc = pc->nextall) {
 
+    for (ia = 0; ia < 3; ia++) pc->s.force_colloid_fe[ia] = 0.0;
+
     p_link = pc->lnk;
 
     for (; p_link; p_link = p_link->next) {
@@ -198,8 +200,13 @@ __host__ int pth_force_driver(pth_t * pth, colloids_info_t * cinfo,
 	if (cv[p][Z]) id = Z;
 
 	for (ia = 0; ia < 3; ia++) {
+
 	  pc->force[ia] += 1.0*cv[p][id]
 	    *pth->str[addr_rank2(pth->nsites, 3, 3, p_link->i, ia, id)];
+
+	  pc->s.force_colloid_fe[ia] += 1.0*cv[p][id]
+	    *pth->str[addr_rank2(pth->nsites, 3, 3, p_link->i, ia, id)];
+
 	}
       }
     }

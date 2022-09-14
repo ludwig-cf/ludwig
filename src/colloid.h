@@ -28,9 +28,9 @@ typedef enum colloid_io_version colloid_io_version_t;
  * unit test consumption. The total number of variables is
  * useful to know to check the ASCII read/write. */
 
-#define NTOT_VAR (20         +12        +38           +10)
+#define NTOT_VAR (20         +12        +38           +4           +6)
 #define NPAD_INT  12 /* 13 - isjanus (1) */
-#define NPAD_DBL  10 /* 15 - jangle (1) - Tc (1) - Tj1 (1) - Tj2 (1) - deltapsi */
+#define NPAD_DBL  4 /* 15 - jangle (1) - Tc (1) - Tj1 (1) - Tj2 (1) - deltapsi - force_colloid_fe (3) - force_colloid_bbl (3) */
 #define NBOND_MAX  2
 
 enum colloid_type_enum {COLLOID_TYPE_DEFAULT = 0,
@@ -111,6 +111,11 @@ struct colloid_state_type {
   double Tc;            /* Temperature of colloids when non Janus */
   double Tj1;            /* Temperature on one side when Janus type */
   double Tj2;            /* Temperature on the other side  */
+
+ /* Force contribution output */
+  double force_colloid_fe[3];
+  double force_colloid_bbl[3];
+
   double dpad[NPAD_DBL];/* Again, this pads to 512 bytes to allow
 			 * for future expansion. */
 };

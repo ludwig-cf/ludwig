@@ -52,18 +52,20 @@ static const int  include_ref = 0;  /* Include reference colloids at far x-,y-,z
 static const int  id = 1;  	    /* Output colloid id */
 static const int  cds_with_m  = 0;  /* Output coordinate and orientation */
 static const int  cds_with_v  = 0;  /* Output coordinate, velocity vector and magnitude */
-static const int  cds_with_both  = 1;  /* Output both */
+static const int  cds_with_both  = 0;  /* Output both */
+static const int  cds_with_both_and_forces  = 1;  /* Output both */
 
 static const char * format3_    = "%10.5f, %10.5f, %10.5f, ";
 static const char * format3end_ = "%10.5f, %10.5f, %10.5f\n";
 static const char * formate4end_ = "%14.6e, %14.6e, %14.6e, %14.6e\n";
 static const char * format7end_ = "%10.5f, %10.5f, %10.5f, %14.6e, %14.6e, %14.6e, %14.6e\n";
-static const char * format10end_ = "%10.5f, %10.5f, %10.5f, %10.5f, %10.5f, %10.5f, %14.6e, %14.6e, %14.6e, %14.6e\n";
+static const char * format13end_ = "%10.5f, %10.5f, %10.5f, %10.5f, %10.5f, %10.5f, %14.6e, %14.6e, %14.6e, %14.6e, %14.6e, %14.6e, %14.6e\n";
 
 void colloids_to_csv_header(FILE * fp);
 void colloids_to_csv_header_with_m(FILE * fp);
 void colloids_to_csv_header_with_v(FILE * fp);
 void colloids_to_csv_header_with_both(FILE * fp);
+void colloids_to_csv_header_with_both_and_forces(FILE * fp);
 
 int main(int argc, char ** argv) {
 
@@ -101,6 +103,7 @@ int main(int argc, char ** argv) {
   if (cds_with_m) colloids_to_csv_header_with_m(fp_csv);
   if (cds_with_v) colloids_to_csv_header_with_v(fp_csv);
   if (cds_with_both) colloids_to_csv_header_with_both(fp_csv);
+  if (cds_with_both_and_forces) colloids_to_csv_header_with_both_and_forces(fp_csv);
 
   for (nf = 1; nf <= nfile; nf++) {
 
@@ -156,6 +159,10 @@ int main(int argc, char ** argv) {
       if (cds_with_both) {
 	normv = sqrt(s1.v[0]*s1.v[0] + s1.v[1]*s1.v[1] + s1.v[2]*s1.v[2]);
 	fprintf(fp_csv, format7end_, s1.m[0], s1.m[1], s1.m[2], s1.v[0], s1.v[1], s1.v[2], normv);
+      }
+      if (cds_with_both_and_forces) {
+	normv = sqrt(s1.v[0]*s1.v[0] + s1.v[1]*s1.v[1] + s1.v[2]*s1.v[2]);
+	fprintf(fp_csv, format13end_, s1.m[0], s1.m[1], s1.m[2], s1.v[0], s1.v[1], s1.v[2], normv, s1.force_colloid_fe[0], s1.force_colloid_fe[1], s1.force_colloid_fe[2], s1.force_colloid_bbl[0], s1.force_colloid_bbl[1], s1.force_colloid_bbl[2]);
       }
       ncount += 1;
 
@@ -355,3 +362,47 @@ void colloids_to_csv_header_with_both(FILE * fp) {
 
   return;
 }
+
+
+/*****************************************************************************
+ *
+ *  colloids_to_csv_header_with_both_and_forces
+ *
+ *****************************************************************************/
+
+void colloids_to_csv_header_with_both_and_forces(FILE * fp) {
+
+  double r[3];
+
+  if (id) fprintf(fp, "%s", "id, ");
+  fprintf(fp, "%s", "x, y, z, mx, my, mz, vx, vy, vz, normv, fx_fe, fy_fe, fz_fe, fx_bbl, fy_bbl, fz_bbl\n");
+
+  if (include_ref) {
+
+    r[0] = 1.0*NX - 1.0;
+    r[1] = 0.0;
+    r[2] = 0.0;
+
+    fprintf(fp, format3_, r[0], r[1], r[2]);
+    fprintf(fp, format3end_, 0, 0, 0, 0);
+
+    r[0] = 0.0;
+    r[1] = 1.0*NY - 1.0;
+    r[2] = 0.0;
+
+    fprintf(fp, format3_, r[0], r[1], r[2]);
+    fprintf(fp, format3end_, 0, 0, 0, 0);
+
+    r[0] = 0.0;
+    r[1] = 0.0;
+    r[2] = 1.0*NZ - 1.0;
+
+    fprintf(fp, format3_, r[0], r[1], r[2]);
+    fprintf(fp, format3end_, 0, 0, 0, 0);
+
+  }
+
+  return;
+}
+
+

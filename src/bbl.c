@@ -768,6 +768,8 @@ int bbl_update_colloids(bbl_t * bbl, wall_t * wall, colloids_info_t * cinfo) {
 
   for ( ; pc; pc = pc->nextall) {
 
+    for (ia = 0; ia < 3; ia++) pc->s.force_colloid_bbl[ia] = 0.0;
+
     if (pc->s.type == COLLOID_TYPE_SUBGRID) continue;
 
     /* Set up the matrix problem and solve it here. */
@@ -934,6 +936,10 @@ int bbl_update_colloids(bbl_t * bbl, wall_t * wall, colloids_info_t * cinfo) {
 	pc->zeta[12]*pc->s.w[X] +
 	pc->zeta[13]*pc->s.w[Y] +
 	pc->zeta[14]*pc->s.w[Z]);
+
+	pc->s.force_colloid_bbl[X] = pc->force[X];
+	pc->s.force_colloid_bbl[Y] = pc->force[Y];
+	pc->s.force_colloid_bbl[Z] = pc->force[Z];
   }
 
   /* As the lubrication force is based on the updated velocity, but
