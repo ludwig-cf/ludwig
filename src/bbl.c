@@ -768,7 +768,7 @@ int bbl_update_colloids(bbl_t * bbl, wall_t * wall, colloids_info_t * cinfo) {
 
   for ( ; pc; pc = pc->nextall) {
 
-    for (ia = 0; ia < 3; ia++) pc->s.force_colloid_bbl[ia] = 0.0;
+    //for (ia = 0; ia < 3; ia++) pc->s.force_colloid_bbl[ia] = 0.0;
 
     if (pc->s.type == COLLOID_TYPE_SUBGRID) continue;
 

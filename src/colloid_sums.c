@@ -77,7 +77,7 @@ static int colloid_sums_m6(colloid_sum_t * sum, int, int, int, int);
 /* Message sizes (doubles) */
 /* NULL is a dummy zero size */
 
-static const int msize_[COLLOID_SUM_MAX] = {0, 11, 35, 7, 4, 7, 7};
+static const int msize_[COLLOID_SUM_MAX] = {0, 11, 35+6, 7, 4, 7, 7};
 
 /* The following are used for internal communication */
 
@@ -558,6 +558,8 @@ static int colloid_sums_m2(colloid_sum_t * sum, int ic, int jc, int kc,
 	sum->send[n++] = pc->t0[ia];
 	sum->send[n++] = pc->force[ia];
 	sum->send[n++] = pc->torque[ia];
+	sum->send[n++] = pc->s.force_colloid_fe[ia];
+	sum->send[n++] = pc->s.force_colloid_bbl[ia];
       }
       for (ia = 0; ia < 21; ia++) {
 	sum->send[n++] = pc->zeta[ia];
@@ -577,6 +579,8 @@ static int colloid_sums_m2(colloid_sum_t * sum, int ic, int jc, int kc,
 	pc->t0[ia] += sum->recv[n++];
 	pc->force[ia] += sum->recv[n++];
 	pc->torque[ia] += sum->recv[n++];
+	pc->s.force_colloid_fe[ia] += sum->recv[n++];
+	pc->s.force_colloid_bbl[ia] += sum->recv[n++];
       }
       for (ia = 0; ia < 21; ia++) {
 	pc->zeta[ia] += sum->recv[n++];

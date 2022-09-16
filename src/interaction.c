@@ -366,6 +366,15 @@ int colloids_update_forces_zero(colloids_info_t * cinfo) {
     pc->torque[X] = 0.0;
     pc->torque[Y] = 0.0;
     pc->torque[Z] = 0.0;
+
+    pc->s.force_colloid_fe[X] = 0.0;
+    pc->s.force_colloid_fe[Y] = 0.0;
+    pc->s.force_colloid_fe[Z] = 0.0;
+
+    pc->s.force_colloid_bbl[X] = 0.0;
+    pc->s.force_colloid_bbl[Y] = 0.0;
+    pc->s.force_colloid_bbl[Z] = 0.0;
+ 
   }
 
   return 0;
