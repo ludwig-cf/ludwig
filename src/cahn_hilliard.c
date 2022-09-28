@@ -37,9 +37,14 @@
 
 __host__ int ch_update_forward_step(ch_t * ch, field_t * phif);
 __host__ int ch_flux_mu1(ch_t * ch, fe_t * fe);
+__host__ int ch_store_flux(ch_t * ch, field_t * field);
+
+__global__ void ch_store_flux_kernel(kernel_ctxt_t * ktx, ch_t * ch, field_t * field,
+				   ch_info_t info, int xs, int ys);
 
 __global__ void ch_flux_mu1_kernel(kernel_ctxt_t * ktx, ch_t * ch, fe_t * fe,
 				   ch_info_t info);
+
 __global__ void ch_update_kernel_2d(kernel_ctxt_t * ktx, ch_t * ch,
 				    field_t * field, ch_info_t info, int xs, int ys);
 __global__ void ch_update_kernel_3d(kernel_ctxt_t * ktx, ch_t * ch,
@@ -174,23 +179,31 @@ __host__ int ch_info_set(ch_t * ch, ch_info_t info) {
  *****************************************************************************/
 
 __host__ int ch_solver(ch_t * ch, fe_t * fe, field_t * phi, hydro_t * hydro,
-		       map_t * map) {
+		       map_t * map, field_t * total_flux_psi, field_t * advective_flux_psi) {
 
   assert(ch);
   assert(fe);
   assert(phi);
+  assert(total_flux_psi);
+  assert(advective_flux_psi);
 
   /* Compute any advective fluxes first, then diffusive fluxes. */
 
   if (hydro) {
     hydro_u_halo(hydro); /* Reposition to main to prevent repeat */
     advflux_cs_compute(ch->flux, hydro, phi);
+
+    if (map) advflux_cs_no_normal_flux(ch->flux, map);
+    ch_store_flux(ch, advective_flux_psi); /* Computes flux from flux structure into advective_flux_psi/phi */
+
   }
   else {
     advflux_cs_zero(ch->flux); /* Reset flux to zero */
   }
 
-  ch_flux_mu1(ch, fe);
+  ch_flux_mu1(ch, fe); /* Compute total flux into total_flux_psi/phi */
+  if (map) advflux_cs_no_normal_flux(ch->flux, map);
+  ch_store_flux(ch, total_flux_psi);
 
   if (map) advflux_cs_no_normal_flux(ch->flux, map);
   ch_update_forward_step(ch, phi);
@@ -453,3 +466,87 @@ __global__ void ch_update_kernel_3d(kernel_ctxt_t * ktx, ch_t * ch,
 
   return;
 }
+
+/*****************************************************************************
+ *
+ *  ch_store_flux
+ *
+ *****************************************************************************/
+
+__host__ int ch_store_flux(ch_t * ch, field_t * field) {
+
+  int nlocal[3];
+  int xs, ys, zs;
+  dim3 nblk, ntpb;
+
+  kernel_info_t limits;
+  kernel_ctxt_t * ctxt = NULL;
+
+  cs_nlocal(ch->cs, nlocal);
+  cs_strides(ch->cs, &xs, &ys, &zs);
+
+  limits.imin = 1; limits.imax = nlocal[X];
+  limits.jmin = 1; limits.jmax = nlocal[Y];
+  limits.kmin = 1; limits.kmax = nlocal[Z];
+
+  kernel_ctxt_create(ch->cs, 1, limits, &ctxt);
+  kernel_ctxt_launch_param(ctxt, &nblk, &ntpb);
+
+  tdpLaunchKernel(ch_store_flux_kernel, nblk, ntpb, 0, 0,
+		    ctxt->target, ch->target, field->target, *ch->info, xs, ys);
+
+  tdpAssert(tdpPeekAtLastError());
+  tdpAssert(tdpDeviceSynchronize());
+
+  kernel_ctxt_free(ctxt);
+
+  return 0;
+}
+
+/******************************************************************************
+ *
+ *  ch_store_flux
+ *
+ *****************************************************************************/
+
+__global__ void ch_store_flux_kernel(kernel_ctxt_t * ktx, ch_t * ch,
+				    field_t * field, ch_info_t info,
+				    int xs, int ys) {
+
+  int kindex;
+  int kiterations;
+
+  assert(ktx);
+  assert(ch);
+  assert(field->nf==3);
+
+  kiterations = kernel_iterations(ktx);
+
+  for_simt_parallel(kindex, kiterations, 1) {
+
+    int ic = kernel_coords_ic(ktx, kindex);
+    int jc = kernel_coords_jc(ktx, kindex);
+    int kc = kernel_coords_kc(ktx, kindex);
+
+    int index = cs_index(ch->cs, ic, jc, kc);
+
+    
+    field->data[addr_rank1(ch->flux->nsite, 3, index, 0)] =
+      	      -	ch->flux->fx[addr_rank1(ch->flux->nsite, 2, index, 1)]
+              + ch->flux->fx[addr_rank1(ch->flux->nsite, 2, index - xs, 1)];
+
+    field->data[addr_rank1(ch->flux->nsite, 3, index, 1)] =
+      	      -	ch->flux->fy[addr_rank1(ch->flux->nsite, 2, index, 1)]
+              + ch->flux->fy[addr_rank1(ch->flux->nsite, 2, index - ys, 1)];
+
+    field->data[addr_rank1(ch->flux->nsite, 3, index, 2)] =
+      	      -	ch->flux->fz[addr_rank1(ch->flux->nsite, 2, index, 1)]
+              + ch->flux->fz[addr_rank1(ch->flux->nsite, 2, index - 1, 1)];
+
+    /* Next site */
+  }
+
+  return;
+}
+
+

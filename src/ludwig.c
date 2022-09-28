@@ -146,6 +146,8 @@ struct ludwig_s {
   field_t * q;              /* Tensor order parameter */
   //OFT
   field_t * temperature;    /* Temperature (scalar) */
+  field_t * total_flux_psi;
+  field_t * advective_flux_psi;
   //OFT
   field_grad_t * phi_grad;  /* Gradients for phi */
   field_grad_t * p_grad;    /* Gradients for p */
@@ -276,13 +278,13 @@ static int ludwig_rt(ludwig_t * ludwig) {
   }
   /* Temperature I/O */
   
-  /* TODO: Temperature always outputted in binary (I could never successfully use the extraction routines for fields written in ASCII anyway...) */
-
   /* All the same I/O grid  */
   
   if (ludwig->phi) field_init_io_info(ludwig->phi, io_grid, form, form);
 //OFT
   if (ludwig->temperature) field_init_io_info(ludwig->temperature, io_grid, form, form);
+  if (ludwig->total_flux_psi) field_init_io_info(ludwig->total_flux_psi, io_grid, form, form);
+  if (ludwig->advective_flux_psi) field_init_io_info(ludwig->advective_flux_psi, io_grid, form, form);
 //OFT
   if (ludwig->p) field_init_io_info(ludwig->p, io_grid, form, form);
   if (ludwig->q) field_init_io_info(ludwig->q, io_grid, form, form);
@@ -381,6 +383,19 @@ static int ludwig_rt(ludwig_t * ludwig) {
       field_io_info(ludwig->temperature, &iohandler);
       io_read_data(iohandler, filename, ludwig->temperature);
     }
+    if (ludwig->total_flux_psi) {
+      sprintf(filename, "%stotal_flux_psi-%8.8d", subdirectory, ntstep);
+      pe_info(pe, "files(s) %s\n", filename);
+      field_io_info(ludwig->total_flux_psi, &iohandler);
+      io_read_data(iohandler, filename, ludwig->total_flux_psi);
+    }
+    if (ludwig->advective_flux_psi) {
+      sprintf(filename, "%sadvective_flux_psi-%8.8d", subdirectory, ntstep);
+      pe_info(pe, "files(s) %s\n", filename);
+      field_io_info(ludwig->advective_flux_psi, &iohandler);
+      io_read_data(iohandler, filename, ludwig->advective_flux_psi);
+    }
+
 //OFT
     if (ludwig->p) {
       sprintf(filename, "%sp-%8.8d", subdirectory, ntstep);
@@ -543,6 +558,8 @@ void ludwig_run(const char * inputfile) {
   if (ludwig->phi) field_memcpy(ludwig->phi, tdpMemcpyHostToDevice);
 //OFT
   if (ludwig->temperature) field_memcpy(ludwig->temperature, tdpMemcpyHostToDevice);
+  if (ludwig->total_flux_psi) field_memcpy(ludwig->total_flux_psi, tdpMemcpyHostToDevice);
+  if (ludwig->advective_flux_psi) field_memcpy(ludwig->advective_flux_psi, tdpMemcpyHostToDevice);
 
 //OFT
   if (ludwig->p)   field_memcpy(ludwig->p, tdpMemcpyHostToDevice);
@@ -636,7 +653,15 @@ void ludwig_run(const char * inputfile) {
 	field_halo(ludwig->temperature);
 	TIMER_stop(TIMER_TEMPERATURE_HALO);
     }
+    
+    if (ludwig->total_flux_psi) {
+        field_halo(ludwig->total_flux_psi);
+    }
 
+    if (ludwig->advective_flux_psi) {
+        field_halo(ludwig->advective_flux_psi);
+    }
+ 
     if (ludwig->p) {
       field_halo(ludwig->p);
       field_grad_compute(ludwig->p_grad);
@@ -798,7 +823,7 @@ void ludwig_run(const char * inputfile) {
 
       if (ludwig->ch) {
 	ch_solver(ludwig->ch, ludwig->fe, ludwig->phi, ludwig->hydro,
-		  ludwig->map);
+		  ludwig->map, ludwig->total_flux_psi, ludwig->advective_flux_psi);
       }
 // OFT TODO: give temperature its own noise, for now noise should not be used  */
 
@@ -960,6 +985,26 @@ void ludwig_run(const char * inputfile) {
 	io_write_data(iohandler, filename, ludwig->temperature);
       }
     }
+    if (is_total_flux_psi_output_step() || is_config_step()) {
+
+      if (ludwig->total_flux_psi) {
+	field_io_info(ludwig->total_flux_psi, &iohandler);
+	pe_info(ludwig->pe, "Writing total_flux_psi file at step %d!\n", step);
+	sprintf(filename,"%stotal_flux_psi-%8.8d", subdirectory, step);
+	io_write_data(iohandler, filename, ludwig->total_flux_psi);
+      }
+    }
+
+    if (is_advective_flux_psi_output_step() || is_config_step()) {
+
+      if (ludwig->advective_flux_psi) {
+	field_io_info(ludwig->advective_flux_psi, &iohandler);
+	pe_info(ludwig->pe, "Writing advective_flux_psi file at step %d!\n", step);
+	sprintf(filename,"%sadvective_flux_psi-%8.8d", subdirectory, step);
+	io_write_data(iohandler, filename, ludwig->advective_flux_psi);
+      }
+    }
+
 //OFT
     if (ludwig->psi) {
       if (is_psi_output_step()) {
@@ -1118,6 +1163,20 @@ void ludwig_run(const char * inputfile) {
       sprintf(filename,"%stemperature-%8.8d", subdirectory, step);
       io_write_data(iohandler, filename, ludwig->temperature);
     }
+    if (ludwig->total_flux_psi) {
+      field_io_info(ludwig->total_flux_psi, &iohandler);
+      pe_info(ludwig->pe, "Writing total_flux_psi file at step %d!\n", step);
+      sprintf(filename,"%stotal_flux_psi-%8.8d", subdirectory, step);
+      io_write_data(iohandler, filename, ludwig->total_flux_psi);
+    }
+    if (ludwig->advective_flux_psi) {
+      field_io_info(ludwig->advective_flux_psi, &iohandler);
+      pe_info(ludwig->pe, "Writing advective_flux_psi file at step %d!\n", step);
+      sprintf(filename,"%sadvective_flux_psi-%8.8d", subdirectory, step);
+      io_write_data(iohandler, filename, ludwig->advective_flux_psi);
+    }
+
+
 //OFT
     if (ludwig->q) {
       field_io_info(ludwig->q, &iohandler);
@@ -1156,6 +1215,8 @@ void ludwig_run(const char * inputfile) {
   if (ludwig->q_grad)   field_grad_free(ludwig->q_grad);
   if (ludwig->phi)      field_free(ludwig->phi);
   if (ludwig->temperature) field_free(ludwig->temperature);
+  if (ludwig->total_flux_psi) field_free(ludwig->total_flux_psi);
+  if (ludwig->advective_flux_psi) field_free(ludwig->advective_flux_psi);
   if (ludwig->p)        field_free(ludwig->p);
   if (ludwig->q)        field_free(ludwig->q);
 
@@ -1352,6 +1413,9 @@ int free_energy_init_rt(ludwig_t * ludwig) {
 
     field_create(pe, cs, nf, "phi", &ludwig->phi);
     field_create(pe, cs, nf, "temperature", &ludwig->temperature);
+    field_create(pe, cs, nf, "diffusive_psi", &ludwig->temperature);
+    field_create(pe, cs, nf, "advective_psi", &ludwig->temperature);
+
     field_init(ludwig->temperature, nhalo, le);
     field_init(ludwig->phi, nhalo, le);
 
@@ -1449,6 +1513,11 @@ int free_energy_init_rt(ludwig_t * ludwig) {
 
     field_grad_create(pe, ludwig->phi, ngrad, &ludwig->phi_grad);
 
+    field_create(pe, cs, 3, "total_flux_psi", &ludwig->total_flux_psi);
+    field_init(ludwig->total_flux_psi, nhalo, le);
+
+    field_create(pe, cs, 3, "advective_flux_psi", &ludwig->advective_flux_psi);
+    field_init(ludwig->advective_flux_psi, nhalo, le);
 
     pe_info(pe, "\n");
     pe_info(pe, "Temperature-dependent surfactant free energy\n");
@@ -1525,6 +1594,12 @@ int free_energy_init_rt(ludwig_t * ludwig) {
     field_init(ludwig->temperature, nhalo, le);
 
     field_grad_create(pe, ludwig->phi, ngrad, &ludwig->phi_grad);
+
+    field_create(pe, cs, 3, "total_flux_psi", &ludwig->total_flux_psi);
+    field_init(ludwig->total_flux_psi, nhalo, le);
+
+    field_create(pe, cs, 3, "advective_flux_psi", &ludwig->advective_flux_psi);
+    field_init(ludwig->advective_flux_psi, nhalo, le);
 
 
     pe_info(pe, "\n");

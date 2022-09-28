@@ -26,6 +26,8 @@ int is_colloid_io_step(void);
 
 int is_phi_output_step(void);
 int is_temperature_output_step(void);
+int is_total_flux_psi_output_step(void);
+int is_advective_flux_psi_output_step(void);
 int is_vel_output_step(void);
 int is_psi_output_step(void);
 int is_rho_output_step(void);

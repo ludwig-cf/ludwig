@@ -27,6 +27,8 @@ static int freq_measure    = 100000000;
 static int freq_config     = 100000000;
 static int freq_phi        = 100000000;
 static int freq_temperature= 100000000;
+static int freq_total_flux_psi= 100000000;
+static int freq_advective_flux_psi= 100000000;
 static int freq_psi        = 100000000;
 static int freq_vel        = 100000000;
 static int freq_fed        = 100000000;
@@ -72,6 +74,8 @@ int init_control(pe_t * pe, rt_t * rt) {
   rt_int_parameter(rt, "freq_phi", &freq_phi);
 //OFT
   rt_int_parameter(rt, "freq_temperature", &freq_temperature);
+  rt_int_parameter(rt, "freq_total_flux_psi", &freq_total_flux_psi);
+  rt_int_parameter(rt, "freq_advective_flux_psi", &freq_advective_flux_psi);
 //OFT
   rt_int_parameter(rt, "freq_psi", &freq_psi);
   rt_int_parameter(rt, "freq_vel", &freq_vel);
@@ -139,6 +143,32 @@ int is_temperature_output_step() {
   physics_ref(&phys);
   return ((physics_control_timestep(phys) % freq_temperature) == 0);
 }
+
+/*****************************************************************************
+ *
+ *  is_total_flux_psi_output_step
+ *
+ *****************************************************************************/
+
+int is_total_flux_psi_output_step() {
+  physics_t * phys = NULL;
+  physics_ref(&phys);
+  return ((physics_control_timestep(phys) % freq_total_flux_psi) == 0);
+}
+
+/*****************************************************************************
+ *
+ *  is_advective_flux_psi_output_step
+ *
+ *****************************************************************************/
+
+int is_advective_flux_psi_output_step() {
+  physics_t * phys = NULL;
+  physics_ref(&phys);
+  return ((physics_control_timestep(phys) % freq_advective_flux_psi) == 0);
+}
+
+
 //OFT
 
 /*****************************************************************************
