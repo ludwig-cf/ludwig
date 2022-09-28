@@ -12,6 +12,8 @@ vel =		1
 q =		0	
 phi =		1	
 temperature =	1	
+advective_flux_psi=1
+total_flux_psi=1
 psi =		0
 fed =		0
 colcds =	0
@@ -38,6 +40,13 @@ for opt, arg in opts:
           vel = True
         elif (opt == "-c"):
           colcdsvel = True
+
+        elif (opt == "-a"):
+          advective_flux_psi = True
+        elif (opt == "-tot"):
+          total_flux_psi = True
+
+
 
 print("Extracting ", end = "")
 if phi == True: print("phi fields, ", end = "")
@@ -74,9 +83,22 @@ if colcdsvel==1:
 	for i in range(nstart,nend+nint,nint):
 		os.system('ls -t1 config.cds%08.0d.001-001 >> filelist_colloid' % i)
 
+if total_flux_psi:
+	metafile.append('total_flux_psi.00%d-001.meta' % ngroup)
+	filelist.append('filelist_total_flux_psi')
+	for i in range(nstart,nend+nint,nint):
+          os.system('ls -t1 total_flux_psi-%08.0d.00%d-001 >> filelist_total_flux_psi' % (i,ngroup))
+
+if advective_flux_psi:
+	metafile.append('advective_flux_psi.00%d-001.meta' % ngroup)
+	filelist.append('filelist_advective_flux_psi')
+	for i in range(nstart,nend+nint,nint):
+          os.system('ls -t1 advective_flux_psi-%08.0d.00%d-001 >> filelist_advective_flux_psi' % (i,ngroup))
+
 # Create vtk-files
 for i in range(len(filelist)):
-	if filelist[i] == 'filelist_vel' or filelist[i] == 'filelist_phi' or filelist[i] == 'filelist_temperature':
+	if filelist[i] == 'filelist_vel' or filelist[i] == 'filelist_phi' or filelist[i] == 'filelist_temperature' or filelist[i] == 'filelist_total_flux_psi' or filelist[i] == 'filelist_advective_flux_psi':
+
 		datafiles=open(filelist[i],'r') 
 
 		while 1:

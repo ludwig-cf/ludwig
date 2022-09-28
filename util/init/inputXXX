@@ -60,21 +60,28 @@ viscosity XXXviscosityXXX
 
 free_energy two_symm_oft
 
-phi_A       XXXphi_AXXX
-phi_B       XXXphi_BXXX
-phi_kappa0    XXXphi_kappa0XXX
-phi_kappa1    XXXphi_kappa1XXX
-phi_kappa2    XXXphi_kappa2XXX
+phi_A0       XXXphi_A0XXX
+phi_A1       XXXphi_A1XXX
+phi_A2       XXXphi_A2XXX
+
+phi_B0       XXXphi_B0XXX
+phi_B1       XXXphi_B1XXX
+phi_B2       XXXphi_B2XXX
+
+phi_Kappa0    XXXphi_Kappa0XXX
+phi_Kappa1    XXXphi_Kappa1XXX
+phi_Kappa2    XXXphi_Kappa2XXX
 
 # set the values of kappa's such that sigma can factorise in the form sigma = sigma0 - sigma1 * T
 
 
 psi_A       XXXpsi_AXXX
 psi_B       XXXpsi_BXXX
-psi_kappa    XXXpsi_kappaXXX
+psi_Kappa    XXXpsi_KappaXXX
+psi_beta    XXXpsi_betaXXX
 
-c 	  0.0
-h 	  0.0
+C 	  0.0
+H 	  0.0
 
 two_symm_oft_mobility_phi  XXXtwo_symm_oft_mobility_phiXXX
 two_symm_oft_mobility_psi  XXXtwo_symm_oft_mobility_psiXXX
@@ -89,7 +96,7 @@ phi_initialisation        one_interface
 
 #psi_initialisation        surfactant
 psi_initialisation        uniform
-psi0   0.0
+psi0   XXXpsi0XXX
 
 temperature_initialisation uniform
 T0 0.0
@@ -107,7 +114,7 @@ fd_advection_scheme order XXXfd_advection_scheme_orderXXX
 #
 ###############################################################################
 
-colloid_init        input_one
+colloid_init        XXXcolloid_initXXX
 
 colloid_gravity 0.0_0.0_0.0
 colloid_one_janus_colloid_on 1

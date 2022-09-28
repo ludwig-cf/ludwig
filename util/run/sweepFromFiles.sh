@@ -13,7 +13,7 @@ UTIL_DIR=$LUDWIG_DIR"/util"
 
 
 # SIMULATION PARAMETERS 
-N_start=0
+N_start=100      # Has to be the same as the N_cycles of the relaxing simulation
 N_cycles=100
 grid=2_2_2
 ntasks=8
@@ -68,7 +68,7 @@ two_symm_oft_lambda=0.1
 
 # COLLOID
 
-colloid_init=input_one
+colloid_init=from_file
 
 colloid_one_a0=8.0
 colloid_one_ah=8.0
@@ -76,7 +76,7 @@ colloid_one_ah=8.0
 colloid_one_r=15.0_30.0_30.0
 colloid_one_m=1.0_0.0_0.0
 
-colloid_one_isfixedr=1
+colloid_one_isfixedr=0
 colloid_one_isfixeds=1
 
 colloid_one_Tj1=0.0
@@ -96,20 +96,13 @@ for param in ${sweepingRange[@]}; do
 
   if [[ -e $datafolder ]];
   then
-    while true; do
-      read -p "Do you wish to overwrite "$datafolder" ?" yn
-      case $yn in
-          [Yy]* ) rm -r $datafolder; mkdir $datafolder -v; break;;
-          [Nn]* ) exit;;
-          * ) echo "Please answer yes or no.";;
-      esac
-    done
+    echo ""$datafolder" found. Restarting..."
   else 
-    mkdir $datafolder -v;
+    echo ""$datafolder" not found"
+    exit;
   fi
 
   declare "${sweepingParam}"=$param
-  echo "Running simulation with "${sweepingParam}"=$param"
 
 ## CREATE INPUT FILE ###
   sed "s/XXXN_startXXX/$N_start/g" $"$UTIL_DIR"/init/inputXXX"" > input;

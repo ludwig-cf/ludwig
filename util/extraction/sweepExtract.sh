@@ -9,7 +9,7 @@ UTIL_DIR=/home/jeremie/PHD/ludwig/util/
 
 # SIMULATION PARAMETERS 
 N_start=0
-N_cycles=100
+N_cycles=200
 
 # EXTRACTION PARAMETERS
 freq=10
@@ -20,8 +20,8 @@ nfiles=$(($N_cycles / $freq))
 
 # SWEEPING PARAMETER
 # Must match with datafolders
-sweepingParam="viscosity"
-sweepingRange=(0.5 1.0)
+sweepingParam="colloid_one_Tj1"
+sweepingRange=(0.5)
 
 prefix=$sweepingParam
 
