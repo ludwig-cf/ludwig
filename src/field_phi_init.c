@@ -181,7 +181,7 @@ int field_phi_init_one_interface(field_t * phi, double xi) {
   cs_nlocal_offset(phi->cs, noffset);
   cs_ltot(phi->cs, ltot);
 
-  zhalf = 0.5*ltot[Z];
+  zhalf = 0.5*ltot[Z] + 0.5; // /int of tanh sums to 0 <=> interface at the center of the box <=> zhalf = ( len + 1 ) / 2
 
   for (ic = 1; ic <= nlocal[X]; ic++) {
     for (jc = 1; jc <= nlocal[Y]; jc++) { 
