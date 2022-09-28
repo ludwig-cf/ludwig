@@ -60,12 +60,13 @@ __host__ int fe_two_symm_oft_param_rt(pe_t * pe, rt_t * rt, fe_two_symm_oft_para
 
   rt_double_parameter(rt, "psi_A",       &p->psi_a);
   rt_double_parameter(rt, "psi_B",       &p->psi_b);
-  rt_double_parameter(rt, "psi_kappa",   &p->psi_kappa);
+  rt_double_parameter(rt, "psi_Kappa",   &p->psi_kappa);
+  rt_double_parameter(rt, "psi_beta",   &p->psi_beta);
 
 /* <-------------- CHECK WETTING PARAMETERS -------------------> */
   /* Uniform wetting */
-  rt_double_parameter(rt, "C", &p->c);
-  rt_double_parameter(rt, "H", &p->h);
+  rt_double_parameter(rt, "phi_C", &p->c);
+  rt_double_parameter(rt, "phi_H", &p->h);
 
   /* For the two_symm should have... */
 

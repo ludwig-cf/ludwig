@@ -39,6 +39,7 @@ struct fe_two_symm_oft_param_s {
   double psi_a;              /* Symmetric a */
   double psi_b;              /* Symmetric b */
   double psi_kappa;         /* Symmetric kappa */
+  double psi_beta;
   
   double c;
   double h;
