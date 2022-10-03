@@ -381,11 +381,11 @@ __host__ int fe_two_symm_oft_mu(fe_two_symm_oft_t * fe, int index, double * mu) 
 
   //printf("kappa0 = %f, kappa1 = %f, kappa2 = %f, temperature = %f, phi_kappa_oft = %f\n", fe->param->phi_kappa0, fe->param->phi_kappa1, fe->param->phi_kappa2, temperature, phi_kappa_oft);
 
-  assert(phi_kappa_oft > 0.0);
-  assert(phi_a_oft < 0.0);
-  assert(phi_b_oft > 0.0);
-  assert(fe->param->psi_a >= 0.0);
-  assert(fe->param->psi_beta <= 0.0);
+  //assert(phi_kappa_oft > 0.0);
+  //assert(phi_a_oft < 0.0);
+  //assert(phi_b_oft > 0.0);
+  //assert(fe->param->psi_a >= 0.0);
+  //assert(fe->param->psi_beta <= 0.0);
 
 
   mu[0] = phi_a_oft*phi + phi_b_oft*phi*phi*phi
@@ -442,9 +442,9 @@ __host__ int fe_two_symm_oft_str(fe_two_symm_oft_t * fe, int index, double s[3][
   phi_b_oft = fe->param->phi_b0 + fe->param->phi_b1*temperature + fe->param->phi_b2*temperature*temperature;
   phi_kappa_oft = fe->param->phi_kappa0 + fe->param->phi_kappa1*temperature + fe->param->phi_kappa2*temperature*temperature;
 
-  assert(phi_kappa_oft > 0);
-  assert(phi_a_oft < 0);
-  assert(phi_b_oft > 0);
+  //assert(phi_kappa_oft > 0);
+  //assert(phi_a_oft < 0);
+  //assert(phi_b_oft > 0);
 
 
   p0 = 0.5*phi_a_oft*phi*phi + 0.75*phi_b_oft*phi*phi*phi*phi

@@ -148,6 +148,7 @@ struct ludwig_s {
   field_t * temperature;    /* Temperature (scalar) */
   field_t * total_flux_psi;
   field_t * advective_flux_psi;
+  field_t * mu;
   //OFT
   field_grad_t * phi_grad;  /* Gradients for phi */
   field_grad_t * p_grad;    /* Gradients for p */
@@ -285,6 +286,7 @@ static int ludwig_rt(ludwig_t * ludwig) {
   if (ludwig->temperature) field_init_io_info(ludwig->temperature, io_grid, form, form);
   if (ludwig->total_flux_psi) field_init_io_info(ludwig->total_flux_psi, io_grid, form, form);
   if (ludwig->advective_flux_psi) field_init_io_info(ludwig->advective_flux_psi, io_grid, form, form);
+  if (ludwig->mu) field_init_io_info(ludwig->mu, io_grid, form, form);
 //OFT
   if (ludwig->p) field_init_io_info(ludwig->p, io_grid, form, form);
   if (ludwig->q) field_init_io_info(ludwig->q, io_grid, form, form);
@@ -394,6 +396,12 @@ static int ludwig_rt(ludwig_t * ludwig) {
       pe_info(pe, "files(s) %s\n", filename);
       field_io_info(ludwig->advective_flux_psi, &iohandler);
       io_read_data(iohandler, filename, ludwig->advective_flux_psi);
+    }
+    if (ludwig->mu) {
+      sprintf(filename, "%smu-%8.8d", subdirectory, ntstep);
+      pe_info(pe, "files(s) %s\n", filename);
+      field_io_info(ludwig->mu, &iohandler);
+      io_read_data(iohandler, filename, ludwig->mu);
     }
 
 //OFT
@@ -560,6 +568,7 @@ void ludwig_run(const char * inputfile) {
   if (ludwig->temperature) field_memcpy(ludwig->temperature, tdpMemcpyHostToDevice);
   if (ludwig->total_flux_psi) field_memcpy(ludwig->total_flux_psi, tdpMemcpyHostToDevice);
   if (ludwig->advective_flux_psi) field_memcpy(ludwig->advective_flux_psi, tdpMemcpyHostToDevice);
+  if (ludwig->mu) field_memcpy(ludwig->mu, tdpMemcpyHostToDevice);
 
 //OFT
   if (ludwig->p)   field_memcpy(ludwig->p, tdpMemcpyHostToDevice);
@@ -660,6 +669,9 @@ void ludwig_run(const char * inputfile) {
 
     if (ludwig->advective_flux_psi) {
         field_halo(ludwig->advective_flux_psi);
+    }
+    if (ludwig->mu) {
+      field_halo(ludwig->mu);
     }
  
     if (ludwig->p) {
@@ -823,7 +835,7 @@ void ludwig_run(const char * inputfile) {
 
       if (ludwig->ch) {
 	ch_solver(ludwig->ch, ludwig->fe, ludwig->phi, ludwig->hydro,
-		  ludwig->map, ludwig->total_flux_psi, ludwig->advective_flux_psi);
+		  ludwig->map, ludwig->total_flux_psi, ludwig->advective_flux_psi, ludwig->mu);
       }
 // OFT TODO: give temperature its own noise, for now noise should not be used  */
 
@@ -1004,6 +1016,17 @@ void ludwig_run(const char * inputfile) {
 	io_write_data(iohandler, filename, ludwig->advective_flux_psi);
       }
     }
+    if (is_mu_output_step() || is_config_step()) {
+
+      if (ludwig->mu) {
+	field_io_info(ludwig->mu, &iohandler);
+	pe_info(ludwig->pe, "Writing mu file at step %d!\n", step);
+	sprintf(filename,"%smu-%8.8d", subdirectory, step);
+	io_write_data(iohandler, filename, ludwig->mu);
+      }
+    }
+
+
 
 //OFT
     if (ludwig->psi) {
@@ -1176,6 +1199,15 @@ void ludwig_run(const char * inputfile) {
       io_write_data(iohandler, filename, ludwig->advective_flux_psi);
     }
 
+    if (ludwig->mu) {
+      field_io_info(ludwig->mu, &iohandler);
+      pe_info(ludwig->pe, "Writing mu file at step %d!\n", step);
+      sprintf(filename,"%smu-%8.8d", subdirectory, step);
+      io_write_data(iohandler, filename, ludwig->mu);
+    }
+
+
+
 
 //OFT
     if (ludwig->q) {
@@ -1217,6 +1249,7 @@ void ludwig_run(const char * inputfile) {
   if (ludwig->temperature) field_free(ludwig->temperature);
   if (ludwig->total_flux_psi) field_free(ludwig->total_flux_psi);
   if (ludwig->advective_flux_psi) field_free(ludwig->advective_flux_psi);
+  if (ludwig->mu)      field_free(ludwig->mu);
   if (ludwig->p)        field_free(ludwig->p);
   if (ludwig->q)        field_free(ludwig->q);
 
@@ -1519,6 +1552,9 @@ int free_energy_init_rt(ludwig_t * ludwig) {
     field_create(pe, cs, 3, "advective_flux_psi", &ludwig->advective_flux_psi);
     field_init(ludwig->advective_flux_psi, nhalo, le);
 
+    field_create(pe, cs, nf, "mu", &ludwig->mu);
+    field_init(ludwig->mu, nhalo, le);
+
     pe_info(pe, "\n");
     pe_info(pe, "Temperature-dependent surfactant free energy\n");
     pe_info(pe, "----------------------\n");
@@ -1601,6 +1637,8 @@ int free_energy_init_rt(ludwig_t * ludwig) {
     field_create(pe, cs, 3, "advective_flux_psi", &ludwig->advective_flux_psi);
     field_init(ludwig->advective_flux_psi, nhalo, le);
 
+    field_create(pe, cs, nf, "mu", &ludwig->mu);
+    field_init(ludwig->mu, nhalo, le);
 
     pe_info(pe, "\n");
     pe_info(pe, "Temperature-dependent two binary mixtures free energy\n");

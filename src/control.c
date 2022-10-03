@@ -26,6 +26,7 @@ static int freq_statistics = 100;
 static int freq_measure    = 100000000;
 static int freq_config     = 100000000;
 static int freq_phi        = 100000000;
+static int freq_mu        = 100000000;
 static int freq_temperature= 100000000;
 static int freq_total_flux_psi= 100000000;
 static int freq_advective_flux_psi= 100000000;
@@ -75,6 +76,7 @@ int init_control(pe_t * pe, rt_t * rt) {
 //OFT
   rt_int_parameter(rt, "freq_temperature", &freq_temperature);
   rt_int_parameter(rt, "freq_total_flux_psi", &freq_total_flux_psi);
+  rt_int_parameter(rt, "freq_mu", &freq_mu);
   rt_int_parameter(rt, "freq_advective_flux_psi", &freq_advective_flux_psi);
 //OFT
   rt_int_parameter(rt, "freq_psi", &freq_psi);
@@ -182,6 +184,19 @@ int is_phi_output_step() {
   physics_ref(&phys);
   return ((physics_control_timestep(phys) % freq_phi) == 0);
 }
+
+/*****************************************************************************
+ *
+ *  is_mu_output_step
+ *
+ *****************************************************************************/
+
+int is_mu_output_step() {
+  physics_t * phys = NULL;
+  physics_ref(&phys);
+  return ((physics_control_timestep(phys) % freq_mu) == 0);
+}
+
 
 /*****************************************************************************
  *
