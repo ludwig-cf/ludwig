@@ -27,6 +27,7 @@ static int freq_measure    = 100000000;
 static int freq_config     = 100000000;
 static int freq_phi        = 100000000;
 static int freq_mask       = 100000000;
+static int freq_subgrid_potential       = 100000000;
 static int freq_psi        = 100000000;
 static int freq_vel        = 100000000;
 static int freq_fed        = 100000000;
@@ -71,6 +72,7 @@ int init_control(pe_t * pe, rt_t * rt) {
   rt_int_parameter(rt, "freq_config", &freq_config);
   rt_int_parameter(rt, "freq_phi", &freq_phi);
   rt_int_parameter(rt, "freq_mask", &freq_mask);
+  rt_int_parameter(rt, "freq_subgrid_potential", &freq_subgrid_potential);
   rt_int_parameter(rt, "freq_psi", &freq_psi);
   rt_int_parameter(rt, "freq_vel", &freq_vel);
   rt_int_parameter(rt, "freq_fed", &freq_fed);
@@ -148,6 +150,20 @@ int is_mask_output_step() {
   physics_ref(&phys);
   return ((physics_control_timestep(phys) % freq_mask) == 0);
 }
+
+
+/*****************************************************************************
+ *
+ *  is_subgrid_potential_output_step
+ *
+ *****************************************************************************/
+
+int is_subgrid_potential_output_step() {
+  physics_t * phys = NULL;
+  physics_ref(&phys);
+  return ((physics_control_timestep(phys) % freq_subgrid_potential) == 0);
+}
+
 
 
 /*****************************************************************************

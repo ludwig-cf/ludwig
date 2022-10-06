@@ -262,6 +262,7 @@ static int ludwig_rt(ludwig_t * ludwig) {
 
   if (ludwig->phi) field_init_io_info(ludwig->phi, io_grid, form, form);
   if (ludwig->flux_mask) field_init_io_info(ludwig->flux_mask, io_grid, form, form);
+  if (ludwig->subgrid_potential) field_init_io_info(ludwig->subgrid_potential, io_grid, form, form);
   if (ludwig->p) field_init_io_info(ludwig->p, io_grid, form, form);
   if (ludwig->q) field_init_io_info(ludwig->q, io_grid, form, form);
 
@@ -297,9 +298,7 @@ static int ludwig_rt(ludwig_t * ludwig) {
   if (ludwig->subgrid_potential) {
     field_phi_init_uniform(ludwig->subgrid_potential, 0.0);
   }
-  //if (ludwig->flux_mask) {
-  //  field_phi_init_uniform(ludwig->flux_mask, 0.0);
-  //}
+
   /* To be called before wall_rt_init() */
   if (ludwig->psi) {
     advection_init_rt(pe, rt);
@@ -875,6 +874,16 @@ void ludwig_run(const char * inputfile) {
       }
     }
 
+    if (is_subgrid_potential_output_step() || is_config_step()) {
+
+      if (ludwig->subgrid_potential) {
+	field_io_info(ludwig->subgrid_potential, &iohandler);
+	pe_info(ludwig->pe, "Writing subgrid_potential file at step %d!\n", step);
+	sprintf(filename,"%ssubgrid_potential-%8.8d", subdirectory, step);
+	io_write_data(iohandler, filename, ludwig->subgrid_potential);
+      }
+    } 
+
     if (is_mask_output_step() || is_config_step()) {
 
       if (ludwig->flux_mask) {
@@ -1048,6 +1057,13 @@ void ludwig_run(const char * inputfile) {
       pe_info(ludwig->pe, "Writing mobility map file at step %d!\n", step);
       sprintf(filename, "%sflux_mask-%8.8d", subdirectory, step);
       io_write_data(iohandler, filename, ludwig->flux_mask);
+    }
+
+    if (ludwig->subgrid_potential) {
+      field_io_info(ludwig->subgrid_potential, &iohandler);
+      pe_info(ludwig->pe, "Writing subgrid_potential file at step %d!\n", step);
+      sprintf(filename, "%ssubgrid_potential-%8.8d", subdirectory, step);
+      io_write_data(iohandler, filename, ludwig->subgrid_potential);
     }
 
     if (ludwig->q) {
@@ -2051,7 +2067,7 @@ static int ludwig_colloids_update_low_freq(ludwig_t * ludwig) {
   colloids_info_update_lists(ludwig->collinfo);
   interact_compute(ludwig->interact, ludwig->collinfo, ludwig->map,
         	     ludwig->psi, ludwig->ewald, ludwig->phi, 
-			ludwig->subgrid_potential, ludwig->rt);
+			ludwig->subgrid_potential, ludwig->rt, ludwig->flux_mask);
 
   subgrid_force_from_particles(ludwig->collinfo, ludwig->hydro, ludwig->wall);
 
@@ -2137,7 +2153,8 @@ int ludwig_colloids_update(ludwig_t * ludwig) {
 
   interact_compute(ludwig->interact, ludwig->collinfo, ludwig->map,
 		   ludwig->psi, ludwig->ewald, ludwig->phi, 
-			ludwig->subgrid_potential, ludwig->rt);
+			ludwig->subgrid_potential, ludwig->rt, ludwig->flux_mask);
+
   subgrid_force_from_particles(ludwig->collinfo, ludwig->hydro, ludwig->wall);
 
   TIMER_stop(TIMER_FORCES);

@@ -687,7 +687,7 @@ __global__ void ch_update_kernel_3d(kernel_ctxt_t * ktx, ch_t * ch,
 
 /*****************************************************************************
  *
- *  ch_mobility_masks
+ *  ch_apply_masks
  *
  *  Kernel driver for no-flux boundary conditions.
  *
