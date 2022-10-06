@@ -979,7 +979,7 @@ int colloids_update_discrete_forces_phi(colloids_info_t * cinfo, field_t * phi, 
   physics_t * phys = NULL;
 
 /* ------------------------- For book-keeping ------------------------------> */
-  int writefreq = 10000000, timestep;
+  int writefreq = 10000, timestep;
   double colloidforce[3], localforce[3] = {0., 0., 0.}, globalforce[3];
   double colloidtorque[3], localtorque[3] = {0., 0., 0.}, globaltorque[3];
   FILE * fp;
@@ -1125,8 +1125,7 @@ int colloids_update_discrete_forces_phi(colloids_info_t * cinfo, field_t * phi, 
 		}
 	
                 /* Calculate force */
-		
-                pc->force[X] += phi_*grad_u[X];
+		pc->force[X] += phi_*grad_u[X];
                 pc->force[Y] += phi_*grad_u[Y];
                 pc->force[Z] += phi_*grad_u[Z];
 
@@ -1143,6 +1142,11 @@ int colloids_update_discrete_forces_phi(colloids_info_t * cinfo, field_t * phi, 
 		colloidtorque[X] += dcentre[Y]*phi_*grad_u[Z] - dcentre[Z]*phi_*grad_u[Y];
 		colloidtorque[Y] += dcentre[Z]*phi_*grad_u[X] - dcentre[X]*phi_*grad_u[Z];
 		colloidtorque[Z] += dcentre[X]*phi_*grad_u[Y] - dcentre[Y]*phi_*grad_u[X];
+		
+		pc->s.tphi[X] += dcentre[Y]*phi_*grad_u[Z] - dcentre[Z]*phi_*grad_u[Y];
+		pc->s.tphi[Y] += dcentre[Z]*phi_*grad_u[X] - dcentre[X]*phi_*grad_u[Z];
+		pc->s.tphi[Z] += dcentre[X]*phi_*grad_u[Y] - dcentre[Y]*phi_*grad_u[X];
+
 		/* Increment the total interaction potential for later use by cahn_hilliard and phi_force */
 
                 r[X] = - r0[X] + 1.0*i;
@@ -1163,6 +1167,7 @@ int colloids_update_discrete_forces_phi(colloids_info_t * cinfo, field_t * phi, 
 	/* Increment the force to the total local force */
 	for (ia = 0; ia < 3; ia ++) localforce[ia] += colloidforce[ia];
 	for (ia = 0; ia < 3; ia ++) localtorque[ia] += colloidtorque[ia];
+	
 
         //Next colloid
         }
