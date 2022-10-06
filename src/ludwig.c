@@ -545,6 +545,8 @@ void ludwig_run(const char * inputfile) {
 
     if (ludwig->hydro) {
       hydro_f_zero(ludwig->hydro, fzero);
+/* Calculate flux mask for later use in interact_compute, phi_force/phi_grad_mu.c and ch_solver LIGHTHOUSE but should work */
+      subgrid_flux_mask(ludwig->pe, ludwig->collinfo, ludwig->flux_mask, ludwig->rt, ludwig->phi);
     }
 
     colloids_info_ntotal(ludwig->collinfo, &ncolloid);
@@ -814,7 +816,7 @@ void ludwig_run(const char * inputfile) {
       //subgrid_phi_production(ludwig->collinfo, ludwig->phi); 
       subgrid_update(ludwig->collinfo, ludwig->hydro, noise_flag);
       //subgrid_centre_update(ludwig->collinfo, ludwig->hydro, noise_flag);
-      subgrid_flux_mask(ludwig->pe, ludwig->collinfo, ludwig->flux_mask, ludwig->rt, ludwig->phi);
+      //subgrid_flux_mask(ludwig->pe, ludwig->collinfo, ludwig->flux_mask, ludwig->rt, ludwig->phi);
       //subgrid_flux_mask_vesicle2(ludwig->collinfo, ludwig->flux_mask, ludwig->rt);
 
       bounce_back_on_links(ludwig->bbl, ludwig->lb, ludwig->wall,
