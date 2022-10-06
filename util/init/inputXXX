@@ -87,6 +87,8 @@ mask_psi_switch XXXmask_psi_switchXXX
 mask_phi_permeability XXXmask_phi_permeabilityXXX
 mask_psi_permeability XXXmask_psi_permeabilityXXX
 
+phi_interaction_mask XXXphi_interaction_maskXXX
+
 mask_std_width XXXmask_std_widthXXX
 mask_std_alpha XXXmask_std_alphaXXX
 mask_alpha_cutoff XXXmask_alpha_cutoffXXX

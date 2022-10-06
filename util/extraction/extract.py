@@ -37,9 +37,9 @@ import os
 import sys
 import getopt
 
-nstart=1000    # Start timestep
-nend= 5000	# End timestep
-nint=1000		# Increment
+nstart=100    # Start timestep
+nend= 1000	# End timestep
+nint=100		# Increment
 
 ngroup=1	# Number of output groups
 
@@ -48,12 +48,13 @@ a0_poly = None  # the radius of monomer
 
 vel=		0	# Switch for velocity 
 q=		0	# Switch for Q-tensor
-phi=		0	# Switch for binary fluid
-mask=		0	# Switch for binary fluid
+phi=		1	# Switch for binary fluid
+mask=		1	# Switch for binary fluid
+subgrid_potential=1
 psi=		0	# Switch for electrokinetics
 fed=		0	# Switch for free energy
 colcds=		0	# Switch for colloid coordinate
-colcdsvel=	0	# Switch for colloid coordinate and lattice velocity
+colcdsvel=	1	# Switch for colloid coordinate and lattice velocity
 
 squ_poly_cds = False     # Squirmer, polymer co-ordinate
 squ_poly_cdsvel = False  # Squirmer, polymer co-ordinate; velocity 
@@ -114,9 +115,16 @@ if colcdsvel==1:
 	for i in range(nstart,nend+nint,nint):
 		os.system('ls -t1 config.cds%08.0d.001-001 >> filelist_colloid' % i)
 
+if subgrid_potential == 1:
+	metafile.append('subgrid_potential.%03.0d-001.meta' % ngroup)
+	filelist.append('filelist_subgrid_potential')
+	for i in range(nstart,nend+nint,nint):
+		os.system('ls -t1 subgrid_potential-%08.0d.%03.0d-001 >> filelist_subgrid_potential' % (i,ngroup))
+
+
 # Create vtk-files
 for i in range(len(filelist)):
-	if filelist[i] == 'filelist_vel' or filelist[i] == 'filelist_phi' or filelist[i] == 'filelist_mask':
+	if filelist[i] == 'filelist_vel' or filelist[i] == 'filelist_phi' or filelist[i] == 'filelist_mask' or filelist[i] == 'filelist_subgrid_potential':
 		datafiles=open(filelist[i],'r') 
 
 		while 1:

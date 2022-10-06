@@ -83,6 +83,8 @@ mask_psi_switch=1
 mask_phi_permeability=0.1
 mask_psi_permeability=0.1
 
+phi_interaction_mask=0
+
 mask_std_width=1.0
 mask_std_alpha=0.8
 mask_alpha_cutoff=1.0
@@ -198,6 +200,8 @@ for param in ${sweepingRange[@]}; do
 
   sed -i "s/XXXmask_phi_permeabilityXXX/$mask_phi_permeability/g" input; 
   sed -i "s/XXXmask_psi_permeabilityXXX/$mask_phi_permeability/g" input; 
+
+  sed -i "s/XXXphi_interaction_maskXXX/$phi_interaction_mask/g" input; 
 
   sed -i "s/XXXmask_std_widthXXX/$mask_std_width/g" input; 
   sed -i "s/XXXmask_std_alphaXXX/$mask_std_alpha/g" input; 
