@@ -1317,32 +1317,17 @@ int MPI_File_open(MPI_Comm comm, const char * filename, int amode,
     case (1):
       /* Read only */
       fdmode = "r";
-      /*
-      flags = O_RDONLY;
-      */
       if (have_create) printf("No create with RDONLY\n");
       if (have_excl)   printf("No excl   with RDONLY\n");
       break;
     case (2):
       /* Write only  */
       fdmode = "w";
-      /*
-      flags = O_WRONLY;
-      if (have_create) flags = flags | O_CREAT;
-      if (have_excl)   flags = flags | O_EXCL;
-      if (have_append) flags = flags | O_APPEND;
-      */
       if (have_append) fdmode = "a";
       break;
     case (4):
       /* Read write */
       fdmode = "r+";
-      /*
-      flags = O_RDWR;
-      if (have_create) flags = flags | O_CREAT;
-      if (have_excl)   flags = flags | O_EXCL;
-      if (have_append) flags = flags | O_APPEND;
-      */
       if (have_append) fdmode = "a+";
       break;
     default:
@@ -1401,7 +1386,8 @@ int MPI_File_close(MPI_File * fh) {
 int MPI_File_delete(const char * filename, MPI_Info info) {
 
   assert(filename);
-  assert(0);
+
+  remove(filename);
 
   return MPI_SUCCESS;
 }
