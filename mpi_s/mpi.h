@@ -81,7 +81,9 @@ enum elementary_datatypes {MPI_CHAR           = -11,
 			   MPI_DOUBLE         = -20,
 			   MPI_LONG_DOUBLE    = -21,
 			   MPI_BYTE           = -22,
-			   MPI_PACKED         = -23};
+			   MPI_PACKED         = -23,
+                           MPI_INT32_T        = -24,
+                           MPI_INT64_T        = -25};
 
 enum collective_operations {MPI_MAX,
 			    MPI_MIN,

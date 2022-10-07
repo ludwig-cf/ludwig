@@ -1058,9 +1058,16 @@ static int mpi_sizeof(MPI_Datatype type) {
     break;
   case MPI_LONG_DOUBLE:
     size = sizeof(double);
+    assert(sizeof(double) == sizeof(long double));
     break;
   case MPI_BYTE:
     size = sizeof(char);
+    break;
+  case MPI_INT32_T:
+    size = sizeof(int32_t);
+    break;
+  case MPI_INT64_T:
+    size = sizeof(int64_t);
     break;
   case MPI_PACKED:
     printf("MPI_PACKED not implemented\n");
