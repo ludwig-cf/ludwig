@@ -658,7 +658,10 @@ int read_data_file_name(const char * filename) {
   tmp = strchr(filename, '-');
   if (tmp) {
     int ns = sscanf(tmp+1, "%d.", &ntime);
-    if (ns != 1) printf("Could not determine time from %s\n", filename);
+    if (ns < 1) {
+      printf("Could not determine time from %s\n", filename);
+      ntime = -1;
+    }
   }
 
   assert (ntime >= 0);
