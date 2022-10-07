@@ -2,6 +2,10 @@
  *
  *  mpi_tests
  *
+ *  Tests for the serial stubs
+ *
+ *  (c) 2022 The University of Edinburgh
+ *
  *****************************************************************************/
 
 #include <assert.h>
@@ -29,6 +33,52 @@ static int test_mpi_file_get_view(void);
 static int test_mpi_file_set_view(void);
 static int test_mpi_type_create_subarray(void);
 static int test_mpi_file_write_all(void);
+
+/* Utilities */
+
+void util_printf_bits(size_t size, void const * data) {
+
+  unsigned char * bytes = (unsigned char *) data;
+
+  for (size_t ibyte = size; ibyte-- > 0; ) {
+    for (int ibit = 7; ibit >= 0; ibit--) {
+      unsigned char bit = (bytes[ibyte] >> ibit) & 1;
+      printf("%u", bit);
+    }
+  }
+
+  printf("\n");
+
+  return;
+}
+
+static int util_bits_same(size_t size, const void * data1, const void * data2) {
+
+  int bsame = 1;
+  unsigned char * b1 = (unsigned char *) data1;
+  unsigned char * b2 = (unsigned char *) data2;
+
+  assert(b1);
+  assert(b2);
+
+  for (size_t ibyte = size; ibyte-- > 0; ) {
+    for (int ibit = 7; ibit >= 0; ibit--) {
+      unsigned char bit1 = (b1[ibyte] >> ibit) & 1;
+      unsigned char bit2 = (b2[ibyte] >> ibit) & 1;
+      if (bit1 != bit2) bsame = 0;
+    }
+  }
+
+  return bsame;
+}
+
+static int util_double_same(double d1, double d2) {
+
+  double a = d1;
+  double b = d2;
+
+  return util_bits_same(sizeof(double), &a, &b);
+}
 
 int main (int argc, char ** argv) {
 
@@ -114,8 +164,8 @@ static int test_mpi_allreduce(void) {
   dsend = 1.0; drecv = 0.0;
   ireturn = MPI_Allreduce(&dsend, &drecv, 1, MPI_DOUBLE, MPI_SUM, comm_);
   assert(ireturn == MPI_SUCCESS);
-  assert(dsend == 1.0);   /* Exactly */
-  assert(drecv == dsend); /* Exactly */
+  assert(util_double_same(dsend, 1.0));   /* Exactly */
+  assert(util_double_same(drecv, dsend)); /* Exactly */
 
   isend[0] = -1;
   isend[1] = 0;
@@ -149,8 +199,8 @@ static int test_mpi_reduce(void) {
   dsend = 1.0; drecv = 0.0;
   ireturn = MPI_Reduce(&dsend, &drecv, 1, MPI_DOUBLE, MPI_SUM, 0, comm_);
   assert(ireturn == MPI_SUCCESS);
-  assert(dsend == 1.0);    /* Exactly */
-  assert(drecv == dsend);  /* Exactly */
+  assert(util_double_same(dsend, 1.0));    /* Exactly */
+  assert(util_double_same(drecv, dsend));  /* Exactly */
 
   isend[0] = -1;
   isend[1] = 0;
@@ -178,10 +228,10 @@ static int test_mpi_reduce(void) {
 
   ireturn = MPI_Reduce(dvsend, dvrecv, 2, MPI_DOUBLE, MPI_SUM, 0, comm_);
   assert(ireturn == MPI_SUCCESS);
-  assert(dvsend[0] == -1.0);       /* All should be exact. */
-  assert(dvsend[1] == +1.5);
-  assert(dvrecv[0] == dvsend[0]);
-  assert(dvrecv[1] == dvsend[1]);
+  assert(util_double_same(dvsend[0], -1.0));       /* All should be exact. */
+  assert(util_double_same(dvsend[1], +1.5));
+  assert(util_double_same(dvrecv[0], dvsend[0]));
+  assert(util_double_same(dvrecv[1], dvsend[1]));
 
   free(dvsend);
   free(dvrecv);
@@ -301,8 +351,8 @@ int test_mpi_type_create_struct(void) {
     test_t recv = {.a = 0, .b = 0.0};
 
     MPI_Reduce(&send, &recv, 1, dt, MPI_SUM, 0, MPI_COMM_WORLD);
-    assert(send.a == recv.a);
-    assert(fabs(send.b - recv.b) < DBL_EPSILON);
+    assert(send.a == recv.a);                     /* integer */
+    assert(fabs(send.b - recv.b) < DBL_EPSILON);  /* double */
   }
 
   MPI_Type_free(&dt);
