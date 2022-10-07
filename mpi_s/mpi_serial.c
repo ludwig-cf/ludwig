@@ -1536,14 +1536,14 @@ int MPI_File_read_all(MPI_File fh, void * buf, int count,
 
     size_t size   = mpi_sizeof(datatype);
     size_t nitems = count;
-
-    fread(buf, size, nitems, fp);
+    size_t nr = fread(buf, size, nitems, fp);
 
     if (ferror(fp)) {
       perror("perror: ");
       printf("MPI_File_read_all() file operation failed\n");
       exit(0);
     }
+    assert(nr == nitems);
   }
 
   return MPI_SUCCESS;
@@ -1574,14 +1574,14 @@ int MPI_File_write_all(MPI_File fh, const void * buf, int count,
 
     size_t size   = mpi_sizeof(datatype);
     size_t nitems = count;
-
-    fwrite(buf, size, nitems, fp);
+    size_t nw = fwrite(buf, size, nitems, fp);
 
     if (ferror(fp)) {
       perror("perror: ");
       printf("MPI_File_write_all() file operation failed\n");
       exit(0);
     }
+    assert(nw == nitems);
   }
 
   return MPI_SUCCESS;
