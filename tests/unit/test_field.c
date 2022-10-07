@@ -643,7 +643,7 @@ int test_field_io_aggr_pack(pe_t * pe) {
       /* Are the values in the buffer correct? */
       /* Clear existing values and unpack. */
 
-      memset(field->data, 0, field->nsites*field->nf*sizeof(double));
+      memset(field->data, 0, sizeof(double)*field->nsites*field->nf);
 
       field_io_aggr_unpack(field, buf);
       util_field_data_check(field);
