@@ -599,7 +599,9 @@ int test_field_write_buf_ascii(pe_t * pe) {
 
 /*****************************************************************************
  *
- * test_field_io_aggr_pack
+ *  test_field_io_aggr_pack
+ *
+ *  It is convenient to test field_io_aggr_unpack() at te same time.
  *
  *****************************************************************************/
 
@@ -620,10 +622,10 @@ int test_field_io_aggr_pack(pe_t * pe) {
   /* This should be elsewhere as part of test_field_create() */
   {
     /* Note one can use == with pre-defined data types */
-    assert(field->aggr.asc_etype == MPI_CHAR);
-    assert(field->aggr.bin_etype == MPI_DOUBLE);
-    assert(field->aggr.asc_esize == 23*sizeof(char));
-    assert(field->aggr.bin_esize == field->nf*sizeof(double));
+    assert(field->aggr_asc.etype == MPI_CHAR);
+    assert(field->aggr_bin.etype == MPI_DOUBLE);
+    assert(field->aggr_asc.esize == 23*sizeof(char));
+    assert(field->aggr_bin.esize == field->nf*sizeof(double));
   }
 
   {
@@ -633,7 +635,7 @@ int test_field_io_aggr_pack(pe_t * pe) {
       cs_limits_t lim = {1, nlocal[X], 1, nlocal[Y], 1, nlocal[Z]};
       io_aggr_buf_t buf = {0};
 
-      io_aggr_buf_create(field->aggr.bin_esize, lim, &buf);
+      io_aggr_buf_create(field->aggr_bin.esize, lim, &buf);
 
       util_field_data_check_set(field);
       field_io_aggr_pack(field, buf);
