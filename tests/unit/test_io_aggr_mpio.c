@@ -216,7 +216,7 @@ int test_io_aggr_buf_pack_asc(cs_t * cs, io_aggr_buf_t buf) {
 	  int iz = offset[Z] + kc;
 	  char cline[BUFSIZ] = {0};
 	  size_t nc = 0; /* int returned but need to compare to size_t */
-	  nc = sprintf(cline, "%4d %4d %4d %12lld\n", ix, iy, iz, ival);
+	  nc = sprintf(cline, "%4d %4d %4d %12" PRId64 "\n", ix, iy, iz, ival);
 	  assert(nc == buf.szelement);
 	  memcpy(buf.buf + ib*buf.szelement, cline, buf.szelement);
 	}
