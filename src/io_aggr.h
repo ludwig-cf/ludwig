@@ -19,10 +19,8 @@
 typedef struct io_aggr_s io_aggr_t;
 
 struct io_aggr_s {
-  MPI_Datatype bin_etype;   /* Data type for element (binary) */
-  MPI_Datatype asc_etype;   /* Data type for element (ascii) usu. MPI_CHAR */
-  size_t       bin_esize;   /* number bytes per lattice site */
-  size_t       asc_esize;   /* fixed character size per line of output */
+  MPI_Datatype etype;   /* Data type for element */
+  size_t       esize;   /* Number bytes per element */
 };
 
 #endif

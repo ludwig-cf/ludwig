@@ -63,7 +63,8 @@ struct field_s {
   pe_t * pe;                    /* Parallel environment */
   cs_t * cs;                    /* Coordinate system */
   lees_edw_t * le;              /* Lees-Edwards */
-  io_aggr_t aggr;               /* I/O aggregator information */
+  io_aggr_t aggr_asc;           /* I/O aggregator information */
+  io_aggr_t aggr_bin;           /* Binary */
   io_info_t * info;             /* I/O Handler (to be removed) */
   halo_swap_t * halo;           /* Halo swap driver object */
   field_halo_t h;               /* Host halo */

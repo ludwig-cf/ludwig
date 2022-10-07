@@ -99,12 +99,10 @@ __host__ int field_create(pe_t * pe, cs_t * cs, lees_edw_t * le,
   obj->opts = *opts;
 
   /* I/O aggregator */
-  {
-    obj->aggr.asc_etype = MPI_CHAR;
-    obj->aggr.bin_etype = MPI_DOUBLE;
-    obj->aggr.asc_esize = 23*sizeof(char); /* 23 to be rationalised */
-    obj->aggr.bin_esize = obj->opts.ndata*sizeof(double);
-  }
+  obj->aggr_asc.etype = MPI_CHAR;
+  obj->aggr_asc.esize = 23*sizeof(char);
+  obj->aggr_bin.etype = MPI_DOUBLE;
+  obj->aggr_bin.esize = obj->opts.ndata*sizeof(double);
 
   if (obj->opts.haloverbose) field_halo_info(obj);
 
@@ -1083,6 +1081,7 @@ int field_io_aggr_pack(field_t * field, io_aggr_buf_t aggr) {
   {
     int iasc = field->opts.iodata.output.iorformat == IO_RECORD_ASCII;
     int ibin = field->opts.iodata.output.iorformat == IO_RECORD_BINARY;
+    assert(iasc ^ ibin); /* one or other */
 
     #pragma omp for
     for (int ib = 0; ib < cs_limits_size(aggr.lim); ib++) {
