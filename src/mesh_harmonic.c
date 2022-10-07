@@ -212,6 +212,8 @@ int mesh_harmonic_compute(colloids_info_t * cinfo, void * self) {
       pc->bonded_mesh[n]->s.fsprings[Y] += f*r12[Y];
       pc->bonded_mesh[n]->s.fsprings[Z] += f*r12[Z];
 
+// Careful here, the torque has to be calculated with the position of the linked bead
+      cs_minimum_distance(obj->cs, pc->bonded_mesh[n]->s.r, pc->centerofmass, dcentre);
       pc->bonded_mesh[n]->s.tsprings[X] += dcentre[Y]*f*r12[Z] - dcentre[Z]*f*r12[Y];
       pc->bonded_mesh[n]->s.tsprings[Y] += dcentre[Z]*f*r12[X] - dcentre[X]*f*r12[Z];
       pc->bonded_mesh[n]->s.tsprings[Z] += dcentre[X]*f*r12[Y] - dcentre[Y]*f*r12[X];
