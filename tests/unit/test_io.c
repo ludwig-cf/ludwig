@@ -256,8 +256,8 @@ int test_io_read3(FILE * fp, int index, void * self) {
 
   n = fscanf(fp, "%d\n", &indata);
 
-  test_assert(n == 1);
-  test_assert(indata == data->iref*index);
+  assert(n == 1);
+  if (n == 1) assert(indata == data->iref*index);
 
   return n;
 }
