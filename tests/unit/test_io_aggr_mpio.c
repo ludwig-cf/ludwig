@@ -16,6 +16,7 @@
  *****************************************************************************/
 
 #include <assert.h>
+#include <inttypes.h>
 #include <string.h>
 
 #include "pe.h"
@@ -213,8 +214,8 @@ int test_io_aggr_buf_pack_asc(cs_t * cs, io_aggr_buf_t buf) {
 	  int ix = offset[X] + ic;
 	  int iy = offset[Y] + jc;
 	  int iz = offset[Z] + kc;
-	  int nc = -1;
 	  char cline[BUFSIZ] = {0};
+	  size_t nc = 0; /* int returned but need to compare to size_t */
 	  nc = sprintf(cline, "%4d %4d %4d %12lld\n", ix, iy, iz, ival);
 	  assert(nc == buf.szelement);
 	  memcpy(buf.buf + ib*buf.szelement, cline, buf.szelement);
@@ -262,7 +263,8 @@ int test_io_aggr_buf_unpack_asc(cs_t * cs, io_aggr_buf_t buf) {
 	  int iyread = -1;
 	  int izread = -1;
 	  int64_t ivalread = -1;
-	  int nc = sscanf(buf.buf + ib*buf.szelement, "%4d %4d %4d %12lld",
+	  /* Note int64_t requires portable format */
+	  int nc = sscanf(buf.buf + ib*buf.szelement, "%4d %4d %4d %" SCNd64,
 			  &ixread, &iyread, &izread, &ivalread);
 
 	  assert(nc == 4);
