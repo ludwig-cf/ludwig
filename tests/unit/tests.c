@@ -74,6 +74,7 @@ __host__ int tests_create() {
   test_halo_suite();
   test_hydro_suite();
   test_io_aggr_buf_suite();
+  test_io_aggr_mpio_suite();
   test_io_suite();
   test_io_options_suite();
   test_io_options_rt_suite();
