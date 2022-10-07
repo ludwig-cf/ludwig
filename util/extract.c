@@ -58,7 +58,8 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "../src/util.h"
+#include "util.h"
+#include "util_fopen.h"
 
 #define MAXNTOTAL 1024 /* Maximum linear system size */
 
@@ -294,7 +295,7 @@ int extract_driver(const char * filename, metadata_v1_t * meta, int version) {
     }
     else {
       sprintf(io_data, "q-%8.8d", ntime);
-      fp_data = fopen(io_data, "w+b");
+      fp_data = util_fopen(io_data, "w+b");
       if (fp_data == NULL) {
 	printf("fopen(%s) failed\n", io_data);
 	exit(-1);
@@ -335,7 +336,7 @@ int extract_driver(const char * filename, metadata_v1_t * meta, int version) {
     if (output_vtk_ == 1 || output_vtk_ == 2) {
 
       strcat(io_data, suf);
-      fp_data = fopen(io_data, "w+b");
+      fp_data = util_fopen(io_data, "w+b");
       if (fp_data == NULL) printf("fopen(%s) failed\n", io_data);
       printf("\nWriting result to %s\n", io_data);
 
@@ -355,7 +356,7 @@ int extract_driver(const char * filename, metadata_v1_t * meta, int version) {
     }
     else {
 
-      fp_data = fopen(io_data, "w+b");
+      fp_data = util_fopen(io_data, "w+b");
       if (fp_data == NULL) printf("fopen(%s) failed\n", io_data);
       printf("\nWriting result to %s\n", io_data);
 
@@ -408,7 +409,7 @@ int read_version2(int ntime, metadata_v1_t * meta, double * datasection) {
 	     meta->nio, n);
     printf("-> %s\n", io_data);
 
-    fp_data = fopen(io_data, "r+b");
+    fp_data = util_fopen(io_data, "r+b");
     if (fp_data == NULL) printf("fopen(%s) failed\n", io_data);
 
     /* Read data file based on offsets recorded in the metadata,
@@ -469,7 +470,7 @@ int read_version1(int ntime, metadata_v1_t * meta, double * datasection) {
 	     meta->stub, meta->nio, n);
     printf("Reading metadata file ... %s ", io_metadata);
 
-    fp_metadata = fopen(io_metadata, "r");
+    fp_metadata = util_fopen(io_metadata, "r");
     if (fp_metadata == NULL) printf("fopen(%s) failed\n", io_metadata);
 
     for (p = 0; p < 12; p++) {
@@ -484,7 +485,7 @@ int read_version1(int ntime, metadata_v1_t * meta, double * datasection) {
 	     ntime, meta->nio, n);
     printf("-> %s\n", io_data);
 
-    fp_data = fopen(io_data, "r+b");
+    fp_data = util_fopen(io_data, "r+b");
     if (fp_data == NULL) printf("fopen(%s) failed\n", io_data);
 
     /* Read data file based on offsets recorded in the metadata,
@@ -535,7 +536,7 @@ void read_meta_data_file(const char * filename, metadata_v1_t * meta) {
   assert(filename);
   assert(meta);
 
-  fp_meta = fopen(filename, "r");
+  fp_meta = util_fopen(filename, "r");
   if (fp_meta == NULL) {
     printf("fopen(%s) failed\n", filename);
     exit(-1);
@@ -656,7 +657,8 @@ int read_data_file_name(const char * filename) {
 
   tmp = strchr(filename, '-');
   if (tmp) {
-    sscanf(tmp+1, "%d.", &ntime);
+    int ns = sscanf(tmp+1, "%d.", &ntime);
+    if (ns != 1) printf("Could not determine time from %s\n", filename);
   }
 
   assert (ntime >= 0);
@@ -1079,7 +1081,7 @@ int write_qab_vtk(int ntime, int ntarget[3], double * datasection) {
   /* Scalar order */
   if (output_lcs_) {
     sprintf(io_data, "lcs-%8.8d.vtk", ntime);
-    fp_data = fopen(io_data, "w");
+    fp_data = util_fopen(io_data, "w");
 
     if (fp_data == NULL) {
       printf("fopen(%s) failed\n", io_data);
@@ -1099,7 +1101,7 @@ int write_qab_vtk(int ntime, int ntarget[3], double * datasection) {
 
   if (output_lcd_) {
     sprintf(io_data, "lcd-%8.8d.vtk", ntime);
-    fp_data = fopen(io_data, "w");
+    fp_data = util_fopen(io_data, "w");
 
     if (fp_data == NULL) {
       printf("fopen(%s) failed\n", io_data);
@@ -1119,7 +1121,7 @@ int write_qab_vtk(int ntime, int ntarget[3], double * datasection) {
 
   if (output_lcx_) {
     sprintf(io_data, "lcb-%8.8d.vtk", ntime);
-    fp_data = fopen(io_data, "w");
+    fp_data = util_fopen(io_data, "w");
 
     if (fp_data == NULL) {
       printf("fopen(%s) failed\n", io_data);
