@@ -53,10 +53,21 @@ int test_psi_sor_suite(void) {
 
   pe_create(MPI_COMM_WORLD, PE_QUIET, &pe);
 
-  test_psi_sor_poisson(pe);
-  test_psi_sor_vare_poisson(pe);
+  {
+    int mpisz = pe_mpi_size(pe);
 
-  pe_info(pe, "PASS     ./unit/test_psi_sor\n");
+    if (mpisz > 4) {
+      /* It's really just a 1-d problem, so no large deompcositions */
+      pe_info(pe, "SKIP     ./unit/test_psi_sor\n");
+    }
+    else {
+      test_psi_sor_poisson(pe);
+      test_psi_sor_vare_poisson(pe);
+
+      pe_info(pe, "PASS     ./unit/test_psi_sor\n");
+    }
+  }
+
   pe_free(pe);
 
   return 0;
@@ -83,8 +94,16 @@ int test_psi_sor_poisson(pe_t * pe) {
   assert(pe);
 
   cs_create(pe, &cs);
-  cs_nhalo_set(cs, 1);
-  cs_ntotal_set(cs, ntotal);
+  {
+    /* We need to control the decomposition (not in z, please) */
+    int ndims = 3;
+    int dims[3] = {0,0,1};
+
+    MPI_Dims_create(pe_mpi_size(pe), ndims, dims);
+    cs_nhalo_set(cs, 1);
+    cs_ntotal_set(cs, ntotal);
+    cs_decomposition_set(cs, dims);
+  }
   cs_init(cs);
 
   psi_create(pe, cs, 2, &psi);
@@ -101,6 +120,7 @@ int test_psi_sor_poisson(pe_t * pe) {
   psi_halo_rho(psi);
 
   /* Time step is -1 for no output. */
+
   psi_sor_poisson(psi, -1);
 
   test_charge1_exact(psi, fepsilon_constant);
