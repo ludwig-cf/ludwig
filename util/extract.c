@@ -652,20 +652,24 @@ void read_meta_data_file(const char * filename, metadata_v1_t * meta) {
 
 int read_data_file_name(const char * filename) {
 
-  int ntime = -1;
-  const char * tmp;
+  const char * tmp = NULL;
+
+  assert(filename);
 
   tmp = strchr(filename, '-');
   if (tmp) {
+    int ntime = -1;
     int ns = sscanf(tmp+1, "%d.", &ntime);
     if (ns < 1) {
       printf("Could not determine time from %s\n", filename);
-      ntime = -1;
+      assert(0);
+    }
+    else {
+      return ntime;
     }
   }
 
-  assert (ntime >= 0);
-  return ntime;
+  return -1;
 }
 
 /****************************************************************************
