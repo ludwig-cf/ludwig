@@ -4,21 +4,19 @@
 #trap read debug
 
 # META PARAMETERS
-BASEDIR=$PWD"/"
-UTILCHEMODIR=~/PHD/utilchemo/
-UTILDIR=~/PHD/ludwig/util/
+SWEEP_DIR=$PWD"/"
+UTIL_DIR=~/PHD/ludwig/util/
 
 # SIMULATION PARAMETERS 
 N_start=0
 N_cycles=100000
 
 # EXTRACTION PARAMETERS
-freq=10000
+freq=1000
 nstart=$freq
 nend=$N_cycles
 nint=$freq
 nfiles=$(($N_cycles / $freq))
-nconfigfiles=$(($N_cycles / $freqconfig))
 
 # VIDEO PARAMETERS
 spatial_res=300
@@ -26,24 +24,25 @@ length_slice=30
 
 # SWEEPING PARAMETER
 # Must match with datafolders
-sweepingParam="PHIPROD"
-sweepingRange=(0.001 0.005 0.01 0.05 0.1)
+sweepingParam="mask_phi_permeability"
+sweepingRange=(0.0 1e-5 1e-4 1e-3 1e-2 1e-1)
 
 prefix=$sweepingParam
 
-printf "\n CHECKING NUMBER OF FILES \n \n"
+printf "\n Checking total file numbers... \n \n"
 for param in ${sweepingRange[@]}; do
   datafolder=$prefix"_"$param
   cd $datafolder
   
-  if [[ "$(ls phi*.vtk | wc -l)" -ne "$nfiles" || "$(ls col* | wc -l)" -ne "$nfiles" || "$(ls dircol* | wc -l)" -ne "$nfiles" || "$(ls mobility*.vtk | wc -l)" -ne "$nfiles" ]]; then
+  if [[ "$(ls phi*.vtk | wc -l)" -ne "$nfiles" || "$(ls col* | wc -l)" -ne "$nfiles" || "$(ls dircol* | wc -l)" -ne "$nfiles" || "$(ls mask*.vtk | wc -l)" -ne "$nfiles" ]]; then
     echo "Number of files not matching in "$datafolder
   fi
-  cd $BASEDIR
+  else
+    echo "Number of files is matching in "$datafolder
+  cd $SWEEP_DIR
 done
-cd $BASEDIR
-printf "\n EXTRACTING \n \n"
 
+cd $SWEEP_DIR
 
 while true; do
     read -p "Do you wish to continue ? " yn
@@ -54,17 +53,17 @@ while true; do
     esac
 done
 
-printf "\n PROCEEDING \n \n"
+printf "\n Proceeding... \n \n"
 
 for param in ${sweepingRange[@]}; do
   datafolder=$prefix"_"$param
    
-  cp $UTILCHEMODIR"save_video.py" $datafolder
+  cp $UTIL_DIR"/visual/save_video.py" $datafolder
 
   cd $datafolder
   printf "Creating video in "$datafolder
   python3 save_video.py $nstart $nend $nint $spatial_res $length_slice
   rm save_video.py  
 
-  cd $BASEDIR
+  cd $SWEEP_DIR
 done
