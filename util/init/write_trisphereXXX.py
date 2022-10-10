@@ -37,7 +37,11 @@ M = M / np.sqrt(np.sum(M**2))
 #N = N / np.sqrt(np.sum(N**2))
 
 # First orient M164 towards N then M643 towards M
+<<<<<<< Updated upstream
 #R164 = utils.rotate(COL164, N)
+=======
+R643 = utils.rotate(COL643, M)
+>>>>>>> Stashed changes
 
 # Additional attributes 
 indices = np.arange(1,NATOMS+1,1,dtype=int)
@@ -92,6 +96,7 @@ iscentre[0] = 1 #0, NATOMS, etc...
 ishole[NATOMS - 1] = 1 #0, NATOMS, etc...
 
 xyzt = xyz.T
+<<<<<<< Updated upstream
 #for i, vec in enumerate(xyzt):
 #  newvec = np.dot(R164.T, vec)
 #  xyz[0][i] = newvec[0]
@@ -103,12 +108,13 @@ COL643 /= np.sqrt(np.sum(COL643**2))
 
 R643 = utils.rotate(COL643, M)
 
+=======
+>>>>>>> Stashed changes
 for i, vec in enumerate(xyzt):
   newvec = np.dot(R643.T, vec)
   xyz[0][i] = newvec[0]
   xyz[1][i] = newvec[1]
   xyz[2][i] = newvec[2]
-
 
 xyz[0, :] += XSHIFT
 xyz[1, :] += YSHIFT
