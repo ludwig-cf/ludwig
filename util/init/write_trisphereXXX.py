@@ -39,9 +39,13 @@ M = M / np.sqrt(np.sum(M**2))
 # First orient M164 towards N then M643 towards M
 <<<<<<< Updated upstream
 #R164 = utils.rotate(COL164, N)
+<<<<<<< HEAD
 =======
 R643 = utils.rotate(COL643, M)
 >>>>>>> Stashed changes
+=======
+R643 = utils.rotate(COL643, M)
+>>>>>>> more bug fixes
 
 # Additional attributes 
 indices = np.arange(1,NATOMS+1,1,dtype=int)
