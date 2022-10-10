@@ -9,36 +9,35 @@ NATOMS = 643
 sphere_l = 0.17
 
 # or choose vesicle radius
-RADIUS = 10.0
+RADIUS = 7.0
 
 #print(str(BOND_LENGTH) + "\n" + str(BOND_LENGTH*sphere_l) + "\n" + str(BOND_LENGTH*RADIUS0))
 
 nbonds= 7
 
-XSHIFT = 20
-YSHIFT = 20
-ZSHIFT = 20
+XSHIFT = 30
+YSHIFT = 30
+ZSHIFT = 30
 
 COL164 = np.array([0.00970886554569006, -0.7889782190322876, -0.6143444180488586])
 COL643 = np.array([0.5770666599273682, -0.5685132145881653, -0.5863333344459534])
 
 mx=1
-my=0
+my=-1
 mz=0
 
-nx=0
-ny=1
-nz=0
+#nx=XXXnxXXX
+#ny=XXXnyXXX
+#nz=XXXnzXXX
 
 M = np.array([mx, my, mz]) # Vesicle oriented towards X (hole towards -X)
 M = M / np.sqrt(np.sum(M**2))
 
-N = np.array([nx, ny, nz]) # Vesicle oriented towards X (hole towards -X)
-N = N / np.sqrt(np.sum(N**2))
+#N = np.array([nx, ny, nz]) # Vesicle oriented towards X (hole towards -X)
+#N = N / np.sqrt(np.sum(N**2))
 
 # First orient M164 towards N then M643 towards M
 #R164 = utils.rotate(COL164, N)
-R643 = utils.rotate(COL643, M)
 
 # Additional attributes 
 indices = np.arange(1,NATOMS+1,1,dtype=int)
@@ -93,11 +92,23 @@ iscentre[0] = 1 #0, NATOMS, etc...
 ishole[NATOMS - 1] = 1 #0, NATOMS, etc...
 
 xyzt = xyz.T
+#for i, vec in enumerate(xyzt):
+#  newvec = np.dot(R164.T, vec)
+#  xyz[0][i] = newvec[0]
+#  xyz[1][i] = newvec[1]
+#  xyz[2][i] = newvec[2]
+
+COL643 = xyz[:,642]
+COL643 /= np.sqrt(np.sum(COL643**2))
+
+R643 = utils.rotate(COL643, M)
+
 for i, vec in enumerate(xyzt):
   newvec = np.dot(R643.T, vec)
   xyz[0][i] = newvec[0]
   xyz[1][i] = newvec[1]
   xyz[2][i] = newvec[2]
+
 
 xyz[0, :] += XSHIFT
 xyz[1, :] += YSHIFT

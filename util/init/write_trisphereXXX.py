@@ -26,18 +26,18 @@ mx=XXXmxXXX
 my=XXXmyXXX
 mz=XXXmzXXX
 
-nx=XXXnxXXX
-ny=XXXnyXXX
-nz=XXXnzXXX
+#nx=XXXnxXXX
+#ny=XXXnyXXX
+#nz=XXXnzXXX
 
 M = np.array([mx, my, mz]) # Vesicle oriented towards X (hole towards -X)
 M = M / np.sqrt(np.sum(M**2))
 
-N = np.array([nx, ny, nz]) # Vesicle oriented towards X (hole towards -X)
-N = N / np.sqrt(np.sum(N**2))
+#N = np.array([nx, ny, nz]) # Vesicle oriented towards X (hole towards -X)
+#N = N / np.sqrt(np.sum(N**2))
 
 # First orient M164 towards N then M643 towards M
-R164 = utils.rotate(COL164, N)
+#R164 = utils.rotate(COL164, N)
 
 # Additional attributes 
 indices = np.arange(1,NATOMS+1,1,dtype=int)
@@ -92,11 +92,11 @@ iscentre[0] = 1 #0, NATOMS, etc...
 ishole[NATOMS - 1] = 1 #0, NATOMS, etc...
 
 xyzt = xyz.T
-for i, vec in enumerate(xyzt):
-  newvec = np.dot(R164.T, vec)
-  xyz[0][i] = newvec[0]
-  xyz[1][i] = newvec[1]
-  xyz[2][i] = newvec[2]
+#for i, vec in enumerate(xyzt):
+#  newvec = np.dot(R164.T, vec)
+#  xyz[0][i] = newvec[0]
+#  xyz[1][i] = newvec[1]
+#  xyz[2][i] = newvec[2]
 
 COL643 = xyz[:,642]
 COL643 /= np.sqrt(np.sum(COL643**2))

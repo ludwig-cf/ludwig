@@ -871,15 +871,16 @@ int subgrid_flux_mask(pe_t * pe, colloids_info_t * cinfo, field_t * flux_mask, r
 
           alpha = acos(cosalpha);
 
-          gaussalpha = exp(-.5*(alpha/std_alpha)*(alpha/std_alpha));
-          gaussr = exp(-.5*((rnorm - radius)*(rnorm - radius)) / (std_width*std_width) );
+          gaussalpha = exp(-.5*(alpha/std_alpha)*(alpha/std_alpha)*(alpha/std_alpha)*(alpha/std_alpha));
+          gaussr = exp(-.5*(rnorm - radius)/(std_width)*(rnorm - radius)/(std_width)*(rnorm - radius)/(std_width)*(rnorm - radius)/(std_width));
 	    
+/*
 	  if (alpha*alpha > alpha_cutoff*alpha_cutoff) {
 	    flux_mask->data[addr_rank1(flux_mask->nsites, 2, index, 0)] = 1. - (1. - permeability[0])*gaussr*(1 - gaussalpha);
 	  }
 	  else flux_mask->data[addr_rank1(flux_mask->nsites, 2, index, 0)] = 1. - (1. - permeability[0])*gaussr*(1 - gaussalpha);
+*/
 	}
-
 
 	if (mask_psi_switch) { 
 
@@ -890,15 +891,15 @@ int subgrid_flux_mask(pe_t * pe, colloids_info_t * cinfo, field_t * flux_mask, r
 
           alpha = acos(cosalpha);
 
-          gaussalpha = exp(-.5*(alpha/std_alpha)*(alpha/std_alpha));
-          gaussr = exp(-.5*((rnorm - radius)*(rnorm - radius)) / (std_width*std_width) );
+          gaussalpha = exp(-.5*(alpha/std_alpha)*(alpha/std_alpha)*(alpha/std_alpha)*(alpha/std_alpha));
+          gaussr = exp(-.5*(rnorm - radius)/(std_width)*(rnorm - radius)/(std_width)*(rnorm - radius)/(std_width)*(rnorm - radius)/(std_width));
  
-          if (alpha*alpha > alpha_cutoff*alpha_cutoff) {
+          /*if (alpha*alpha > alpha_cutoff*alpha_cutoff) {
 	    flux_mask->data[addr_rank1(flux_mask->nsites, 2, index, 1)] = 1. - (1. - permeability[0])*gaussr*(1 - gaussalpha);
 	  }
 	  else flux_mask->data[addr_rank1(flux_mask->nsites, 2, index, 1)] = 1. - (1. - permeability[0])*gaussr*(1 - gaussalpha);
+	*/
         }
-
 	assert(flux_mask->data[addr_rank1(flux_mask->nsites, 2, index, 0)] >= 0.0);
 	assert(flux_mask->data[addr_rank1(flux_mask->nsites, 2, index, 0)] <= 1.0);
 	assert(flux_mask->data[addr_rank1(flux_mask->nsites, 2, index, 1)] >= 0.0);
