@@ -113,11 +113,11 @@ int lb_run_time(pe_t * pe, cs_t * cs, rt_t * rt, lb_t ** lb) {
     io_info_args_t lb_info  = io_info_args_default();
     io_info_args_t rho_info = io_info_args_default();
 
-    io_info_args_rt(pe, rt, "lb", IO_INFO_READ_WRITE, &lb_info);
+    io_info_args_rt(rt, RT_FATAL, "lb", IO_INFO_READ_WRITE, &lb_info);
 
     /* density is output only */
 
-    io_info_args_rt(pe, rt, "rho", IO_INFO_WRITE_ONLY, &rho_info);
+    io_info_args_rt(rt, RT_FATAL, "rho", IO_INFO_WRITE_ONLY, &rho_info);
 
   }
 
