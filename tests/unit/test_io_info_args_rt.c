@@ -33,7 +33,7 @@ int test_io_info_args_rt_suite(void) {
   pe_create(MPI_COMM_WORLD, PE_QUIET, &pe);
 
   test_io_info_args_rt_iogrid(pe);
-  /* PENDING DEBUG test_io_info_args_rt_input(pe); */
+  test_io_info_args_rt_input(pe);
   test_io_info_args_rt(pe);
 
   pe_info(pe, "%10s %s\n", "PASS **", __FILE__);

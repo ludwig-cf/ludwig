@@ -39,9 +39,9 @@ __host__ int test_io_options_rt_suite(void) {
 
   test_io_options_rt_mode(pe);
   test_io_options_rt_rformat(pe);
-  /* PENDING DEBUG test_io_options_rt_report(pe); */
+  test_io_options_rt_report(pe);
   test_io_options_rt_default(pe);
-  /* DITTO test_io_options_rt(pe);*/
+  test_io_options_rt(pe);
 
   pe_info(pe, "PASS     ./unit/test_io_options_rt\n");
 
@@ -143,7 +143,7 @@ __host__ int test_io_options_rt_report(pe_t * pe) {
   /* Yes */
   {
     int irep = -1;
-    int iret = io_options_rt_report(rt, RT_FATAL, "default_io_report", &irep);
+    int iret = io_options_rt_report(rt, RT_FATAL, "phi_io_report", &irep);
     assert(iret == RT_KEY_OK);
     assert(irep == 1);
   }
