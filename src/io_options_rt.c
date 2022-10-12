@@ -8,7 +8,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2020 The University of Edinburgh
+ *  (c) 2020-2022 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -35,44 +35,37 @@
  *
  *****************************************************************************/
 
-__host__ int io_options_rt(pe_t * pe, rt_t * rt, const char * keystub,
+__host__ int io_options_rt(rt_t * rt, rt_enum_t lv, const char * keystub,
 			   io_options_t * options) {
 
   char key[BUFSIZ] = {0};
-  io_mode_enum_t mode = IO_MODE_INVALID;
-  io_record_format_enum_t iorformat = IO_RECORD_INVALID;
-  io_options_t opts = io_options_default();
 
-  assert(pe);
   assert(rt);
   assert(keystub);
   assert(options);
 
-
   sprintf(key, "%s_io_mode", keystub);
-  io_options_rt_mode(pe, rt, key, &mode);
-  if (io_options_mode_valid(mode)) opts.mode = mode;
+  {
+    int ierr = io_options_rt_mode(rt, lv, key, &options->mode);
+
+    /* Force metadata to be consistent with the mode */
+
+    if (ierr == RT_KEY_OK && options->mode == IO_MODE_SINGLE) {
+      /* only one choice at the moment */
+      options->metadata_version = IO_METADATA_SINGLE_V1;
+    }
+
+    if (ierr == RT_KEY_OK && options->mode == IO_MODE_MULTIPLE) {
+      /* only one choice again */
+      options->metadata_version = IO_METADATA_MULTI_V1;
+    }
+  }
 
   sprintf(key, "%s_io_format", keystub);
-  io_options_rt_record_format(pe, rt, key, &iorformat);
-  if (io_options_record_format_valid(iorformat)) opts.iorformat = iorformat;
+  io_options_rt_record_format(rt, lv, key, &options->iorformat);
 
   sprintf(key, "%s_io_report", keystub);
-  opts.report = rt_switch(rt, key);
-
-  /* Force metadata to be consistent with the mode */
-
-  if (opts.mode == IO_MODE_SINGLE) {
-    /* only one choice at the moment */
-    opts.metadata_version = IO_METADATA_SINGLE_V1;
-  }
-
-  if (opts.mode == IO_MODE_MULTIPLE) {
-    /* only one choice again */
-    opts.metadata_version = IO_METADATA_MULTI_V1;
-  }
-
-  *options = opts;
+  io_options_rt_report(rt, lv, key, &options->report);
 
   return 0;
 }
@@ -81,36 +74,46 @@ __host__ int io_options_rt(pe_t * pe, rt_t * rt, const char * keystub,
  *
  *  io_options_rt_mode
  *
+ *  If a valid key/value is present, record a mode and return RT_KEY_OK.
+ *
  *****************************************************************************/
 
-__host__ int io_options_rt_mode(pe_t * pe, rt_t * rt, const char * key,
+__host__ int io_options_rt_mode(rt_t * rt, rt_enum_t lv, const char * key,
 				io_mode_enum_t * mode) {
+
+  int ifail = RT_KEY_MISSING;
   int key_present = 0;
   char value[BUFSIZ] = {0};
-  io_mode_enum_t user_mode = IO_MODE_INVALID;
 
-  assert(pe);
   assert(rt);
   assert(key);
   assert(mode);
 
   key_present = rt_string_parameter(rt, key, value, BUFSIZ);
-  util_str_tolower(value, strlen(value));
 
-  if (strcmp(value, "single")   == 0) user_mode = IO_MODE_SINGLE;
-  if (strcmp(value, "multiple") == 0) user_mode = IO_MODE_MULTIPLE;
+  if (key_present) {
+    io_mode_enum_t user_mode = IO_MODE_INVALID;
 
-  if (key_present && io_options_mode_valid(user_mode) == 0) {
-    pe_info(pe, "I/O mode key present but value not recognised\n");
-    pe_info(pe, "key:   %s\n", key);
-    pe_info(pe, "value: %s\n", value);
-    pe_info(pe, "Should be either 'single' or 'multiple'\n");
-    pe_fatal(pe, "Please check the input file and try again!\n");
+    util_str_tolower(value, strlen(value));
+
+    if (strcmp(value, "single")   == 0) user_mode = IO_MODE_SINGLE;
+    if (strcmp(value, "multiple") == 0) user_mode = IO_MODE_MULTIPLE;
+
+    if (io_options_mode_valid(user_mode) == 1) {
+      *mode = user_mode;
+      ifail = RT_KEY_OK;
+    }
+    else {
+      rt_vinfo(rt, lv, "I/O mode key present but value not recognised\n");
+      rt_vinfo(rt, lv, "key:   %s\n", key);
+      rt_vinfo(rt, lv, "value: %s\n", value);
+      rt_vinfo(rt, lv, "Should be either 'single' or 'multiple'\n");
+      rt_fatal(rt, lv, "Please check the input file and try again!\n");
+      ifail = RT_KEY_INVALID;
+    }
   }
 
-  *mode = user_mode;
-
-  return 0;
+  return ifail;
 }
 
 /*****************************************************************************
@@ -121,33 +124,64 @@ __host__ int io_options_rt_mode(pe_t * pe, rt_t * rt, const char * key,
  *
  *****************************************************************************/
 
-__host__ int io_options_rt_record_format(pe_t * pe, rt_t * rt,
+__host__ int io_options_rt_record_format(rt_t * rt, rt_enum_t lv,
 					 const char * key,
 					 io_record_format_enum_t * iorformat) {
+  int ifail = RT_KEY_MISSING;
   int key_present = 0;
   char value[BUFSIZ] = {0};
-  io_record_format_enum_t user_iorformat = IO_RECORD_INVALID;
 
-  assert(pe);
   assert(rt);
   assert(key);
   assert(iorformat);
 
   key_present = rt_string_parameter(rt, key, value, BUFSIZ);
-  util_str_tolower(value, strlen(value));
 
-  if (strcmp(value, "ascii")  == 0) user_iorformat = IO_RECORD_ASCII;
-  if (strcmp(value, "binary") == 0) user_iorformat = IO_RECORD_BINARY;
+  if (key_present) {
+    io_record_format_enum_t user_iorformat = IO_RECORD_INVALID;
 
-  if (key_present && io_options_record_format_valid(user_iorformat) == 0) {
-    pe_info(pe, "I/O record format key present but value not recognised\n");
-    pe_info(pe, "key:   %s\n", key);
-    pe_info(pe, "value: %s\n", value);
-    pe_info(pe, "Should be either 'ascii' or 'binary'\n");
-    pe_fatal(pe, "Please check the input file and try again!\n");
+    util_str_tolower(value, strlen(value));
+
+    if (strcmp(value, "ascii")  == 0) user_iorformat = IO_RECORD_ASCII;
+    if (strcmp(value, "binary") == 0) user_iorformat = IO_RECORD_BINARY;
+
+    if (io_options_record_format_valid(user_iorformat) == 1) {
+      ifail = RT_KEY_OK;
+      *iorformat = user_iorformat;
+    }
+    else {
+      ifail = RT_KEY_INVALID;
+      rt_vinfo(rt, lv, "I/O record format present but value not recognised\n");
+      rt_vinfo(rt, lv, "key:   %s\n", key);
+      rt_vinfo(rt, lv, "value: %s\n", value);
+      rt_vinfo(rt, lv, "Should be either 'ascii' or 'binary'\n");
+      rt_fatal(rt, lv, "Please check the input file and try again!\n");
+    }
   }
 
-  *iorformat = user_iorformat;
+  return ifail;
+}
 
-  return 0;
+/*****************************************************************************
+ *
+ *  io_options_rt_report
+ *
+ *****************************************************************************/
+
+__host__ int io_options_rt_report(rt_t * rt, rt_enum_t lv, const char * key,
+				  int * report) {
+
+  int ifail = RT_KEY_MISSING;
+  int key_present = -1;
+
+  /* A switch is never badly formatted: it's just false or true */
+
+  key_present = rt_key_present(rt, key);
+
+  if (key_present) {
+    ifail = RT_KEY_OK;
+    *report = rt_switch(rt, key);
+  }
+
+  return ifail;
 }
