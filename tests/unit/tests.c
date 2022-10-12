@@ -75,9 +75,11 @@ __host__ int tests_create() {
   test_hydro_suite();
   test_io_aggr_buf_suite();
   test_io_aggr_mpio_suite();
-  test_io_suite();
   test_io_options_suite();
   test_io_options_rt_suite();
+  test_io_info_args_suite();
+  test_io_info_args_rt_suite();
+  test_io_suite();
   test_lb_d2q9_suite();
   test_lb_d3q15_suite();
   test_lb_d3q19_suite();
