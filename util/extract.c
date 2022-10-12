@@ -53,7 +53,6 @@
  ****************************************************************************/
 
 #include <assert.h>
-#include <ctype.h>
 #include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -470,7 +469,6 @@ int read_version1(int ntime, metadata_v1_t * meta, double * datasection) {
     snprintf(io_metadata, sizeof(io_metadata), "%s.%3.3d-%3.3d.meta",
 	     meta->stub, meta->nio, n);
     printf("Reading metadata file ... %s ", io_metadata);
-    assert(isalpha(io_metadata[0]));
 
     fp_metadata = util_fopen(io_metadata, "r");
     if (fp_metadata == NULL) printf("fopen(%s) failed\n", io_metadata);
