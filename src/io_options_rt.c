@@ -166,6 +166,9 @@ __host__ int io_options_rt_record_format(rt_t * rt, rt_enum_t lv,
  *
  *  io_options_rt_report
  *
+ *  Update report accordingly if the switch "key" is present.
+ *  Return RT_KEY_OK or RT_KEY_MISSING.
+ *
  *****************************************************************************/
 
 __host__ int io_options_rt_report(rt_t * rt, rt_enum_t lv, const char * key,
@@ -174,7 +177,7 @@ __host__ int io_options_rt_report(rt_t * rt, rt_enum_t lv, const char * key,
   int ifail = RT_KEY_MISSING;
   int key_present = -1;
 
-  /* A switch is never badly formatted: it's just false or true */
+  /* A switch is just false or true, so we have to look more carefully */
 
   key_present = rt_key_present(rt, key);
 
