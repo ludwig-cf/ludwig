@@ -154,6 +154,9 @@ __host__ int test_io_options_default(void) {
 
   io_options_t opts = io_options_default();
 
+  /* If entries are changed in the struct, the tests should be updated... */
+  assert(sizeof(io_options_t) == 20);
+
   assert(io_options_mode_valid(opts.mode));
   assert(io_options_record_format_valid(opts.iorformat));
   assert(io_options_metadata_version_valid(&opts));
