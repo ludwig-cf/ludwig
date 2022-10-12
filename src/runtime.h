@@ -19,6 +19,7 @@
 
 #include "pe.h"
 
+typedef enum {RT_KEY_OK = 0, RT_KEY_MISSING, RT_KEY_INVALID} rt_err_t;
 typedef enum {RT_NONE, RT_INFO, RT_FATAL} rt_enum_t;
 
 typedef struct rt_s rt_t;
@@ -43,5 +44,7 @@ int rt_key_present(rt_t * rt, const char * key);
 int rt_key_required(rt_t * rt, const char * key, rt_enum_t level);
 int rt_report_unused_keys(rt_t * rt, rt_enum_t level);
 int rt_vinfo(rt_t * rt, rt_enum_t lv, const char * fmt, ...);
+int rt_fatal(rt_t * rt, rt_enum_t lv, const char * fmt, ...);
+
 
 #endif
