@@ -81,7 +81,7 @@ int test_io_aggr_mpio_suite(void) {
     if (pe_mpi_rank(pe) == 0) remove(filename);
   }
   
-  pe_info(pe, "PASS      ./unit/test_io_aggr_mpio\n");
+  pe_info(pe, "PASS     ./unit/test_io_aggr_mpio\n");
   cs_free(cs);
   pe_free(pe);
 
