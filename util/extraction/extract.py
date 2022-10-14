@@ -43,7 +43,6 @@ for opt, arg in opts:
           vel = True
         elif (opt == "-c"):
           colcdsvel = True
-
         elif (opt == "-a"):
           advective_flux_psi = True
         elif (opt == "-tot"):
@@ -112,16 +111,7 @@ if fed:
 
 # Create vtk-files
 for i in range(len(filelist)):
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-	if filelist[i] == 'filelist_vel' or filelist[i] == 'filelist_phi' or filelist[i] == 'filelist_temperature' or filelist[i] == 'filelist_total_flux_psi' or filelist[i] == 'filelist_advective_flux_psi' or filelist[i] == ' filelist_mu' or filelist[i] == 'filelist_fed':
-=======
 	if filelist[i] == 'filelist_vel' or filelist[i] == 'filelist_phi' or filelist[i] == 'filelist_temperature' or filelist[i] == 'filelist_total_flux_psi' or filelist[i] == 'filelist_advective_flux_psi' or filelist[i] == 'filelist_mu':
->>>>>>> Stashed changes
-=======
-	if filelist[i] == 'filelist_vel' or filelist[i] == 'filelist_phi' or filelist[i] == 'filelist_temperature' or filelist[i] == 'filelist_total_flux_psi' or filelist[i] == 'filelist_advective_flux_psi' or filelist[i] == 'filelist_mu':
->>>>>>> Stashed changes
-
 		datafiles=open(filelist[i],'r') 
 
 		while 1:
