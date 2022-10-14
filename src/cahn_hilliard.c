@@ -187,8 +187,12 @@ __host__ int ch_info_set(ch_t * ch, ch_info_t info) {
  *****************************************************************************/
 
 __host__ int ch_solver(ch_t * ch, fe_t * fe, field_t * phi, hydro_t * hydro,
-		       map_t * map, field_t * subgrid_potential, field_t * flux_mask) {
+		       map_t * map, field_t * subgrid_potential, field_t * flux_mask, rt_t * rt) {
 
+  int mask_phi_switch;
+  int mask_psi_switch;
+
+  assert(rt);
   assert(ch);
   assert(fe);
   assert(phi);
@@ -212,7 +216,10 @@ __host__ int ch_solver(ch_t * ch, fe_t * fe, field_t * phi, hydro_t * hydro,
   /* External chemical potential fluxes */
   ch_flux_mu_ext(ch);
   
-  ch_apply_mask(ch, flux_mask);
+  
+  mask_phi_switch = rt_switch(rt, "mask_phi_switch");
+  mask_psi_switch = rt_switch(rt, "mask_psi_switch");
+  if (mask_phi_switch || mask_psi_switch) ch_apply_mask(ch, flux_mask);
 
   if (map) advflux_cs_no_normal_flux(ch->flux, map);
   ch_update_forward_step(ch, phi);
@@ -751,6 +758,7 @@ __global__ void ch_apply_mask_kernel(kernel_ctxt_t * ktx,
     kc = kernel_coords_kc(ktx, kindex);
 
     index0 = kernel_coords_index(ktx, ic, jc, kc);
+
 
     for (n = 0; n < ch->flux->nf; n++) {
       

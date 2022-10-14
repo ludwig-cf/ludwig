@@ -610,7 +610,7 @@ int subgrid_flux_mask(pe_t * pe, colloids_info_t * cinfo, field_t * flux_mask, r
   int nlocal[3], offset[3];
   int my_id, id, totnum_ids, hole_id = -1, ortho_id = -1, centre_id = -1;
   int centrefound = 0, holefound = 0, orthofound = 0;
-  int mask_phi_switch, mask_psi_switch, vesicle_switch, reaction_switch;
+  int mask_phi_switch, mask_psi_switch, vesicle_switch, reaction_switch, interaction_mask;
   int timestep, writefreq;
 
   double m[3] = {0., 0., 0.}, n[3] = {0., 0., 0.}, ijk[3];
@@ -662,6 +662,7 @@ int subgrid_flux_mask(pe_t * pe, colloids_info_t * cinfo, field_t * flux_mask, r
 
   rt_int_parameter(rt, "freq_write", &writefreq);
   vesicle_switch = rt_switch(rt, "vesicle_switch");
+  interaction_mask = rt_switch(rt, "phi_interaction_mask");  
 
   if (vesicle_switch) {
 
@@ -669,16 +670,17 @@ int subgrid_flux_mask(pe_t * pe, colloids_info_t * cinfo, field_t * flux_mask, r
     mask_psi_switch = rt_switch(rt, "mask_psi_switch");
     reaction_switch = rt_switch(rt, "chemical_reaction_switch");
 
-    if (!mask_phi_switch && !mask_psi_switch && !reaction_switch) return 0;
-    if (mask_phi_switch) { 
+    
+    if (!mask_phi_switch && !mask_psi_switch && !reaction_switch && !interaction_mask) return 0;
+    if (interaction_mask || mask_phi_switch) { 
       p = rt_double_parameter(rt, "mask_phi_permeability", &permeability[0]);
       if (p != 1) pe_fatal(pe, "Please specify mask_phi_permeability\n");
     }
-    if (mask_psi_switch) {
+    if (interaction_mask || mask_psi_switch) {
       p = rt_double_parameter(rt, "mask_psi_permeability", &permeability[1]);
       if (p != 1) pe_fatal(pe, "Please specify mask_psi_permeability\n");
     }
-    if (mask_phi_switch || mask_psi_switch) {
+    if (interaction_mask || mask_phi_switch || mask_psi_switch) {
       p = rt_double_parameter(rt, "mask_std_alpha", &std_alpha);
       if (p != 1) pe_fatal(pe, "Please specify mask_std_alpha\n");
       p = rt_double_parameter(rt, "mask_std_width", &std_width);
@@ -862,7 +864,7 @@ int subgrid_flux_mask(pe_t * pe, colloids_info_t * cinfo, field_t * flux_mask, r
 	// Allowed because the central particle should never be near the edge of the vesicle
 	if (rnorm == 0.0) continue;
 
-	if (mask_phi_switch) { 
+	if (interaction_mask || mask_phi_switch) { 
 
           cosalpha = (r[X]*m[X] + r[Y]*m[Y] + r[Z]*m[Z])/rnorm;
 
@@ -878,11 +880,11 @@ int subgrid_flux_mask(pe_t * pe, colloids_info_t * cinfo, field_t * flux_mask, r
 	  if (alpha*alpha > alpha_cutoff*alpha_cutoff) {
 	    flux_mask->data[addr_rank1(flux_mask->nsites, 2, index, 0)] = 1. - (1. - permeability[0])*gaussr*(1 - gaussalpha);
 	  }
-	  else flux_mask->data[addr_rank1(flux_mask->nsites, 2, index, 0)] = 1. - (1. - permeability[0])*gaussr*(1 - gaussalpha);
 */
+	  flux_mask->data[addr_rank1(flux_mask->nsites, 2, index, 0)] = 1. - (1. - permeability[0])*gaussr*(1 - gaussalpha);
 	}
 
-	if (mask_psi_switch) { 
+	if (interaction_mask || mask_psi_switch) { 
 
           cosalpha = (r[X]*m[X] + r[Y]*m[Y] + r[Z]*m[Z]) / rnorm;
  
@@ -897,9 +899,10 @@ int subgrid_flux_mask(pe_t * pe, colloids_info_t * cinfo, field_t * flux_mask, r
           /*if (alpha*alpha > alpha_cutoff*alpha_cutoff) {
 	    flux_mask->data[addr_rank1(flux_mask->nsites, 2, index, 1)] = 1. - (1. - permeability[0])*gaussr*(1 - gaussalpha);
 	  }
-	  else flux_mask->data[addr_rank1(flux_mask->nsites, 2, index, 1)] = 1. - (1. - permeability[0])*gaussr*(1 - gaussalpha);
 	*/
+	  flux_mask->data[addr_rank1(flux_mask->nsites, 2, index, 1)] = 1. - (1. - permeability[0])*gaussr*(1 - gaussalpha);
         }
+
 	assert(flux_mask->data[addr_rank1(flux_mask->nsites, 2, index, 0)] >= 0.0);
 	assert(flux_mask->data[addr_rank1(flux_mask->nsites, 2, index, 0)] <= 1.0);
 	assert(flux_mask->data[addr_rank1(flux_mask->nsites, 2, index, 1)] >= 0.0);

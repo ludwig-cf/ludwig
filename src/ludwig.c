@@ -739,7 +739,7 @@ void ludwig_run(const char * inputfile) {
 
       if (ludwig->ch) {
 	ch_solver(ludwig->ch, ludwig->fe, ludwig->phi, ludwig->hydro,
-		  ludwig->map, ludwig->subgrid_potential, ludwig->flux_mask);
+		  ludwig->map, ludwig->subgrid_potential, ludwig->flux_mask, ludwig->rt);
       }
        
       if (ludwig->pch) {
