@@ -104,8 +104,6 @@ COL643 /= np.sqrt(np.sum(COL643**2))
 
 R643 = utils.rotate(COL643, M)
 
-=======
->>>>>>> Stashed changes
 for i, vec in enumerate(xyzt):
   newvec = np.dot(R643.T, vec)
   xyz[0][i] = newvec[0]
@@ -118,26 +116,6 @@ xyz[2, :] += ZSHIFT
 
 table = np.column_stack((indices, xyz.T, nConnec, Connec, Connecdist, iscentre.T, ishole.T, indexcentre.T))
 np.savetxt("latticeTrisphere.txt", table, fmt = '%3d     %3f %3f %3f      %3d %3d %3d %3d %3d %3d %3d %3d   %3f %3f %3f %3f %3f %3f %3f    %3d %3d %3d')
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 
