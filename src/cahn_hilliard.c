@@ -39,6 +39,7 @@ __host__ int ch_update_forward_step(ch_t * ch, field_t * phif);
 __host__ int ch_flux_mu1(ch_t * ch, fe_t * fe);
 __host__ int ch_store_flux(ch_t * ch, field_t * field);
 __host__ int ch_store_mu(ch_t * ch, fe_t * fe, field_t * mu);
+__host__ int ch_store_fed(ch_t * ch, fe_t * fe, field_t * fed);
 
 __global__ void ch_store_flux_kernel(kernel_ctxt_t * ktx, ch_t * ch, field_t * field,
 				   ch_info_t info, int xs, int ys);
@@ -47,6 +48,9 @@ __global__ void ch_flux_mu1_kernel(kernel_ctxt_t * ktx, ch_t * ch, fe_t * fe,
 				   ch_info_t info);
 __global__ void ch_store_mu_kernel(kernel_ctxt_t * ktx, ch_t * ch, fe_t * fe,
 				   field_t * mu);
+__global__ void ch_store_fed_kernel(kernel_ctxt_t * ktx, ch_t * ch, fe_t * fe,
+				   field_t * fed);
+
 __global__ void ch_update_kernel_2d(kernel_ctxt_t * ktx, ch_t * ch,
 				    field_t * field, ch_info_t info, int xs, int ys);
 __global__ void ch_update_kernel_3d(kernel_ctxt_t * ktx, ch_t * ch,
@@ -181,7 +185,7 @@ __host__ int ch_info_set(ch_t * ch, ch_info_t info) {
  *****************************************************************************/
 
 __host__ int ch_solver(ch_t * ch, fe_t * fe, field_t * phi, hydro_t * hydro,
-		       map_t * map, field_t * total_flux_psi, field_t * advective_flux_psi, field_t * mu) {
+		       map_t * map, field_t * total_flux_psi, field_t * advective_flux_psi, field_t * mu, field_t * fed) {
 
   assert(ch);
   assert(fe);
@@ -189,6 +193,7 @@ __host__ int ch_solver(ch_t * ch, fe_t * fe, field_t * phi, hydro_t * hydro,
   assert(total_flux_psi);
   assert(advective_flux_psi);
   assert(mu);
+  assert(fed);
 
   /* Compute any advective fluxes first, then diffusive fluxes. */
 
@@ -206,6 +211,7 @@ __host__ int ch_solver(ch_t * ch, fe_t * fe, field_t * phi, hydro_t * hydro,
 
   ch_flux_mu1(ch, fe); /* Compute total flux into total_flux_psi/phi */
   ch_store_mu(ch, fe, mu);
+  ch_store_fed(ch, fe, fed);
 
   if (map) advflux_cs_no_normal_flux(ch->flux, map);
   ch_store_flux(ch, total_flux_psi);
@@ -596,7 +602,7 @@ __host__ int ch_store_mu(ch_t * ch, fe_t * fe, field_t * mu) {
 
 /******************************************************************************
  *
- *  ch_store_mu
+ *  ch_store_mu_kernel
  *
  *****************************************************************************/
 
@@ -627,6 +633,85 @@ __global__ void ch_store_mu_kernel(kernel_ctxt_t * ktx, ch_t * ch, fe_t * fe, fi
     
     mu->data[addr_rank1(ch->flux->nsite, 2, index, 0)] = mu0[0];
     mu->data[addr_rank1(ch->flux->nsite, 2, index, 1)] = mu0[1];
+
+    /* Next site */
+  }
+
+  return;
+}
+
+/*****************************************************************************
+ *
+ *  ch_store_mu
+ *
+ *****************************************************************************/
+
+__host__ int ch_store_fed(ch_t * ch, fe_t * fe, field_t * fed) {
+
+  int nlocal[3];
+  dim3 nblk, ntpb;
+  fe_t * fetarget = NULL;
+
+  kernel_info_t limits;
+  kernel_ctxt_t * ctxt = NULL;
+
+  assert(ch);
+  assert(fe);
+
+  cs_nlocal(ch->cs, nlocal);
+  fe->func->target(fe, &fetarget);
+
+  limits.imin = 1; limits.imax = nlocal[X];
+  limits.jmin = 1; limits.jmax = nlocal[Y];
+  limits.kmin = 1; limits.kmax = nlocal[Z];
+
+  kernel_ctxt_create(ch->cs, 1, limits, &ctxt);
+  kernel_ctxt_launch_param(ctxt, &nblk, &ntpb);
+
+  tdpLaunchKernel(ch_store_fed_kernel, nblk, ntpb, 0, 0,
+		    ctxt->target, ch->target, fetarget, fed->target);
+
+  tdpAssert(tdpPeekAtLastError());
+  tdpAssert(tdpDeviceSynchronize());
+
+  kernel_ctxt_free(ctxt);
+
+  return 0;
+}
+
+/******************************************************************************
+ *
+ *  ch_store_fed_kernel
+ *
+ *****************************************************************************/
+
+__global__ void ch_store_fed_kernel(kernel_ctxt_t * ktx, ch_t * ch, fe_t * fe, field_t * fed) {
+
+  int kindex;
+  int kiterations;
+  int index;
+  double fed0[2];
+
+  assert(ktx);
+  assert(ch);
+  assert(fed);
+  assert(fe);
+  assert(fed->nf==2);
+
+  kiterations = kernel_iterations(ktx);
+
+  for_simt_parallel(kindex, kiterations, 1) {
+
+    int ic = kernel_coords_ic(ktx, kindex);
+    int jc = kernel_coords_jc(ktx, kindex);
+    int kc = kernel_coords_kc(ktx, kindex);
+
+    int index = cs_index(ch->cs, ic, jc, kc);
+
+    fe->func->fed(fe, index, fed0);
+    
+    fed->data[addr_rank1(ch->flux->nsite, 2, index, 0)] = fed0[0];
+    fed->data[addr_rank1(ch->flux->nsite, 2, index, 1)] = fed0[1];
 
     /* Next site */
   }

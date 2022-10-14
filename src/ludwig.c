@@ -149,6 +149,7 @@ struct ludwig_s {
   field_t * total_flux_psi;
   field_t * advective_flux_psi;
   field_t * mu;
+  field_t * fed;
   //OFT
   field_grad_t * phi_grad;  /* Gradients for phi */
   field_grad_t * p_grad;    /* Gradients for p */
@@ -287,6 +288,7 @@ static int ludwig_rt(ludwig_t * ludwig) {
   if (ludwig->total_flux_psi) field_init_io_info(ludwig->total_flux_psi, io_grid, form, form);
   if (ludwig->advective_flux_psi) field_init_io_info(ludwig->advective_flux_psi, io_grid, form, form);
   if (ludwig->mu) field_init_io_info(ludwig->mu, io_grid, form, form);
+  if (ludwig->fed) field_init_io_info(ludwig->fed, io_grid, form, form);
 //OFT
   if (ludwig->p) field_init_io_info(ludwig->p, io_grid, form, form);
   if (ludwig->q) field_init_io_info(ludwig->q, io_grid, form, form);
@@ -403,6 +405,13 @@ static int ludwig_rt(ludwig_t * ludwig) {
       field_io_info(ludwig->mu, &iohandler);
       io_read_data(iohandler, filename, ludwig->mu);
     }
+    if (ludwig->fed) {
+      sprintf(filename, "%sfed-%8.8d", subdirectory, ntstep);
+      pe_info(pe, "files(s) %s\n", filename);
+      field_io_info(ludwig->fed, &iohandler);
+      io_read_data(iohandler, filename, ludwig->fed);
+    }
+
 
 //OFT
     if (ludwig->p) {
@@ -569,6 +578,7 @@ void ludwig_run(const char * inputfile) {
   if (ludwig->total_flux_psi) field_memcpy(ludwig->total_flux_psi, tdpMemcpyHostToDevice);
   if (ludwig->advective_flux_psi) field_memcpy(ludwig->advective_flux_psi, tdpMemcpyHostToDevice);
   if (ludwig->mu) field_memcpy(ludwig->mu, tdpMemcpyHostToDevice);
+  if (ludwig->fed) field_memcpy(ludwig->fed, tdpMemcpyHostToDevice);
 
 //OFT
   if (ludwig->p)   field_memcpy(ludwig->p, tdpMemcpyHostToDevice);
@@ -672,6 +682,9 @@ void ludwig_run(const char * inputfile) {
     }
     if (ludwig->mu) {
       field_halo(ludwig->mu);
+    }
+    if (ludwig->fed) {
+      field_halo(ludwig->fed);
     }
  
     if (ludwig->p) {
@@ -835,7 +848,7 @@ void ludwig_run(const char * inputfile) {
 
       if (ludwig->ch) {
 	ch_solver(ludwig->ch, ludwig->fe, ludwig->phi, ludwig->hydro,
-		  ludwig->map, ludwig->total_flux_psi, ludwig->advective_flux_psi, ludwig->mu);
+		  ludwig->map, ludwig->total_flux_psi, ludwig->advective_flux_psi, ludwig->mu, ludwig->fed);
       }
 // OFT TODO: give temperature its own noise, for now noise should not be used  */
 
@@ -1026,6 +1039,16 @@ void ludwig_run(const char * inputfile) {
       }
     }
 
+    if (is_fed_output_step() || is_config_step()) {
+
+      if (ludwig->fed) {
+	field_io_info(ludwig->fed, &iohandler);
+	pe_info(ludwig->pe, "Writing fed file at step %d!\n", step);
+	sprintf(filename,"%sfed-%8.8d", subdirectory, step);
+	io_write_data(iohandler, filename, ludwig->fed);
+      }
+    }
+
 
 
 //OFT
@@ -1205,6 +1228,13 @@ void ludwig_run(const char * inputfile) {
       sprintf(filename,"%smu-%8.8d", subdirectory, step);
       io_write_data(iohandler, filename, ludwig->mu);
     }
+    if (ludwig->fed) {
+      field_io_info(ludwig->fed, &iohandler);
+      pe_info(ludwig->pe, "Writing fed file at step %d!\n", step);
+      sprintf(filename,"%sfed-%8.8d", subdirectory, step);
+      io_write_data(iohandler, filename, ludwig->fed);
+    }
+
 
 
 
@@ -1250,6 +1280,7 @@ void ludwig_run(const char * inputfile) {
   if (ludwig->total_flux_psi) field_free(ludwig->total_flux_psi);
   if (ludwig->advective_flux_psi) field_free(ludwig->advective_flux_psi);
   if (ludwig->mu)      field_free(ludwig->mu);
+  if (ludwig->fed)      field_free(ludwig->fed);
   if (ludwig->p)        field_free(ludwig->p);
   if (ludwig->q)        field_free(ludwig->q);
 
@@ -1555,6 +1586,10 @@ int free_energy_init_rt(ludwig_t * ludwig) {
     field_create(pe, cs, nf, "mu", &ludwig->mu);
     field_init(ludwig->mu, nhalo, le);
 
+    field_create(pe, cs, nf, "fed", &ludwig->fed);
+    field_init(ludwig->fed, nhalo, le);
+
+
     pe_info(pe, "\n");
     pe_info(pe, "Temperature-dependent surfactant free energy\n");
     pe_info(pe, "----------------------\n");
@@ -1639,6 +1674,9 @@ int free_energy_init_rt(ludwig_t * ludwig) {
 
     field_create(pe, cs, nf, "mu", &ludwig->mu);
     field_init(ludwig->mu, nhalo, le);
+
+    field_create(pe, cs, nf, "fed", &ludwig->fed);
+    field_init(ludwig->fed, nhalo, le);
 
     pe_info(pe, "\n");
     pe_info(pe, "Temperature-dependent two binary mixtures free energy\n");

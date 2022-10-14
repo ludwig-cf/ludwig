@@ -301,7 +301,6 @@ __host__ int fe_two_symm_oft_xi0(fe_two_symm_oft_t * fe, double * phi_xi, double
  *   + (1/2) psi_beta \psi (\nabla\phi)^2
  *
  ****************************************************************************/
-
 __host__ int fe_two_symm_oft_fed(fe_two_symm_oft_t * fe, int index, double * fed) {
 
   double field[2];
@@ -325,7 +324,6 @@ __host__ int fe_two_symm_oft_fed(fe_two_symm_oft_t * fe, int index, double * fed
   dphisq = dphi[0][X]*dphi[0][X] + dphi[0][Y]*dphi[0][Y] + dphi[0][Z]*dphi[0][Z];
   dpsisq = dphi[1][X]*dphi[1][X] + dphi[1][Y]*dphi[1][Y] + dphi[1][Z]*dphi[1][Z];
 
-  /* We have the symmetric piece followed by terms in psi */
  
   phi_a_oft = fe->param->phi_a0 + fe->param->phi_a1*temperature + fe->param->phi_a2*temperature*temperature;
   phi_b_oft = fe->param->phi_b0 + fe->param->phi_b1*temperature + fe->param->phi_b2*temperature*temperature;
@@ -334,9 +332,9 @@ __host__ int fe_two_symm_oft_fed(fe_two_symm_oft_t * fe, int index, double * fed
   *fed = 0.5*phi_a_oft*phi*phi + 0.25*phi_b_oft*phi*phi*phi*phi + 0.5*phi_kappa_oft*dphisq
        + 0.5*fe->param->psi_a*psi*psi + 0.25*fe->param->psi_b*psi*psi*psi*psi + 0.5*fe->param->psi_kappa*dpsisq
        + 0.5*fe->param->psi_beta*dphisq*psi;
-
   return 0;
 }
+
 
 /****************************************************************************
  *
@@ -493,3 +491,38 @@ int fe_two_symm_oft_str_v(fe_two_symm_oft_t * fe, int index, double s[3][3][NSIM
 
   return 0;
 }
+
+/****************************************************************************
+ *
+ *  fe_two_symm_oft_fed (used for grad)
+ *
+ *  This is: grad phi
+ *
+ ****************************************************************************/
+/*
+__host__ int fe_two_symm_oft_fed(fe_two_symm_oft_t * fe, int index, double * fed) {
+
+  double field[2];
+  double phi;
+  double psi;
+  double temperature;
+  double dphi[2][3];
+  double dphisq, dpsisq;
+  double phi_a_oft, phi_b_oft, phi_kappa_oft;
+
+  assert(fe);
+  //assert(psi > 0.0);
+
+  field_scalar_array(fe->phi, index, field);
+  field_scalar(fe->temperature, index, &temperature);
+  field_grad_pair_grad(fe->dphi, index, dphi);
+
+  dphisq = dphi[0][X]*dphi[0][X] + dphi[0][Y]*dphi[0][Y] + dphi[0][Z]*dphi[0][Z];
+  dpsisq = dphi[1][X]*dphi[1][X] + dphi[1][Y]*dphi[1][Y] + dphi[1][Z]*dphi[1][Z];
+
+
+  *fed = dphisq;
+
+  return 0;
+}
+*/

@@ -14,6 +14,7 @@ temperature =	1
 advective_flux_psi=1
 total_flux_psi=1
 mu = 1
+fed= 1
 colcdsvel =	1	
 
 q =		0	
@@ -101,11 +102,17 @@ if mu:
 	filelist.append('filelist_mu')
 	for i in range(nstart,nend+nint,nint):
           os.system('ls -t1 mu-%08.0d.00%d-001 >> filelist_mu' % (i,ngroup))
+if fed:
+	metafile.append('fed.00%d-001.meta' % ngroup)
+	filelist.append('filelist_fed')
+	for i in range(nstart,nend+nint,nint):
+          os.system('ls -t1 fed-%08.0d.00%d-001 >> filelist_fed' % (i,ngroup))
+
 
 
 # Create vtk-files
 for i in range(len(filelist)):
-	if filelist[i] == 'filelist_vel' or filelist[i] == 'filelist_phi' or filelist[i] == 'filelist_temperature' or filelist[i] == 'filelist_total_flux_psi' or filelist[i] == 'filelist_advective_flux_psi' or filelist[i] == ' filelist_mu':
+	if filelist[i] == 'filelist_vel' or filelist[i] == 'filelist_phi' or filelist[i] == 'filelist_temperature' or filelist[i] == 'filelist_total_flux_psi' or filelist[i] == 'filelist_advective_flux_psi' or filelist[i] == ' filelist_mu' or filelist[i] == 'filelist_fed':
 
 		datafiles=open(filelist[i],'r') 
 

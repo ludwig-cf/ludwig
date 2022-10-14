@@ -77,6 +77,7 @@ int init_control(pe_t * pe, rt_t * rt) {
   rt_int_parameter(rt, "freq_temperature", &freq_temperature);
   rt_int_parameter(rt, "freq_total_flux_psi", &freq_total_flux_psi);
   rt_int_parameter(rt, "freq_mu", &freq_mu);
+  rt_int_parameter(rt, "freq_fed", &freq_fed);
   rt_int_parameter(rt, "freq_advective_flux_psi", &freq_advective_flux_psi);
 //OFT
   rt_int_parameter(rt, "freq_psi", &freq_psi);
