@@ -1292,7 +1292,6 @@ int MPI_Type_get_extent(MPI_Datatype datatype, MPI_Aint * lb,
 int MPI_File_open(MPI_Comm comm, const char * filename, int amode,
 		  MPI_Info info, MPI_File * fh) {
 
-  int flags = 0;
   FILE * fp = NULL;
   const char * fdmode = NULL;
 
@@ -1336,7 +1335,7 @@ int MPI_File_open(MPI_Comm comm, const char * filename, int amode,
     }
   }
 
-  assert(flags == 0); /* Do something with flags */
+  /* Open the file and record the handle */
 
   fp = fopen(filename, fdmode);
 
@@ -1524,12 +1523,15 @@ int MPI_File_read_all(MPI_File fh, void * buf, int count,
     size_t nitems = count;
     size_t nr = fread(buf, size, nitems, fp);
 
+    if (nr != nitems) {
+      printf("MPI_File_read_all(): incorrect number of items in fread()\n");
+    }
+
     if (ferror(fp)) {
       perror("perror: ");
       printf("MPI_File_read_all() file operation failed\n");
       exit(0);
     }
-    assert(nr == nitems);
   }
 
   return MPI_SUCCESS;
@@ -1562,12 +1564,15 @@ int MPI_File_write_all(MPI_File fh, const void * buf, int count,
     size_t nitems = count;
     size_t nw = fwrite(buf, size, nitems, fp);
 
+    if (nw != nitems) {
+      printf("MPI_File_write_all(): incorrect number of items in fwrite()\n");
+    }
+
     if (ferror(fp)) {
       perror("perror: ");
       printf("MPI_File_write_all() file operation failed\n");
       exit(0);
     }
-    assert(nw == nitems);
   }
 
   return MPI_SUCCESS;

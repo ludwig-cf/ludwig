@@ -36,6 +36,14 @@ static int test_mpi_file_write_all(void);
 
 /* Utilities */
 
+/*****************************************************************************
+ *
+ *  util_printf_bits
+ *
+ *  Convenience to print a set of bits as 0 or 1.
+ *
+ *****************************************************************************/
+
 void util_printf_bits(size_t size, void const * data) {
 
   unsigned char * bytes = (unsigned char *) data;
@@ -52,7 +60,15 @@ void util_printf_bits(size_t size, void const * data) {
   return;
 }
 
-static int util_bits_same(size_t size, const void * data1, const void * data2) {
+/*****************************************************************************
+ *
+ *  util_bits_same
+ *
+ *  Return 1 if two bits arrays are the same.
+ *
+ *****************************************************************************/
+
+int util_bits_same(size_t size, const void * data1, const void * data2) {
 
   int bsame = 1;
   unsigned char * b1 = (unsigned char *) data1;
@@ -72,7 +88,15 @@ static int util_bits_same(size_t size, const void * data1, const void * data2) {
   return bsame;
 }
 
-static int util_double_same(double d1, double d2) {
+/*****************************************************************************
+ *
+ *  util_double_same
+ *
+ *  Return 1 if two doubles are bitwise the same.
+ *
+ *****************************************************************************/
+
+int util_double_same(double d1, double d2) {
 
   double a = d1;
   double b = d2;
