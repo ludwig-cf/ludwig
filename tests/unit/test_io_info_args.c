@@ -34,7 +34,7 @@ int test_io_info_args_suite(void) {
   test_io_info_args_default();
   test_io_info_args_iogrid_valid();
 
-  pe_info(pe, "%-10s %s\n", "PASS **", __FILE__);
+  pe_info(pe, "%-9s %s\n", "PASS", __FILE__);
   pe_free(pe);
 
   return 0;
@@ -51,7 +51,7 @@ int test_io_info_args_default(void) {
   int ifail = 0;
   io_info_args_t args = io_info_args_default();
 
-  /* If the size of the structs changes, the tests need updating */
+  /* If the size of the struct changes, the tests need updating */
   assert(sizeof(io_options_t)   == 20);
   assert(sizeof(io_info_args_t) == (2*sizeof(io_options_t) + 4*sizeof(int)));
 
@@ -61,6 +61,8 @@ int test_io_info_args_default(void) {
   assert(args.grid[1]     == 1);
   assert(args.grid[2]     == 1);
   assert(args.nfreq       == 100000);
+
+  if (args.input.mode != 0) ifail += 1;
 
   return ifail;
 }

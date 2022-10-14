@@ -731,6 +731,7 @@ int util_field_data_check_set(field_t * field) {
 
 int util_field_data_check(field_t * field) {
 
+  int ifail = 0;
   int nlocal[3] = {0};
 
   assert(field);
@@ -745,10 +746,11 @@ int util_field_data_check(field_t * field) {
 	  int faddr = addr_rank1(field->nsites, field->nf, index, n);
 	  double fval = 1.0*field_unique_value(field, ic, jc, kc, n);
 	  assert(fabs(field->data[faddr] - fval) < DBL_EPSILON);
+	  if (fabs(field->data[faddr] - fval) > DBL_EPSILON) ifail += 1;
 	}
       }
     }
   }
 
-  return 0;
+  return ifail;
 }

@@ -193,13 +193,15 @@ int64_t test_unique_value(cs_t * cs, int ic, int jc, int kc) {
 
 int test_io_aggr_buf_pack_asc(cs_t * cs, io_aggr_buf_t buf) {
 
-  assert(cs);
-  assert(buf.buf);
+  int ifail = 0;
 
   int ib = 0;
   int ntotal[3] = {0};
   int nlocal[3] = {0};
   int offset[3] = {0};
+
+  assert(cs);
+  assert(buf.buf);
 
   cs_ntotal(cs, ntotal);
   cs_nlocal(cs, nlocal);
@@ -218,6 +220,7 @@ int test_io_aggr_buf_pack_asc(cs_t * cs, io_aggr_buf_t buf) {
 	  size_t nc = 0; /* int returned but need to compare to size_t */
 	  nc = sprintf(cline, "%4d %4d %4d %12" PRId64 "\n", ix, iy, iz, ival);
 	  assert(nc == buf.szelement);
+	  if (nc != buf.szelement) ifail += 1;
 	  memcpy(buf.buf + ib*buf.szelement, cline, buf.szelement);
 	}
 	ib += 1;
@@ -227,7 +230,7 @@ int test_io_aggr_buf_pack_asc(cs_t * cs, io_aggr_buf_t buf) {
 
   assert(ib == nlocal[X]*nlocal[Y]*nlocal[Z]);
 
-  return 0;
+  return ifail;
 }
 
 /*****************************************************************************
@@ -238,13 +241,15 @@ int test_io_aggr_buf_pack_asc(cs_t * cs, io_aggr_buf_t buf) {
 
 int test_io_aggr_buf_unpack_asc(cs_t * cs, io_aggr_buf_t buf) {
 
-  assert(cs);
-  assert(buf.buf);
+  int ifail = 0;
 
   int ib = 0;
   int ntotal[3] = {0};
   int nlocal[3] = {0};
   int offset[3] = {0};
+
+  assert(cs);
+  assert(buf.buf);
 
   cs_ntotal(cs, ntotal);
   cs_nlocal(cs, nlocal);
@@ -272,6 +277,11 @@ int test_io_aggr_buf_unpack_asc(cs_t * cs, io_aggr_buf_t buf) {
 	  assert(iyread == iy);
 	  assert(izread == iz);
 	  assert(ivalread == ival);
+	  if (nc != 4) ifail += 1;
+	  if (iz != izread) ifail += 1;
+	  if (iy != iyread) ifail += 1;
+	  if (ix != ixread) ifail =+ 1;
+	  if (ivalread != ival) ifail += 1;
 	}
 	ib += 1;
       }
@@ -280,7 +290,7 @@ int test_io_aggr_buf_unpack_asc(cs_t * cs, io_aggr_buf_t buf) {
 
   assert(ib == nlocal[X]*nlocal[Y]*nlocal[Z]);
 
-  return 0;
+  return ifail;
 }
 
 
@@ -323,11 +333,13 @@ int test_io_aggr_buf_pack_bin(cs_t * cs, io_aggr_buf_t buf) {
 
 int test_io_aggr_buf_unpack_bin(cs_t * cs, io_aggr_buf_t buf) {
 
-  assert(cs);
-  assert(buf.buf);
+  int ifail = 0;
 
   int ib = 0;
   int nlocal[3] = {0};
+
+  assert(cs);
+  assert(buf.buf);
 
   cs_nlocal(cs, nlocal);
 
@@ -338,6 +350,7 @@ int test_io_aggr_buf_unpack_bin(cs_t * cs, io_aggr_buf_t buf) {
 	int64_t iread = -1;
 	memcpy(&iread, buf.buf + ib*sizeof(int64_t), sizeof(int64_t));
 	assert(ival == iread);
+	if (ival != iread) ifail += 1;
 	ib += 1;
       }
     }
@@ -345,5 +358,5 @@ int test_io_aggr_buf_unpack_bin(cs_t * cs, io_aggr_buf_t buf) {
 
   assert(ib == nlocal[X]*nlocal[Y]*nlocal[Z]);
   
-  return 0;
+  return ifail;
 }

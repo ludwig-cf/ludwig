@@ -111,6 +111,8 @@ __host__ int test_io_options_rt_rformat(pe_t * pe) {
  *
  *  test_io_options_rt_report
  *
+ *  Test the report switch.
+ *
  *****************************************************************************/
 
 __host__ int test_io_options_rt_report(pe_t * pe) {
@@ -130,6 +132,8 @@ __host__ int test_io_options_rt_report(pe_t * pe) {
     int iret = io_options_rt_report(rt, RT_FATAL, "not_present", &irep);
     assert(iret == RT_KEY_MISSING);
     assert(irep == -1);
+    if (iret != RT_KEY_MISSING) ifail += 1;
+    if (irep != -1) ifail += 1;
   }
 
   /* No */
@@ -138,6 +142,8 @@ __host__ int test_io_options_rt_report(pe_t * pe) {
     int iret = io_options_rt_report(rt, RT_FATAL, "default_io_report", &irep);
     assert(iret == RT_KEY_OK);
     assert(irep == 0);
+    if (iret != RT_KEY_OK) ifail += 1;
+    if (irep != 0) ifail += 1;
   }
 
   /* Yes */
@@ -146,6 +152,8 @@ __host__ int test_io_options_rt_report(pe_t * pe) {
     int iret = io_options_rt_report(rt, RT_FATAL, "phi_io_report", &irep);
     assert(iret == RT_KEY_OK);
     assert(irep == 1);
+    if (iret != RT_KEY_OK) ifail += 1;
+    if (irep != 1) ifail += 1;
   }
 
   rt_free(rt);

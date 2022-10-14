@@ -330,6 +330,8 @@ int test_lb_model_ma(const lb_model_t * model) {
 
 int test_lb_model_hydrodynamic_modes(const lb_model_t * model) {
 
+  int ifail = 0;
+
   assert(model);
 
   /* The hydrodynamic modes are always the same independent of model
@@ -360,11 +362,12 @@ int test_lb_model_hydrodynamic_modes(const lb_model_t * model) {
 	  double dij = (i == j);
 	  double sij = model->cv[p][i]*model->cv[p][j] - cs2*dij;
 	  assert(fabs(model->ma[k][p] - sij) < DBL_EPSILON);
+	  if (fabs(model->ma[k][p] - sij) > DBL_EPSILON) ifail += 1;
 	  k += 1;
 	}
       }
     }
   }
 
-  return 0;
+  return ifail;
 }

@@ -328,7 +328,7 @@ static int test_charge1_exact(psi_t * obj, f_vare_t fepsilon) {
   int k, kp1, km1, index;
   int nlocal[3];
   int nz;
-  int ifail;
+  int ifail = 0;
 
   double * epsilon = NULL;             /* 1-d e = e(z) from fepsilon */
   double eph;                          /* epsilon(k + 1/2) */
@@ -411,6 +411,7 @@ static int test_charge1_exact(psi_t * obj, f_vare_t fepsilon) {
     if (k == 0) psi0 = psi;
 
     assert(fabs(b[k] - (psi - psi0)) < tolerance);
+    if (fabs(b[k] - (psi - psi0)) > tolerance) ifail += 1;
 
     /* Extra check on the differencing terms */
 
@@ -433,6 +434,7 @@ static int test_charge1_exact(psi_t * obj, f_vare_t fepsilon) {
       rhodiff = -(emh*psim1 - (emh + eph)*psi + eph*psip1);
 
       assert(fabs(rho0 - rhodiff) < tolerance);
+      if (fabs(rho0 - rhodiff) > tolerance) ifail += 1;
       rhotot += rho0;
     }
   }
@@ -444,7 +446,7 @@ static int test_charge1_exact(psi_t * obj, f_vare_t fepsilon) {
   free(a);
   free(epsilon);
 
-  return 0;
+  return ifail;
 }
 
 /*****************************************************************************
