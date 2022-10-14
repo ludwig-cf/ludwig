@@ -362,7 +362,7 @@ void read_data(int argc, char** argv, const options_t * opts,
     /* skip vtk header lines */
     for (int skip = 0; skip < 9; skip++) {
       pl = fgets(line, BUFSIZ, dirinput);
-      assert(pl);
+      if (pl == NULL) printf("Error in header\n");
     }
 
     for (int k = 0; k < sys->Lz; k++) {
@@ -427,11 +427,11 @@ void read_data(int argc, char** argv, const options_t * opts,
     /* skip header vtk lines to size ... */
     for (int skip = 0; skip < 4; skip++) {
       pl = fgets(line, BUFSIZ, sopinput);
-      assert(pl);
+      if (pl == NULL) printf("Error in vtk header\n");
     }
     /* take system dimensions from vtk-header */
     nread = fscanf(sopinput,"%s %d %d %d", dummy, &Lxsop, &Lysop, &Lzsop);
-    assert(nread == 4);
+    if (nread != 4) printf("Bad dimensions in header\n");
 
     /* skip rest header lines */
     for (int skip = 5; skip < 11; skip++) {
