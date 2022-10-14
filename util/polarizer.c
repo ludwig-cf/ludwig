@@ -431,7 +431,11 @@ void read_data(int argc, char** argv, const options_t * opts,
     }
     /* take system dimensions from vtk-header */
     nread = fscanf(sopinput,"%s %d %d %d", dummy, &Lxsop, &Lysop, &Lzsop);
-    if (nread != 4) printf("Bad dimensions in header\n");
+    assert(nread == 4);
+    if (nread != 4) {
+      printf("Bad dimensions in header\n");
+      exit(-1);
+    }
 
     /* skip rest header lines */
     for (int skip = 5; skip < 11; skip++) {
