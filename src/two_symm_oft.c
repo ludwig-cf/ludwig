@@ -446,10 +446,10 @@ __host__ int fe_two_symm_oft_str(fe_two_symm_oft_t * fe, int index, double s[3][
 
 
   p0 = 0.5*phi_a_oft*phi*phi + 0.75*phi_b_oft*phi*phi*phi*phi
-    - phi_kappa_oft*(phi*delsq[0] - 0.5*dot_product(grad[0], grad[0]))
+    - phi_kappa_oft*(phi*delsq[0] + 0.5*dot_product(grad[0], grad[0]))
 
      + 0.5*fe->param->psi_a*psi*psi + 0.75*fe->param->psi_b*psi*psi*psi*psi
-    - fe->param->psi_kappa*(psi*delsq[1] - 0.5*dot_product(grad[1], grad[1]))
+    - fe->param->psi_kappa*(psi*delsq[1] + 0.5*dot_product(grad[1], grad[1]))
 
     - fe->param->psi_beta*phi*dot_product(grad[0], grad[1]) - fe->param->psi_beta*phi*psi*dot_product(grad[0], grad[0]);
 

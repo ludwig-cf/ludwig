@@ -2,9 +2,9 @@ import os
 import sys
 import getopt
 
-nstart=100    
-nend= 5000	
-nint=100
+nstart=0
+nend= 20000
+nint=1000
 
 ngroup=1	# Number of output groups
 
@@ -112,7 +112,11 @@ if fed:
 
 # Create vtk-files
 for i in range(len(filelist)):
+<<<<<<< Updated upstream
 	if filelist[i] == 'filelist_vel' or filelist[i] == 'filelist_phi' or filelist[i] == 'filelist_temperature' or filelist[i] == 'filelist_total_flux_psi' or filelist[i] == 'filelist_advective_flux_psi' or filelist[i] == ' filelist_mu' or filelist[i] == 'filelist_fed':
+=======
+	if filelist[i] == 'filelist_vel' or filelist[i] == 'filelist_phi' or filelist[i] == 'filelist_temperature' or filelist[i] == 'filelist_total_flux_psi' or filelist[i] == 'filelist_advective_flux_psi' or filelist[i] == 'filelist_mu':
+>>>>>>> Stashed changes
 
 		datafiles=open(filelist[i],'r') 
 

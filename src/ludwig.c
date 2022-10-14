@@ -797,7 +797,7 @@ void ludwig_run(const char * inputfile) {
 	/* Force in electrokinetic models is computed above */
       }
       else {
-	if (ncolloid == 0) {
+	if (1) {
 
 	  /* LC-droplet requires partial body force input and momentum
            * correction. This correction, via hydro_correct_momentum(),
@@ -1718,12 +1718,32 @@ int free_energy_init_rt(ludwig_t * ludwig) {
     /* Coupling between momentum and free energy */
     /* Hydrodynamics sector (move to hydro_rt?) */
 
-    n = rt_switch(rt, "hydrodynamics");
 
+    int use_stress_relaxation = 1;
+    use_stress_relaxation = rt_switch(rt, "fe_use_stress_relaxation");
+    fe->super.use_stress_relaxation = use_stress_relaxation;
+
+    if (fe->super.use_stress_relaxation) {
+      pe_info(pe, "\n");
+      pe_info(pe, "Force calculation\n");
+      pe_info(pe, "Symmetric stress via collision relaxation\n");
+      pth_create(pe, cs, PTH_METHOD_STRESS_ONLY, &ludwig->pth);
+    }
+    else {
+      int p = 1; /* Default is to use divergence method */
+      rt_int_parameter(rt, "fd_force_divergence", &p);
+      pe_info(pe, "Force calculation:      %s\n",
+           (p == 0) ? "phi grad mu method" : "divergence method");
+      if (p == 0) pth_create(pe, cs, PTH_METHOD_GRADMU, &ludwig->pth);
+      if (p == 1) pth_create(pe, cs, PTH_METHOD_DIVERGENCE, &ludwig->pth);
+    }
+
+/*
     {
       int method = (n == 0) ? PTH_METHOD_NO_FORCE : PTH_METHOD_DIVERGENCE;
       pth_create(pe, cs, method, &ludwig->pth);
     }
+*/
     ludwig->fe_two_symm_oft = fe;
     ludwig->fe = (fe_t *) fe;
   }

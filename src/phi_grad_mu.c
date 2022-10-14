@@ -291,8 +291,8 @@ __global__ void phi_grad_mu_solid_kernel(kernel_ctxt_t * ktx, field_t * field,
   assert(ktx);
   assert(field);
   assert(hydro);
-  assert(field->nf <= NVECTOR);
-
+  //assert(field->nf == 2);
+  assert(fe->func->mu);
   kiterations = kernel_iterations(ktx);
 
   for_simt_parallel(kindex, kiterations, 1) {
@@ -303,8 +303,8 @@ __global__ void phi_grad_mu_solid_kernel(kernel_ctxt_t * ktx, field_t * field,
     int index0 = kernel_coords_index(ktx, ic, jc, kc);
 
     double force[3]      = {};
-    double phi[NVECTOR]  = {};
-    double mu[NVECTOR+1] = {};
+    double phi[2]  = {};
+    double mu[3] = {};
 
     field_scalar_array(field, index0, phi);
     fe->func->mu(fe, index0, mu);
@@ -316,14 +316,15 @@ __global__ void phi_grad_mu_solid_kernel(kernel_ctxt_t * ktx, field_t * field,
       int mapm1   = MAP_FLUID;
       int mapp1   = MAP_FLUID;
 
-      double mum1[NVECTOR+1] = {};
-      double mup1[NVECTOR+1] = {};
+      double mum1[3] = {};
+      double mup1[3] = {};
 
       fe->func->mu(fe, indexm1, mum1);
       fe->func->mu(fe, indexp1, mup1);
 
       map_status(map, indexm1, &mapm1);
       map_status(map, indexp1, &mapp1);
+
 
       if (mapm1 == MAP_BOUNDARY) {
 	for (int n1 = 0; n1 < field->nf; n1++) {
@@ -340,7 +341,6 @@ __global__ void phi_grad_mu_solid_kernel(kernel_ctxt_t * ktx, field_t * field,
 	force[X] -= phi[n1]*0.5*(mup1[n1] - mum1[n1]);
       }
     }
-
     /* y-direction */
     {
       int indexm1 = kernel_coords_index(ktx, ic, jc-1, kc);
@@ -348,8 +348,8 @@ __global__ void phi_grad_mu_solid_kernel(kernel_ctxt_t * ktx, field_t * field,
       int mapm1   = MAP_FLUID;
       int mapp1   = MAP_FLUID;
 
-      double mum1[NVECTOR+1] = {};
-      double mup1[NVECTOR+1] = {};
+      double mum1[3] = {};
+      double mup1[3] = {};
 
       fe->func->mu(fe, indexm1, mum1);
       fe->func->mu(fe, indexp1, mup1);
@@ -380,8 +380,8 @@ __global__ void phi_grad_mu_solid_kernel(kernel_ctxt_t * ktx, field_t * field,
       int mapm1   = MAP_FLUID;
       int mapp1   = MAP_FLUID;
 
-      double mum1[NVECTOR+1] = {};
-      double mup1[NVECTOR+1] = {};
+      double mum1[3] = {};
+      double mup1[3] = {};
 
       fe->func->mu(fe, indexm1, mum1);
       fe->func->mu(fe, indexp1, mup1);
@@ -406,7 +406,7 @@ __global__ void phi_grad_mu_solid_kernel(kernel_ctxt_t * ktx, field_t * field,
     }
 
     /* Store the force on lattice */
-
+   // printf("%d %d %d force X %f Y %f Z %f\n", ic, jc, kc, force [X], force[Y], force[Z]);
     hydro_f_local_add(hydro, index0, force);
   }
 

@@ -317,6 +317,9 @@ __global__ void ch_flux_mu1_kernel(kernel_ctxt_t * ktx, ch_t * ch, fe_t * fe,
       ch->flux->fx[addr_rank1(ch->flux->nsite, info.nfield, index0, n)] -= flux;
     }
 
+    if (ic == 1 && jc == 1 & kc == 20) printf("mu = %f, mu1 = %f\n", mu0[0], mu1[0]);
+
+
     /* y direction */
 
     index1 = cs_index(ch->cs, ic, jc+1, kc);
