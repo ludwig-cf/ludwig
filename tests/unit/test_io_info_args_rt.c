@@ -199,7 +199,7 @@ int test_io_info_args_rt_output(pe_t * pe) {
   rt_add_key_value(rt, "q_output_io_report", "yes");
 
   {
-    io_info_args_t args = {0};
+    io_info_args_t args = io_info_args_default();
 
     io_info_args_rt_output(rt, RT_FATAL, "q", &args);
     assert(args.output.mode             == IO_MODE_SINGLE);
