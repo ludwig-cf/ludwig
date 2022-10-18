@@ -9,7 +9,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2012-2018 The University of Edinburgh
+ *  (c) 2012-2022 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -56,12 +56,11 @@ __host__ int pth_create(pe_t * pe, cs_t * cs, int method, pth_t ** pobj) {
   obj->method = method;
   cs_nsites(cs, &obj->nsites);
 
-  /* If memory required */
+  /* malloc() here in all cases on host (even if not required). */
 
-  if (method == PTH_METHOD_DIVERGENCE) {
-    obj->str = (double *) calloc(3*3*obj->nsites, sizeof(double));
-    if (obj->str == NULL) pe_fatal(pe, "calloc(pth->str) failed\n");
-  }
+  obj->str = (double *) malloc(3*3*obj->nsites*sizeof(double));
+  assert(obj->str);
+  if (obj->str == NULL) pe_fatal(pe, "malloc(pth->str) failed\n");
 
   /* Allocate target memory, or alias */
 
@@ -71,13 +70,16 @@ __host__ int pth_create(pe_t * pe, cs_t * cs, int method, pth_t ** pobj) {
     obj->target = obj;
   }
   else {
+    /* Allocate data only if really required */
+    int imem = (method == FE_FORCE_METHOD_STRESS_DIVERGENCE)
+            || (method == FE_FORCE_METHOD_RELAXATION_ANTI); 
 
     tdpMalloc((void **) &obj->target, sizeof(pth_t));
     tdpMemset(obj->target, 0, sizeof(pth_t));
     tdpMemcpy(&obj->target->nsites, &obj->nsites, sizeof(int),
 	      tdpMemcpyHostToDevice);
 
-    if (method == PTH_METHOD_DIVERGENCE) {
+    if (imem) {
       tdpMalloc((void **) &tmp, 3*3*obj->nsites*sizeof(double));
       tdpMemcpy(&obj->target->str, &tmp, sizeof(double *),
 		tdpMemcpyHostToDevice);
@@ -197,7 +199,7 @@ __host__ int pth_stress_compute(pth_t * pth, fe_t * fe) {
      * do nothing. */
     if (fe->func->str_anti != NULL) {
       tdpLaunchKernel(pth_kernel_a_v, nblk, ntpb, 0, 0,
-		      ctxt->target, pth->target, fe_target);
+	  ctxt->target, pth->target, fe_target);
     }
   }
   else {

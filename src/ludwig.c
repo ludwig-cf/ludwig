@@ -69,6 +69,8 @@
 #include "fe_electro.h"
 #include "fe_electro_symmetric.h"
 
+#include "fe_force_method_rt.h"
+
 /* Dynamics */
 #include "cahn_hilliard.h"
 #include "phi_cahn_hilliard.h"
@@ -1282,12 +1284,11 @@ int free_energy_init_rt(ludwig_t * ludwig) {
     coords_init_rt(pe, rt, cs);
     lees_edw_create(pe, cs, info, &le);
     lees_edw_info(le);
-    pth_create(pe, cs, PTH_METHOD_NO_FORCE, &ludwig->pth);
+    pth_create(pe, cs, FE_FORCE_METHOD_NO_FORCE, &ludwig->pth);
   }
   else if (strcmp(description, "symmetric") == 0 ||
 	   strcmp(description, "symmetric_noise") == 0) {
 
-    int use_stress_relaxation;
     phi_ch_info_t ch_options = {0};
     fe_symm_t * fe = NULL;
 
@@ -1346,22 +1347,28 @@ int free_energy_init_rt(ludwig_t * ludwig) {
 
     /* Force */
 
-    use_stress_relaxation = rt_switch(rt, "fe_use_stress_relaxation");
-    fe->super.use_stress_relaxation = use_stress_relaxation;
+    {
+      fe_force_method_enum_t method = fe_force_method_default();
 
-    if (fe->super.use_stress_relaxation) {
-      pe_info(pe, "\n");
-      pe_info(pe, "Force calculation\n");
-      pe_info(pe, "Symmetric stress via collision relaxation\n");
-      pth_create(pe, cs, PTH_METHOD_STRESS_ONLY, &ludwig->pth);
-    }
-    else {
-      p = 1; /* Default is to use divergence method */
-      rt_int_parameter(rt, "fd_force_divergence", &p);
+      fe_force_method_rt_messages(rt, RT_INFO);
+      fe_force_method_rt(rt, RT_FATAL, &method);
+
+      /* The following are supported */
+      switch (method) {
+      case FE_FORCE_METHOD_STRESS_DIVERGENCE:
+      case FE_FORCE_METHOD_PHI_GRADMU:
+      case FE_FORCE_METHOD_PHI_GRADMU_CORRECTION:
+	break;
+      case FE_FORCE_METHOD_RELAXATION_SYMM:
+	fe->super.use_stress_relaxation = 1;
+	break;
+      default:
+	pe_fatal(pe, "symmetric free energy force_method not available\n");
+      }
+
+      pth_create(pe, cs, method, &ludwig->pth);
       pe_info(pe, "Force calculation:      %s\n",
-           (p == 0) ? "phi grad mu method" : "divergence method");
-      if (p == 0) pth_create(pe, cs, PTH_METHOD_GRADMU, &ludwig->pth);
-      if (p == 1) pth_create(pe, cs, PTH_METHOD_DIVERGENCE, &ludwig->pth);
+	      fe_force_method_to_string(method));
     }
 
     ludwig->fe_symm = fe;
@@ -1402,7 +1409,8 @@ int free_energy_init_rt(ludwig_t * ludwig) {
     pe_info(pe, "Mobility M            = %12.5e\n", value);
 
     /* No explicit force is relevant */
-    pth_create(pe, cs, PTH_METHOD_NO_FORCE, &ludwig->pth);
+    fe_force_method_rt_messages(rt, RT_INFO);
+    pth_create(pe, cs, FE_FORCE_METHOD_NO_FORCE, &ludwig->pth);
 
     ludwig->fe_symm = fe;
     ludwig->fe = (fe_t *) fe;
@@ -1442,16 +1450,27 @@ int free_energy_init_rt(ludwig_t * ludwig) {
     physics_mobility_set(ludwig->phys, value);
     pe_info(pe, "Mobility M            = %12.5e\n", value);
 
-    p = 1;
-    rt_int_parameter(rt, "fd_force_divergence", &p);
-    pe_info(pe, "Force caluclation:      %s\n",
-	    (p == 0) ? "phi grad mu method" : "divergence method");
-    if (p == 0) {
-      pth_create(pe, cs, PTH_METHOD_GRADMU, &ludwig->pth);
+    {
+      fe_force_method_enum_t method = fe_force_method_default();
+
+      fe_force_method_rt_messages(rt, RT_INFO);
+      fe_force_method_rt(rt, RT_FATAL, &method);
+
+      /* The following are supported */
+      switch (method) {
+      case FE_FORCE_METHOD_STRESS_DIVERGENCE:
+      case FE_FORCE_METHOD_PHI_GRADMU:
+      case FE_FORCE_METHOD_PHI_GRADMU_CORRECTION:
+	break;
+      default:
+	pe_fatal(pe, "brazovskii: force_method not available\n");
+      }
+
+      pth_create(pe, cs, method, &ludwig->pth);
+      pe_info(pe, "Force calculation:      %s\n",
+	      fe_force_method_to_string(method));
     }
-    else {
-      pth_create(pe, cs, PTH_METHOD_DIVERGENCE, &ludwig->pth);
-    }
+
     ludwig->fe_braz = fe;
     ludwig->fe = (fe_t *) fe;
   }
@@ -1503,10 +1522,25 @@ int free_energy_init_rt(ludwig_t * ludwig) {
 
     /* Coupling between momentum and free energy */
     /* Hydrodynamics sector (move to hydro_rt?) */
-
-    n = rt_switch(rt, "hydrodynamics");
     {
-      int method = (n == 0) ? PTH_METHOD_NO_FORCE : PTH_METHOD_GRADMU;
+      fe_force_method_enum_t method = fe_force_method_default();
+
+      fe_force_method_rt_messages(rt, RT_INFO);
+      fe_force_method_rt(rt, RT_FATAL, &method);
+
+      /* The following are possible (if not tested) */
+      switch (method) {
+      case FE_FORCE_METHOD_STRESS_DIVERGENCE:
+      case FE_FORCE_METHOD_PHI_GRADMU:
+      case FE_FORCE_METHOD_PHI_GRADMU_CORRECTION:
+	break;
+      case FE_FORCE_METHOD_RELAXATION_SYMM:
+	fe->super.use_stress_relaxation = 1;
+	break;
+      default:
+	pe_fatal(pe, "surfactant free energy force_method not available\n");
+      }
+
       pth_create(pe, cs, method, &ludwig->pth);
     }
 
@@ -1565,17 +1599,29 @@ int free_energy_init_rt(ludwig_t * ludwig) {
     ch_info(ludwig->ch);
 
     /* Coupling between momentum and free energy */
-    /* Default method for ternary free energy: gradmu */
-    p = 0;
+    /* Default method for ternary free energy: phi_gradmu */
+    {
+      fe_force_method_enum_t method = FE_FORCE_METHOD_PHI_GRADMU;
 
-    rt_int_parameter(rt, "fd_force_divergence", &p);
-    pe_info(pe, "Force calculation:      %s\n",
-    (p == 0) ? "phi grad mu method" : "divergence method");
-    if (p == 0) {
-      pth_create(pe, cs, PTH_METHOD_GRADMU, &ludwig->pth);
-    }
-    else {
-      pth_create(pe, cs, PTH_METHOD_DIVERGENCE, &ludwig->pth);
+      fe_force_method_rt_messages(rt, RT_INFO);
+      fe_force_method_rt(rt, RT_FATAL, &method);
+
+      /* The following are supported */
+      switch (method) {
+      case FE_FORCE_METHOD_STRESS_DIVERGENCE:
+      case FE_FORCE_METHOD_PHI_GRADMU:
+      case FE_FORCE_METHOD_PHI_GRADMU_CORRECTION:
+	break;
+      case FE_FORCE_METHOD_RELAXATION_SYMM:
+	fe->super.use_stress_relaxation = 1;
+	break;
+      default:
+	pe_fatal(pe, "ternary free energy: force_method not available\n");
+      }
+
+      pth_create(pe, cs, method, &ludwig->pth);
+      pe_info(pe, "Force calculation:      %s\n",
+	      fe_force_method_to_string(method));
     }
 
     ludwig->fe_ternary = fe;
@@ -1584,7 +1630,6 @@ int free_energy_init_rt(ludwig_t * ludwig) {
   else if (strcmp(description, "lc_blue_phase") == 0) {
 
     fe_lc_t * fe = NULL;
-    int use_stress_relaxation = 0;
 
     /* Liquid crystal (always finite difference). */
 
@@ -1619,23 +1664,36 @@ int free_energy_init_rt(ludwig_t * ludwig) {
     beris_edw_create(pe, cs, le, &ludwig->be);
     blue_phase_init_rt(pe, rt, fe, ludwig->be);
 
-    use_stress_relaxation = rt_switch(rt, "fe_use_stress_relaxation");
-    fe->super.use_stress_relaxation = use_stress_relaxation;
-    if (fe->super.use_stress_relaxation) {
-      pe_info(pe, "\n");
-      pe_info(pe, "Split symmetric/antisymmetric stress relaxation/force\n");
-      tdpMemcpy(&fe->target->super.use_stress_relaxation,
-		&use_stress_relaxation, sizeof(int), tdpMemcpyHostToDevice);
+    {
+      fe_force_method_enum_t method = fe_force_method_default();
+
+      fe_force_method_rt_messages(rt, RT_INFO);
+      fe_force_method_rt(rt, RT_FATAL, &method);
+
+      /* The following are supported */
+      switch (method) {
+      case FE_FORCE_METHOD_STRESS_DIVERGENCE:
+	break;
+      case FE_FORCE_METHOD_RELAXATION_ANTI:
+	fe->super.use_stress_relaxation = 1;
+	tdpAssert(tdpMemcpy(&fe->target->super.use_stress_relaxation,
+			    &fe->super.use_stress_relaxation, sizeof(int),
+			    tdpMemcpyHostToDevice));
+	break;
+      default:
+	pe_fatal(pe, "liquid crystal: force_method not available\n");
+      }
+
+      pth_create(pe, cs, method, &ludwig->pth);
     }
 
+    /* Order parameter fluctuations */
     p = 0;
     rt_int_parameter(rt, "lc_noise", &p);
     noise_present_set(ludwig->noise_rho, NOISE_QAB, p);
     pe_info(pe, "LC fluctuations:           =  %s\n", (p == 0) ? "off" : "on");
 
-    pth_create(pe, cs, PTH_METHOD_DIVERGENCE, &ludwig->pth);
-
-    /* Not very elegant, but here ... */
+    /* Assign anchoring information (both gradient possibilities) */
     grad_lc_anch_create(pe, cs, NULL, NULL, NULL, fe, NULL);
     grad_s7_anchoring_create(pe, cs, NULL, fe, NULL);
 
@@ -1678,7 +1736,7 @@ int free_energy_init_rt(ludwig_t * ludwig) {
     leslie_ericksen_swim_set(value);
     pe_info(pe, "Self-advection parameter = %12.5e\n", value);
 
-    pth_create(pe, cs, PTH_METHOD_DIVERGENCE, &ludwig->pth);
+    pth_create(pe, cs, FE_FORCE_METHOD_STRESS_DIVERGENCE, &ludwig->pth);
   }
   else if(strcmp(description, "lc_droplet") == 0) {
 
@@ -1686,7 +1744,6 @@ int free_energy_init_rt(ludwig_t * ludwig) {
     fe_symm_t * symm = NULL;
     fe_lc_t * lc = NULL;
     fe_lc_droplet_t * fe = NULL;
-    int use_stress_relaxation = 0;
 
     /* liquid crystal droplet */
     pe_info(pe, "\n");
@@ -1735,15 +1792,6 @@ int free_energy_init_rt(ludwig_t * ludwig) {
     physics_mobility_set(ludwig->phys, value);
     pe_info(pe, "Mobility M            = %12.5e\n", value);
 
-    /* Force */
-
-    p = 1; /* Default is to use divergence method */
-    rt_int_parameter(rt, "fd_force_divergence", &p);
-    pe_info(pe, "Force calculation:      %s\n",
-	    (p == 0) ? "phi grad mu method" : "divergence method");
-    assert(p != 0); /* Grad mu method not implemented! */
-    pth_create(pe, cs, PTH_METHOD_DIVERGENCE, &ludwig->pth);
-
     /* Liquid crystal part */
     nhalo = 2;   /* Required for stress diveregnce. */
     ngrad = 2;   /* (\nabla^2) required */
@@ -1773,13 +1821,34 @@ int free_energy_init_rt(ludwig_t * ludwig) {
     fe_lc_droplet_create(pe, cs, lc, symm, &fe);
     fe_lc_droplet_run_time(pe, rt, fe);
 
-    use_stress_relaxation = rt_switch(rt, "fe_use_stress_relaxation");
-    fe->super.use_stress_relaxation = use_stress_relaxation;
-    if (fe->super.use_stress_relaxation) {
+    /* Force */
+
+    {
+      fe_force_method_enum_t method = fe_force_method_default();
+
+      fe_force_method_rt_messages(rt, RT_INFO);
+      fe_force_method_rt(rt, RT_FATAL, &method);
+
+      /* The following are supported */
+      switch (method) {
+      case FE_FORCE_METHOD_STRESS_DIVERGENCE:
+	break;
+      case FE_FORCE_METHOD_RELAXATION_ANTI:
+	fe->super.use_stress_relaxation = 1;
+	tdpAssert(tdpMemcpy(&fe->target->super.use_stress_relaxation,
+			    &fe->super.use_stress_relaxation, sizeof(int),
+			    tdpMemcpyHostToDevice));
+	break;
+      default:
+	pe_fatal(pe, "liquid crystal droplet: force_method not available\n");
+      }
+
+      pth_create(pe, cs, method, &ludwig->pth);
+
       pe_info(pe, "\n");
-      pe_info(pe, "Split symmetric/antisymmetric stress relaxation/force\n");
-      tdpMemcpy(&fe->target->super.use_stress_relaxation,
-		&use_stress_relaxation, sizeof(int), tdpMemcpyHostToDevice);
+      pe_info(pe, "Coupled free energy\n");
+      pe_info(pe, "Force calculation:      %s\n",
+	      fe_force_method_to_string(method));
     }
 
     p = rt_switch(rt, "lc_noise");

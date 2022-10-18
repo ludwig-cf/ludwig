@@ -81,7 +81,7 @@ __host__ int phi_force_calculation(pe_t * pe, cs_t * cs, lees_edw_t * le,
 
   if (pth == NULL) return 0;
   if (hydro == NULL) return 0; 
-  if (pth->method == PTH_METHOD_NO_FORCE) return 0;
+  if (pth->method == FE_FORCE_METHOD_NO_FORCE) return 0;
 
   wall_is_pm(wall, &is_pm);
 
@@ -96,7 +96,8 @@ __host__ int phi_force_calculation(pe_t * pe, cs_t * cs, lees_edw_t * le,
   }
   else {
     switch (pth->method) {
-    case PTH_METHOD_DIVERGENCE:
+    case FE_FORCE_METHOD_STRESS_DIVERGENCE:
+    case FE_FORCE_METHOD_RELAXATION_ANTI:
       pth_stress_compute(pth, fe);
       if (wall_present(wall) || is_pm) {
 	pth_force_fluid_wall_driver(pth, hydro, map, wall);
@@ -105,7 +106,7 @@ __host__ int phi_force_calculation(pe_t * pe, cs_t * cs, lees_edw_t * le,
 	pth_force_fluid_driver(pth, hydro);
       }
       break;
-    case PTH_METHOD_GRADMU:
+    case FE_FORCE_METHOD_PHI_GRADMU:
 
       if (wall_present(wall) || is_pm) {
 	phi_grad_mu_solid(cs, phi, fe, hydro, map);
@@ -117,7 +118,11 @@ __host__ int phi_force_calculation(pe_t * pe, cs_t * cs, lees_edw_t * le,
 	phi_grad_mu_external(cs, phi, hydro);
       }
       break;
-    case PTH_METHOD_STRESS_ONLY:
+    case FE_FORCE_METHOD_PHI_GRADMU_CORRECTION:
+      phi_grad_mu_correction(cs, phi, fe, hydro, map, 0);
+      break;
+    case FE_FORCE_METHOD_RELAXATION_SYMM:
+      assert(0); /* HAS THIS EVER BEEN TESTED? */
       pth_stress_compute(pth, fe);
       break;
     default:
