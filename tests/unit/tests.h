@@ -46,6 +46,8 @@ int test_fe_lc_droplet_suite(void);
 int test_fe_surfactant1_suite(void);
 int test_fe_symmetric_suite(void);
 int test_fe_ternary_suite(void);
+int test_fe_force_method_suite(void);
+int test_fe_force_method_rt_suite(void);
 int test_field_suite(void);
 int test_field_grad_suite(void);
 int test_gradient_d3q27_suite(void);
