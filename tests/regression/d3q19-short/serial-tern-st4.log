@@ -50,7 +50,7 @@ Using Cahn-Hilliard solver:
 Number of fields      =  2
 Mobility (phi)        =  1.00000e+00
 Mobility (psi)        =  1.00000e+00
-Force calculation:      phi grad mu method
+Force calculation:      phi_gradmu
 
 System properties
 ----------------

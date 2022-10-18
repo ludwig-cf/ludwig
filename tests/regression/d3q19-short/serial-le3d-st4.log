@@ -37,7 +37,7 @@ Interfacial width     =  1.13137e+00
 Using Cahn-Hilliard finite difference solver.
 Mobility M            =  1.50000e-01
 Order parameter noise = off
-Force calculation:      divergence method
+Force calculation:      stress_divergence
 
 System properties
 ----------------
