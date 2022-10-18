@@ -5,7 +5,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2021 Thge University of Edinburgh
+ *  (c) 2021-2022 Thge University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -27,4 +27,6 @@ __host__ int phi_grad_mu_solid(cs_t * cs, field_t * phi, fe_t * fe,
 			       hydro_t * hydro, map_t * map);
 __host__ int phi_grad_mu_external(cs_t * cs, field_t * phi, hydro_t * hydro);
 
+__host__ int phi_grad_mu_correction(cs_t * cs, field_t * phi, fe_t * fe,
+				    hydro_t * hydro, map_t * map, int opt);
 #endif
