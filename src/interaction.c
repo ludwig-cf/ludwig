@@ -729,8 +729,10 @@ int colloids_update_discrete_forces_phi(colloids_info_t * cinfo, field_t * phi, 
   timestep = physics_control_timestep(phys);
 
 // global communication stuff
+  int rank;
   MPI_Comm comm;
   cs_cart_comm(cinfo->cs, &comm);
+  MPI_Comm_rank(comm, &rank); 
 /* <------------------------------------------------------------------------- */
 
   cs_nlocal(cinfo->cs, nlocal);
@@ -744,6 +746,7 @@ int colloids_update_discrete_forces_phi(colloids_info_t * cinfo, field_t * phi, 
 
   interaction_mask_on = 0;
   rt_int_parameter(rt, "phi_interaction_mask", &interaction_mask_on);
+  rt_int_parameter(rt, "freq_write", &writefreq);
 
   /* Initialize subgrid potential to 0 */
   for (i = 1; i <= nlocal[X]; i++) {
@@ -934,16 +937,21 @@ int colloids_update_discrete_forces_phi(colloids_info_t * cinfo, field_t * phi, 
 
 /* Output sum of force exerted on the subgrid particles */
   if (timestep % writefreq == 0) {
-    MPI_Allreduce(localforce, globalforce, 3, MPI_DOUBLE, MPI_SUM, comm);
-    MPI_Allreduce(localtorque, globaltorque, 3, MPI_DOUBLE, MPI_SUM, comm);
+    MPI_Reduce(localforce, globalforce, 3, MPI_DOUBLE, MPI_SUM, 0, comm);
+    MPI_Reduce(localtorque, globaltorque, 3, MPI_DOUBLE, MPI_SUM, 0, comm);
 
-    fp = fopen("TOT_INTERACT_FORCE_SUBGRID.txt", "a");
-    fprintf(fp, "%14.7e %14.7e %14.7e\n", globalforce[X], globalforce[Y], globalforce[Z]);
-    fclose(fp);
+    if (rank == 0) {
+      fp = fopen("TOT_INTERACT_FORCE_SUBGRID.txt", "a");
+      fprintf(fp, "%14.7e,%14.7e,%14.7e\n", globalforce[X], globalforce[Y], globalforce[Z]);
+      fclose(fp);
+    }
 
-    fp = fopen("TOT_INTERACT_TORQUE_SUBGRID.txt", "a");
-    fprintf(fp, "%14.7e %14.7e %14.7e\n", globaltorque[X], globaltorque[Y], globaltorque[Z]);
-    fclose(fp);
+    if (rank == 0) {
+      fp = fopen("TOT_INTERACT_TORQUE_SUBGRID.txt", "a");
+      fprintf(fp, "%14.7e,%14.7e,%14.7e\n", globaltorque[X], globaltorque[Y], globaltorque[Z]);
+      fclose(fp);
+    }
+
   }
   //Next cell list
   return 0;

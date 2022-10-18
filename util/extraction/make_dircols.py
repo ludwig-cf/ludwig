@@ -28,16 +28,16 @@ filelist_col = []
 for i in range(nstart,nend+nint,nint):
   os.system('ls -t1 col-cds%08.0d.csv >> filelist' % i)
   filelist_col.append('col-cds%08.0d.csv' % i)
-m, n, v, rc, ro = np.zeros(3), np.zeros(3), np.zeros(3), np.zeros(3), np.zeros(3)
+m, n, v, rc, ro, torque, force = np.zeros(3), np.zeros(3), np.zeros(3), np.zeros(3), np.zeros(3), np.zeros(3), np.zeros(3)
 for i in range(len(filelist_col)):
 
   foundindexcentre = False
   foundindexortho = False
 
-  with open(filelist_col[i], 'r') as inputfile:
-    original_lines = inputfile.readlines()
+  with open(filelist_col[i], 'r') as colfile, open('TOT_INTERACT_TORQUE_SUBGRID.txt', 'r') as torquefile, open('TOT_INTERACT_FORCE_SUBGRID.txt', 'r') as forcefile, open('dir'+filelist_col[i], 'w') as outputfile:
+    colfile_lines = colfile.readlines()
 
-    for line in original_lines[1::]:
+    for line in colfile_lines[1::]:
       if (foundindexcentre == True): break
       index = float(line.split(',')[0])
       if (index == indexcentre): 
@@ -60,11 +60,16 @@ for i in range(len(filelist_col)):
       
     alpha = np.arccos(mdotv)
 
-    new_lines = []
-    new_lines.append('x0,y0,z0,mx,my,mz,nx,ny,nz,alpha')
-    new_lines.append('{:7e}'.format(rc[0]) + ',    ' + '{:7e}'.format(rc[1]) + ',    ' + '{:7e}'.format(rc[2]) + ',    ' + '{:7e}'.format(m[0]) + ',    ' + '{:7e}'.format(m[1]) + ',    ' + '{:7e}'.format(m[2]) + ',    ' + '{:7e}'.format(n[0]) + ',    ' + '{:7e}'.format(n[1]) + ',    ' + '{:7e}'.format(n[2]) + ',    ' + '{:7e}'.format(alpha))
+    line = torquefile.readlines()[i] 
+    torque[0], torque[1], torque[2] = float(line.split(',')[0]), float(line.split(',')[1]), float(line.split(',')[2])
+
+    line = forcefile.readlines()[i] 
+    force[0], force[1], force[2] = float(line.split(',')[0]), float(line.split(',')[1]), float(line.split(',')[2])
  
-  with open('dir'+filelist_col[i], 'w') as outputfile:
+    new_lines = []
+    new_lines.append('x0,y0,z0,mx,my,mz,nx,ny,nz,alpha,sumtx,sumty,sumtz,sumfx,sumfy,sumfz')
+    new_lines.append('{:7e}'.format(rc[0]) + ',    ' + '{:7e}'.format(rc[1]) + ',    ' + '{:7e}'.format(rc[2]) + ',    ' + '{:7e}'.format(m[0]) + ',    ' + '{:7e}'.format(m[1]) + ',    ' + '{:7e}'.format(m[2]) + ',    ' + '{:7e}'.format(n[0]) + ',    ' + '{:7e}'.format(n[1]) + ',    ' + '{:7e}'.format(n[2]) + ',    ' + '{:7e}'.format(alpha) + ',    ' + '{:7e}'.format(torque[0]) + ',    ' + '{:7e}'.format(torque[1]) + ',    ' + '{:7e}'.format(torque[2]) + ',    ' + '{:7e}'.format(force[0]) + ',    ' + '{:7e}'.format(force[1]) + ',    ' + '{:7e}'.format(force[2]))
+   
     for line in new_lines:
       outputfile.write(line)
       outputfile.write("\n")
