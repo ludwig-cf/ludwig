@@ -374,10 +374,15 @@ void read_data(int argc, char** argv, const options_t * opts,
 	  double diry = 0.0;
 	  double dirz = 0.0;
 
-	  sscanf(line, "%le %le %le", &dirx, &diry, &dirz);
-	  sys->dir[i][j][k][0] = dirx;
-	  sys->dir[i][j][k][1] = diry;
-	  sys->dir[i][j][k][2] = dirz;
+	  int ns = sscanf(line, "%le %le %le", &dirx, &diry, &dirz);
+	  if (ns == 3) {
+	    sys->dir[i][j][k][0] = dirx;
+	    sys->dir[i][j][k][1] = diry;
+	    sys->dir[i][j][k][2] = dirz;
+	  }
+	  else {
+	    printf("Incorrect dirx diry dirz\n");
+	  }
 	}
       }
     }
