@@ -1106,7 +1106,7 @@ int write_qab_vtk(int ntime, int ntarget[3], double * datasection) {
 
   if (output_lcd_) {
     sprintf(io_data, "lcd-%8.8d.vtk", ntime);
-    fp_data = fopen(io_data, "w");
+    fp_data = util_fopen(io_data, "w");
 
     if (fp_data == NULL) {
       printf("fopen(%s) failed\n", io_data);
@@ -1126,7 +1126,7 @@ int write_qab_vtk(int ntime, int ntarget[3], double * datasection) {
 
   if (output_lcx_) {
     sprintf(io_data, "lcb-%8.8d.vtk", ntime);
-    fp_data = fopen(io_data, "w");
+    fp_data = util_fopen(io_data, "w");
 
     if (fp_data == NULL) {
       printf("fopen(%s) failed\n", io_data);
