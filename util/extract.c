@@ -470,7 +470,7 @@ int read_version1(int ntime, metadata_v1_t * meta, double * datasection) {
 	     meta->stub, meta->nio, n);
     printf("Reading metadata file ... %s ", io_metadata);
 
-    fp_metadata = fopen(io_metadata, "r");
+    fp_metadata = util_fopen(io_metadata, "r");
     if (fp_metadata == NULL) printf("fopen(%s) failed\n", io_metadata);
 
     for (p = 0; p < 12; p++) {
