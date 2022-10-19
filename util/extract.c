@@ -332,11 +332,13 @@ int extract_driver(const char * filename, metadata_v1_t * meta, int version) {
 	      FILENAME_MAX/2 - strnlen(meta->stub, FILENAME_MAX/2-1) - 1);
       snprintf(io_data, sizeof(io_data), "%s-%8.8d", tmp, ntime);
     }
+    /* KEVIN remove code above with a constant string from allow list */
+    /* e.g., sprintf(io_data, "phi-%s-%8.8d.%s", ntime, suffix) */
 
     if (output_vtk_ == 1 || output_vtk_ == 2) {
 
       strcat(io_data, suf);
-      fp_data = fopen(io_data, "w+b");
+      fp_data = util_fopen(io_data, "w+b");
       if (fp_data == NULL) printf("fopen(%s) failed\n", io_data);
       printf("\nWriting result to %s\n", io_data);
 
