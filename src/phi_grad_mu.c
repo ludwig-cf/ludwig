@@ -209,7 +209,6 @@ __host__ int phi_grad_mu_correction(cs_t * cs, field_t * phi, fe_t * fe,
 
   size_t sz = 4*sizeof(double);
   double * flocal_d = NULL;        /* Local contribution to correction */
-  double   ftotal[4] = {0};        /* (volume, fx, fy, fz) */
 
   fe_t * fe_target = NULL;
   kernel_info_t limits = {0};
@@ -252,6 +251,7 @@ __host__ int phi_grad_mu_correction(cs_t * cs, field_t * phi, fe_t * fe,
     /* The volume ftotal[0] should be an integer number of fluid sites,
      * but is accumulated as a double ... */
 
+    double   ftotal[4] = {0};        /* (volume, fx, fy, fz) */
     MPI_Comm comm = MPI_COMM_NULL;
 
     cs_cart_comm(cs, &comm);
@@ -273,7 +273,7 @@ __host__ int phi_grad_mu_correction(cs_t * cs, field_t * phi, fe_t * fe,
     }
   }
 
-  tdpAssert(tdpFree(&flocal_d));
+  tdpAssert(tdpFree(flocal_d));
   kernel_ctxt_free(ctxt);
 
   return 0;
