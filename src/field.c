@@ -18,7 +18,7 @@
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
- *  Aln Gray (alang@epcc.ed.ac.uk)
+ *  Alan Gray (alang@epcc.ed.ac.uk)
  *
  *****************************************************************************/
 
@@ -41,6 +41,7 @@ static int field_write(FILE * fp, int index, void * self);
 static int field_write_ascii(FILE * fp, int index, void * self);
 static int field_read(FILE * fp, int index, void * self);
 static int field_read_ascii(FILE * fp, int index, void * self);
+static int field_data_touch(field_t * field);
 
 static int field_leesedwards_parallel(field_t * obj);
 
@@ -94,9 +95,10 @@ __host__ int field_create(pe_t * pe, cs_t * cs, lees_edw_t * le,
   pe_retain(pe);
   cs_retain(cs);
 
+  obj->opts = *opts;
+
   field_init(obj, opts->nhcomm, le);
   field_halo_create(obj, &obj->h);
-  obj->opts = *opts;
 
   /* I/O aggregator */
   obj->aggr_asc.etype = MPI_CHAR;
@@ -180,13 +182,16 @@ __host__ int field_init(field_t * obj, int nhcomm, lees_edw_t * le) {
   obj->nsites = nsites;
   nfsz = (size_t) obj->nf*nsites;
 
-#ifndef OLD_DATA
-  obj->data = (double *) calloc(nfsz, sizeof(double));
-  if (obj->data == NULL) pe_fatal(obj->pe, "calloc(obj->data) failed\n");
-#else
-  obj->data = (double *) mem_aligned_malloc(MEM_PAGESIZE, nfsz*sizeof(double));
-  if (obj->data == NULL) pe_fatal(obj->pe, "calloc(obj->data) failed\n");
-#endif
+  if (obj->opts.usefirsttouch) {
+
+    obj->data = (double *) mem_aligned_malloc(MEM_PAGESIZE, nfsz*sizeof(double));
+    if (obj->data == NULL) pe_fatal(obj->pe, "calloc(obj->data) failed\n");
+    field_data_touch(obj);
+  }
+  else {
+    obj->data = (double *) calloc(nfsz, sizeof(double));
+    if (obj->data == NULL) pe_fatal(obj->pe, "calloc(obj->data) failed\n");
+  }
 
   /* Allocate target copy of structure (or alias) */
 
@@ -331,6 +336,66 @@ __host__ int field_io_info(field_t * obj, io_info_t ** info) {
   assert(info);
 
   *info = obj->info;
+
+  return 0;
+}
+
+
+/*****************************************************************************
+ *
+ *  field_data_touch
+ *
+ *****************************************************************************/
+
+__host__ void field_data_touch_kernel(cs_limits_t lim, field_t * f) {
+
+  int nx = 1 + lim.imax - lim.imin;
+  int ny = 1 + lim.jmax - lim.jmin;
+  int nz = 1 + lim.kmax - lim.kmin;
+
+  int strz = 1;
+  int stry = strz*nz;
+  int strx = stry*ny;
+
+  #pragma omp for nowait
+  for (int ik = 0; ik < nx*ny*nz; ik++) {
+    int ic = lim.imin + (ik       )/strx;
+    int jc = lim.jmin + (ik % strx)/stry;
+    int kc = lim.kmin + (ik % stry)/strz;
+    int index = cs_index(f->cs, ic, jc, kc);
+    for (int n = 0; n < f->nf; n++) {
+      int laddr = addr_rank1(f->nsites, f->nf, index, n);
+      f->data[laddr] = 0.0;
+    }
+  }
+
+  return;
+}
+
+/*****************************************************************************
+ *
+ *  field_data_touch
+ *
+ *  Run only for OpenMP on the host.
+ *
+ *****************************************************************************/
+
+__host__ int field_data_touch(field_t * field) {
+
+  int nlocal[3] = {0};
+
+  assert(field);
+
+  cs_nlocal(field->cs, nlocal);
+
+  {
+    cs_limits_t lim = {1, nlocal[X], 1, nlocal[Y], 1, nlocal[Z]};
+
+    #pragma omp parallel
+    {
+      field_data_touch_kernel(lim, field);
+    }
+  }
 
   return 0;
 }

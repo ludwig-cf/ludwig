@@ -202,6 +202,7 @@ int main(int argc, char ** argv) {
     exit(EXIT_FAILURE);
   }
 
+  /* PENDING KEVIN uncontrolled path name */
   read_meta_data_file(argv[optind], &metadata);
 
   extract_driver(argv[optind+1], &metadata, version);
@@ -229,7 +230,7 @@ int extract_driver(const char * filename, metadata_v1_t * meta, int version) {
   FILE * fp_data;
 
   ntime = read_data_file_name(filename);
-  assert(ntime <= 0 && ntime < 1000*1000*1000);
+  assert(0 <= ntime && ntime < 1000*1000*1000);
 
   /* Work out parallel local file size */
 

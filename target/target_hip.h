@@ -5,7 +5,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- * (c) 2020 The University of Edinburgh
+ * (c) 2020-2022 The University of Edinburgh
  *
  *  Contributing authors:
  *    Nikola Vasilev did the original implementation in 2020.
@@ -25,8 +25,13 @@ typedef hipFuncCache_t tdpFuncCache;
 #define tdpFuncCachePreferL1     hipFuncCachePreferL1
 #define tdpFuncCahcePreferEqual  hipFuncCachePreferEqual
 
-typedef hipMemcpyKind tdpMemcpyKind;
-typedef hipDeviceAttribute_t tdpDeviceAttr;
+/* enums */
+
+typedef hipMemcpyKind            tdpMemcpyKind;
+typedef hipDeviceAttribute_t     tdpDeviceAttr;
+typedef hipDeviceP2PAttr         tdpDeviceP2PAttr;
+
+/* defines */
 
 #define tdpDeviceProp hipDeviceProp_t
 
@@ -39,6 +44,14 @@ typedef hipDeviceAttribute_t tdpDeviceAttr;
 #define tdpMemcpyDeviceToHost hipMemcpyDeviceToHost
 #define tdpMemcpyHostToHost hipMemcpyHostToHost
 #define tdpMemcpyDeviceToDevice hipMemcpyDeviceToDevice
+
+/* P2P */
+
+#define tdpDevP2PAttrPerformaceRank        hipDevP2PAttrPerformanceRank
+#define tdpDevP2PAttrAccessSupported       hipDevP2PAttrAccessSupported
+#define tdpDevP2PAttrNativeAtomicSupported hipDevP2PAttrNativeAtomicSupported
+#define tdpDevP2PAttrArrayAccessSupported  hipDevP2PAttrHipArrayAccessSupported
+
 
 #define tdpMemAttachHost   hipMemAttachHost
 #define tdpMemAttachGlobal hipMemAttachGlobal

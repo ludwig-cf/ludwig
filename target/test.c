@@ -41,6 +41,7 @@ __host__ int test0(void) {
   if (ifail != tdpSuccess) printf("FAIL!\n");
 
   printf("Device id          %d\n", mydevice);
+  printf("Device name        %s\n", prop.name);
   printf("maxThreadsPerBlock %d\n", prop.maxThreadsPerBlock);
   printf("maxThreadsDim[0]   %d\n", prop.maxThreadsDim[0]);
   printf("maxThreadsDim[1]   %d\n", prop.maxThreadsDim[1]);

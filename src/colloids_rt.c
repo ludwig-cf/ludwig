@@ -640,7 +640,8 @@ int colloids_rt_cell_list_checks(pe_t * pe, cs_t * cs,
     interact_rcmax(interact, &rcmax);
     interact_hcmax(interact, &hcmax);
     rmax = dmax(2.0*ahmax + hcmax, rcmax);
-    rmax = dmax(rmax, 1.5); /* subgrid particles again */
+    rmax = dmax(rmax, 1.5);                  /* subgrid particles again */
+    rmax = dmax(rmax, a0max + nhalo - 0.5);  /* halo, as above */
     nbest[X] = (int) floor(1.0*nlocal[X] / rmax);
     nbest[Y] = (int) floor(1.0*nlocal[Y] / rmax);
     nbest[Z] = (int) floor(1.0*nlocal[Z] / rmax);
