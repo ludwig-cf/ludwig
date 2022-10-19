@@ -536,7 +536,7 @@ void read_meta_data_file(const char * filename, metadata_v1_t * meta) {
   assert(filename);
   assert(meta);
 
-  fp_meta = fopen(filename, "r");
+  fp_meta = util_fopen(filename, "r");
   if (fp_meta == NULL) {
     printf("fopen(%s) failed\n", filename);
     exit(-1);
