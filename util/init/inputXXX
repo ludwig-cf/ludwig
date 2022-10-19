@@ -184,7 +184,7 @@ periodicity XXXperiodicityXXX
 #freq_statistics XXXfreqXXX
 
 # Output all files 
-#freq_config XXXfreq_configXXX
+#freq_config 1000000000
 
 # ? 
 #freq_measure 100000
@@ -192,6 +192,7 @@ periodicity XXXperiodicityXXX
 freq_phi XXXfreqXXX
 freq_mask XXXfreqXXX
 freq_subgrid_potential XXXfreqXXX
+freq_write XXXfreqXXX
 colloid_io_freq XXXfreqXXX
 freq_vel XXXfreqXXX
 

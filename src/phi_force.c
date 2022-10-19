@@ -110,7 +110,6 @@ __host__ int phi_force_calculation(pe_t * pe, cs_t * cs, lees_edw_t * le,
     case PTH_METHOD_GRADMU:
       if (wall_present(wall) || is_pm) {
 	phi_grad_mu_solid(cs, phi, fe, hydro, map, subgrid_potential);
-	printf("ll\n");
 	phi_grad_mu_external_ll(cs, phi, hydro);
       }
       else {
