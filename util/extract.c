@@ -58,7 +58,8 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "../src/util.h"
+#include "util.h"
+#include "util_fopen.h"
 
 #define MAXNTOTAL 1024 /* Maximum linear system size */
 
@@ -294,7 +295,7 @@ int extract_driver(const char * filename, metadata_v1_t * meta, int version) {
     }
     else {
       sprintf(io_data, "q-%8.8d", ntime);
-      fp_data = fopen(io_data, "w+b");
+      fp_data = util_fopen(io_data, "w+b");
       if (fp_data == NULL) {
 	printf("fopen(%s) failed\n", io_data);
 	exit(-1);
