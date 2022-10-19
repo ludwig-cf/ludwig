@@ -44,7 +44,10 @@ fe_force_method_enum_t fe_force_method_to_enum(const char * method) {
 
   assert(method);
 
-  if (strcmp(method, "stress_divergence") == 0) {
+  if (strcmp(method, "no_force") == 0) {
+    imethod = FE_FORCE_METHOD_NO_FORCE;
+  }
+  else if (strcmp(method, "stress_divergence") == 0) {
     imethod = FE_FORCE_METHOD_STRESS_DIVERGENCE;
   }
   else if (strcmp(method, "phi_gradmu") == 0) {

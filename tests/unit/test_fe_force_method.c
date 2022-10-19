@@ -72,6 +72,9 @@ int test_fe_force_method_to_enum(void) {
   int ifail = 0;
   fe_force_method_enum_t method = FE_FORCE_METHOD_INVALID;
 
+  method = fe_force_method_to_enum("no_force");
+  assert(method == FE_FORCE_METHOD_NO_FORCE);
+
   method = fe_force_method_to_enum("stress_divergence");
   assert(method == FE_FORCE_METHOD_STRESS_DIVERGENCE);
 
