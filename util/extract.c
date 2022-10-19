@@ -202,6 +202,7 @@ int main(int argc, char ** argv) {
     exit(EXIT_FAILURE);
   }
 
+  /* PENDING KEVIN uncontrolled path name */
   read_meta_data_file(argv[optind], &metadata);
 
   extract_driver(argv[optind+1], &metadata, version);
