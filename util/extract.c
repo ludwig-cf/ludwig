@@ -409,7 +409,7 @@ int read_version2(int ntime, metadata_v1_t * meta, double * datasection) {
 	     meta->nio, n);
     printf("-> %s\n", io_data);
 
-    fp_data = fopen(io_data, "r+b");
+    fp_data = util_fopen(io_data, "r+b");
     if (fp_data == NULL) printf("fopen(%s) failed\n", io_data);
 
     /* Read data file based on offsets recorded in the metadata,
