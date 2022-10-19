@@ -1085,7 +1085,7 @@ int write_qab_vtk(int ntime, int ntarget[3], double * datasection) {
   /* Scalar order */
   if (output_lcs_) {
     sprintf(io_data, "lcs-%8.8d.vtk", ntime);
-    fp_data = fopen(io_data, "w");
+    fp_data = util_fopen(io_data, "w");
 
     if (fp_data == NULL) {
       printf("fopen(%s) failed\n", io_data);
