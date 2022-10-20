@@ -16,7 +16,6 @@ N_cycles 1000
 size 64_2_2
 grid 8_1_1
 periodicity 0_1_1
-reduced_halo no
 
 ##############################################################################
 #
@@ -49,9 +48,9 @@ electric_e0 0.0_1.0e-6_0.0
 ###############################################################################
 
 free_energy fe_electro
+fe_force_method    phi_gradmu_correction
 
 fd_advection_scheme_order 3
-fd_force_divergence 0
 
 ###############################################################################
 #

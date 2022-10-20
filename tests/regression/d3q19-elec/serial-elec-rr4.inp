@@ -26,9 +26,9 @@ isothermal_fluctuations off
 temperature 0.00001
 
 free_energy fe_electro
+fe_force_method           phi_gradmu_correction
 
 fd_advection_scheme_order 2
-fd_force_divergence 0
 
 ###############################################################################
 #
