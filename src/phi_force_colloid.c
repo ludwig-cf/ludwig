@@ -64,7 +64,7 @@
 #include "timer.h"
 
 int pth_force_driver(pth_t * pth, colloids_info_t * cinfo,
-		     hydro_t * hydro, map_t * map, wall_t * wall);
+		     hydro_t * hydro, map_t * map, wall_t * wall, rt_t * rt);
 
 __global__ void pth_force_map_kernel(kernel_ctxt_t * ktx, pth_t * pth,
 				     hydro_t * hydro, map_t * map);
@@ -83,7 +83,7 @@ __global__ void pth_force_fluid_kernel_v(kernel_ctxt_t * ktx, pth_t * pth,
  *****************************************************************************/
 
 __host__ int pth_force_colloid(pth_t * pth, fe_t * fe, colloids_info_t * cinfo,
-			       hydro_t * hydro, map_t * map, wall_t * wall) {
+			       hydro_t * hydro, map_t * map, wall_t * wall, rt_t * rt) {
 
   int ncolloid;
 
@@ -95,7 +95,7 @@ __host__ int pth_force_colloid(pth_t * pth, fe_t * fe, colloids_info_t * cinfo,
 
   if (pth->method == PTH_METHOD_DIVERGENCE) {
     pth_stress_compute(pth, fe);
-    pth_force_driver(pth, cinfo, hydro, map, wall);
+    pth_force_driver(pth, cinfo, hydro, map, wall, rt);
   }
 
   return 0;
@@ -116,9 +116,10 @@ __host__ int pth_force_colloid(pth_t * pth, fe_t * fe, colloids_info_t * cinfo,
 static __device__ double fs[3];
 
 __host__ int pth_force_driver(pth_t * pth, colloids_info_t * cinfo,
-			      hydro_t * hydro, map_t * map, wall_t * wall) {
+			      hydro_t * hydro, map_t * map, wall_t * wall, rt_t * rt) {
   int ia;
   int nlocal[3];
+  int fcol = 1;
   dim3 nblk, ntpb;
   wall_t * wallt = NULL;
   kernel_info_t limits;
@@ -171,6 +172,8 @@ __host__ int pth_force_driver(pth_t * pth, colloids_info_t * cinfo,
   /* Get stress back! */
   pth_memcpy(pth, tdpMemcpyDeviceToHost);
 
+  rt_int_parameter(rt, "fe_force_on_colloid", &fcol);
+  if (!fcol) return 0;
 
   colloid_t * pc;
   colloid_link_t * p_link;

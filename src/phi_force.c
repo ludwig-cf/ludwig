@@ -75,9 +75,11 @@ static __host__ int phi_force_wallx(cs_t * cs, wall_t * wall, fe_t * fe, double 
 __host__ int phi_force_calculation(pe_t * pe, cs_t * cs, lees_edw_t * le,
 				   wall_t * wall,
 				   pth_t * pth, fe_t * fe, map_t * map,
-				   field_t * phi, hydro_t * hydro) {
+				   field_t * phi, hydro_t * hydro, colloids_info_t * cinfo, rt_t * rt) {
 
   int is_pm;
+  int ncolloids;
+  int fcol;
   int nplanes = 0;
 
   if (pth == NULL) return 0;
@@ -85,6 +87,8 @@ __host__ int phi_force_calculation(pe_t * pe, cs_t * cs, lees_edw_t * le,
   if (pth->method == PTH_METHOD_NO_FORCE) return 0;
 
   wall_is_pm(wall, &is_pm);
+  colloids_info_ntotal(cinfo, &ncolloids);
+  rt_int_parameter(rt, "fe_force_on_colloid", &fcol);
 
   if (le) nplanes = lees_edw_nplane_total(le);
 
@@ -98,6 +102,7 @@ __host__ int phi_force_calculation(pe_t * pe, cs_t * cs, lees_edw_t * le,
   else {
     switch (pth->method) {
     case PTH_METHOD_DIVERGENCE:
+      pe_fatal(pe, "phi_force.c with divergence method\n");
       pth_stress_compute(pth, fe);
       if (wall_present(wall) || is_pm) {
 	pth_force_fluid_wall_driver(pth, hydro, map, wall);
@@ -107,12 +112,13 @@ __host__ int phi_force_calculation(pe_t * pe, cs_t * cs, lees_edw_t * le,
       }
       break;
     case PTH_METHOD_GRADMU:
-      if (wall_present(wall) || is_pm) {
-	phi_grad_mu_solid(cs, phi, fe, hydro, map);
+      if (wall_present(wall) || is_pm || ncolloids > 0) {
+	phi_grad_mu_solid(cs, phi, fe, hydro, map, cinfo); 
 	phi_grad_mu_external(cs, phi, hydro);
       }
       else {
-	/* Fluid only  */
+	pe_fatal(pe, "Warning, you should have specified no colloid there, to be removed\n");
+	/* Fluid only */
 	phi_grad_mu_fluid(cs, phi, fe, hydro);
 	phi_grad_mu_external(cs, phi, hydro);
       }

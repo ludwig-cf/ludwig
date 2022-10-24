@@ -20,10 +20,12 @@
 #include "hydro.h"
 #include "phi_force_stress.h"
 #include "wall.h"
+#include "colloids.h"
+#include "runtime.h"
 
 __host__ int phi_force_calculation(pe_t * , cs_t * cs, lees_edw_t * le,
                                    wall_t * wall,
 				   pth_t * pth, fe_t * fe, map_t * map,
-				   field_t * phi, hydro_t * hydro);
+				   field_t * phi, hydro_t * hydro, colloids_info_t * cinfo, rt_t * rt);
 
 #endif

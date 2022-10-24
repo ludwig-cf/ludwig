@@ -797,7 +797,9 @@ void ludwig_run(const char * inputfile) {
 	/* Force in electrokinetic models is computed above */
       }
       else {
-	if (1) {
+	int p;
+	rt_int_parameter(ludwig->rt, "fd_force_divergence", &p);
+	if (p == 0) { /* We use phi grad mu method */
 
 	  /* LC-droplet requires partial body force input and momentum
            * correction. This correction, via hydro_correct_momentum(),
@@ -823,7 +825,7 @@ void ludwig_run(const char * inputfile) {
           phi_force_calculation(ludwig->pe, ludwig->cs, ludwig->le,
 				ludwig->wall,
                                 ludwig->pth, ludwig->fe, ludwig->map,
-                                ludwig->phi, ludwig->hydro);
+                                ludwig->phi, ludwig->hydro, ludwig->collinfo, ludwig->rt);
 
 	  /* OFT TODO: maybe add temperature_force_calculation later*/
 
@@ -835,9 +837,9 @@ void ludwig_run(const char * inputfile) {
 	  }
 
 	}
-	else {
+	else { /* We use divergence of the stress method */
 	  pth_force_colloid(ludwig->pth, ludwig->fe, ludwig->collinfo,
-			    ludwig->hydro, ludwig->map, ludwig->wall);
+			    ludwig->hydro, ludwig->map, ludwig->wall, ludwig->rt);
 	}
       }
         
@@ -1334,11 +1336,14 @@ static int ludwig_report_momentum(ludwig_t * ludwig) {
   int n;
   int ncolloid;
   int is_pm;
+  int rank;
 
   double g[3];         /* Fluid momentum (total) */
   double gc[3];        /* Colloid momentum (total) */
   double gwall[3];     /* Wall momentum (for accounting purposes only) */
   double gtotal[3];
+
+  FILE * fp;
 
   MPI_Comm comm;
   pe_t * pe = NULL;
@@ -1368,10 +1373,19 @@ static int ludwig_report_momentum(ludwig_t * ludwig) {
     gtotal[n] = g[n] + gc[n] + gwall[n];
   }
 
+  MPI_Comm_rank(comm, &rank);
+
+  if (rank == 0) {
+    fp = fopen("Momentum.txt", "a");
+    fprintf(fp, "%14.7e,%14.7e,%14.7e,%14.7e,%14.7e,%14.7e,%14.7e,%14.7e,%14.7e,%14.7e,%14.7e,%14.7e\n", gtotal[X], gtotal[Y], gtotal[Z], g[X], g[Y], g[Z], gc[X], gc[Y], gc[Z],gwall[X],gwall[Y],gwall[Z]);
+    fclose(fp);
+  }
+
   pe_info(pe, "\n");
   pe_info(pe, "Momentum - x y z\n");
   pe_info(pe, "[total   ] %14.7e %14.7e %14.7e\n", gtotal[X], gtotal[Y], gtotal[Z]);
   pe_info(pe, "[fluid   ] %14.7e %14.7e %14.7e\n", g[X], g[Y], g[Z]);
+
   if (ncolloid > 0) {
     pe_info(pe, "[colloids] %14.7e %14.7e %14.7e\n", gc[X], gc[Y], gc[Z]);
   }
