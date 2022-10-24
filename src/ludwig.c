@@ -1355,6 +1355,7 @@ int free_energy_init_rt(ludwig_t * ludwig) {
 
       /* The following are supported */
       switch (method) {
+      case FE_FORCE_METHOD_NO_FORCE:
       case FE_FORCE_METHOD_STRESS_DIVERGENCE:
       case FE_FORCE_METHOD_PHI_GRADMU:
       case FE_FORCE_METHOD_PHI_GRADMU_CORRECTION:
