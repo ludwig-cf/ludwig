@@ -119,10 +119,12 @@ __host__ int phi_force_calculation(pe_t * pe, cs_t * cs, lees_edw_t * le,
       }
       break;
     case FE_FORCE_METHOD_PHI_GRADMU_CORRECTION:
-      phi_grad_mu_correction(cs, phi, fe, hydro, map, 0);
+      /* The "1" here indicates it's always a correction, but an option
+       * could be added to switch it off. */
+      phi_grad_mu_correction(cs, phi, fe, hydro, map, 1);
       break;
     case FE_FORCE_METHOD_RELAXATION_SYMM:
-      assert(0); /* HAS THIS EVER BEEN TESTED? */
+      assert(0); /* NOT TESTED */
       pth_stress_compute(pth, fe);
       break;
     default:
