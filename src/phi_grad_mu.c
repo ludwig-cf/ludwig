@@ -607,7 +607,7 @@ __global__ void phi_grad_mu_correction_kernel(kernel_ctxt_t * ktx,
 
       double force[3]      = {0};
       double phi[NVECTOR]  = {0};
-      double mu[NVECTOR+1] = {0};
+      double mu[NVECTOR+1] = {0};  /* allow ternary with extra chemical pot. */
 
       field_scalar_array(field, index0, phi);
       fe->func->mu(fe, index0, mu);
