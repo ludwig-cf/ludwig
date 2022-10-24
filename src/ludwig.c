@@ -31,6 +31,7 @@
 #include "leesedwards_rt.h"
 #include "control.h"
 #include "util.h"
+#include "util_bits.h"
 
 #include "model_le.h"
 #include "bbl.h"
@@ -2024,9 +2025,13 @@ int free_energy_init_rt(ludwig_t * ludwig) {
     /* f_vare_t function */
     /* If permittivities really not the same number... */
 
-    pe_info(pe, "Poisson solver:           %15s\n",
-	    (e1 == e2) ? "uniform" : "heterogeneous");
-    if (e1 != e2) ludwig->epsilon = (f_vare_t) fe_es_var_epsilon;
+    if (util_double_same(e1, e2)) {
+      pe_info(pe, "Poisson solver:           %15s\n", "uniform");
+    }
+    else {
+      pe_info(pe, "Poisson solver:           %15s\n", "heterogeneous");
+      ludwig->epsilon = (f_vare_t) fe_es_var_epsilon;
+    }
 
     /* Force */
 
