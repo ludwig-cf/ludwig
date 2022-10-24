@@ -1864,18 +1864,35 @@ int free_energy_init_rt(ludwig_t * ludwig) {
   else if(strcmp(description, "fe_electro") == 0) {
 
     fe_electro_t * fe = NULL;
+    fe_force_method_enum_t method = fe_force_method_default();
+    int psi_method = PSI_FORCE_NONE;
+
 
     nk = 2;    /* Number of charge densities always 2 for now */
+    nhalo = 2; /* Default to stress divergence (see force). */
 
     /* Single fluid electrokinetic free energy */
 
-    /* Default method is divergence of stress tensor */
-    p = 1;
-    nhalo = 2;
-    rt_int_parameter(rt, "fd_force_divergence", &p);
+    /* Force */
 
-    if (p == 0) nhalo = 1;
-    if (p == 1) nhalo = 2;
+    {
+      fe_force_method_rt_messages(rt, RT_INFO);
+      fe_force_method_rt(rt, RT_FATAL, &method);
+
+      /* The following are supported */
+      switch (method) {
+      case FE_FORCE_METHOD_PHI_GRADMU_CORRECTION:
+	nhalo = 1;
+	psi_method = PSI_FORCE_GRADMU;
+	break;
+      case FE_FORCE_METHOD_STRESS_DIVERGENCE:
+	nhalo = 2;
+	psi_method = PSI_FORCE_DIVERGENCE;
+	break;
+      default:
+	pe_fatal(pe, "electrokinetic: force_method not available\n");
+      }
+    }
 
     cs_nhalo_set(cs, nhalo);
     coords_init_rt(pe, rt, cs);
@@ -1892,11 +1909,10 @@ int free_energy_init_rt(ludwig_t * ludwig) {
 
     psi_create(pe, cs, nk, &ludwig->psi);
     psi_rt_init_param(pe, rt, ludwig->psi);
+    psi_force_method_set(ludwig->psi, psi_method);
 
-    pe_info(pe, "Force calculation:          %s\n",
-	    (p == 0) ? "psi grad mu method" : "Divergence method");
-    if (p == 0) psi_force_method_set(ludwig->psi, PSI_FORCE_GRADMU);
-    if (p == 1) psi_force_method_set(ludwig->psi, PSI_FORCE_DIVERGENCE);
+    pe_info(pe, "Force calculation:      %s\n",
+	    fe_force_method_to_string(method));
 
     /* Create FE objects and set function pointers */
     fe_electro_create(pe, ludwig->psi, &fe);
@@ -1965,14 +1981,6 @@ int free_energy_init_rt(ludwig_t * ludwig) {
 
     fe_electro_create(pe, ludwig->psi, &fe_elec);
 
-    /* Default method is divergence of stress tensor */
-    p = 1;
-    rt_int_parameter(rt, "fd_force_divergence", &p);
-    pe_info(pe, "Force calculation:          %s\n",
-	    (p == 0) ? "psi grad mu method" : "Divergence method");
-    if (p == 0) psi_force_method_set(ludwig->psi, PSI_FORCE_GRADMU);
-    if (p == 1) psi_force_method_set(ludwig->psi, PSI_FORCE_DIVERGENCE);
-
     /* Coupling part */
 
     pe_info(pe, "\n");
@@ -2019,6 +2027,32 @@ int free_energy_init_rt(ludwig_t * ludwig) {
     pe_info(pe, "Poisson solver:           %15s\n",
 	    (e1 == e2) ? "uniform" : "heterogeneous");
     if (e1 != e2) ludwig->epsilon = (f_vare_t) fe_es_var_epsilon;
+
+    /* Force */
+
+    {
+      fe_force_method_enum_t method = fe_force_method_default();
+
+      fe_force_method_rt_messages(rt, RT_INFO);
+      fe_force_method_rt(rt, RT_FATAL, &method);
+
+      /* The following are supported */
+      switch (method) {
+      case FE_FORCE_METHOD_PHI_GRADMU_CORRECTION:
+	psi_force_method_set(ludwig->psi, PSI_FORCE_GRADMU);
+	break;
+      case FE_FORCE_METHOD_STRESS_DIVERGENCE:
+	psi_force_method_set(ludwig->psi, PSI_FORCE_DIVERGENCE);
+	break;
+      default:
+	pe_fatal(pe, "electrosymmetric: force_method not available\n");
+      }
+
+      pe_info(pe, "\n");
+      pe_info(pe, "Coupled free energy\n");
+      pe_info(pe, "Force calculation:      %s\n",
+	      fe_force_method_to_string(method));
+    }
 
     ludwig->fe_symm = fe_symm;
     ludwig->fe = (fe_t *) fes;

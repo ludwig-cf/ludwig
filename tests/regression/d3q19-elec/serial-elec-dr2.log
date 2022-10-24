@@ -54,7 +54,6 @@ Absolute tolerance:         1.0000000e-07
 Max. no. of iterations:              2000
 I/O decomposition:          1 1 1
 I/O format:                 BINARY
-Force calculation:          psi grad mu method
 
 Coupling part
 -------------
@@ -65,6 +64,9 @@ Second Bjerrum length:      1.9894567e+00
 Solvation dmu species 0:    0.0000000e+00
 Solvation dmu species 1:    0.0000000e+00
 Poisson solver:             heterogeneous
+
+Coupled free energy
+Force calculation:      phi_gradmu_correction
 
 System properties
 ----------------
@@ -82,7 +84,7 @@ Lattice Boltzmann distributions
 Model:            d3q19  
 SIMD vector len:  1
 Number of sets:   1
-Halo type:        full
+Halo type:        lb_halo_target (full halo)
 Input format:     binary
 Output format:    binary
 I/O grid:         1 1 1
