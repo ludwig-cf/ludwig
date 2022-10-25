@@ -283,7 +283,7 @@ __host__ int phi_grad_mu_correction(cs_t * cs, field_t * phi, fe_t * fe,
  *
  *  phi_grad_mu_fluid_kernel
  *
- *  Accumulate -phi grad mu to local force at poistion (i).
+ *  Accumulate -phi grad mu to local force at position (i).
  *
  *  f_x(i) = -0.5*phi(i)*(mu(i+1) - mu(i-1)) etc
  *
