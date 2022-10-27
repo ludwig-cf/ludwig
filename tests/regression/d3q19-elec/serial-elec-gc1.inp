@@ -26,7 +26,7 @@ N_cycles 1000
 size 64_4_4
 grid 1_1_2
 periodicity 1_1_1
-reduced_halo yes
+lb_halo_scheme     lb_halo_openmp_reduced
 
 ##############################################################################
 #
@@ -48,9 +48,9 @@ temperature 3.33333333333333333e-5
 ###############################################################################
 
 free_energy fe_electro
+fe_force_method           phi_gradmu_correction
 
 fd_advection_scheme_order 3
-fd_force_divergence 0
 
 ###############################################################################
 #

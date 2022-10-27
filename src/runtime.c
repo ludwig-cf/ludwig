@@ -779,7 +779,7 @@ int rt_key_present(rt_t * rt, const char * key) {
 
   assert(rt);
 
-  for ( ; pair; pair = pair->next) {
+  for (pair = rt->keylist; pair; pair = pair->next) {
     if (strncmp(key, pair->key, NKEY_LENGTH) == 0) {
       present = 1;
       break;

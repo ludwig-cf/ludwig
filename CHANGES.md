@@ -1,6 +1,15 @@
 
 ### Changes
 
+version 0.19.0
+
+- Input associated with the choice of force arising from the free energy
+  sector has been made more general. Specifically, input keys
+  `fd_force_divergence` and `fe_use_stress_relaxation` are replaced.
+  - For scalar order parameters an extra version of the "phi_gradmu"
+    approach is avaialble" "phi_gradmu_correction".
+  - See https://ludwig.epcc.ed.ac.uk/inputs/force.html for details.
+
 version 0.18.0
 
 - Added a lubrication correction offset to allow an option for keeping

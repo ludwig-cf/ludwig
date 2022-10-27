@@ -59,7 +59,6 @@ ternary_initialisation    2d_tee
 
 hydrodynamics             yes
 fd_gradient_calculation   2d_ternary_solid
-fd_force_divergence       0
 
 ###############################################################################
 #

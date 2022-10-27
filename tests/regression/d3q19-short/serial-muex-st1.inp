@@ -41,6 +41,7 @@ ghost_modes off
 ###############################################################################
 
 free_energy symmetric
+fe_force_method      phi_gradmu
 
 A -0.00625
 B 0.00625
@@ -54,7 +55,6 @@ grad_mu              0.00001_0.00002_0.00003
 
 fd_gradient_calculation   3d_27pt_fluid
 fd_advection_scheme_order 1
-fd_force_divergence       0
 
 # External chemical potential requires grad_mu method at the moment
 

@@ -46,7 +46,7 @@
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *  Alan Gray (alang@epcc.ed.ac.uk) provided device implementations.
  *
- *  (c) 2010-2021 The University of Edinburgh
+ *  (c) 2010-2022 The University of Edinburgh
  *
  *****************************************************************************/
 
@@ -95,7 +95,7 @@ __host__ int pth_force_colloid(pth_t * pth, fe_t * fe, colloids_info_t * cinfo,
 
   if (hydro == NULL && ncolloid == 0) return 0;
 
-  if (pth->method == PTH_METHOD_DIVERGENCE) {
+  if (pth->method == FE_FORCE_METHOD_STRESS_DIVERGENCE) {
     pth_stress_compute(pth, fe);
     pth_force_driver(pth, cinfo, hydro, map, wall, model);
   }
