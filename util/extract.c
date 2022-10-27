@@ -624,6 +624,7 @@ void read_meta_data_file(const char * filename, metadata_v1_t * meta) {
   assert(p);
   ifail = sscanf(tmp+ncharoffset, "%d", &meta->nio);
   assert(ifail == 1);
+  assert(0 < meta->nio && meta->nio < 1000);
   printf("Number of I/O groups: %d\n", meta->nio);
   /* I/O decomposition */
   p = fgets(tmp, FILENAME_MAX, fp_meta);
