@@ -276,6 +276,29 @@ int MPI_Comm_size(MPI_Comm comm, int * size) {
 
 /*****************************************************************************
  *
+ *  MPI_Comm_compare
+ *
+ *  This is not quite right at the moment, as Cartesian communicators
+ *  and non-Cartesian communictors need to treated on an equal basis.
+ *  Specifically MPI_Comm_split() does note return a unique value.
+ *
+ *****************************************************************************/
+
+int MPI_Comm_compare(MPI_Comm comm1, MPI_Comm comm2, int * result) {
+
+  assert(result);
+
+  *result = MPI_UNEQUAL;
+  if (mpi_is_valid_comm(comm1) && mpi_is_valid_comm(comm2)) {
+    *result = MPI_CONGRUENT;
+    if (comm1 == comm2) *result = MPI_IDENT;
+  }
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
  *  MPI_Abort
  *
  *****************************************************************************/
@@ -631,7 +654,9 @@ int MPI_Comm_split(MPI_Comm comm, int colour, int key, MPI_Comm * newcomm) {
   assert(mpi_is_valid_comm(comm));
   assert(newcomm);
 
-  *newcomm = comm;
+  /* Allow that a split Cartesian communicator is different */
+  /* See MPI_Comm_compare() */
+  *newcomm = MPI_COMM_WORLD;
 
   return MPI_SUCCESS;
 }

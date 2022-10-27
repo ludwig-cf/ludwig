@@ -102,6 +102,13 @@ enum collective_operations {MPI_MAX,
 
 enum reserved_communicators{MPI_COMM_WORLD, MPI_COMM_SELF};
 
+/* results of group comparisons */
+
+#define MPI_UNEQUAL          0
+#define MPI_SIMILAR          1
+#define MPI_CONGRUENT        2
+#define MPI_IDENT            3
+
 /* NULL handles */
 
 #define MPI_GROUP_NULL      -1
@@ -150,6 +157,7 @@ int MPI_Bcast(void * buffer, int count, MPI_Datatype datatype, int root,
 int MPI_Comm_rank(MPI_Comm comm, int * rank);
 int MPI_Comm_size(MPI_Comm comm, int * size);
 int MPI_Comm_group(MPI_Comm comm, MPI_Group * grp);
+int MPI_Comm_compare(MPI_Comm comm1, MPI_Comm comm2, int * result);
 
 int MPI_Send(void * buf, int count, MPI_Datatype type, int dest, int tag,
 	     MPI_Comm comm);
