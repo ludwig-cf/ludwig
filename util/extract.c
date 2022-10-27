@@ -71,7 +71,7 @@ typedef enum vtk_enum {VTK_SCALARS, VTK_VECTORS} vtk_enum_t;
 typedef struct metadata_v1_s metadata_v1_t;
 
 struct metadata_v1_s {
-  char stub[BUFSIZ/2];         /* file stub */
+  const char * stub;           /* file stub name */
   int nrbyte;                  /* byte per record */
   int is_bigendean;            /* flag */
   int npe;                     /* comm sz */
@@ -144,6 +144,8 @@ void le_unroll(metadata_v1_t * meta, double *);
 
 int lc_transform_q5(int * nlocal, double * datasection);
 int lc_compute_scalar_ops(double q[3][3], double qs[5]);
+
+const char * file_stub_valid(const char * input);
 
 /*****************************************************************************
  *
@@ -327,12 +329,7 @@ int extract_driver(const char * filename, metadata_v1_t * meta, int version) {
 
     /* Write a single file with the final section */
 
-    {
-      char tmp[FILENAME_MAX/2] = {0}; /* Avoid potential buffer overflow */
-      strncpy(tmp, meta->stub,
-	      FILENAME_MAX/2 - strnlen(meta->stub, FILENAME_MAX/2-1) - 1);
-      snprintf(io_data, sizeof(io_data), "%s-%8.8d", tmp, ntime);
-    }
+    snprintf(io_data, sizeof(io_data), "%s-%8.8d", meta->stub, ntime);
 
     if (output_vtk_ == 1 || output_vtk_ == 2) {
 
@@ -530,6 +527,7 @@ void read_meta_data_file(const char * filename, metadata_v1_t * meta) {
   int nrbyte;
   int ifail;
   char tmp[FILENAME_MAX];
+  char buf[BUFSIZ] = {0};
   char * p;
   FILE * fp_meta;
   const int ncharoffset = 33;
@@ -545,12 +543,18 @@ void read_meta_data_file(const char * filename, metadata_v1_t * meta) {
 
   p = fgets(tmp, FILENAME_MAX, fp_meta);
   assert(p);
-  ifail = sscanf(tmp+ncharoffset, "%s\n", meta->stub);
+  ifail = sscanf(tmp+ncharoffset, "%s\n", buf);
   if (ifail != 1) {
     printf("Meta data stub not read correctly\n");
     exit(-1);
   }
+  meta->stub = file_stub_valid(buf);
+  if (meta->stub == NULL) {
+    printf("Meta data stub not recognised: %s\n", buf);
+  }
   printf("Read stub: %s\n", meta->stub);
+
+  /* Data description */
   p = fgets(tmp, FILENAME_MAX, fp_meta);
   assert(p);
 
@@ -1392,4 +1396,41 @@ int lc_compute_scalar_ops(double q[3][3], double qs[5]) {
   }
 
   return ifail;
+}
+
+/*****************************************************************************
+ *
+ *  file_stub_valid
+ *
+ *  Return a recognised name, or NULL if the input is not recognised.
+ *
+ *****************************************************************************/
+
+const char * file_stub_valid(const char * input) {
+
+  const char * output = NULL;
+
+  if (strcmp(input, "phi") == 0) {
+    output = "phi"; /* scalar order parameter(s) */
+  }
+  else if (strcmp(input, "p") == 0) {
+    output = "p";   /* vector order parameter */
+  }
+  else if (strcmp(input, "q") == 0) {
+    output = "q";   /* tensor order parameter */
+  }
+  else if (strcmp(input, "psi") == 0) {
+    output = "psi"; /* charge */
+  }
+  else if (strcmp(input, "dist") == 0) {
+    output = "dist";  /* distributions */
+  }
+  else if (strcmp(input, "rho") == 0) {
+    output = "rho";   /* desnity */
+  }
+  else if (strcmp(input, "vel") == 0) {
+    output = "vel";
+  }
+
+  return output;
 }
