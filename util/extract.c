@@ -623,12 +623,17 @@ void read_meta_data_file(const char * filename, metadata_v1_t * meta) {
   p = fgets(tmp, FILENAME_MAX, fp_meta);
   assert(p);
 
-  meta->nio = atoi(tmp + ncharoffset);
-  if (1 > meta->nio || meta->nio > 999) {
-    printf("Invalid number of i/o groups %d\n", meta->nio);
-    exit(-1);
+  {
+    int nio = atoi(tmp + ncharoffset);
+    if (1 > nio || nio > 999) {
+      printf("Invalid number of i/o groups %d\n", meta->nio);
+      exit(-1);
+    }
+    else {
+      meta->nio = nio;
+    }
+    printf("Number of I/O groups: %d\n", meta->nio);
   }
-  printf("Number of I/O groups: %d\n", meta->nio);
 
   /* I/O decomposition */
   p = fgets(tmp, FILENAME_MAX, fp_meta);
