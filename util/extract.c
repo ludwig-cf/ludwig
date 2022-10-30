@@ -146,6 +146,8 @@ int lc_transform_q5(int * nlocal, double * datasection);
 int lc_compute_scalar_ops(double q[3][3], double qs[5]);
 
 const char * file_stub_valid(const char * input);
+int file_get_file_nfile(const char * filename);
+int file_get_file_index(const char * filename);
 
 /*****************************************************************************
  *
@@ -214,9 +216,9 @@ int main(int argc, char ** argv) {
     else {
       char buf[FILENAME_MAX] = {0};
       char * filename = buf;
-      size_t len = strlen(stub);
-      strcat(filename, stub);
-      strncat(filename + len, argv[optind] + len, FILENAME_MAX-len-1);
+      int ifile = file_get_file_index(argv[optind]);
+      int nfile = file_get_file_nfile(argv[optind]);
+      sprintf(filename, "%s.%3.3d-%3.3d.meta", stub, ifile, nfile);
       read_meta_data_file(filename, &metadata);
     }
   }
@@ -1457,4 +1459,34 @@ const char * file_stub_valid(const char * input) {
   }
 
   return output;
+}
+
+int file_get_file_nfile(const char * filename) {
+
+  int nfile = 0;
+  char dash = '-';
+  const char * str1 = strchr(filename, dash);
+
+  if (str1 != NULL) {
+    char buf[BUFSIZ] = {0};
+    strncpy(buf, str1 + 1, 3);
+    nfile = atoi(buf);
+  }
+
+  return nfile;
+}
+
+int file_get_file_index(const char * filename) {
+
+  int ifile = 0;
+  char dot = '.';
+  const char * str1 = strchr(filename, dot); /* E.g., phi.001-001.meta */
+
+  if (str1 != NULL) {
+    char buf[BUFSIZ] = {0};
+    strncpy(buf, str1 + 1, 3);
+    ifile = atoi(buf);
+  }
+  
+  return ifile;
 }
