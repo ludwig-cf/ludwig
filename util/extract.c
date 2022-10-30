@@ -204,8 +204,22 @@ int main(int argc, char ** argv) {
     exit(EXIT_FAILURE);
   }
 
-  /* PENDING KEVIN uncontrolled path name */
-  read_meta_data_file(argv[optind], &metadata);
+  {
+    /* Must have a recognised metadata quantity */
+    const char * stub = file_stub_valid(argv[optind]);
+    if (stub == NULL) {
+      printf("Unrecognised metadata file %s\n", argv[optind]);
+      exit(-1);
+    }
+    else {
+      char buf[FILENAME_MAX] = {0};
+      char * filename = buf;
+      size_t len = strlen(stub);
+      strcat(filename, stub);
+      strncat(filename + len, argv[optind] + len, FILENAME_MAX-len-1);
+      read_meta_data_file(filename, &metadata);
+    }
+  }
 
   extract_driver(argv[optind+1], &metadata, version);
 
@@ -1420,26 +1434,26 @@ const char * file_stub_valid(const char * input) {
 
   const char * output = NULL;
 
-  if (strcmp(input, "phi") == 0) {
+  if (strncmp(input, "phi", 3) == 0) {
     output = "phi"; /* scalar order parameter(s) */
   }
-  else if (strcmp(input, "p") == 0) {
-    output = "p";   /* vector order parameter */
-  }
-  else if (strcmp(input, "q") == 0) {
-    output = "q";   /* tensor order parameter */
-  }
-  else if (strcmp(input, "psi") == 0) {
+  else if (strncmp(input, "psi", 3) == 0) {
     output = "psi"; /* charge */
   }
-  else if (strcmp(input, "dist") == 0) {
+  else if (strncmp(input, "dist", 4) == 0) {
     output = "dist";  /* distributions */
   }
-  else if (strcmp(input, "rho") == 0) {
-    output = "rho";   /* desnity */
+  else if (strncmp(input, "rho", 3) == 0) {
+    output = "rho";   /* density */
   }
-  else if (strcmp(input, "vel") == 0) {
-    output = "vel";
+  else if (strncmp(input, "vel", 3) == 0) {
+    output = "vel";   /* velocity field */
+  }
+  else if (strncmp(input, "p", 1) == 0) {
+    output = "p";   /* vector order parameter */
+  }
+  else if (strncmp(input, "q", 1) == 0) {
+    output = "q";   /* tensor order parameter */
   }
 
   return output;
