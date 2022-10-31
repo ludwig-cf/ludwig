@@ -138,7 +138,7 @@ int test_io_element_from_json(void) {
     /* Null JSON object is a fail */
     cJSON * json = NULL;
     io_element_t element = io_element_null();
-    int ifail = io_element_from_json(json, &element);
+    ifail = io_element_from_json(json, &element);
     assert(ifail == -1);
   }
 

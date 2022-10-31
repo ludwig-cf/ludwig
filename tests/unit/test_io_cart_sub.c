@@ -107,7 +107,6 @@ int test_io_cart_sub_create(pe_t * pe) {
       assert(myresult == MPI_IDENT);
 
       MPI_Comm_compare(comm, iosub.comm, &myresult);
-      printf("cart io %d %d result %d\n", comm, iosub.comm, myresult);
       assert(myresult == MPI_CONGRUENT);
     }
 
