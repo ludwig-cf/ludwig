@@ -15,7 +15,7 @@
 #define LUDWIG_IO_ELEMENT_H
 
 #include "mpi.h"
-#include "util_cjson.h"
+#include "util_cJSON.h"
 
 /* Utility */
 
