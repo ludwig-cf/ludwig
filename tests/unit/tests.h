@@ -55,6 +55,7 @@ int test_hydro_suite(void);
 int test_io_aggr_buf_suite(void);
 int test_io_aggr_mpio_suite(void);
 int test_io_cart_sub_suite(void);
+int test_io_element_suite(void);
 int test_io_info_args_suite(void);
 int test_io_info_args_rt_suite(void);
 int test_io_options_suite(void);
