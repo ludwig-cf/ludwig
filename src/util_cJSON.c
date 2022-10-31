@@ -1828,7 +1828,7 @@ static cJSON_bool print_object(const cJSON * const item, printbuffer * const out
 CJSON_PUBLIC(int) cJSON_GetArraySize(const cJSON *array)
 {
     cJSON *child = NULL;
-    size_t size = 0;
+    int size = 0;
 
     if (array == NULL)
     {
@@ -1843,9 +1843,7 @@ CJSON_PUBLIC(int) cJSON_GetArraySize(const cJSON *array)
         child = child->next;
     }
 
-    /* FIXME: Can overflow here. Cannot be fixed without breaking the API */
-
-    return (int)size;
+    return size;
 }
 
 static cJSON* get_array_item(const cJSON *array, size_t index)
