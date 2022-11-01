@@ -83,23 +83,25 @@ io_element_t io_element_null(void) {
  *
  *****************************************************************************/
 
-int io_element_to_json(const io_element_t * element, cJSON * json) {
+int io_element_to_json(const io_element_t * element, cJSON ** json) {
 
   int ifail = 0;
 
   assert(element);
 
-  if (json != NULL) {
+  if (json == NULL || *json != NULL) {
     ifail = -1;
   }
   else {
-    json = cJSON_CreateObject();
+    cJSON * myjson = cJSON_CreateObject();
 
-    cJSON_AddStringToObject(json, "MPI_Datatype", "MPI_DOUBLE TBC");
-    cJSON_AddNumberToObject(json, "Datasize (bytes)", element->datasize);
-    cJSON_AddNumberToObject(json, "Count", element->count);
-    cJSON_AddStringToObject(json, "Endianness",
+    cJSON_AddStringToObject(myjson, "MPI_Datatype",
+			    util_io_mpi_datatype_to_string(element->datatype));
+    cJSON_AddNumberToObject(myjson, "Size (bytes)", element->datasize);
+    cJSON_AddNumberToObject(myjson, "Count", element->count);
+    cJSON_AddStringToObject(myjson, "Endianness",
 			    io_endian_to_string(element->endian));
+    *json = myjson;
   }
 
   return ifail;
@@ -115,29 +117,32 @@ int io_element_from_json(const cJSON * json, io_element_t * element) {
 
   int ifail = 0;
 
-  assert(element);
-
-  if (json == NULL) {
+  if (json == NULL || element == NULL) {
     ifail = -1;
   }
   else {
     cJSON * datatype = cJSON_GetObjectItem(json, "MPI_Datatype");
-    cJSON * datasize = cJSON_GetObjectItem(json, "Datasize (bytes)");
+    cJSON * datasize = cJSON_GetObjectItem(json, "Size (bytes)");
     cJSON * count = cJSON_GetObjectItem(json, "Count");
     cJSON * endianness = cJSON_GetObjectItem(json, "Endianness");
 
     if (datatype) {
-      /* Another string to be converted to MPI_Datatype */
-      element->datatype = MPI_DOUBLE; /* TBC */
+      char * str = cJSON_GetStringValue(datatype);
+      element->datatype = util_io_string_to_mpi_datatype(str);
     }
+
     if (datasize) element->datasize = cJSON_GetNumberValue(datasize);
     if (count)    element->count    = cJSON_GetNumberValue(count);
 
     if (endianness) {
-      char * str = {0};
-      str = cJSON_GetStringValue(endianness);
+      char * str = cJSON_GetStringValue(endianness);
       element->endian = io_endian_from_string(str);
     }
+    /* Indicate what failed, if anything */
+    if (!datatype)   ifail += 1;
+    if (!datasize)   ifail += 2;
+    if (!count)      ifail += 4;
+    if (!endianness) ifail += 8;
   }
 
   return ifail;

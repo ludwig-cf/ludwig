@@ -142,6 +142,26 @@ int test_io_element_from_json(void) {
     assert(ifail == -1);
   }
 
+  {
+    /* Typical example */
+    io_element_t element = io_element_null();
+    const char * jstr = "{\"MPI_Datatype\": \"MPI_INT\","
+                         "\"Size (bytes)\": 4,"
+                         "\"Count\": 1,"
+                         "\"Endianness\": \"BIG_ENDIAN\"}";
+
+    cJSON * json = cJSON_Parse(jstr);
+    assert(json);
+    ifail = io_element_from_json(json, &element);
+    assert(ifail == 0);
+    assert(element.datatype == MPI_INT);
+    assert(element.datasize == 4);
+    assert(element.count    == 1);
+    assert(element.endian   == IO_ENDIAN_BIG_ENDIAN);
+
+    cJSON_Delete(json);
+  }
+
   return ifail;
 }
 
@@ -156,12 +176,49 @@ int test_io_element_to_json(void) {
   int ifail = 0;
 
   {
+    /* A typical example */
     io_element_t element = {.datatype = MPI_DOUBLE,
-                            .datasize = 1,
+	                    .datasize = sizeof(double),
                             .count    = 3,
                             .endian   = IO_ENDIAN_LITTLE_ENDIAN};
     cJSON * json = NULL;
-    ifail = io_element_to_json(&element, json);
+    ifail = io_element_to_json(&element, &json);
+    assert(ifail == 0);
+
+    {
+      /* Datatype */
+      MPI_Datatype dt = MPI_DATATYPE_NULL;
+      cJSON * jsondt = cJSON_GetObjectItemCaseSensitive(json, "MPI_Datatype");
+      assert(jsondt);
+      dt = util_io_string_to_mpi_datatype(cJSON_GetStringValue(jsondt));
+      assert(dt == MPI_DOUBLE);
+    }
+    {
+      /* Datasize */
+      size_t sz = 0;
+      cJSON * jsonsz = cJSON_GetObjectItemCaseSensitive(json, "Size (bytes)");
+      assert(jsonsz);
+      assert(cJSON_IsNumber(jsonsz));
+      sz = cJSON_GetNumberValue(jsonsz);
+      assert(sz == sizeof(double));
+    }
+    {
+      /* Count */
+      int count = -1;
+      cJSON * jsonct = cJSON_GetObjectItemCaseSensitive(json, "Count");
+      assert(jsonct);
+      assert(cJSON_IsNumber(jsonct));
+      count = cJSON_GetNumberValue(jsonct);
+      assert(count == 3);
+    }
+    {
+      io_endian_enum_t endian = IO_ENDIAN_UNKNOWN;
+      cJSON * jsonend = cJSON_GetObjectItemCaseSensitive(json, "Endianness");
+      assert(jsonend);
+      assert(cJSON_IsString(jsonend));
+      endian = io_endian_from_string(cJSON_GetStringValue(jsonend));
+      assert(endian == IO_ENDIAN_LITTLE_ENDIAN);
+    }
 
     cJSON_Delete(json);
   }

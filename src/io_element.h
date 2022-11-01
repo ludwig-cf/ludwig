@@ -15,6 +15,7 @@
 #define LUDWIG_IO_ELEMENT_H
 
 #include "mpi.h"
+#include "util_io.h"
 #include "util_cJSON.h"
 
 /* Utility */
@@ -28,6 +29,7 @@ typedef enum {
 io_endian_enum_t io_endian_from_string(const char * str);
 const char * io_endian_to_string(io_endian_enum_t endian);
 
+/* I/O element */
 
 typedef struct io_element_s io_element_t;
 
@@ -40,6 +42,6 @@ struct io_element_s {
 
 io_element_t io_element_null(void);
 int io_element_from_json(const cJSON * json, io_element_t * element);
-int io_element_to_json(const io_element_t * element, cJSON * json);
+int io_element_to_json(const io_element_t * element, cJSON ** json);
 
 #endif
