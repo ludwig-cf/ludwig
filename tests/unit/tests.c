@@ -117,6 +117,7 @@ __host__ int tests_create() {
   test_timer_suite();
   test_util_suite();
   test_util_fopen_suite();
+  test_util_io_suite();
   test_util_sum_suite();
   test_visc_arrhenius_suite();
   test_wall_suite();
