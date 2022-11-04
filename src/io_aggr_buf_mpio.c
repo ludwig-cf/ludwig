@@ -1,6 +1,6 @@
 /*****************************************************************************
  *
- *  io_aggr_buf_mpio.c
+ *  io_impl_mpio.c
  *
  *  Read/write aggregated data buffers using MPI/IO.
  *
@@ -27,7 +27,7 @@
  *****************************************************************************/
 
 int io_aggr_mpio_write(pe_t * pe, cs_t * cs, const char * filename,
-		       const io_aggr_buf_t * buf) {
+		       const io_aggregator_t * buf) {
   assert(pe);
   assert(cs);
   assert(filename);
@@ -90,7 +90,7 @@ int io_aggr_mpio_write(pe_t * pe, cs_t * cs, const char * filename,
  *****************************************************************************/
 
 int io_aggr_mpio_read(pe_t * pe, cs_t * cs, const char * filename,
-		      io_aggr_buf_t * buf) {
+		      io_aggregator_t * buf) {
   assert(pe);
   assert(cs);
   assert(filename);

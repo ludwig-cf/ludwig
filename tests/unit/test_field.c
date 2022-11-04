@@ -640,22 +640,22 @@ int test_field_io_aggr_pack(pe_t * pe) {
     cs_nlocal(cs, nlocal);
     {
       cs_limits_t lim = {1, nlocal[X], 1, nlocal[Y], 1, nlocal[Z]};
-      io_aggr_buf_t buf = {0};
+      io_aggregator_t buf = {0};
 
-      io_aggr_buf_create(field->binary, lim, &buf);
+      io_aggregator_create(field->binary, lim, &buf);
 
       util_field_data_check_set(field);
-      field_io_aggr_pack(field, buf);
+      field_io_aggr_pack(field, &buf);
 
       /* Are the values in the buffer correct? */
       /* Clear existing values and unpack. */
 
       memset(field->data, 0, sizeof(double)*field->nsites*field->nf);
 
-      field_io_aggr_unpack(field, buf);
+      field_io_aggr_unpack(field, &buf);
       util_field_data_check(field);
 
-      io_aggr_buf_free(&buf);
+      io_aggregator_free(&buf);
     }
   }
 

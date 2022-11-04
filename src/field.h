@@ -113,7 +113,7 @@ int field_read_buf(field_t * field, int index, const char * buf);
 int field_read_buf_ascii(field_t * field, int index, const char * buf);
 int field_write_buf(field_t * field, int index, char * buf);
 int field_write_buf_ascii(field_t * field, int index, char * buf);
-int field_io_aggr_pack(field_t * field, io_aggr_buf_t aggr);
-int field_io_aggr_unpack(field_t * field, io_aggr_buf_t aggr);
+int field_io_aggr_pack(field_t * field, io_aggregator_t * aggr);
+int field_io_aggr_unpack(field_t * field, const io_aggregator_t * aggr);
 
 #endif

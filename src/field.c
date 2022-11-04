@@ -1146,10 +1146,11 @@ int field_read_buf_ascii(field_t * field, int index, const char * buf) {
  *
  *****************************************************************************/
 
-int field_io_aggr_pack(field_t * field, io_aggr_buf_t aggr) {
+int field_io_aggr_pack(field_t * field, io_aggregator_t * aggr) {
 
   assert(field);
-  assert(aggr.buf);
+  assert(aggr);
+  assert(aggr->buf);
 
   #pragma omp parallel
   {
@@ -1158,16 +1159,16 @@ int field_io_aggr_pack(field_t * field, io_aggr_buf_t aggr) {
     assert(iasc ^ ibin); /* one or other */
 
     #pragma omp for
-    for (int ib = 0; ib < cs_limits_size(aggr.lim); ib++) {
-      int ic = cs_limits_ic(aggr.lim, ib);
-      int jc = cs_limits_jc(aggr.lim, ib);
-      int kc = cs_limits_kc(aggr.lim, ib);
+    for (int ib = 0; ib < cs_limits_size(aggr->lim); ib++) {
+      int ic = cs_limits_ic(aggr->lim, ib);
+      int jc = cs_limits_jc(aggr->lim, ib);
+      int kc = cs_limits_kc(aggr->lim, ib);
 
       /* Read/write data for (ic,jc,kc) */
       int index = cs_index(field->cs, ic, jc, kc);
-      int offset = ib*aggr.szelement;
-      if (iasc) field_write_buf_ascii(field, index, aggr.buf + offset);
-      if (ibin) field_write_buf(field, index, aggr.buf + offset);
+      int offset = ib*aggr->szelement;
+      if (iasc) field_write_buf_ascii(field, index, aggr->buf + offset);
+      if (ibin) field_write_buf(field, index, aggr->buf + offset);
     }
   }
 
@@ -1182,10 +1183,11 @@ int field_io_aggr_pack(field_t * field, io_aggr_buf_t aggr) {
  *
  *****************************************************************************/
 
-int field_io_aggr_unpack(field_t * field, io_aggr_buf_t aggr) {
+int field_io_aggr_unpack(field_t * field, const io_aggregator_t * aggr) {
 
   assert(field);
-  assert(aggr.buf);
+  assert(aggr);
+  assert(aggr->buf);
 
   #pragma omp parallel
   {
@@ -1194,16 +1196,16 @@ int field_io_aggr_unpack(field_t * field, io_aggr_buf_t aggr) {
     assert(iasc ^ ibin); /* one or other */
 
     #pragma omp for
-    for (int ib = 0; ib < cs_limits_size(aggr.lim); ib++) {
-      int ic = cs_limits_ic(aggr.lim, ib);
-      int jc = cs_limits_jc(aggr.lim, ib);
-      int kc = cs_limits_kc(aggr.lim, ib);
+    for (int ib = 0; ib < cs_limits_size(aggr->lim); ib++) {
+      int ic = cs_limits_ic(aggr->lim, ib);
+      int jc = cs_limits_jc(aggr->lim, ib);
+      int kc = cs_limits_kc(aggr->lim, ib);
 
       /* Read/write data for (ic,jc,kc) */
       int index = cs_index(field->cs, ic, jc, kc);
-      int offset = ib*aggr.szelement;
-      if (iasc) field_read_buf_ascii(field, index, aggr.buf + offset);
-      if (ibin) field_read_buf(field, index, aggr.buf + offset);
+      int offset = ib*aggr->szelement;
+      if (iasc) field_read_buf_ascii(field, index, aggr->buf + offset);
+      if (ibin) field_read_buf(field, index, aggr->buf + offset);
     }
   }
 

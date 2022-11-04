@@ -18,9 +18,9 @@
 #include "cs_limits.h"
 #include "io_element.h"
 
-typedef struct io_aggr_buf_s io_aggr_buf_t;
+typedef struct io_aggregator_s io_aggregator_t;
 
-struct io_aggr_buf_s {
+struct io_aggregator_s {
   io_element_t element;     /* Element information */
   cs_limits_t lim;          /* 3-d limits of buffer */
   size_t szelement;         /* bytes per record */
@@ -28,7 +28,8 @@ struct io_aggr_buf_s {
   char * buf;               /* Storage space */
 };
 
-int io_aggr_buf_create(io_element_t el, cs_limits_t lim, io_aggr_buf_t * aggr);
-int io_aggr_buf_free(io_aggr_buf_t * aggr);
+int io_aggregator_create(io_element_t el, cs_limits_t lim,
+			 io_aggregator_t * aggr);
+int io_aggregator_free(io_aggregator_t * aggr);
 
 #endif

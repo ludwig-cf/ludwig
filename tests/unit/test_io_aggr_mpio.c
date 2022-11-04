@@ -28,10 +28,10 @@ int test_io_aggr_mpio_write(pe_t * pe, cs_t * cs, io_element_t el,
 int test_io_aggr_mpio_read(pe_t * pe, cs_t * cs, io_element_t el,
 			   const char * filename);
 
-int test_io_aggr_buf_pack_asc(cs_t * cs, io_aggr_buf_t buf);
-int test_io_aggr_buf_pack_bin(cs_t * cs, io_aggr_buf_t buf);
-int test_io_aggr_buf_unpack_asc(cs_t * cs, io_aggr_buf_t buf);
-int test_io_aggr_buf_unpack_bin(cs_t * cs, io_aggr_buf_t buf);
+int test_io_aggr_buf_pack_asc(cs_t * cs, io_aggregator_t * buf);
+int test_io_aggr_buf_pack_bin(cs_t * cs, io_aggregator_t * buf);
+int test_io_aggr_buf_unpack_asc(cs_t * cs, const io_aggregator_t * buf);
+int test_io_aggr_buf_unpack_bin(cs_t * cs, const io_aggregator_t * buf);
 
 /*****************************************************************************
  *
@@ -113,16 +113,16 @@ int test_io_aggr_mpio_write(pe_t * pe, cs_t * cs, io_element_t element,
 
   {
     cs_limits_t lim = {1, nlocal[X], 1, nlocal[Y], 1, nlocal[Z]};
-    io_aggr_buf_t buf = {0};
+    io_aggregator_t buf = {0};
 
-    io_aggr_buf_create(element, lim, &buf);
+    io_aggregator_create(element, lim, &buf);
 
-    if (element.datatype == MPI_CHAR) test_io_aggr_buf_pack_asc(cs, buf);
-    if (element.datatype == MPI_INT64_T) test_io_aggr_buf_pack_bin(cs, buf);
+    if (element.datatype == MPI_CHAR) test_io_aggr_buf_pack_asc(cs, &buf);
+    if (element.datatype == MPI_INT64_T) test_io_aggr_buf_pack_bin(cs, &buf);
 
     io_aggr_mpio_write(pe, cs, filename, &buf);
 
-    io_aggr_buf_free(&buf);
+    io_aggregator_free(&buf);
   }
 
   return 0;
@@ -147,16 +147,16 @@ int test_io_aggr_mpio_read(pe_t * pe, cs_t * cs, io_element_t element,
   {
     /* Read and check */
     cs_limits_t lim = {1, nlocal[X], 1, nlocal[Y], 1, nlocal[Z]};
-    io_aggr_buf_t buf = {0};
+    io_aggregator_t buf = {0};
 
-    io_aggr_buf_create(element, lim ,&buf);
+    io_aggregator_create(element, lim ,&buf);
 
     io_aggr_mpio_read(pe, cs, filename, &buf);
 
-    if (element.datatype == MPI_CHAR) test_io_aggr_buf_unpack_asc(cs, buf);
-    if (element.datatype == MPI_INT64_T) test_io_aggr_buf_unpack_bin(cs, buf);
+    if (element.datatype == MPI_CHAR) test_io_aggr_buf_unpack_asc(cs, &buf);
+    if (element.datatype == MPI_INT64_T) test_io_aggr_buf_unpack_bin(cs, &buf);
 
-    io_aggr_buf_free(&buf);
+    io_aggregator_free(&buf);
   }
 
   return 0;
@@ -196,7 +196,7 @@ int64_t test_unique_value(cs_t * cs, int ic, int jc, int kc) {
  *
  *****************************************************************************/
 
-int test_io_aggr_buf_pack_asc(cs_t * cs, io_aggr_buf_t buf) {
+int test_io_aggr_buf_pack_asc(cs_t * cs, io_aggregator_t * buf) {
 
   int ifail = 0;
 
@@ -206,7 +206,7 @@ int test_io_aggr_buf_pack_asc(cs_t * cs, io_aggr_buf_t buf) {
   int offset[3] = {0};
 
   assert(cs);
-  assert(buf.buf);
+  assert(buf);
 
   cs_ntotal(cs, ntotal);
   cs_nlocal(cs, nlocal);
@@ -224,9 +224,9 @@ int test_io_aggr_buf_pack_asc(cs_t * cs, io_aggr_buf_t buf) {
 	  char cline[BUFSIZ] = {0};
 	  size_t nc = 0; /* int returned but need to compare to size_t */
 	  nc = sprintf(cline, "%4d %4d %4d %12" PRId64 "\n", ix, iy, iz, ival);
-	  assert(nc == buf.szelement);
-	  if (nc != buf.szelement) ifail += 1;
-	  memcpy(buf.buf + ib*buf.szelement, cline, buf.szelement);
+	  assert(nc == buf->szelement);
+	  if (nc != buf->szelement) ifail += 1;
+	  memcpy(buf->buf + ib*buf->szelement, cline, buf->szelement);
 	}
 	ib += 1;
       }
@@ -244,7 +244,7 @@ int test_io_aggr_buf_pack_asc(cs_t * cs, io_aggr_buf_t buf) {
  *
  *****************************************************************************/
 
-int test_io_aggr_buf_unpack_asc(cs_t * cs, io_aggr_buf_t buf) {
+int test_io_aggr_buf_unpack_asc(cs_t * cs, const io_aggregator_t * buf) {
 
   int ifail = 0;
 
@@ -254,7 +254,7 @@ int test_io_aggr_buf_unpack_asc(cs_t * cs, io_aggr_buf_t buf) {
   int offset[3] = {0};
 
   assert(cs);
-  assert(buf.buf);
+  assert(buf->buf);
 
   cs_ntotal(cs, ntotal);
   cs_nlocal(cs, nlocal);
@@ -274,7 +274,7 @@ int test_io_aggr_buf_unpack_asc(cs_t * cs, io_aggr_buf_t buf) {
 	  int izread = -1;
 	  int64_t ivalread = -1;
 	  /* Note int64_t requires portable format */
-	  int nc = sscanf(buf.buf + ib*buf.szelement, "%4d %4d %4d %" SCNd64,
+	  int nc = sscanf(buf->buf + ib*buf->szelement, "%4d %4d %4d %" SCNd64,
 			  &ixread, &iyread, &izread, &ivalread);
 
 	  assert(nc == 4);
@@ -305,10 +305,10 @@ int test_io_aggr_buf_unpack_asc(cs_t * cs, io_aggr_buf_t buf) {
  *
  *****************************************************************************/
 
-int test_io_aggr_buf_pack_bin(cs_t * cs, io_aggr_buf_t buf) {
+int test_io_aggr_buf_pack_bin(cs_t * cs, io_aggregator_t * buf) {
 
   assert(cs);
-  assert(buf.buf);
+  assert(buf->buf);
 
   int ib = 0;
   int nlocal[3] = {0};
@@ -319,7 +319,7 @@ int test_io_aggr_buf_pack_bin(cs_t * cs, io_aggr_buf_t buf) {
     for (int jc = 1; jc <= nlocal[Y]; jc++) {
       for (int kc = 1; kc <= nlocal[Z]; kc++) {
 	int64_t ival = test_unique_value(cs, ic, jc, kc);
-	memcpy(buf.buf + ib*sizeof(int64_t), &ival, sizeof(int64_t));
+	memcpy(buf->buf + ib*sizeof(int64_t), &ival, sizeof(int64_t));
 	ib += 1;
       }
     }
@@ -336,7 +336,7 @@ int test_io_aggr_buf_pack_bin(cs_t * cs, io_aggr_buf_t buf) {
  *
  *****************************************************************************/
 
-int test_io_aggr_buf_unpack_bin(cs_t * cs, io_aggr_buf_t buf) {
+int test_io_aggr_buf_unpack_bin(cs_t * cs, const io_aggregator_t * buf) {
 
   int ifail = 0;
 
@@ -344,7 +344,7 @@ int test_io_aggr_buf_unpack_bin(cs_t * cs, io_aggr_buf_t buf) {
   int nlocal[3] = {0};
 
   assert(cs);
-  assert(buf.buf);
+  assert(buf->buf);
 
   cs_nlocal(cs, nlocal);
 
@@ -353,7 +353,7 @@ int test_io_aggr_buf_unpack_bin(cs_t * cs, io_aggr_buf_t buf) {
       for (int kc = 1; kc <= nlocal[Z]; kc++) {
 	int64_t ival = test_unique_value(cs, ic, jc, kc);
 	int64_t iread = -1;
-	memcpy(&iread, buf.buf + ib*sizeof(int64_t), sizeof(int64_t));
+	memcpy(&iread, buf->buf + ib*sizeof(int64_t), sizeof(int64_t));
 	assert(ival == iread);
 	if (ival != iread) ifail += 1;
 	ib += 1;

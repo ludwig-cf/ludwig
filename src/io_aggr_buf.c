@@ -20,15 +20,16 @@
 
 /*****************************************************************************
  *
- *  io_aggr_buf_create
+ *  io_aggregator_create
  *
  *****************************************************************************/
 
-int io_aggr_buf_create(io_element_t e, cs_limits_t lim, io_aggr_buf_t * aggr) {
+int io_aggregator_create(io_element_t e, cs_limits_t lim,
+			 io_aggregator_t * aggr) {
 
   assert(aggr);
 
-  *aggr = (io_aggr_buf_t) {0};
+  *aggr = (io_aggregator_t) {0};
 
   aggr->element = e;
   aggr->szelement = e.count*e.datasize;
@@ -45,18 +46,18 @@ int io_aggr_buf_create(io_element_t e, cs_limits_t lim, io_aggr_buf_t * aggr) {
 
 /*****************************************************************************
  *
- * io_aggr_buf_free
+ * io_aggregator_free
  *
  *****************************************************************************/
 
-int io_aggr_buf_free(io_aggr_buf_t * aggr) {
+int io_aggregator_free(io_aggregator_t * aggr) {
 
   assert(aggr);
   assert(aggr->buf);
 
   free(aggr->buf);
 
-  *aggr = (io_aggr_buf_t) {0};
+  *aggr = (io_aggregator_t) {0};
 
   return 0;
 }

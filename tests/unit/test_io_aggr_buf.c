@@ -1,6 +1,6 @@
 /*****************************************************************************
  *
- *  test_io_aggr_buf.c
+ *  test_io_aggregator.c
  *
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
@@ -17,7 +17,7 @@
 #include "pe.h"
 #include "io_aggr_buf.h"
 
-int test_io_aggr_buf_create(void);
+int test_io_aggregator_create(void);
 
 /*****************************************************************************
  *
@@ -33,11 +33,11 @@ int test_io_aggr_buf_suite(void) {
 
   /* If the size of the struct has changed, tests need to be changed... */
 
-  assert(sizeof(io_aggr_buf_t) == 72);
+  assert(sizeof(io_aggregator_t) == 72);
 
-  test_io_aggr_buf_create();
+  test_io_aggregator_create();
 
-  pe_info(pe, "PASS     ./unit/testr_io_aggr_buf\n");
+  pe_info(pe, "%-9s %s\n", "PASS", __FILE__);
   pe_free(pe);
 
   return 0;
@@ -45,11 +45,11 @@ int test_io_aggr_buf_suite(void) {
 
 /*****************************************************************************
  *
- *  test_io_aggr_buf_create
+ *  test_io_aggregator_create
  *
  *****************************************************************************/
 
-int test_io_aggr_buf_create(void) {
+int test_io_aggregator_create(void) {
 
   int ifail = 0;
 
@@ -60,9 +60,9 @@ int test_io_aggr_buf_create(void) {
                             .count    = 3,
                             .endian   = io_endianness()};
     cs_limits_t lim = {-2, 18, 1, 8, 1, 4};
-    io_aggr_buf_t aggr = {0};
+    io_aggregator_t aggr = {0};
 
-    io_aggr_buf_create(element, lim, &aggr);
+    io_aggregator_create(element, lim, &aggr);
 
     assert(aggr.element.datatype == MPI_DOUBLE);
     assert(aggr.element.datasize == sizeof(double));
@@ -74,7 +74,7 @@ int test_io_aggr_buf_create(void) {
     assert(aggr.lim.imin  == lim.imin); /* Assume sufficient */
     assert(aggr.buf);
 
-    io_aggr_buf_free(&aggr);
+    io_aggregator_free(&aggr);
     assert(aggr.szelement == 0);
     assert(aggr.szbuf == 0);
     assert(aggr.lim.imin == 0);

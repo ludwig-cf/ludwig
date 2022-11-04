@@ -19,7 +19,7 @@
 #include "io_aggr_buf.h"
 
 int io_aggr_mpio_write(pe_t * pe, cs_t * cs, const char * filename,
-		       const io_aggr_buf_t * buf);
+		       const io_aggregator_t * buf);
 int io_aggr_mpio_read(pe_t * pe, cs_t * cs, const char * filename,
-		      io_aggr_buf_t * buf);
+		      io_aggregator_t * buf);
 #endif
