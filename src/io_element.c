@@ -8,6 +8,8 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
+ *  (c) 2022 The University of Edinburgh
+ *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *
  *****************************************************************************/
@@ -16,6 +18,24 @@
 #include <string.h>
 
 #include "io_element.h"
+
+/*****************************************************************************
+ *
+ *  io_endianness
+ *
+ *****************************************************************************/
+
+io_endian_enum_t io_endianness(void) {
+
+  io_endian_enum_t endian = IO_ENDIAN_LITTLE_ENDIAN; /* usually */
+
+  {
+    const int p = 1;
+    if (*(char *) &p == 0) endian = IO_ENDIAN_BIG_ENDIAN;
+  }
+
+  return endian;
+}
 
 /*****************************************************************************
  *

@@ -26,6 +26,7 @@ typedef enum {
   IO_ENDIAN_BIG_ENDIAN
 } io_endian_enum_t;
 
+io_endian_enum_t io_endianness(void);
 io_endian_enum_t io_endian_from_string(const char * str);
 const char * io_endian_to_string(io_endian_enum_t endian);
 
