@@ -3020,21 +3020,18 @@ CJSON_PUBLIC(cJSON_bool) cJSON_Compare(const cJSON * const a, const cJSON * cons
             return true;
 
         case cJSON_Number:
-            if (compare_double(a->valuedouble, b->valuedouble))
-            {
-                return true;
+            if (compare_double(a->valuedouble, b->valuedouble)) {
+	      return true;
             }
             return false;
 
         case cJSON_String:
         case cJSON_Raw:
-            if ((a->valuestring == NULL) || (b->valuestring == NULL))
-            {
-                return false;
+            if ((a->valuestring == NULL) || (b->valuestring == NULL)) {
+	      return false;
             }
-            if (strcmp(a->valuestring, b->valuestring) == 0)
-            {
-                return true;
+            if (strcmp(a->valuestring, b->valuestring) == 0) {
+	      return true;
             }
 
             return false;
@@ -3044,15 +3041,13 @@ CJSON_PUBLIC(cJSON_bool) cJSON_Compare(const cJSON * const a, const cJSON * cons
             cJSON *a_element = a->child;
             cJSON *b_element = b->child;
 
-            for (; (a_element != NULL) && (b_element != NULL);)
-            {
-                if (!cJSON_Compare(a_element, b_element, case_sensitive))
-                {
-                    return false;
-                }
+            for (; (a_element != NULL) && (b_element != NULL);) {
+	      if (!cJSON_Compare(a_element, b_element, case_sensitive)) {
+		return false;
+	      }
 
-                a_element = a_element->next;
-                b_element = b_element->next;
+	      a_element = a_element->next;
+	      b_element = b_element->next;
             }
 
             /* one of the arrays is longer than the other */
@@ -3071,14 +3066,12 @@ CJSON_PUBLIC(cJSON_bool) cJSON_Compare(const cJSON * const a, const cJSON * cons
             {
                 /* TODO This has O(n^2) runtime, which is horrible! */
                 b_element = get_object_item(b, a_element->string, case_sensitive);
-                if (b_element == NULL)
-                {
-                    return false;
+                if (b_element == NULL) {
+		  return false;
                 }
 
-                if (!cJSON_Compare(a_element, b_element, case_sensitive))
-                {
-                    return false;
+                if (!cJSON_Compare(a_element, b_element, case_sensitive)) {
+		  return false;
                 }
             }
 
@@ -3087,14 +3080,12 @@ CJSON_PUBLIC(cJSON_bool) cJSON_Compare(const cJSON * const a, const cJSON * cons
             cJSON_ArrayForEach(b_element, b)
             {
                 a_element = get_object_item(a, b_element->string, case_sensitive);
-                if (a_element == NULL)
-                {
-                    return false;
+                if (a_element == NULL) {
+		  return false;
                 }
 
-                if (!cJSON_Compare(b_element, a_element, case_sensitive))
-                {
-                    return false;
+                if (!cJSON_Compare(b_element, a_element, case_sensitive)) {
+		  return false;
                 }
             }
 

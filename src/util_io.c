@@ -77,6 +77,10 @@ MPI_Datatype util_io_string_to_mpi_datatype(const char * str) {
   else if (strcmp(str, "MPI_PACKED") == 0) {
     dt = MPI_PACKED;
   }
+  else {
+    /* Not strictly necessary, but include anyway... */
+    dt = MPI_DATATYPE_NULL;
+  }
 
   return dt;
 }
