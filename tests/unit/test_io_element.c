@@ -43,6 +43,7 @@ int test_io_element_suite(void) {
   test_io_element_from_json();
   test_io_element_to_json();
 
+  pe_info(pe, "%-9s %s\n", "PASS", __FILE__);
   pe_free(pe);
 
   return 0;
@@ -140,6 +141,7 @@ int test_io_element_from_json(void) {
     io_element_t element = io_element_null();
     ifail = io_element_from_json(json, &element);
     assert(ifail == -1);
+    assert(json == NULL); /* Nothing to release */
   }
 
   {

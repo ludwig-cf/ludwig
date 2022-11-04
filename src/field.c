@@ -100,11 +100,20 @@ __host__ int field_create(pe_t * pe, cs_t * cs, lees_edw_t * le,
   field_init(obj, opts->nhcomm, le);
   field_halo_create(obj, &obj->h);
 
-  /* I/O aggregator */
-  obj->aggr_asc.etype = MPI_CHAR;
-  obj->aggr_asc.esize = 23*sizeof(char);
-  obj->aggr_bin.etype = MPI_DOUBLE;
-  obj->aggr_bin.esize = obj->opts.ndata*sizeof(double);
+  /* I/O single record information */
+
+  {
+    io_element_t elasc = {.datatype = MPI_CHAR,
+			  .datasize = sizeof(char),
+			  .count    = 1 + 23*obj->opts.ndata,
+			  .endian   = io_endianness()};
+    io_element_t elbin = {.datatype = MPI_DOUBLE,
+			  .datasize = sizeof(double),
+			  .count    = obj->opts.ndata,
+			  .endian   = io_endianness()};
+    obj->ascii = elasc;
+    obj->binary = elbin;
+  }
 
   if (obj->opts.haloverbose) field_halo_info(obj);
 

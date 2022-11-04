@@ -32,7 +32,8 @@ int test_io_aggr_buf_suite(void) {
   pe_create(MPI_COMM_WORLD, PE_QUIET, &pe);
 
   /* If the size of the struct has changed, tests need to be changed... */
-  assert(sizeof(io_aggr_buf_t) == 48);
+
+  assert(sizeof(io_aggr_buf_t) == 72);
 
   test_io_aggr_buf_create();
 
@@ -54,14 +55,22 @@ int test_io_aggr_buf_create(void) {
 
   {
     /* Create and free. */
-    size_t lsz = 99;
+    io_element_t element = {.datatype = MPI_DOUBLE,
+			    .datasize = sizeof(double),
+                            .count    = 3,
+                            .endian   = io_endianness()};
     cs_limits_t lim = {-2, 18, 1, 8, 1, 4};
     io_aggr_buf_t aggr = {0};
 
-    io_aggr_buf_create(lsz, lim, &aggr);
+    io_aggr_buf_create(element, lim, &aggr);
 
-    assert(aggr.szelement == lsz);
-    assert(aggr.szbuf     == lsz*cs_limits_size(lim));
+    assert(aggr.element.datatype == MPI_DOUBLE);
+    assert(aggr.element.datasize == sizeof(double));
+    assert(aggr.element.count    == 3);
+    assert(aggr.element.endian   == io_endianness());
+
+    assert(aggr.szelement == element.datasize*element.count);
+    assert(aggr.szbuf     == aggr.szelement*cs_limits_size(lim));
     assert(aggr.lim.imin  == lim.imin); /* Assume sufficient */
     assert(aggr.buf);
 

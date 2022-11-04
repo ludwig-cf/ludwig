@@ -22,7 +22,7 @@
 
 #include "pe.h"
 #include "coords.h"
-#include "io_aggr.h"          /* I/O data aggregation */
+#include "io_element.h"
 #include "io_aggr_buf.h"      /* Aggregation buffer */
 #include "io_harness.h"       /* To be removed in favour of io_aggr_t */
 #include "leesedwards.h"
@@ -63,8 +63,8 @@ struct field_s {
   pe_t * pe;                    /* Parallel environment */
   cs_t * cs;                    /* Coordinate system */
   lees_edw_t * le;              /* Lees-Edwards */
-  io_aggr_t aggr_asc;           /* I/O aggregator information */
-  io_aggr_t aggr_bin;           /* Binary */
+  io_element_t ascii;           /* I/O record information (ascii) */
+  io_element_t binary;          /* Binary */
   io_info_t * info;             /* I/O Handler (to be removed) */
   halo_swap_t * halo;           /* Halo swap driver object */
   field_halo_t h;               /* Host halo */

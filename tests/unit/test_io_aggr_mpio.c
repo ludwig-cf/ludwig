@@ -21,12 +21,11 @@
 
 #include "pe.h"
 #include "coords.h"
-#include "io_aggr.h"
 #include "io_aggr_buf_mpio.h"
 
-int test_io_aggr_mpio_write(pe_t * pe, cs_t * cs, io_aggr_t aggr,
+int test_io_aggr_mpio_write(pe_t * pe, cs_t * cs, io_element_t el,
 			    const char * filename);
-int test_io_aggr_mpio_read(pe_t * pe, cs_t * cs, io_aggr_t aggr,
+int test_io_aggr_mpio_read(pe_t * pe, cs_t * cs, io_element_t el,
 			   const char * filename);
 
 int test_io_aggr_buf_pack_asc(cs_t * cs, io_aggr_buf_t buf);
@@ -59,11 +58,14 @@ int test_io_aggr_mpio_suite(void) {
 
   /* ASCII: write then read */
   {
-    io_aggr_t aggr = {.etype = MPI_CHAR, .esize = 28*sizeof(char)};
+    io_element_t element = {.datatype = MPI_CHAR,
+			    .datasize = sizeof(char),
+                            .count    = 28,
+                            .endian   = io_endianness()};
     const char * filename = "io-aggr-mpio-asc.dat";
 
-    test_io_aggr_mpio_write(pe, cs, aggr, filename);
-    test_io_aggr_mpio_read(pe, cs, aggr, filename);
+    test_io_aggr_mpio_write(pe, cs, element, filename);
+    test_io_aggr_mpio_read(pe, cs, element, filename);
 
     MPI_Barrier(MPI_COMM_WORLD);
     if (pe_mpi_rank(pe) == 0) remove(filename);
@@ -71,11 +73,14 @@ int test_io_aggr_mpio_suite(void) {
 
   /* Binary: write thne read */
   {
-    io_aggr_t aggr = {.etype = MPI_INT64_T, .esize = sizeof(int64_t)};
+    io_element_t element = {.datatype = MPI_INT64_T,
+                            .datasize = sizeof(int64_t),
+			    .count    = 1,
+			    .endian   = io_endianness()};
     const char * filename = "io-aggr-mpio-bin.dat";
 
-    test_io_aggr_mpio_write(pe, cs, aggr, filename);
-    test_io_aggr_mpio_read(pe, cs, aggr, filename);
+    test_io_aggr_mpio_write(pe, cs, element, filename);
+    test_io_aggr_mpio_read(pe, cs, element, filename);
 
     MPI_Barrier(MPI_COMM_WORLD);
     if (pe_mpi_rank(pe) == 0) remove(filename);
@@ -94,7 +99,7 @@ int test_io_aggr_mpio_suite(void) {
  *
  *****************************************************************************/
 
-int test_io_aggr_mpio_write(pe_t * pe, cs_t * cs, io_aggr_t aggr,
+int test_io_aggr_mpio_write(pe_t * pe, cs_t * cs, io_element_t element,
 			    const char * filename) {
 
   assert(pe);
@@ -110,10 +115,10 @@ int test_io_aggr_mpio_write(pe_t * pe, cs_t * cs, io_aggr_t aggr,
     cs_limits_t lim = {1, nlocal[X], 1, nlocal[Y], 1, nlocal[Z]};
     io_aggr_buf_t buf = {0};
 
-    io_aggr_buf_create(aggr.esize, lim, &buf);
+    io_aggr_buf_create(element, lim, &buf);
 
-    if (aggr.etype == MPI_CHAR) test_io_aggr_buf_pack_asc(cs, buf);
-    if (aggr.etype == MPI_INT64_T) test_io_aggr_buf_pack_bin(cs, buf);
+    if (element.datatype == MPI_CHAR) test_io_aggr_buf_pack_asc(cs, buf);
+    if (element.datatype == MPI_INT64_T) test_io_aggr_buf_pack_bin(cs, buf);
 
     io_aggr_mpio_write(pe, cs, filename, &buf);
 
@@ -129,7 +134,7 @@ int test_io_aggr_mpio_write(pe_t * pe, cs_t * cs, io_aggr_t aggr,
  *
  *****************************************************************************/
 
-int test_io_aggr_mpio_read(pe_t * pe, cs_t * cs, io_aggr_t aggr,
+int test_io_aggr_mpio_read(pe_t * pe, cs_t * cs, io_element_t element,
 			   const char * filename) {
 
   assert(pe);
@@ -144,12 +149,12 @@ int test_io_aggr_mpio_read(pe_t * pe, cs_t * cs, io_aggr_t aggr,
     cs_limits_t lim = {1, nlocal[X], 1, nlocal[Y], 1, nlocal[Z]};
     io_aggr_buf_t buf = {0};
 
-    io_aggr_buf_create(aggr.esize, lim ,&buf);
+    io_aggr_buf_create(element, lim ,&buf);
 
     io_aggr_mpio_read(pe, cs, filename, &buf);
 
-    if (aggr.etype == MPI_CHAR) test_io_aggr_buf_unpack_asc(cs, buf);
-    if (aggr.etype == MPI_INT64_T) test_io_aggr_buf_unpack_bin(cs, buf);
+    if (element.datatype == MPI_CHAR) test_io_aggr_buf_unpack_asc(cs, buf);
+    if (element.datatype == MPI_INT64_T) test_io_aggr_buf_unpack_bin(cs, buf);
 
     io_aggr_buf_free(&buf);
   }

@@ -1,6 +1,6 @@
 /*****************************************************************************
  *
- *  io_aggr_buf.c
+ *  io_aggregator.c
  *
  *  Temporary buffer for lattice quantity i/o. A minimal container.
  *
@@ -24,18 +24,20 @@
  *
  *****************************************************************************/
 
-int io_aggr_buf_create(size_t lsz, cs_limits_t lim, io_aggr_buf_t * aggr) {
+int io_aggr_buf_create(io_element_t e, cs_limits_t lim, io_aggr_buf_t * aggr) {
 
   assert(aggr);
-  assert(cs_limits_size(lim) > 0); /* No zero-size buffers */
 
   *aggr = (io_aggr_buf_t) {0};
 
-  aggr->szelement = lsz;
-  aggr->szbuf = lsz*sizeof(char)*cs_limits_size(lim);
+  aggr->element = e;
+  aggr->szelement = e.count*e.datasize;
+  aggr->szbuf = aggr->szelement*cs_limits_size(lim);
   aggr->lim = lim;
 
   aggr->buf = (char *) malloc(aggr->szbuf*sizeof(char));
+
+  assert(aggr->szbuf > 0); /* No zero size buffers */
   assert(aggr->buf);
 
   return 0;

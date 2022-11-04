@@ -1,6 +1,6 @@
 /*****************************************************************************
  *
- *  io_aggr_buf.h
+ *  io_aggregator.h
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -11,22 +11,24 @@
  *
  *****************************************************************************/
 
-#ifndef LUDWIG_IO_AGGR_BUF_H
-#define LUDWIG_IO_AGGR_BUF_H
+#ifndef LUDWIG_IO_AGGREGATOR_H
+#define LUDWIG_IO_AGGREGATOR_H
 
 #include <stdlib.h>
 #include "cs_limits.h"
+#include "io_element.h"
 
 typedef struct io_aggr_buf_s io_aggr_buf_t;
 
 struct io_aggr_buf_s {
-  size_t szelement;    /* element sz in bytes */
-  size_t szbuf;        /* total sz */
-  cs_limits_t lim;     /* 3-d limits of buffer */
-  char * buf;
+  io_element_t element;     /* Element information */
+  cs_limits_t lim;          /* 3-d limits of buffer */
+  size_t szelement;         /* bytes per record */
+  size_t szbuf;             /* total size of buffer (bytes) */
+  char * buf;               /* Storage space */
 };
 
-int io_aggr_buf_create(size_t lsz, cs_limits_t lim, io_aggr_buf_t * aggr);
+int io_aggr_buf_create(io_element_t el, cs_limits_t lim, io_aggr_buf_t * aggr);
 int io_aggr_buf_free(io_aggr_buf_t * aggr);
 
 #endif
