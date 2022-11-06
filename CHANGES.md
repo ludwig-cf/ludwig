@@ -1,6 +1,12 @@
 
 ### Changes
 
+version 0.19.0
+- The extract_colloids.c utility has been updated so that it takes
+  only one comand line argument.
+- LTGM.com analysis has been retired as the service is closing. The
+  two outstanding recommendations are covered by CodeQL notes.
+
 version 0.18.0
 
 - Added a lubrication correction offset to allow an option for keeping
