@@ -21,7 +21,7 @@
  *    
  *  1st argument is the file name stub (in front of the last dot),
  *  2nd argument is the number of parallel files (as set with XXX_io_grid),
- *  3rd argyment is the (single) ouput file name.
+ *  3rd argument is the (single) ouput file name.
  *
  *  If you have a set of files, try (eg. here with 4 parallel output files),
  *
@@ -32,16 +32,19 @@
  *  Edinburgh Parallel Computing Centre
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
- *  (c) 2012-2019 The University of Edinburgh
+ *  (c) 2012-2022 The University of Edinburgh
  *
  *****************************************************************************/
 
 #include <assert.h>
+#include <ctype.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <math.h>
 
 #include "colloid.h"
+#include "util_fopen.h"
 
 #define NX 32
 #define NY 32
@@ -60,6 +63,7 @@ static const char * formate4end_ = "%14.6e, %14.6e, %14.6e, %14.6e\n";
 void colloids_to_csv_header(FILE * fp);
 void colloids_to_csv_header_with_m(FILE * fp);
 void colloids_to_csv_header_with_v(FILE * fp);
+int util_io_posix_filename(const char * input, char * buf, size_t bufsz);
 
 int main(int argc, char ** argv) {
 
@@ -78,7 +82,7 @@ int main(int argc, char ** argv) {
   FILE * fp_csv = NULL;
   char filename[FILENAME_MAX];
 
-  if (argc < 3) {
+  if (argc < 4) {
     printf("Usage: %s <colloid_datafile_stub> <no_of_files> <csv_filename>\n",
 	   argv[0]);
     exit(0);
@@ -87,10 +91,22 @@ int main(int argc, char ** argv) {
   nfile = atoi(argv[2]);
   printf("Number of files: %d\n", nfile);
 
-  /* Open csv file */
-  fp_csv = fopen(argv[3], "w");
+  /* Open csv file (check input first) */
+  {
+    char csv_filename[BUFSIZ] = {0};
+    int ireturn = util_io_posix_filename(argv[3], csv_filename, BUFSIZ);
+    if (ireturn == 0) {
+      fp_csv = util_fopen(csv_filename, "w");
+    }
+    else {
+      printf("Please use output filename with allowed characters\n");
+      printf("[A-Z a-z 0-9 - _ .] only\n");
+      exit(-1);
+    }
+  }
+
   if (fp_csv == NULL) {
-    printf("fopen(%s) failed\n", argv[2]);
+    printf("fopen(%s) failed\n", argv[3]);
     exit(0);
   }
 
@@ -104,7 +120,7 @@ int main(int argc, char ** argv) {
     snprintf(filename, sizeof(filename), "%s.%3.3d-%3.3d", argv[1], nfile, nf);
     printf("Filename: %s\n", filename);
 
-    fp_colloids = fopen(filename, "r");
+    fp_colloids = util_fopen(filename, "r");
 
 
     if (fp_colloids == NULL) {
@@ -303,4 +319,57 @@ void colloids_to_csv_header_with_v(FILE * fp) {
   }
 
   return;
+}
+
+/*****************************************************************************
+ *
+ *  util_io_posix_filename
+ *
+ *  A posix "fully portable filename" (not a path) has allowed characters:
+ *   A-Z, a-z, 0-9, ".", "-", and "_"
+ *  The first character must not be a hyphen.
+ *
+ *  This returns a positive value if a replacement is required,
+ *  a negative value if the supplied buffer is too small,
+ *  or zero on a succcessful copy with no replacements.
+ *
+ *  The output buffer contains the input with any duff characters replaced
+ *  by "_".
+ *
+ *****************************************************************************/
+
+int util_io_posix_filename(const char * input, char * buf, size_t bufsz) {
+
+  int ifail = 0;
+  size_t len = strnlen(input, FILENAME_MAX-1);
+  const char replacement_character = '_';
+
+  if (bufsz <= len) {
+    /* would be truncated */
+    ifail = -1;
+  }
+  else {
+    /* Copy, but replace anything that's not posix */
+    for (size_t i = 0; i < len; i++) {
+      char c = input[i];
+      if (i == 0 && c == '-') {
+	/* Replace */
+	buf[i] = replacement_character;
+	ifail += 1;
+      }
+      else if (isalnum(c) || c == '_' || c == '-' || c == '.') {
+	/* ok */
+	buf[i] = input[i];
+      }
+      else {
+	/* Replace */
+	buf[i] = replacement_character;
+	ifail += 1;
+      }
+    }
+    /* Terminate */
+    buf[len] = '\0';
+  }
+
+  return ifail;
 }
