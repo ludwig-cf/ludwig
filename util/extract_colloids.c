@@ -15,29 +15,26 @@
  *
  *  $ make extract_colloids
  *
- *  $ ./a.out <colloid file name stub> <nfile> <csv file name>
+ *  $ ./extract_colloids <colloid file name>
  *
- *  where the
- *    
- *  1st argument is the file name stub (in front of the last dot),
- *  2nd argument is the number of parallel files (as set with XXX_io_grid),
- *  3rd argument is the (single) ouput file name.
+ *  The file name must be of the form "config.cds00020000.002-001";
+ *  if there are more than one file (from parallel i/o), any
+ *  individual file will do, e.g., the first one.
  *
- *  If you have a set of files, try (eg. here with 4 parallel output files),
+ *  The corresponding output will be a single file with combined information:
+ *  colloids-00020000.csv for the example above.
  *
- *  $ for f in config.cds*004-001; do g=`echo $f | sed s/.004-001//`; \
- *  echo $g; ~/ludwig/trunk/util/extract_colloids $g 4 $g.csv; done
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *  (c) 2012-2022 The University of Edinburgh
+ *
+ *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *
  *****************************************************************************/
 
 #include <assert.h>
-#include <ctype.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -63,7 +60,8 @@ static const char * formate4end_ = "%14.6e, %14.6e, %14.6e, %14.6e\n";
 void colloids_to_csv_header(FILE * fp);
 void colloids_to_csv_header_with_m(FILE * fp);
 void colloids_to_csv_header_with_v(FILE * fp);
-int util_io_posix_filename(const char * input, char * buf, size_t bufsz);
+int file_name_to_ntime(const char * filename);
+int file_name_to_nfile(const char * filename);
 
 int main(int argc, char ** argv) {
 
@@ -71,6 +69,7 @@ int main(int argc, char ** argv) {
   int nf, nfile;
   int ncolloid;
   int nread;
+  int ntime = 0;
   int ncount = 0;
   
   double normv;
@@ -80,30 +79,24 @@ int main(int argc, char ** argv) {
 
   FILE * fp_colloids = NULL;
   FILE * fp_csv = NULL;
-  char filename[FILENAME_MAX];
+  char csv_filename[BUFSIZ] = {0};
 
-  if (argc < 4) {
-    printf("Usage: %s <colloid_datafile_stub> <no_of_files> <csv_filename>\n",
-	   argv[0]);
+  if (argc < 2) {
+    printf("Usage: %s <colloid_datafile>\n", argv[0]);
     exit(0);
   }
 
-  nfile = atoi(argv[2]);
+  /* Check the file name. */
+  ntime = file_name_to_ntime(argv[1]);
+  nfile = file_name_to_nfile(argv[1]);
+  printf("Time step:       %d\n", ntime);
   printf("Number of files: %d\n", nfile);
 
-  /* Open csv file (check input first) */
-  {
-    char csv_filename[BUFSIZ] = {0};
-    int ireturn = util_io_posix_filename(argv[3], csv_filename, BUFSIZ);
-    if (ireturn == 0) {
-      fp_csv = util_fopen(csv_filename, "w");
-    }
-    else {
-      printf("Please use output filename with allowed characters\n");
-      printf("[A-Z a-z 0-9 - _ .] only\n");
-      exit(-1);
-    }
-  }
+  /* Open csv file (output) */
+
+  sprintf(csv_filename, "colloids-%8.8d.csv", ntime);
+  fp_csv = util_fopen(csv_filename, "w");
+
 
   if (fp_csv == NULL) {
     printf("fopen(%s) failed\n", argv[3]);
@@ -115,17 +108,19 @@ int main(int argc, char ** argv) {
 
   for (nf = 1; nf <= nfile; nf++) {
 
+    char filename[BUFSIZ] = {0};
+
     /* We expect extensions 00n-001 00n-002 ... 00n-00n */ 
 
-    snprintf(filename, sizeof(filename), "%s.%3.3d-%3.3d", argv[1], nfile, nf);
+    sprintf(filename, "config.cds%8.8d.%3.3d-%3.3d", ntime, nfile, nf);
     printf("Filename: %s\n", filename);
 
     fp_colloids = util_fopen(filename, "r");
 
 
     if (fp_colloids == NULL) {
-        printf("fopen(%s) failed\n", filename);
-        exit(0);
+      printf("fopen(%s) failed\n", filename);
+      exit(0);
     }
 
     if (iread_ascii) {
@@ -172,11 +167,11 @@ int main(int argc, char ** argv) {
   /* Finish colloid coordinate output */
   fclose(fp_csv);
   if (include_ref) {
-    printf("Wrote %d actual colloids + 3 reference colloids in header\n",
-	   ncount);
+    printf("Wrote %d actual colloids + 3 reference colloids in header to %s\n",
+	   ncount, csv_filename);
   }
   else {
-    printf("Wrote %d colloids\n", ncount);
+    printf("Wrote %d colloids to %s\n", ncount, csv_filename);
   }
 
   /* Finish */
@@ -323,53 +318,44 @@ void colloids_to_csv_header_with_v(FILE * fp) {
 
 /*****************************************************************************
  *
- *  util_io_posix_filename
+ *  file_name_to_nfile
  *
- *  A posix "fully portable filename" (not a path) has allowed characters:
- *   A-Z, a-z, 0-9, ".", "-", and "_"
- *  The first character must not be a hyphen.
- *
- *  This returns a positive value if a replacement is required,
- *  a negative value if the supplied buffer is too small,
- *  or zero on a succcessful copy with no replacements.
- *
- *  The output buffer contains the input with any duff characters replaced
- *  by "_".
+ *  The file name must be of the form "config.cds00020000.004-001".
  *
  *****************************************************************************/
 
-int util_io_posix_filename(const char * input, char * buf, size_t bufsz) {
+int file_name_to_nfile(const char * filename) {
 
-  int ifail = 0;
-  size_t len = strnlen(input, FILENAME_MAX-1);
-  const char replacement_character = '_';
+  int nfile = 0;
+  const char * ext = strrchr(filename, '.'); /* last dot */
 
-  if (bufsz <= len) {
-    /* would be truncated */
-    ifail = -1;
-  }
-  else {
-    /* Copy, but replace anything that's not posix */
-    for (size_t i = 0; i < len; i++) {
-      char c = input[i];
-      if (i == 0 && c == '-') {
-	/* Replace */
-	buf[i] = replacement_character;
-	ifail += 1;
-      }
-      else if (isalnum(c) || c == '_' || c == '-' || c == '.') {
-	/* ok */
-	buf[i] = input[i];
-      }
-      else {
-	/* Replace */
-	buf[i] = replacement_character;
-	ifail += 1;
-      }
-    }
-    /* Terminate */
-    buf[len] = '\0';
+  if (ext != NULL) {
+    char buf[BUFSIZ] = {0};
+    strncpy(buf, ext + 1, 3);
+    nfile = atoi(buf);
   }
 
-  return ifail;
+  return nfile;
+}
+
+/*****************************************************************************
+ *
+ * file_name_to_ntime
+ *
+ *  The file name must be of the form "config.cds00020000.004-001".
+ *
+ *****************************************************************************/
+
+int file_name_to_ntime(const char * filename) {
+
+  int ntime = -1;
+  const char * tmp = strchr(filename, 's'); /* Must be "config.cds" */
+
+  if (tmp) {
+    char buf[BUFSIZ] = {0};
+    strncpy(buf, tmp + 1, 8);
+    ntime = atoi(buf);
+  }
+
+  return ntime;
 }
