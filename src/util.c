@@ -1039,14 +1039,12 @@ int util_svd(int m, int n, double ** a, double * w, double ** v) {
 
 __host__ int util_matrix_invert(int n, double ** a) {
 
-  int i, j, k, ia, ib;
-  int irow, icol;
+  int irow = -1;
+  int icol = -1;
 
   int * indexcol = NULL;
   int * indexrow = NULL;
   int * ipivot = NULL;
-
-  double rpivot, tmp;
 
   assert(a);
 
@@ -1069,18 +1067,16 @@ __host__ int util_matrix_invert(int n, double ** a) {
     return -3;
   }
 
-  icol = -1;
-  irow = -1;
-
-  for (j = 0; j < n; j++) {
+  /* Begin the Gaussian elimination */
+  for (int j = 0; j < n; j++) {
     ipivot[j] = -1;
   }
 
-  for (i = 0; i < n; i++) {
-    tmp = 0.0;
-    for (j = 0; j < n; j++) {
+  for (int i = 0; i < n; i++) {
+    double tmp = 0.0;
+    for (int j = 0; j < n; j++) {
       if (ipivot[j] != 0) {
-	for (k = 0; k < n; k++) {
+	for (int k = 0; k < n; k++) {
 
 	  if (ipivot[k] == -1) {
 	    if (fabs(a[j][k]) >= tmp) {
@@ -1099,13 +1095,14 @@ __host__ int util_matrix_invert(int n, double ** a) {
     ipivot[icol] += 1;
 
     if (irow != icol) {
-      for (ia = 0; ia < n; ia++) {
-	tmp = a[irow][ia];
+      for (int ia = 0; ia < n; ia++) {
+	double tmp = a[irow][ia];
 	a[irow][ia] = a[icol][ia];
 	a[icol][ia] = tmp;
       }
     }
 
+    /* Check the pivot element is not zero ... */
     indexrow[i] = irow;
     indexcol[i] = icol;
 
@@ -1116,18 +1113,20 @@ __host__ int util_matrix_invert(int n, double ** a) {
       return -1;
     }
 
-    rpivot = 1.0/a[icol][icol];
-    a[icol][icol] = 1.0;
+    {
+      double rpivot = 1.0/a[icol][icol];
+      a[icol][icol] = 1.0;
 
-    for (ia = 0; ia < n; ia++) {
-      a[icol][ia] *= rpivot;
+      for (int ia = 0; ia < n; ia++) {
+	a[icol][ia] *= rpivot;
+      }
     }
 
-    for (ia = 0; ia < n; ia++) {
+    for (int ia = 0; ia < n; ia++) {
       if (ia != icol) {
-	tmp = a[ia][icol];
+	double tmp = a[ia][icol];
 	a[ia][icol] = 0.0;
-	for (ib = 0; ib < n; ib++) {
+	for (int ib = 0; ib < n; ib++) {
 	  a[ia][ib] -= a[icol][ib]*tmp;
 	}
       }
@@ -1136,10 +1135,10 @@ __host__ int util_matrix_invert(int n, double ** a) {
 
   /* Recover the inverse. */
 
-  for (i = n - 1; i >= 0; i--) {
+  for (int i = n - 1; i >= 0; i--) {
     if (indexrow[i] != indexcol[i]) {
-      for (j = 0; j < n; j++) {
-	tmp = a[j][indexrow[i]];
+      for (int j = 0; j < n; j++) {
+	double tmp = a[j][indexrow[i]];
 	a[j][indexrow[i]] = a[j][indexcol[i]];
 	a[j][indexcol[i]] = tmp;
       }
