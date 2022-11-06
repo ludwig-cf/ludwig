@@ -357,5 +357,10 @@ int file_name_to_ntime(const char * filename) {
     ntime = atoi(buf);
   }
 
+  if (0 > ntime || ntime >= 1000*1000*1000) {
+    printf("Could not parse a time step from file name %s\n", filename);
+    exit(-1);
+  }
+
   return ntime;
 }
