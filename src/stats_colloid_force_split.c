@@ -64,7 +64,7 @@ int stats_colloid_force_split_update(colloids_info_t * cinfo, fe_t * fe) {
   pe = cinfo->pe;
   cs = cinfo->cs;
 
-  pth_create(pe, cs, PTH_METHOD_DIVERGENCE, &pth);
+  pth_create(pe, cs, FE_FORCE_METHOD_STRESS_DIVERGENCE, &pth);
 
   /* Total stress */
   stat_stress_compute(pth, fe, fe_lc_stress);

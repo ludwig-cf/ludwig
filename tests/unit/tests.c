@@ -68,6 +68,8 @@ __host__ int tests_create() {
   test_fe_electro_suite();
   test_fe_electro_symm_suite();
   test_fe_lc_droplet_suite();
+  test_fe_force_method_suite();
+  test_fe_force_method_rt_suite();
   test_field_suite();
   test_field_grad_suite();
   test_halo_suite();
@@ -109,6 +111,7 @@ __host__ int tests_create() {
   test_rt_suite();
   test_timer_suite();
   test_util_suite();
+  test_util_bits_suite();
   test_util_fopen_suite();
   test_util_sum_suite();
   test_visc_arrhenius_suite();

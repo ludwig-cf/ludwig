@@ -47,7 +47,7 @@ d3q19-io:
 	$(MAKE) -C regression/d3q19-io
 
 d3q19-elec:
-	$(Make) -C regression/d3q19-elec
+	$(MAKE) -C regression/d3q19-elec
 
 # GPU target
 

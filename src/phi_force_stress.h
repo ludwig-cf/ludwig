@@ -7,7 +7,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2012-2019 The University of Edinburgh
+ *  (c) 2012-2022 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -20,9 +20,7 @@
 #include "pe.h"
 #include "coords.h"
 #include "free_energy.h"
-
-enum {PTH_METHOD_NO_FORCE, PTH_METHOD_DIVERGENCE, PTH_METHOD_GRADMU, 
-      PTH_METHOD_STRESS_ONLY};
+#include "fe_force_method.h"
 
 typedef struct pth_s pth_t;
 

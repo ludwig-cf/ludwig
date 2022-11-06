@@ -37,7 +37,7 @@ Interfacial width     =  1.13137e+00
 Using Cahn-Hilliard finite difference solver.
 Mobility M            =  1.25000e+00
 Order parameter noise = off
-Force calculation:      phi grad mu method
+Force calculation:      phi_gradmu
 
 System properties
 ----------------
