@@ -218,7 +218,7 @@ int main(int argc, char ** argv) {
       char * filename = buf;
       int ifile = file_get_file_index(argv[optind]);
       int nfile = file_get_file_nfile(argv[optind]);
-      sprintf(filename, "%s.%3.3d-%3.3d.meta", stub, ifile, nfile);
+      sprintf(filename, "%s.%3.3d-%3.3d.meta", stub, nfile, ifile);
       read_meta_data_file(filename, &metadata);
     }
   }
@@ -252,7 +252,7 @@ int extract_driver(const char * filename, metadata_v1_t * meta, int version) {
 
   /* Work out parallel local file size */
 
-  assert(io_size[0] == 1);
+  assert(io_size[0] == 1); /* No x-decompositions WILL FAIL */
 
   switch (version) {
   case 1:
@@ -1461,11 +1461,22 @@ const char * file_stub_valid(const char * input) {
   return output;
 }
 
+/*****************************************************************************
+ *
+ *  file_get_file_nfile
+ *
+ *  Metadata encoded in a set of parallel, decomposed, filenames e.g.,
+ *    phi-metadata.002-001
+ *    phi-metadata.002-002
+ *  would return nfile = 2.
+ *
+ *****************************************************************************/
+
 int file_get_file_nfile(const char * filename) {
 
   int nfile = 0;
-  char dash = '-';
-  const char * str1 = strchr(filename, dash);
+  char dot = '.';
+  const char * str1 = strchr(filename, dot); /* First "." */
 
   if (str1 != NULL) {
     char buf[BUFSIZ] = {0};
@@ -1476,17 +1487,25 @@ int file_get_file_nfile(const char * filename) {
   return nfile;
 }
 
+/*****************************************************************************
+ *
+ *  file_get_file_index
+ *
+ *  Likewise, returns the index (see file_get_file_nfile above).
+ *
+ *****************************************************************************/
+
 int file_get_file_index(const char * filename) {
 
   int ifile = 0;
-  char dot = '.';
-  const char * str1 = strchr(filename, dot); /* E.g., phi.001-001.meta */
+  char dash = '-';
+  const char * str1 = strrchr(filename, dash); /* Last "-" */
 
   if (str1 != NULL) {
     char buf[BUFSIZ] = {0};
     strncpy(buf, str1 + 1, 3);
     ifile = atoi(buf);
   }
-  
+
   return ifile;
 }
