@@ -1096,7 +1096,7 @@ __host__ int util_matrix_invert(int n, double ** a) {
 
     if (irow != icol) {
       for (int ia = 0; ia < n; ia++) {
-	double tmp = a[irow][ia];
+	tmp = a[irow][ia];
 	a[irow][ia] = a[icol][ia];
 	a[icol][ia] = tmp;
       }
@@ -1124,13 +1124,14 @@ __host__ int util_matrix_invert(int n, double ** a) {
 
     for (int ia = 0; ia < n; ia++) {
       if (ia != icol) {
-	double tmp = a[ia][icol];
+	tmp = a[ia][icol];
 	a[ia][icol] = 0.0;
 	for (int ib = 0; ib < n; ib++) {
 	  a[ia][ib] -= a[icol][ib]*tmp;
 	}
       }
     }
+    /* .. outer loop .. */
   }
 
   /* Recover the inverse. */
