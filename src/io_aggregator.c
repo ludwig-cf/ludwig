@@ -16,7 +16,7 @@
 
 #include <assert.h>
 
-#include "io_aggr_buf.h"
+#include "io_aggregator.h"
 
 /*****************************************************************************
  *

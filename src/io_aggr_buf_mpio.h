@@ -16,7 +16,7 @@
 
 #include "pe.h"
 #include "coords.h"
-#include "io_aggr_buf.h"
+#include "io_aggregator.h"
 
 int io_aggr_mpio_write(pe_t * pe, cs_t * cs, const char * filename,
 		       const io_aggregator_t * buf);

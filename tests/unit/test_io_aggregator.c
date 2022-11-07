@@ -15,17 +15,17 @@
 #include <assert.h>
 
 #include "pe.h"
-#include "io_aggr_buf.h"
+#include "io_aggregator.h"
 
 int test_io_aggregator_create(void);
 
 /*****************************************************************************
  *
- *  test_io_aggr_buf_suite
+ *  test_io_aggregator_suite
  *
  *****************************************************************************/
 
-int test_io_aggr_buf_suite(void) {
+int test_io_aggregator_suite(void) {
 
   pe_t * pe = NULL;
 

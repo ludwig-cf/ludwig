@@ -23,8 +23,8 @@
 #include "pe.h"
 #include "coords.h"
 #include "io_element.h"
-#include "io_aggr_buf.h"      /* Aggregation buffer */
-#include "io_harness.h"       /* To be removed in favour of io_aggr_t */
+#include "io_aggregator.h"    /* Aggregation buffer */
+#include "io_harness.h"       /* To be removed in favour of refactored io */
 #include "leesedwards.h"
 #include "halo_swap.h"
 #include "field_options.h"
