@@ -151,8 +151,8 @@ int main(int argc, char ** argv) {
       state[n].al= al;
       /* Needs a_L */
       state[n].u0 = 1e-4;
-      state[n].delta = 2;
-      state[n].cutoff = 2.0;
+      state[n].delta = 6;
+      state[n].cutoff = 5.0;
     }
     state[n].rng = 1 + n;
     //CHANGE1

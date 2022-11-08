@@ -604,7 +604,7 @@ static double d_peskin(double r) {
  *
  *****************************************************************************/
 
-int subgrid_flux_mask(pe_t * pe, colloids_info_t * cinfo, field_t * flux_mask, rt_t * rt, field_t * phi) {
+int subgrid_flux_mask(pe_t * pe, colloids_info_t * cinfo, field_t * flux_mask, field_t * u_mask, rt_t * rt, field_t * phi) {
 
   int ia, i, j, k, index, p;
   int nlocal[3], offset[3];
@@ -882,6 +882,7 @@ int subgrid_flux_mask(pe_t * pe, colloids_info_t * cinfo, field_t * flux_mask, r
 	  }
 */
 	  flux_mask->data[addr_rank1(flux_mask->nsites, 2, index, 0)] = 1. - (1. - permeability[0])*gaussr*(1 - gaussalpha);
+	  u_mask->data[addr_rank1(u_mask->nsites, 1, index, 0)] = gaussalpha;
 	}
 
 	if (interaction_mask || mask_psi_switch) { 
@@ -901,6 +902,7 @@ int subgrid_flux_mask(pe_t * pe, colloids_info_t * cinfo, field_t * flux_mask, r
 	  }
 	*/
 	  flux_mask->data[addr_rank1(flux_mask->nsites, 2, index, 1)] = 1. - (1. - permeability[0])*gaussr*(1 - gaussalpha);
+	  u_mask->data[addr_rank1(u_mask->nsites, 1, index, 0)] = gaussalpha;
         }
 
 	assert(flux_mask->data[addr_rank1(flux_mask->nsites, 2, index, 0)] >= 0.0);

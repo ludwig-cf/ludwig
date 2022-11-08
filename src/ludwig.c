@@ -135,6 +135,7 @@ struct ludwig_s {
   field_t * q;              /* Tensor order parameter */
   field_t * subgrid_potential;   /* Phi-subgrid particles interaction field */
   field_t * flux_mask;   /* Phi-subgrid particles interaction field */
+  field_t * u_mask;   /*  Phi-subgrid particles interaction field */
   field_grad_t * phi_grad;  /* Gradients for phi */
   field_grad_t * p_grad;    /* Gradients for p */
   field_grad_t * q_grad;    /* Gradients for q */
@@ -262,6 +263,7 @@ static int ludwig_rt(ludwig_t * ludwig) {
 
   if (ludwig->phi) field_init_io_info(ludwig->phi, io_grid, form, form);
   if (ludwig->flux_mask) field_init_io_info(ludwig->flux_mask, io_grid, form, form);
+  if (ludwig->u_mask) field_init_io_info(ludwig->u_mask, io_grid, form, form);
   if (ludwig->subgrid_potential) field_init_io_info(ludwig->subgrid_potential, io_grid, form, form);
   if (ludwig->p) field_init_io_info(ludwig->p, io_grid, form, form);
   if (ludwig->q) field_init_io_info(ludwig->q, io_grid, form, form);
@@ -497,6 +499,7 @@ void ludwig_run(const char * inputfile) {
   if (ludwig->phi) field_memcpy(ludwig->phi, tdpMemcpyHostToDevice);
   if (ludwig->subgrid_potential) field_memcpy(ludwig->subgrid_potential, tdpMemcpyHostToDevice);
   if (ludwig->flux_mask) field_memcpy(ludwig->flux_mask, tdpMemcpyHostToDevice);
+  if (ludwig->u_mask) field_memcpy(ludwig->u_mask, tdpMemcpyHostToDevice);
   if (ludwig->p)   field_memcpy(ludwig->p, tdpMemcpyHostToDevice);
   if (ludwig->q)   field_memcpy(ludwig->q, tdpMemcpyHostToDevice);
 
@@ -545,7 +548,7 @@ void ludwig_run(const char * inputfile) {
     if (ludwig->hydro) {
       hydro_f_zero(ludwig->hydro, fzero);
 /* Calculate flux mask for later use in interact_compute, phi_force/phi_grad_mu.c and ch_solver LIGHTHOUSE but should work */
-      subgrid_flux_mask(ludwig->pe, ludwig->collinfo, ludwig->flux_mask, ludwig->rt, ludwig->phi);
+      subgrid_flux_mask(ludwig->pe, ludwig->collinfo, ludwig->flux_mask, ludwig->u_mask, ludwig->rt, ludwig->phi);
     }
 
     colloids_info_ntotal(ludwig->collinfo, &ncolloid);
@@ -573,6 +576,7 @@ void ludwig_run(const char * inputfile) {
       field_halo(ludwig->phi);
       field_halo(ludwig->subgrid_potential);
       field_halo(ludwig->flux_mask);
+      field_halo(ludwig->u_mask);
       TIMER_stop(TIMER_PHI_HALO);
 
       field_grad_compute(ludwig->phi_grad);
@@ -1522,6 +1526,9 @@ int free_energy_init_rt(ludwig_t * ludwig) {
     field_create(pe, cs, nf, "flux_mask", &ludwig->flux_mask);
     field_init(ludwig->flux_mask, nhalo, le);
 
+    field_create(pe, cs, 1, "u_mask", &ludwig->u_mask);
+    field_init(ludwig->u_mask, nhalo, le);
+
     n = rt_double_parameter_vector(rt, "grad_mu_phi", options.grad_mu_phi);
     if (n != 0) physics_grad_mu_phi_set(ludwig->phys, options.grad_mu_phi);
 
@@ -2067,7 +2074,7 @@ static int ludwig_colloids_update_low_freq(ludwig_t * ludwig) {
   colloids_info_update_lists(ludwig->collinfo);
   interact_compute(ludwig->interact, ludwig->collinfo, ludwig->map,
         	     ludwig->psi, ludwig->ewald, ludwig->phi, 
-			ludwig->subgrid_potential, ludwig->rt, ludwig->flux_mask);
+			ludwig->subgrid_potential, ludwig->rt, ludwig->u_mask);
 
   subgrid_force_from_particles(ludwig->collinfo, ludwig->hydro, ludwig->wall);
 
@@ -2153,7 +2160,7 @@ int ludwig_colloids_update(ludwig_t * ludwig) {
 
   interact_compute(ludwig->interact, ludwig->collinfo, ludwig->map,
 		   ludwig->psi, ludwig->ewald, ludwig->phi, 
-			ludwig->subgrid_potential, ludwig->rt, ludwig->flux_mask);
+			ludwig->subgrid_potential, ludwig->rt, ludwig->u_mask);
 
   subgrid_force_from_particles(ludwig->collinfo, ludwig->hydro, ludwig->wall);
 
