@@ -873,7 +873,13 @@ int subgrid_flux_mask(pe_t * pe, colloids_info_t * cinfo, field_t * flux_mask, f
 
           alpha = acos(cosalpha);
 
-          gaussalpha = exp(-.5*(alpha/std_alpha)*(alpha/std_alpha)*(alpha/std_alpha)*(alpha/std_alpha));
+	  if (std_alpha == 0.0) {
+	    gaussalpha = 0.0;
+	  }
+	  else {
+            gaussalpha = exp(-.5*(alpha/std_alpha)*(alpha/std_alpha)*(alpha/std_alpha)*(alpha/std_alpha));
+	  }
+
           gaussr = exp(-.5*(rnorm - radius)/(std_width)*(rnorm - radius)/(std_width)*(rnorm - radius)/(std_width)*(rnorm - radius)/(std_width));
 	    
 /*
@@ -894,7 +900,13 @@ int subgrid_flux_mask(pe_t * pe, colloids_info_t * cinfo, field_t * flux_mask, f
 
           alpha = acos(cosalpha);
 
-          gaussalpha = exp(-.5*(alpha/std_alpha)*(alpha/std_alpha)*(alpha/std_alpha)*(alpha/std_alpha));
+	  if (std_alpha == 0.0) {
+	    gaussalpha = 0.0;
+	  }
+	  else {
+            gaussalpha = exp(-.5*(alpha/std_alpha)*(alpha/std_alpha)*(alpha/std_alpha)*(alpha/std_alpha));
+	  }
+
           gaussr = exp(-.5*(rnorm - radius)/(std_width)*(rnorm - radius)/(std_width)*(rnorm - radius)/(std_width)*(rnorm - radius)/(std_width));
  
           /*if (alpha*alpha > alpha_cutoff*alpha_cutoff) {
