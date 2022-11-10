@@ -656,6 +656,7 @@ int subgrid_flux_mask(pe_t * pe, colloids_info_t * cinfo, field_t * flux_mask, f
 	index = cs_index(cinfo->cs, i, j, k);
 	flux_mask->data[addr_rank1(flux_mask->nsites, 2, index, 0)] = 1.0;
 	flux_mask->data[addr_rank1(flux_mask->nsites, 2, index, 1)] = 1.0;
+	u_mask->data[addr_rank0(flux_mask->nsites, index)] = 0.0;
       }
     }
   }

@@ -709,10 +709,11 @@ int colloids_update_discrete_forces_phi(colloids_info_t * cinfo, field_t * phi, 
   int i, j, k, ic, jc, kc;
   int i_min, i_max, j_min, j_max, k_min, k_max;
   int index, indexm1, indexp1, ia;
-  int interaction_mask_on;
+  int interaction_mask_on, external_only_on;
 
   double phi_, u, um1, up1, u0, delta, cutoff;
   double rnorm, rsq, rsqm1, rsqp1;
+  double scal_prod_m1, scal_prod_p1, scalar_product;
   double r0[3], r[3], grad_u[3], dcentre[3];
 
   colloid_t * pc = NULL;
@@ -746,6 +747,7 @@ int colloids_update_discrete_forces_phi(colloids_info_t * cinfo, field_t * phi, 
 
   interaction_mask_on = 0;
   rt_int_parameter(rt, "phi_interaction_mask", &interaction_mask_on);
+  rt_int_parameter(rt, "phi_interaction_external_only", &external_only_on);
   rt_int_parameter(rt, "freq_write", &writefreq);
 
   /* Initialize subgrid potential to 0 */
@@ -770,6 +772,9 @@ int colloids_update_discrete_forces_phi(colloids_info_t * cinfo, field_t * phi, 
           u0 = pc->s.u0;
           delta = pc->s.delta;
           cutoff = pc->s.cutoff;
+
+	  // useful for calculating the torque of the structure, and for identifying which nodes are inside and which are outside
+	  cs_minimum_distance(cinfo->cs, pc->centerofmass, pc->s.r, dcentre);
 
           /* Need to translate the colloid position to "local"
           * coordinates, so that the correct range of lattice
@@ -820,19 +825,29 @@ int colloids_update_discrete_forces_phi(colloids_info_t * cinfo, field_t * phi, 
 
                   r[X] = - r0[X] + 1.0*(i-1);
 		  rsqm1 = r[X]*r[X] + r[Y]*r[Y] + r[Z]*r[Z];
+		  scal_prod_m1 = r[X]*dcentre[X] + r[Y]*dcentre[Y] + r[Z]*dcentre[Z];
 
                   r[X] = - r0[X] + 1.0*(i+1);
 		  rsqp1 = r[X]*r[X] + r[Y]*r[Y] + r[Z]*r[Z];
+		  scal_prod_p1 = r[X]*dcentre[X] + r[Y]*dcentre[Y] + r[Z]*dcentre[Z];
 
 
                   indexp1 = cs_index(cinfo->cs, i + 1, j, k);
                   indexm1 = cs_index(cinfo->cs, i - 1, j, k);
 	
-		  if (rsqm1 > cutoff*cutoff) um1 = 0.0;
- 		  else um1 = u0/(sqrt(2*M_PI*delta))*exp(-0.5*(rsqm1/delta)*(rsqm1/delta))*(1 - interaction_mask_on*u_mask->data[addr_rank1(u_mask->nsites, 1, indexm1, 0)]);
-		  if (rsqp1 > cutoff*cutoff) up1 = 0.0;
-		  else up1 = u0/(sqrt(2*M_PI*delta))*exp(-0.5*(rsqp1/delta)*(rsqp1/delta))*(1 - interaction_mask_on*u_mask->data[addr_rank1(u_mask->nsites, 1, indexp1, 0)]);
-		  
+		  if (external_only_on) {
+		    if (rsqm1 > cutoff*cutoff || scal_prod_m1 < 0.0) um1 = 0.0;
+ 		    else um1 = u0/(sqrt(2*M_PI*delta))*exp(-0.5*(rsqm1/delta)*(rsqm1/delta))*(1 - interaction_mask_on*u_mask->data[addr_rank1(u_mask->nsites, 1, indexm1, 0)]);
+		    if (rsqp1 > cutoff*cutoff || scal_prod_p1 < 0.0) up1 = 0.0;
+		    else up1 = u0/(sqrt(2*M_PI*delta))*exp(-0.5*(rsqp1/delta)*(rsqp1/delta))*(1 - interaction_mask_on*u_mask->data[addr_rank1(u_mask->nsites, 1, indexp1, 0)]);
+		  }
+		  else {
+		    if (rsqm1 > cutoff*cutoff) um1 = 0.0;
+ 		    else um1 = u0/(sqrt(2*M_PI*delta))*exp(-0.5*(rsqm1/delta)*(rsqm1/delta))*(1 - interaction_mask_on*u_mask->data[addr_rank1(u_mask->nsites, 1, indexm1, 0)]);
+		    if (rsqp1 > cutoff*cutoff) up1 = 0.0;
+		    else up1 = u0/(sqrt(2*M_PI*delta))*exp(-0.5*(rsqp1/delta)*(rsqp1/delta))*(1 - interaction_mask_on*u_mask->data[addr_rank1(u_mask->nsites, 1, indexp1, 0)]);
+		  }
+
 		  grad_u[X] = 0.5*(up1 - um1);
 		}
 	
@@ -843,19 +858,28 @@ int colloids_update_discrete_forces_phi(colloids_info_t * cinfo, field_t * phi, 
 
                   r[Y] = - r0[Y] + 1.0*(j-1);
 		  rsqm1 = r[X]*r[X] + r[Y]*r[Y] + r[Z]*r[Z];
+		  scal_prod_m1 = r[X]*dcentre[X] + r[Y]*dcentre[Y] + r[Z]*dcentre[Z];
 
                   r[Y] = - r0[Y] + 1.0*(j+1);
 		  rsqp1 = r[X]*r[X] + r[Y]*r[Y] + r[Z]*r[Z];
+		  scal_prod_p1 = r[X]*dcentre[X] + r[Y]*dcentre[Y] + r[Z]*dcentre[Z];
 
 
                   indexp1 = cs_index(cinfo->cs, i, j + 1, k);
                   indexm1 = cs_index(cinfo->cs, i, j - 1, k);
 
-
-		  if (rsqm1 > cutoff*cutoff) um1 = 0.0;
-		  else um1 = u0/(sqrt(2*M_PI*delta))*exp(-0.5*(rsqm1/delta)*(rsqm1/delta))*(1 - interaction_mask_on*u_mask->data[addr_rank1(u_mask->nsites, 1, indexm1, 0)]);
-		  if (rsqp1 > cutoff*cutoff) up1 = 0.0;
-		  else up1 = u0/(sqrt(2*M_PI*delta))*exp(-0.5*(rsqp1/delta)*(rsqp1/delta))*(1 - interaction_mask_on*u_mask->data[addr_rank1(u_mask->nsites, 1, indexp1, 0)]);
+		  if (external_only_on) {
+		    if (rsqm1 > cutoff*cutoff || scal_prod_m1 < 0.0) um1 = 0.0;
+ 		    else um1 = u0/(sqrt(2*M_PI*delta))*exp(-0.5*(rsqm1/delta)*(rsqm1/delta))*(1 - interaction_mask_on*u_mask->data[addr_rank1(u_mask->nsites, 1, indexm1, 0)]);
+		    if (rsqp1 > cutoff*cutoff || scal_prod_p1 < 0.0) up1 = 0.0;
+		    else up1 = u0/(sqrt(2*M_PI*delta))*exp(-0.5*(rsqp1/delta)*(rsqp1/delta))*(1 - interaction_mask_on*u_mask->data[addr_rank1(u_mask->nsites, 1, indexp1, 0)]);
+		  }
+		  else {
+		    if (rsqm1 > cutoff*cutoff) um1 = 0.0;
+ 		    else um1 = u0/(sqrt(2*M_PI*delta))*exp(-0.5*(rsqm1/delta)*(rsqm1/delta))*(1 - interaction_mask_on*u_mask->data[addr_rank1(u_mask->nsites, 1, indexm1, 0)]);
+		    if (rsqp1 > cutoff*cutoff) up1 = 0.0;
+		    else up1 = u0/(sqrt(2*M_PI*delta))*exp(-0.5*(rsqp1/delta)*(rsqp1/delta))*(1 - interaction_mask_on*u_mask->data[addr_rank1(u_mask->nsites, 1, indexp1, 0)]);
+		  }
 
 		  grad_u[Y] = 0.5*(up1 - um1);
 		}
@@ -867,19 +891,28 @@ int colloids_update_discrete_forces_phi(colloids_info_t * cinfo, field_t * phi, 
 
                   r[Z] = - r0[Z] + 1.0*(k-1);
 		  rsqm1 = r[X]*r[X] + r[Y]*r[Y] + r[Z]*r[Z];
+		  scal_prod_m1 = r[X]*dcentre[X] + r[Y]*dcentre[Y] + r[Z]*dcentre[Z];
 
                   r[Z] = - r0[Z] + 1.0*(k+1);
 		  rsqp1 = r[X]*r[X] + r[Y]*r[Y] + r[Z]*r[Z];
+		  scal_prod_p1 = r[X]*dcentre[X] + r[Y]*dcentre[Y] + r[Z]*dcentre[Z];
 
 
                   indexp1 = cs_index(cinfo->cs, i, j, k + 1);
                   indexm1 = cs_index(cinfo->cs, i, j, k - 1);
 
-
-		  if (rsqm1 > cutoff*cutoff) um1 = 0.0;
-		  else um1 = u0/(sqrt(2*M_PI*delta))*exp(-0.5*(rsqm1/delta)*(rsqm1/delta))*(1 - interaction_mask_on*u_mask->data[addr_rank1(u_mask->nsites, 1, indexm1, 0)]);
-		  if (rsqp1 > cutoff*cutoff) up1 = 0.0;
-		  else up1 = u0/(sqrt(2*M_PI*delta))*exp(-0.5*(rsqp1/delta)*(rsqp1/delta))*(1 - interaction_mask_on*u_mask->data[addr_rank1(u_mask->nsites, 1, indexp1, 0)]);
+		  if (external_only_on) {
+		    if (rsqm1 > cutoff*cutoff || scal_prod_m1 < 0.0) um1 = 0.0;
+ 		    else um1 = u0/(sqrt(2*M_PI*delta))*exp(-0.5*(rsqm1/delta)*(rsqm1/delta))*(1 - interaction_mask_on*u_mask->data[addr_rank1(u_mask->nsites, 1, indexm1, 0)]);
+		    if (rsqp1 > cutoff*cutoff || scal_prod_p1 < 0.0) up1 = 0.0;
+		    else up1 = u0/(sqrt(2*M_PI*delta))*exp(-0.5*(rsqp1/delta)*(rsqp1/delta))*(1 - interaction_mask_on*u_mask->data[addr_rank1(u_mask->nsites, 1, indexp1, 0)]);
+		  }
+		  else {
+		    if (rsqm1 > cutoff*cutoff) um1 = 0.0;
+ 		    else um1 = u0/(sqrt(2*M_PI*delta))*exp(-0.5*(rsqm1/delta)*(rsqm1/delta))*(1 - interaction_mask_on*u_mask->data[addr_rank1(u_mask->nsites, 1, indexm1, 0)]);
+		    if (rsqp1 > cutoff*cutoff) up1 = 0.0;
+		    else up1 = u0/(sqrt(2*M_PI*delta))*exp(-0.5*(rsqp1/delta)*(rsqp1/delta))*(1 - interaction_mask_on*u_mask->data[addr_rank1(u_mask->nsites, 1, indexp1, 0)]);
+		  }
 
 		  grad_u[Z] = 0.5*(up1 - um1);
 		}
@@ -898,7 +931,6 @@ int colloids_update_discrete_forces_phi(colloids_info_t * cinfo, field_t * phi, 
 		colloidforce[Y] += phi_*grad_u[Y];
 		colloidforce[Z] += phi_*grad_u[Z];
 
-		cs_minimum_distance(cinfo->cs, pc->centerofmass, pc->s.r, dcentre);
 		colloidtorque[X] += dcentre[Y]*phi_*grad_u[Z] - dcentre[Z]*phi_*grad_u[Y];
 		colloidtorque[Y] += dcentre[Z]*phi_*grad_u[X] - dcentre[X]*phi_*grad_u[Z];
 		colloidtorque[Z] += dcentre[X]*phi_*grad_u[Y] - dcentre[Y]*phi_*grad_u[X];
@@ -914,9 +946,14 @@ int colloids_update_discrete_forces_phi(colloids_info_t * cinfo, field_t * phi, 
                 r[Z] = - r0[Z] + 1.0*k;
 
                 rsq = r[X]*r[X] + r[Y]*r[Y] + r[Z]*r[Z];
-                rnorm = sqrt(rsq);
+		scalar_product = r[X]*dcentre[X] + r[Y]*dcentre[Y] + r[Z]*dcentre[Z];
 
-		if (rnorm > cutoff) continue;
+		if (external_only_on) {
+		  if (rsq > cutoff*cutoff || scalar_product < 0.0) continue;
+		}
+		else {
+		  if (rsq > cutoff*cutoff) continue;
+		}
 
                 u = u0/(sqrt(2*M_PI*delta))*exp(-0.5*(rsq/delta)*(rsq/delta))*(1 - interaction_mask_on*u_mask->data[addr_rank1(u_mask->nsites, 1, index, 0)]);
                 subgrid_potential->data[addr_rank0(subgrid_potential->nsites, index)] += u;
