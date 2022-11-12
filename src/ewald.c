@@ -10,7 +10,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2007-2020 The University of Edinburgh.
+ *  (c) 2007-2022 The University of Edinburgh.
  *
  *  Contributing authors:
  *  Grace Kim
@@ -336,27 +336,20 @@ int ewald_fourier_space_energy(ewald_t * ewald, double * ef) {
  *  For each k, for the Fourier space sum, we need
  *      sinx_ = \sum_i u_i.k sin(k.r_i)    i.e., S(k)
  *      cosx_ = \sum_i u_i.k cos(k.r_i)    i.e., C(k)
+ *  where \sum_i is the sum over the dipoles.
  *
  *****************************************************************************/
 
 static int ewald_sum_sin_cos_terms(ewald_t * ewald) {
 
-  double k[3], ksq;
   double fkx, fky, fkz;
-  int kx, ky, kz, kn = 0;
-  int ic, jc, kc;
-  int ncell[3];
-
   double ltot[3];
-  double * subsin;
-  double * subcos;
   PI_DOUBLE(pi);
-  MPI_Comm comm;
+  colloid_t * pc = NULL;
 
   assert(ewald);
 
   cs_ltot(ewald->cs, ltot);
-  colloids_info_ncell(ewald->cinfo, ncell);
 
   fkx = 2.0*pi/ltot[X];
   fky = 2.0*pi/ltot[Y];
@@ -364,88 +357,90 @@ static int ewald_sum_sin_cos_terms(ewald_t * ewald) {
 
   /* Comupte S(k) and C(k) from sum over particles */
 
-  for (kn = 0; kn < nktot_; kn++) {
+  for (int kn = 0; kn < nktot_; kn++) {
     sinx_[kn] = 0.0;
     cosx_[kn] = 0.0;
   }
 
-  for (ic = 1; ic <= ncell[X]; ic++) {
-    for (jc = 1; jc <= ncell[Y]; jc++) {
-      for (kc = 1; kc <= ncell[Z]; kc++) {
+  colloids_info_local_head(ewald->cinfo, &pc);
 
-	colloid_t * p_colloid;
+  for ( ; pc; pc = pc->nextlocal) {
 
-	colloids_info_cell_list_head(ewald->cinfo, ic, jc, kc, &p_colloid);
-
-	while (p_colloid != NULL) {
+    int kn = 0;
 		
-          if (p_colloid->s.type == COLLOID_TYPE_SUBGRID) continue;
+    if (pc->s.type == COLLOID_TYPE_SUBGRID) continue;
 
-	  kn = 0;
-	  ewald_set_kr_table(ewald, p_colloid->s.r);
+    ewald_set_kr_table(ewald, pc->s.r);
 
-	  for (kz = 0; kz <= nk_[Z]; kz++) {
-	    for (ky = -nk_[Y]; ky <= nk_[Y]; ky++) {
-	      for (kx = -nk_[X]; kx <= nk_[X]; kx++) {
-		double udotk, kdotr;
-		double skr[3], ckr[3];
+    /* Loop over wavevectors */
+    for (int kz = 0; kz <= nk_[Z]; kz++) {
+      for (int ky = -nk_[Y]; ky <= nk_[Y]; ky++) {
+	for (int kx = -nk_[X]; kx <= nk_[X]; kx++) {
+	  double k[3], ksq;
+	  double udotk, kdotr;
+	  double skr[3], ckr[3];
 
-		k[X] = fkx*kx;
-		k[Y] = fky*ky;
-		k[Z] = fkz*kz;
-		ksq = k[X]*k[X] + k[Y]*k[Y] + k[Z]*k[Z];
+	  k[X] = fkx*kx;
+	  k[Y] = fky*ky;
+	  k[Z] = fkz*kz;
+	  ksq = k[X]*k[X] + k[Y]*k[Y] + k[Z]*k[Z];
 
-		if (ksq <= 0.0 || ksq > kmax_) continue;
+	  if (ksq <= 0.0 || ksq > kmax_) continue;
+	  assert(kn < nktot_);
 
-		skr[X] = sinkr_[3*abs(kx) + X];
-		skr[Y] = sinkr_[3*abs(ky) + Y];
-		skr[Z] = sinkr_[3*kz      + Z];
-		ckr[X] = coskr_[3*abs(kx) + X];
-		ckr[Y] = coskr_[3*abs(ky) + Y];
-		ckr[Z] = coskr_[3*kz      + Z];
+	  skr[X] = sinkr_[3*abs(kx) + X];
+	  skr[Y] = sinkr_[3*abs(ky) + Y];
+	  skr[Z] = sinkr_[3*kz      + Z];
+	  ckr[X] = coskr_[3*abs(kx) + X];
+	  ckr[Y] = coskr_[3*abs(ky) + Y];
+	  ckr[Z] = coskr_[3*kz      + Z];
 
-		if (kx < 0) skr[X] = -skr[X];
-		if (ky < 0) skr[Y] = -skr[Y];
+	  if (kx < 0) skr[X] = -skr[X];
+	  if (ky < 0) skr[Y] = -skr[Y];
 
-		udotk = dot_product(p_colloid->s.s, k);
+	  udotk = dot_product(pc->s.s, k);
 
-		kdotr = skr[X]*ckr[Y]*ckr[Z] + ckr[X]*skr[Y]*ckr[Z]
-		  + ckr[X]*ckr[Y]*skr[Z] - skr[X]*skr[Y]*skr[Z];
-		sinx_[kn] += udotk*kdotr;
+	  kdotr = skr[X]*ckr[Y]*ckr[Z] + ckr[X]*skr[Y]*ckr[Z]
+                + ckr[X]*ckr[Y]*skr[Z] - skr[X]*skr[Y]*skr[Z];
+	  sinx_[kn] += udotk*kdotr;
 
-		kdotr = ckr[X]*ckr[Y]*ckr[Z] - ckr[X]*skr[Y]*skr[Z]
-		  - skr[X]*ckr[Y]*skr[Z] - skr[X]*skr[Y]*ckr[Z];
-		cosx_[kn] += udotk*kdotr;
+	  kdotr = ckr[X]*ckr[Y]*ckr[Z] - ckr[X]*skr[Y]*skr[Z]
+                - skr[X]*ckr[Y]*skr[Z] - skr[X]*skr[Y]*ckr[Z];
+	  cosx_[kn] += udotk*kdotr;
 
-		kn++;
-	      }
-	    }
-	  }
-	  p_colloid = p_colloid->next;
+	  kn++;
 	}
-	/* Next cell */
       }
     }
+    /* Next colloid */
   }
 
-  subsin = (double *) calloc(nktot_, sizeof(double));
-  subcos = (double *) calloc(nktot_, sizeof(double));
-  assert(subsin);
-  assert(subcos);
-  if (subsin == NULL) pe_fatal(ewald->pe, "calloc(subsin) failed\n");
-  if (subcos == NULL) pe_fatal(ewald->pe, "calloc(subcos) failed\n");
+  {
+    double * subsin = NULL;        /* Local contribution to sum of sin() */
+    double * subcos = NULL;        /* Local contribution to sum of cos() */
+    MPI_Comm comm = MPI_COMM_NULL;
 
-  for (kn = 0; kn < nktot_; kn++) {
-    subsin[kn] = sinx_[kn];
-    subcos[kn] = cosx_[kn];
+    cs_cart_comm(ewald->cs, &comm);
+
+    subsin = (double *) calloc(nktot_, sizeof(double));
+    subcos = (double *) calloc(nktot_, sizeof(double));
+    assert(subsin);
+    assert(subcos);
+    if (subsin == NULL) pe_fatal(ewald->pe, "calloc(subsin) failed\n");
+    if (subcos == NULL) pe_fatal(ewald->pe, "calloc(subcos) failed\n");
+
+    for (int kn = 0; kn < nktot_; kn++) {
+      subsin[kn] = sinx_[kn];
+      subcos[kn] = cosx_[kn];
+    }
+
+    /* Could be reformed into a single reduction .. */
+    MPI_Allreduce(subsin, sinx_, nktot_, MPI_DOUBLE, MPI_SUM, comm);
+    MPI_Allreduce(subcos, cosx_, nktot_, MPI_DOUBLE, MPI_SUM, comm);
+
+    free(subsin);
+    free(subcos);
   }
-
-  cs_cart_comm(ewald->cs, &comm);
-  MPI_Allreduce(subsin, sinx_, nktot_, MPI_DOUBLE, MPI_SUM, comm);
-  MPI_Allreduce(subcos, cosx_, nktot_, MPI_DOUBLE, MPI_SUM, comm);
-
-  free(subsin);
-  free(subcos);
 
   return 0;
 }
@@ -833,6 +828,7 @@ static int ewald_set_kr_table(ewald_t * ewald, double r[3]) {
 
   cs_ltot(ewald->cs, ltot);
 
+  /* k = 0 and k = 1 */
   for (i = 0; i < 3; i++) {
     sinkr_[3*0 + i] = 0.0;
     coskr_[3*0 + i] = 1.0;
