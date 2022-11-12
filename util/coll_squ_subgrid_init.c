@@ -36,6 +36,7 @@
 #include "../src/coords.h"
 #include "../src/colloid.h"
 #include "../src/util.h"
+#include "../src/util_fopen.h"
 
 enum format {ASCII, BINARY};
 #define NTRYMAX 10000
@@ -582,7 +583,7 @@ void colloid_init_write_file(const int nc, const colloid_state_t * pc,
   const char * filename = "config.cds.init.001-001";
   FILE * fp;
 
-  fp = fopen(filename, "w");
+  fp = util_fopen(filename, "w");
   if (fp == NULL) {
     printf("Could not open %s\n", filename);
     exit(0);
