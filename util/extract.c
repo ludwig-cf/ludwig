@@ -146,6 +146,8 @@ int lc_transform_q5(int * nlocal, double * datasection);
 int lc_compute_scalar_ops(double q[3][3], double qs[5]);
 
 const char * file_stub_valid(const char * input);
+int file_get_file_nfile(const char * filename);
+int file_get_file_index(const char * filename);
 
 /*****************************************************************************
  *
@@ -204,8 +206,22 @@ int main(int argc, char ** argv) {
     exit(EXIT_FAILURE);
   }
 
-  /* PENDING KEVIN uncontrolled path name */
-  read_meta_data_file(argv[optind], &metadata);
+  {
+    /* Must have a recognised metadata quantity */
+    const char * stub = file_stub_valid(argv[optind]);
+    if (stub == NULL) {
+      printf("Unrecognised metadata file %s\n", argv[optind]);
+      exit(-1);
+    }
+    else {
+      char buf[FILENAME_MAX] = {0};
+      char * filename = buf;
+      int ifile = file_get_file_index(argv[optind]);
+      int nfile = file_get_file_nfile(argv[optind]);
+      sprintf(filename, "%s.%3.3d-%3.3d.meta", stub, nfile, ifile);
+      read_meta_data_file(filename, &metadata);
+    }
+  }
 
   extract_driver(argv[optind+1], &metadata, version);
 
@@ -236,7 +252,7 @@ int extract_driver(const char * filename, metadata_v1_t * meta, int version) {
 
   /* Work out parallel local file size */
 
-  assert(io_size[0] == 1);
+  assert(io_size[0] == 1); /* No x-decompositions WILL FAIL */
 
   switch (version) {
   case 1:
@@ -1420,27 +1436,76 @@ const char * file_stub_valid(const char * input) {
 
   const char * output = NULL;
 
-  if (strcmp(input, "phi") == 0) {
+  if (strncmp(input, "phi", 3) == 0) {
     output = "phi"; /* scalar order parameter(s) */
   }
-  else if (strcmp(input, "p") == 0) {
-    output = "p";   /* vector order parameter */
-  }
-  else if (strcmp(input, "q") == 0) {
-    output = "q";   /* tensor order parameter */
-  }
-  else if (strcmp(input, "psi") == 0) {
+  else if (strncmp(input, "psi", 3) == 0) {
     output = "psi"; /* charge */
   }
-  else if (strcmp(input, "dist") == 0) {
+  else if (strncmp(input, "dist", 4) == 0) {
     output = "dist";  /* distributions */
   }
-  else if (strcmp(input, "rho") == 0) {
-    output = "rho";   /* desnity */
+  else if (strncmp(input, "rho", 3) == 0) {
+    output = "rho";   /* density */
   }
-  else if (strcmp(input, "vel") == 0) {
-    output = "vel";
+  else if (strncmp(input, "vel", 3) == 0) {
+    output = "vel";   /* velocity field */
+  }
+  else if (strncmp(input, "p", 1) == 0) {
+    output = "p";   /* vector order parameter */
+  }
+  else if (strncmp(input, "q", 1) == 0) {
+    output = "q";   /* tensor order parameter */
   }
 
   return output;
+}
+
+/*****************************************************************************
+ *
+ *  file_get_file_nfile
+ *
+ *  Metadata encoded in a set of parallel, decomposed, filenames e.g.,
+ *    phi-metadata.002-001
+ *    phi-metadata.002-002
+ *  would return nfile = 2.
+ *
+ *****************************************************************************/
+
+int file_get_file_nfile(const char * filename) {
+
+  int nfile = 0;
+  char dot = '.';
+  const char * str1 = strchr(filename, dot); /* First "." */
+
+  if (str1 != NULL) {
+    char buf[BUFSIZ] = {0};
+    strncpy(buf, str1 + 1, 3);
+    nfile = atoi(buf);
+  }
+
+  return nfile;
+}
+
+/*****************************************************************************
+ *
+ *  file_get_file_index
+ *
+ *  Likewise, returns the index (see file_get_file_nfile above).
+ *
+ *****************************************************************************/
+
+int file_get_file_index(const char * filename) {
+
+  int ifile = 0;
+  char dash = '-';
+  const char * str1 = strrchr(filename, dash); /* Last "-" */
+
+  if (str1 != NULL) {
+    char buf[BUFSIZ] = {0};
+    strncpy(buf, str1 + 1, 3);
+    ifile = atoi(buf);
+  }
+
+  return ifile;
 }
