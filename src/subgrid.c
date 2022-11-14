@@ -845,10 +845,14 @@ int subgrid_flux_mask(pe_t * pe, colloids_info_t * cinfo, field_t * flux_mask, f
 	  if (rnorm < radius - std_width - 2) {
 
 	    if (strcmp(reaction_model, "uniform") == 0) 
+	    {
 	      phi->data[addr_rank1(phi->nsites, 2, index, 0)] += kappa;
-	    else if (strcmp(reaction_model, "psi<->phi") == 0)
+	    }
+	    else if (strcmp(reaction_model, "psi<->phi") == 0) 
+	    {
 	      phi->data[addr_rank1(phi->nsites, 2, index, 0)] += kappa1*phi->data[addr_rank1(phi->nsites, 2, index, 1)] - kappam1*phi->data[addr_rank1(phi->nsites, 2, index, 0)];
 	      phi->data[addr_rank1(phi->nsites, 2, index, 1)] += -kappa1*phi->data[addr_rank1(phi->nsites, 2, index, 1)] + kappam1*phi->data[addr_rank1(phi->nsites, 2, index, 0)];
+	    }
 	  }
 	}
 
