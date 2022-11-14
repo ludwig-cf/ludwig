@@ -24,6 +24,15 @@
 
 typedef struct pth_s pth_t;
 
+struct pth_s {
+  pe_t * pe;            /* Parallel environment */
+  cs_t * cs;            /* Coordinate system */
+  int method;           /* Method for force computation */
+  int nsites;           /* Number of sites allocated */
+  double * str;         /* Stress may be antisymmetric */
+  pth_t * target;       /* Target memory */
+};
+
 __host__ int pth_create(pe_t * pe, cs_t * cs, int method, pth_t ** pth);
 __host__ int pth_free(pth_t * pth);
 __host__ int pth_memcpy(pth_t * pth, tdpMemcpyKind flag);

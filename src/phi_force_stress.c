@@ -23,7 +23,6 @@
 #include "coords.h"
 #include "timer.h"
 #include "kernel.h"
-#include "pth_s.h"
 #include "phi_force_stress.h"
 
 __global__ void pth_kernel(kernel_ctxt_t * ktx, pth_t * pth, fe_t * fe);

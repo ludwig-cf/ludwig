@@ -21,11 +21,11 @@
 #include <stdlib.h>
 
 #include "pe.h"
-#include "pth_s.h"
 #include "lb_data.h"
 #include "blue_phase.h"
 #include "colloid_sums.h"
 #include "phi_force_stress.h"
+#include "util_fopen.h"
 #include "stats_colloid_force_split.h"
 
 static int switch_me_on_ = 0;
@@ -151,7 +151,7 @@ int stats_colloid_force_split_output(colloids_info_t * cinfo, int timestep) {
     FILE * fp = NULL;
 
     sprintf(filename, "colloid-diag-%8.8d.dat", timestep);
-    fp = fopen(filename, "w");
+    fp = util_fopen(filename, "w");
     if (fp == NULL) {
       pe_fatal(pe, "Failed to open diagnostic file %s\n", filename);
     }
