@@ -755,9 +755,17 @@ void ludwig_run(const char * inputfile) {
 
 	}
 	else {
+	  if (ludwig->pth->method == FE_FORCE_METHOD_STRESS_DIVERGENCE) {
 	  pth_force_colloid(ludwig->pth, ludwig->fe, ludwig->collinfo,
 			    ludwig->hydro, ludwig->map, ludwig->wall,
 			    &ludwig->lb->model);
+	  }
+	  else {
+	    /* Allow case with colloids using PHI_GRADMU_CORRECTION */
+	    phi_force_calculation(ludwig->pe, ludwig->cs, ludwig->le,
+				  ludwig->wall, ludwig->pth, ludwig->fe,
+				  ludwig->map, ludwig->phi, ludwig->hydro);
+	  }
 	}
       }
 

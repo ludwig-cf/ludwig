@@ -31,9 +31,9 @@
 
 #include "kernel.h"
 #include "hydro.h"
-#include "pth_s.h"
 #include "timer.h"
 #include "phi_force.h"
+#include "phi_force_stress.h"
 #include "phi_force_colloid.h"
 #include "phi_grad_mu.h"
 #include "physics.h"
@@ -79,7 +79,8 @@ __host__ int phi_force_calculation(pe_t * pe, cs_t * cs, lees_edw_t * le,
   int is_pm;
   int nplanes = 0;
 
-  if (pth == NULL) return 0;
+  assert(pth);
+
   if (hydro == NULL) return 0; 
   if (pth->method == FE_FORCE_METHOD_NO_FORCE) return 0;
 

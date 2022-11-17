@@ -59,7 +59,7 @@
 #include "kernel.h"
 #include "wall.h"
 #include "colloids.h"
-#include "pth_s.h"
+#include "phi_force_stress.h"
 #include "phi_force_colloid.h"
 #include "timer.h"
 
