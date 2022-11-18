@@ -90,8 +90,7 @@ void do_brownian_dynamics() {
   /* Set random numbers for each particle */
     brownian_set_random();
     colloids_halo_state();
-    /* brownian_step_ermak_buckholz();*/
-    brownian_step_no_inertia();
+    brownian_step_no_inertia();  /* Or Ermak & Buckholz routine */
 
     /* diagnostics */
 
