@@ -22,10 +22,57 @@
  *
  *  io_aggregator_create
  *
+ *  Allocate memory and initialise.
+ *
  *****************************************************************************/
 
-int io_aggregator_create(io_element_t e, cs_limits_t lim,
-			 io_aggregator_t * aggr) {
+int io_aggregator_create(io_element_t el, cs_limits_t lim,
+			 io_aggregator_t ** aggr) {
+
+  io_aggregator_t * newaggr = NULL;
+
+  assert(aggr);
+
+  newaggr = (io_aggregator_t *) calloc(1, sizeof(io_aggregator_t));
+  if (newaggr == NULL) goto err;
+
+  if (0 != io_aggregator_initialise(el, lim, newaggr)) goto err;
+
+  *aggr = newaggr;
+
+  return 0;
+
+ err:
+  if (newaggr) free(newaggr);
+  return -1;
+}
+
+/*****************************************************************************
+ *
+ *  io_aggregator_free
+ *
+ *****************************************************************************/
+
+int io_aggregator_free(io_aggregator_t ** aggr) {
+
+  assert(aggr);
+
+  io_aggregator_finalise(*aggr);
+  free(*aggr);
+
+  *aggr = NULL;
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  io_aggregator_initialise
+ *
+ *****************************************************************************/
+
+int io_aggregator_initialise(io_element_t e, cs_limits_t lim,
+			     io_aggregator_t * aggr) {
 
   assert(aggr);
 
@@ -36,21 +83,27 @@ int io_aggregator_create(io_element_t e, cs_limits_t lim,
   aggr->szbuf = aggr->szelement*cs_limits_size(lim);
   aggr->lim = lim;
 
+  if (aggr->szbuf == 0) goto err;
+
   aggr->buf = (char *) malloc(aggr->szbuf*sizeof(char));
 
-  assert(aggr->szbuf > 0); /* No zero size buffers */
-  assert(aggr->buf);
+  if (aggr->buf == NULL) goto err;
 
   return 0;
+
+ err:
+
+  *aggr = (io_aggregator_t) {0};
+  return -1;
 }
 
 /*****************************************************************************
  *
- * io_aggregator_free
+ * io_aggregator_finalise
  *
  *****************************************************************************/
 
-int io_aggregator_free(io_aggregator_t * aggr) {
+int io_aggregator_finalise(io_aggregator_t * aggr) {
 
   assert(aggr);
   assert(aggr->buf);
@@ -61,4 +114,3 @@ int io_aggregator_free(io_aggregator_t * aggr) {
 
   return 0;
 }
-

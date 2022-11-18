@@ -29,7 +29,11 @@ struct io_aggregator_s {
 };
 
 int io_aggregator_create(io_element_t el, cs_limits_t lim,
-			 io_aggregator_t * aggr);
-int io_aggregator_free(io_aggregator_t * aggr);
+			 io_aggregator_t ** aggr);
+int io_aggregator_free(io_aggregator_t ** aggr);
+
+int io_aggregator_initialise(io_element_t el, cs_limits_t lim,
+			     io_aggregator_t * aggr);
+int io_aggregator_finalise(io_aggregator_t * aggr);
 
 #endif
