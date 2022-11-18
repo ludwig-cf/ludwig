@@ -262,6 +262,7 @@ int MPI_Type_create_struct(int count, int * arry_of_blocklens,
 int MPI_Type_create_resized(MPI_Datatype oldtype, MPI_Aint ub, MPI_Aint extent,
 			    MPI_Datatype * newtype);
 int MPI_Type_get_extent(MPI_Datatype handle, MPI_Aint * lb, MPI_Aint *extent);
+int MPI_Type_size(MPI_Datatype handle, int * sz);
 
 /* MPI IO related */
 
@@ -284,6 +285,9 @@ int MPI_File_read_all(MPI_File fh, void * buf, int count,
 		      MPI_Datatype datatype, MPI_Status * status);
 int MPI_File_write_all(MPI_File fh, const void * buf, int count,
 		       MPI_Datatype datatype, MPI_Status * status);
+int MPI_File_write_all_begin(MPI_File fh, const void * buf, int count,
+			     MPI_Datatype datatype);
+int MPI_File_write_all_end(MPI_File fh, const void * buf, MPI_Status * status);
 
 #ifdef __cplusplus
 }

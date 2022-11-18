@@ -1310,6 +1310,21 @@ int MPI_Type_get_extent(MPI_Datatype datatype, MPI_Aint * lb,
 
 /*****************************************************************************
  *
+ *  MPI_Type_size
+ *
+ *****************************************************************************/
+
+int MPI_Type_size(MPI_Datatype datatype, int * sz) {
+
+  assert(sz);
+
+  *sz = mpi_sizeof(datatype);
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
  *  MPI_File_open
  *
  *****************************************************************************/
@@ -1601,6 +1616,38 @@ int MPI_File_write_all(MPI_File fh, const void * buf, int count,
   }
 
   return MPI_SUCCESS;
+}
+
+/*****************************************************************************
+ *
+ *  MPI_File_write_all_begin
+ *
+ *****************************************************************************/
+
+int MPI_File_write_all_begin(MPI_File fh, const void * buf, int count,
+			     MPI_Datatype datatype) {
+
+  /* We are going to do it here and throw away the status */
+
+  MPI_Status status = {0};
+
+  MPI_File_write_all(fh, buf, count, datatype, &status);
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  MPI_File_write_all_end
+ *
+ *****************************************************************************/
+
+int MPI_File_write_all_end(MPI_File fh, const void * buf, MPI_Status * status) {
+
+  /* A real implementation returns the number of bytes written in the
+   * status object. */
+
+  return 0;
 }
 
 #endif /* _DO_NOT_INCLUDE_MPI2_INTERFACE */
