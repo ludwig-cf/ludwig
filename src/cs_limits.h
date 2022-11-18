@@ -23,6 +23,8 @@
 #ifndef LUDWIG_CS_LIMITS_H
 #define LUDWIG_CS_LIMITS_H
 
+#include <assert.h>
+
 typedef struct cs_limits_s cs_limits_t;
 
 struct cs_limits_s {
