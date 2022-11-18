@@ -27,9 +27,13 @@
  *                     data written as if in serial.
  *  IO_MODE_MULTIPLE:  one or more files with decomposition dependent order;
  *                     output must be post-processed to recover serial order.
+ *
+ *  IO_MODE_ANSI       ANSI implementation     PENDING
+ *  IO_MODE_MPIO       MPIO-IO implementation
  */
 
-enum io_mode_enum {IO_MODE_INVALID, IO_MODE_SINGLE, IO_MODE_MULTIPLE};
+enum io_mode_enum {IO_MODE_INVALID, IO_MODE_SINGLE, IO_MODE_MULTIPLE,
+		   IO_MODE_MPIIO};
 
 /* Record formats: */
 
@@ -41,7 +45,8 @@ enum io_record_format_enum {IO_RECORD_INVALID,
 
 enum io_metadata_version_enum {IO_METADATA_INVALID,
 			       IO_METADATA_SINGLE_V1,
-			       IO_METADATA_MULTI_V1};
+			       IO_METADATA_MULTI_V1,
+                               IO_METADATA_V2};
 
 /* Options container type */
 
@@ -54,7 +59,9 @@ struct io_options_s {
   io_record_format_enum_t    iorformat;        /* Record format ascii/binary */
   io_metadata_version_enum_t metadata_version; /* Metadata version no. */
   int                        report;           /* Switch reporting on/off */
-  int                        asynchronous;     /* Not implemented */
+  int                        asynchronous;     /* Asynchronous i/o */
+  int                        compression_levl; /* Compression 0-9 */
+  int                        iogrid[3];        /* i/o decomposition */
 };
 
 typedef struct io_options_s io_options_t;
@@ -63,6 +70,12 @@ __host__ io_mode_enum_t io_mode_default(void);
 __host__ io_record_format_enum_t io_record_format_default(void);
 __host__ io_metadata_version_enum_t io_metadata_version_default(void);
 __host__ io_options_t io_options_default(void);
+__host__ io_options_t io_options_with_mode(io_mode_enum_t mode);
+__host__ io_options_t io_options_with_format(io_mode_enum_t mode,
+					     io_record_format_enum_t iorf);
+__host__ io_options_t io_options_with_iogrid(io_mode_enum_t mode,
+					     io_record_format_enum_t iorf,
+					     int iogrid[3]);
 
 __host__ int io_options_valid(const io_options_t * options);
 __host__ int io_options_mode_valid(io_mode_enum_t mode);

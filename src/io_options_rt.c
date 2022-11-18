@@ -46,21 +46,17 @@ __host__ int io_options_rt(rt_t * rt, rt_enum_t lv, const char * keystub,
 
   sprintf(key, "%s_io_mode", keystub);
   {
-    int ierr = io_options_rt_mode(rt, lv, key, &options->mode);
+    io_mode_enum_t mode = IO_MODE_INVALID;
+    int ierr = io_options_rt_mode(rt, lv, key, &mode);
 
-    /* Force metadata to be consistent with the mode */
+    /* For a valid mode, the default options are selected. */
 
-    if (ierr == RT_KEY_OK && options->mode == IO_MODE_SINGLE) {
-      /* only one choice at the moment */
-      options->metadata_version = IO_METADATA_SINGLE_V1;
-    }
-
-    if (ierr == RT_KEY_OK && options->mode == IO_MODE_MULTIPLE) {
-      /* only one choice again */
-      options->metadata_version = IO_METADATA_MULTI_V1;
+    if (ierr == RT_KEY_OK) {
+      *options = io_options_with_mode(mode);
     }
   }
 
+  /* Allow default format and report to be updated */
   sprintf(key, "%s_io_format", keystub);
   io_options_rt_record_format(rt, lv, key, &options->iorformat);
 
@@ -98,6 +94,7 @@ __host__ int io_options_rt_mode(rt_t * rt, rt_enum_t lv, const char * key,
 
     if (strcmp(value, "single")   == 0) user_mode = IO_MODE_SINGLE;
     if (strcmp(value, "multiple") == 0) user_mode = IO_MODE_MULTIPLE;
+    if (strcmp(value, "mpiio")    == 0) user_mode = IO_MODE_MPIIO;
 
     if (io_options_mode_valid(user_mode) == 1) {
       *mode = user_mode;
@@ -107,7 +104,7 @@ __host__ int io_options_rt_mode(rt_t * rt, rt_enum_t lv, const char * key,
       rt_vinfo(rt, lv, "I/O mode key present but value not recognised\n");
       rt_vinfo(rt, lv, "key:   %s\n", key);
       rt_vinfo(rt, lv, "value: %s\n", value);
-      rt_vinfo(rt, lv, "Should be either 'single' or 'multiple'\n");
+      rt_vinfo(rt, lv, "Should be either 'single', 'multiple' or 'mpiio'\n");
       rt_fatal(rt, lv, "Please check the input file and try again!\n");
       ifail = RT_KEY_INVALID;
     }

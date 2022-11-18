@@ -57,6 +57,13 @@ __host__ int io_info_args_rt(rt_t * rt, rt_enum_t lv, const char * stub,
     io_info_args_rt_iogrid(rt, lv, key, args->grid);
   }
 
+  args->input.iogrid[0]  = args->grid[0];
+  args->input.iogrid[1]  = args->grid[1];
+  args->input.iogrid[2]  = args->grid[2];
+  args->output.iogrid[0] = args->grid[0];
+  args->output.iogrid[1] = args->grid[1];
+  args->output.iogrid[2] = args->grid[2];
+
   return 0;
 }
 
