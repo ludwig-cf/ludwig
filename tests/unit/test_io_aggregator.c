@@ -18,6 +18,7 @@
 #include "io_aggregator.h"
 
 int test_io_aggregator_create(void);
+int test_io_aggregator_initialise(void);
 
 /*****************************************************************************
  *
@@ -36,11 +37,54 @@ int test_io_aggregator_suite(void) {
   assert(sizeof(io_aggregator_t) == 72);
 
   test_io_aggregator_create();
+  test_io_aggregator_initialise();
 
   pe_info(pe, "%-9s %s\n", "PASS", __FILE__);
   pe_free(pe);
 
   return 0;
+}
+
+/*****************************************************************************
+ *
+ *  test_io_aggregator_initialise
+ *
+ *****************************************************************************/
+
+int test_io_aggregator_initialise(void) {
+
+  int ifail = 0;
+
+  {
+    /* Create and free. */
+    io_element_t element = {.datatype = MPI_DOUBLE,
+			    .datasize = sizeof(double),
+                            .count    = 3,
+                            .endian   = io_endianness()};
+    cs_limits_t lim = {-2, 18, 1, 8, 1, 4};
+    io_aggregator_t aggr = {0};
+
+    io_aggregator_initialise(element, lim, &aggr);
+
+    assert(aggr.element.datatype == MPI_DOUBLE);
+    assert(aggr.element.datasize == sizeof(double));
+    assert(aggr.element.count    == 3);
+    assert(aggr.element.endian   == io_endianness());
+
+    assert(aggr.szelement == element.datasize*element.count);
+    assert(aggr.szbuf     == aggr.szelement*cs_limits_size(lim));
+    assert(aggr.lim.imin  == lim.imin); /* Assume sufficient */
+    assert(aggr.buf);
+
+    io_aggregator_finalise(&aggr);
+
+    assert(aggr.szelement == 0);
+    assert(aggr.szbuf == 0);
+    assert(aggr.lim.imin == 0);
+    assert(aggr.buf == NULL);
+  }
+
+  return ifail;
 }
 
 /*****************************************************************************
@@ -54,31 +98,35 @@ int test_io_aggregator_create(void) {
   int ifail = 0;
 
   {
-    /* Create and free. */
+    /* Bad size (e.g., via element.count = 0) */
     io_element_t element = {.datatype = MPI_DOUBLE,
 			    .datasize = sizeof(double),
-                            .count    = 3,
+                            .count    = 0,
                             .endian   = io_endianness()};
-    cs_limits_t lim = {-2, 18, 1, 8, 1, 4};
-    io_aggregator_t aggr = {0};
+    cs_limits_t limits = {0};
+    io_aggregator_t * aggr = NULL;
 
-    io_aggregator_create(element, lim, &aggr);
+    ifail = io_aggregator_create(element, limits, &aggr);
+    assert(ifail != 0);
+    assert(aggr == NULL);
+  }
 
-    assert(aggr.element.datatype == MPI_DOUBLE);
-    assert(aggr.element.datasize == sizeof(double));
-    assert(aggr.element.count    == 3);
-    assert(aggr.element.endian   == io_endianness());
+  {
+    /* Good */
+    io_element_t element = {.datatype = MPI_DOUBLE,
+			    .datasize = sizeof(double),
+                            .count    = 1,
+                            .endian   = io_endianness()};
+    cs_limits_t limits = {1, 8, 1, 4, 1, 2};
+    io_aggregator_t * aggr = NULL;
 
-    assert(aggr.szelement == element.datasize*element.count);
-    assert(aggr.szbuf     == aggr.szelement*cs_limits_size(lim));
-    assert(aggr.lim.imin  == lim.imin); /* Assume sufficient */
-    assert(aggr.buf);
+    ifail = io_aggregator_create(element, limits, &aggr);
+    assert(ifail == 0);
+    assert(aggr);
+    assert(aggr->buf);
 
     io_aggregator_free(&aggr);
-    assert(aggr.szelement == 0);
-    assert(aggr.szbuf == 0);
-    assert(aggr.lim.imin == 0);
-    assert(aggr.buf == NULL);
+    assert(aggr == NULL);
   }
 
   return ifail;

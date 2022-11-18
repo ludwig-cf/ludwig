@@ -57,25 +57,30 @@ int test_io_element_suite(void) {
 
 int test_io_endian_from_string(void) {
 
+  int ifail = 0;
+
   {
     const char * str = "LITTLE_ENDIAN";
     io_endian_enum_t endian = io_endian_from_string(str);
     assert(endian == IO_ENDIAN_LITTLE_ENDIAN);
+    if (endian != IO_ENDIAN_LITTLE_ENDIAN) ifail = -1;
   }
 
   {
     const char * str = "BIG_ENDIAN";
     io_endian_enum_t endian = io_endian_from_string(str);
     assert(endian == IO_ENDIAN_BIG_ENDIAN);
+    if (endian != IO_ENDIAN_BIG_ENDIAN) ifail = -2;
   }
 
   {
     const char * str = "RUBBISH";
     io_endian_enum_t endian = io_endian_from_string(str);
     assert(endian == IO_ENDIAN_UNKNOWN);
+    if (endian != IO_ENDIAN_UNKNOWN) ifail = -4;
   }
 
-  return 0;
+  return ifail;
 }
 
 /*****************************************************************************
@@ -86,25 +91,30 @@ int test_io_endian_from_string(void) {
 
 int test_io_endian_to_string(void) {
 
+  int ifail = 0;
+
   {
     io_endian_enum_t endian = IO_ENDIAN_UNKNOWN;
     const char * str = io_endian_to_string(endian);
-    assert(strcmp(str, "UNKNOWN") == 0);
+    ifail = strcmp(str, "UNKNOWN");
+    assert(ifail == 0);
   }
 
   {
     io_endian_enum_t endian = IO_ENDIAN_LITTLE_ENDIAN;
     const char * str = io_endian_to_string(endian);
-    assert(strcmp(str, "LITTLE_ENDIAN") == 0);
+    ifail = strcmp(str, "LITTLE_ENDIAN");
+    assert(ifail == 0);
   }
 
   {
     io_endian_enum_t endian = IO_ENDIAN_BIG_ENDIAN;
     const char * str = io_endian_to_string(endian);
-    assert(strcmp(str, "BIG_ENDIAN") == 0);
+    ifail = strcmp(str, "BIG_ENDIAN");
+    assert(ifail == 0);
   }
 
-  return 0;
+  return ifail;
 }
 
 /*****************************************************************************
@@ -122,7 +132,7 @@ int test_io_element_null(void) {
   assert(element.count    == 0);
   assert(element.endian   == IO_ENDIAN_UNKNOWN);
 
-  return 0;
+  return element.count;
 }
 
 /*****************************************************************************
@@ -194,6 +204,7 @@ int test_io_element_to_json(void) {
       assert(jsondt);
       dt = util_io_string_to_mpi_datatype(cJSON_GetStringValue(jsondt));
       assert(dt == MPI_DOUBLE);
+      if (dt != MPI_DOUBLE) ifail = -1;
     }
     {
       /* Datasize */
@@ -203,6 +214,7 @@ int test_io_element_to_json(void) {
       assert(cJSON_IsNumber(jsonsz));
       sz = cJSON_GetNumberValue(jsonsz);
       assert(sz == sizeof(double));
+      if (sz != sizeof(double)) ifail = -2;
     }
     {
       /* Count */
@@ -212,6 +224,7 @@ int test_io_element_to_json(void) {
       assert(cJSON_IsNumber(jsonct));
       count = cJSON_GetNumberValue(jsonct);
       assert(count == 3);
+      if (count != 3) ifail = -4;
     }
     {
       io_endian_enum_t endian = IO_ENDIAN_UNKNOWN;
@@ -220,6 +233,7 @@ int test_io_element_to_json(void) {
       assert(cJSON_IsString(jsonend));
       endian = io_endian_from_string(cJSON_GetStringValue(jsonend));
       assert(endian == IO_ENDIAN_LITTLE_ENDIAN);
+      if (endian != IO_ENDIAN_LITTLE_ENDIAN) ifail = -8;
     }
 
     cJSON_Delete(json);

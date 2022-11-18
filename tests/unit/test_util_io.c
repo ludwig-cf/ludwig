@@ -49,28 +49,34 @@ int test_util_io_suite(void) {
 
 int test_util_io_string_to_mpi_datatype(void) {
 
+  int ifail = 0;
+
   {
     MPI_Datatype dt = util_io_string_to_mpi_datatype(NULL);
     assert(dt == MPI_DATATYPE_NULL);
+    if (dt != MPI_DATATYPE_NULL) ifail = -1;
   }
 
   {
     MPI_Datatype dt = util_io_string_to_mpi_datatype("MPI_DOUBLE");
     assert(dt == MPI_DOUBLE);
+    if (dt != MPI_DOUBLE) ifail = -1;
   }
 
   {
     MPI_Datatype dt = util_io_string_to_mpi_datatype("MPI_INT");
     assert(dt == MPI_INT);
+    if (dt != MPI_INT) ifail = -1;
   }
 
   /* An unrecognised value -> MPI_DATATYPE_NULL */
   {
     MPI_Datatype dt = util_io_string_to_mpi_datatype("RUBBISH");
     assert(dt == MPI_DATATYPE_NULL);
+    if (dt != MPI_DATATYPE_NULL) ifail = -1;
   }
 
-  return 0;
+  return ifail;
 }
 
 /*****************************************************************************

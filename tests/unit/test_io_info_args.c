@@ -52,7 +52,7 @@ int test_io_info_args_default(void) {
   io_info_args_t args = io_info_args_default();
 
   /* If the size of the struct changes, the tests need updating */
-  assert(sizeof(io_options_t)   == 20);
+
   assert(sizeof(io_info_args_t) == (2*sizeof(io_options_t) + 4*sizeof(int)));
 
   assert(args.input.mode  == io_mode_default());
