@@ -9,7 +9,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2008-2020 The University of Edinburgh
+ *  (c) 2008-2022 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -21,6 +21,7 @@
 #include <stdlib.h>
 
 #include "stats_turbulent.h"
+#include "util_fopen.h"
 
 struct stats_turb_s {
   pe_t * pe;
@@ -280,7 +281,7 @@ int stats_turbulent_ubar_output(stats_turb_t * stat, const char * filename) {
 
     if (mpi_cartcoords[X] == 0) {
       /* Open the file */
-      if (is_writing) fp_output = fopen(filename, "w");
+      if (is_writing) fp_output = util_fopen(filename, "w");
     }
     else {
       /* Block until we get the token from the previous process and
@@ -288,7 +289,7 @@ int stats_turbulent_ubar_output(stats_turb_t * stat, const char * filename) {
       rank = cs_cart_neighb(stat->cs, CS_BACK, X);
       MPI_Recv(&token, 1, MPI_INT, rank, tag_token, comm, &status);
 
-      if (is_writing) fp_output = fopen(filename, "a");
+      if (is_writing) fp_output = util_fopen(filename, "a");
     }
 
     if (is_writing) {
