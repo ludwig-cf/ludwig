@@ -44,13 +44,17 @@ int main(int argc, char ** argv) {
 
   if (argc > 1) {
     int ifail = process_command_line(argv[1], inputfile, FILENAME_MAX);
-    if (ifail != 0) {
+    if (ifail == 0) {
+      ludwig_run(inputfile);
+    }
+    else {
       printf("Input file name %s is not valid\n", argv[1]);
-      exit(-1);
     }
   }
+  else {
+    ludwig_run("input");
+  }
 
-  ludwig_run(inputfile);
 
 #ifdef PETSC
   PetscFinalize();
@@ -65,16 +69,14 @@ int main(int argc, char ** argv) {
 
 int process_command_line(const char * arg, char * filename, size_t bufsz) {
 
-  int ifail = 0;
+  int ifail = -1;
 
   /* The first character should be alphabetical */ 
 
   if (isalpha(arg[0])) {
-    int ndot = 0;
     size_t len = strnlen(arg, bufsz-1);
     for (size_t i = 0; i < len; i++) {
       const char c = arg[i];
-      if (c == '.') ndot += 1;
       filename[i] = '_';
       if (isalnum(c) || c == '_' || c == '-' || c == '.') filename[i] = c;
     }
