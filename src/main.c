@@ -13,8 +13,9 @@
  *
  *****************************************************************************/
 
+#include <ctype.h>
 #include <stdio.h>
-#include <stdlib.h>
+#include <string.h>
 
 #include "pe.h"
 #include "ludwig.h"
@@ -32,9 +33,7 @@ int process_command_line(const char * arg, char * filename, size_t bufsz);
 
 int main(int argc, char ** argv) {
 
-  char inputfile[FILENAME_MAX] = "input";
   int provided = MPI_THREAD_SINGLE;
-
 
   MPI_Init_thread(&argc, &argv, MPI_THREAD_FUNNELED, &provided);
 #ifdef PETSC
@@ -42,19 +41,24 @@ int main(int argc, char ** argv) {
   if (argc > 1) snprintf(inputfile, FILENAME_MAX, "%s", argv[1]);
 #endif 
 
-  if (argc > 1) {
-    int ifail = process_command_line(argv[1], inputfile, FILENAME_MAX);
-    if (ifail == 0) {
-      ludwig_run(inputfile);
-    }
-    else {
-      printf("Input file name %s is not valid\n", argv[1]);
-    }
-  }
-  else {
+  if (argc == 1) {
     ludwig_run("input");
   }
-
+  else if (argc > 1) {
+    char filename[BUFSIZ/2] = {0};
+    int ifail = process_command_line(argv[1], filename, BUFSIZ/2);
+    if (ifail == 0) {
+      char buf[BUFSIZ] = "./";
+      char * f = buf;
+      strncat(f+2, filename, BUFSIZ-3);
+      ludwig_run(f);
+    }
+    else {
+      printf("Input file name: %s\n"
+	     "Please use a posix file name with only alphanumeric\n"
+	     "characters or _ or - or .\n", argv[1]);
+    }
+  }
 
 #ifdef PETSC
   PetscFinalize();
@@ -64,8 +68,16 @@ int main(int argc, char ** argv) {
   return 0;
 }
 
-#include <ctype.h>
-#include <string.h>
+/*****************************************************************************
+ *
+ *  process_command_line
+ *
+ *  Require a posix portable filename, with the additional condition
+ *  that the first character is alphabetical.
+ *
+ *  A valid filename will return zero.
+ *
+ *****************************************************************************/
 
 int process_command_line(const char * arg, char * filename, size_t bufsz) {
 
