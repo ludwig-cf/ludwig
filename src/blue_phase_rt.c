@@ -26,6 +26,7 @@
 #include "blue_phase_init.h"
 #include "blue_phase_rt.h"
 #include "physics.h"
+#include "util_bits.h"
 
 int blue_phase_rt_coll_anchoring(pe_t * pe, rt_t * rt, rt_enum_t rt_err_level,
 				 lc_anchoring_param_t * coll);
@@ -128,8 +129,11 @@ __host__ int blue_phase_init_rt(pe_t * pe, rt_t *rt,
   pe_info(pe, "Amplitude (uniaxial) order = %14.7e\n", fe_param.amplitude0);
 
   /* One-constant approximation enforced. Exactly. */
-  /* Might really be a run-time check. */
-  assert(fe_param.kappa0 == fe_param.kappa1);
+
+  if (0 == util_double_same(fe_param.kappa0, fe_param.kappa1)) {
+    pe_info(pe,  "Must have elastic constants the same\n");
+    pe_fatal(pe, "Please check and try again\n");
+  }
 
   fe_lc_param_set(fe, &fe_param);
 
