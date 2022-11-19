@@ -14,6 +14,7 @@
  *****************************************************************************/
 
 #include <stdio.h>
+#include <stdlib.h>
 
 #include "pe.h"
 #include "ludwig.h"
@@ -41,7 +42,13 @@ int main(int argc, char ** argv) {
   if (argc > 1) snprintf(inputfile, FILENAME_MAX, "%s", argv[1]);
 #endif 
 
-  if (argc > 1) process_command_line(argv[1], inputfile, FILENAME_MAX);
+  if (argc > 1) {
+    int ifail = process_command_line(argv[1], inputfile, FILENAME_MAX);
+    if (ifail != 0) {
+      printf("Input file name %s is not valid\n", argv[1]);
+      exit(-1);
+    }
+  }
 
   ludwig_run(inputfile);
 
@@ -72,6 +79,7 @@ int process_command_line(const char * arg, char * filename, size_t bufsz) {
       if (isalnum(c) || c == '_' || c == '-' || c == '.') filename[i] = c;
     }
     filename[len] = '\0';
+    ifail = strncmp(arg, filename, bufsz-1);
   }
 
   return ifail;
