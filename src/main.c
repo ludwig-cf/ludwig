@@ -23,7 +23,7 @@
   #include "petscksp.h"
 #endif
 
-int process_command_line(const char * arg, char * filename, size_t bufsz);
+int process_command_line(const char * arg);
 
 /*****************************************************************************
  *
@@ -38,26 +38,13 @@ int main(int argc, char ** argv) {
   MPI_Init_thread(&argc, &argv, MPI_THREAD_FUNNELED, &provided);
 #ifdef PETSC
   PetscInitialize(&argc, &argv, (char*) 0, NULL); 
-  if (argc > 1) snprintf(inputfile, FILENAME_MAX, "%s", argv[1]);
 #endif 
 
   if (argc == 1) {
     ludwig_run("input");
   }
-  else if (argc > 1) {
-    char filename[BUFSIZ/2] = {0};
-    int ifail = process_command_line(argv[1], filename, BUFSIZ/2);
-    if (ifail == 0) {
-      char buf[BUFSIZ] = "./";
-      char * f = buf;
-      strncat(f+2, filename, BUFSIZ-3);
-      ludwig_run(f);
-    }
-    else {
-      printf("Input file name: %s\n"
-	     "Please use a posix file name with only alphanumeric\n"
-	     "characters or _ or - or .\n", argv[1]);
-    }
+  else if (argc > 1 && process_command_line(argv[1]) == 0) {
+    ludwig_run(argv[1]);
   }
 
 #ifdef PETSC
@@ -79,21 +66,24 @@ int main(int argc, char ** argv) {
  *
  *****************************************************************************/
 
-int process_command_line(const char * arg, char * filename, size_t bufsz) {
+int process_command_line(const char * arg) {
 
   int ifail = -1;
 
   /* The first character should be alphabetical */ 
 
   if (isalpha(arg[0])) {
-    size_t len = strnlen(arg, bufsz-1);
-    for (size_t i = 0; i < len; i++) {
+    for (size_t i = 0; i < strnlen(arg, FILENAME_MAX); i++) {
       const char c = arg[i];
-      filename[i] = '_';
-      if (isalnum(c) || c == '_' || c == '-' || c == '.') filename[i] = c;
+      ifail = -1;
+      if (isalnum(c) || c == '_' || c == '-' || c == '.') ifail = 0;
     }
-    filename[len] = '\0';
-    ifail = strncmp(arg, filename, bufsz-1);
+  }
+
+  if (ifail != 0) {
+    printf("Input file name: %s\n"
+	   "Please use a posix file name with only alphanumeric\n"
+	   "characters or _ or - or .\n", arg);
   }
 
   return ifail;
