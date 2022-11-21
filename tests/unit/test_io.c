@@ -35,9 +35,9 @@ static int  test_io_read1(FILE *, int index, void * self);
 static int  test_io_write1(FILE *, int index, void * self);
 static int  test_io_read3(FILE *, int index, void * self);
 static int  test_io_write3(FILE *, int index, void * self);
-
+#ifdef OLDSHIT
 __host__ int test_io_info_create_impl_a(pe_t * pe, cs_t * cs);
-
+#endif
 /*****************************************************************************
  *
  *  test_io_suite
@@ -54,9 +54,9 @@ int test_io_suite(void) {
   cs_init(cs);
 
   do_test_io_info_struct(pe, cs);
-
+#ifdef OLDSHIT
   test_io_info_create_impl_a(pe, cs);
-
+#endif
   pe_info(pe, "PASS     ./unit/test_io\n");
   cs_free(cs);
   pe_free(pe);
@@ -140,7 +140,7 @@ int do_test_io_info_struct(pe_t * pe, cs_t * cs) {
  * test_io_info_create_impl_b
  *
  *****************************************************************************/
-
+#ifdef OLDSHIT
 __host__ int test_io_info_create_impl_a(pe_t * pe, cs_t * cs) {
 
   io_info_args_t args = io_info_args_default();
@@ -196,7 +196,7 @@ __host__ int test_io_info_create_impl_a(pe_t * pe, cs_t * cs) {
 
   return 0;
 }
-
+#endif
 /*****************************************************************************
  *
  *  test_write_1
