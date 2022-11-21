@@ -40,6 +40,25 @@ lb_data_options_t lb_data_options_default(void) {
 
 /*****************************************************************************
  *
+ *  lb_data_options_ndim_nvel_ndist
+ *
+ *****************************************************************************/
+
+lb_data_options_t lb_data_options_ndim_nvel_ndist(int ndim, int nvel,
+						  int ndist) {
+
+  lb_data_options_t opts = lb_data_options_default();
+
+  /* There are no checks at this points ... */
+  opts.ndim = ndim;
+  opts.nvel = nvel;
+  opts.ndist = ndist;
+
+  return opts;
+}
+
+/*****************************************************************************
+ *
  *  lb_data_options_valid
  *
  *****************************************************************************/

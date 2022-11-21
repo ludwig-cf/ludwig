@@ -42,6 +42,8 @@ struct lb_data_options_s {
 };
 
 lb_data_options_t lb_data_options_default(void);
+lb_data_options_t lb_data_options_ndim_nvel_ndist(int ndim, int nvel,
+						  int ndist);
 int lb_data_options_valid(const lb_data_options_t * opts);
 
 #endif
