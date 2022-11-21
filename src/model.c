@@ -401,34 +401,6 @@ static int lb_mpi_init(lb_t * lb) {
 
 /*****************************************************************************
  *
- *  lb_io_info_commit
- *
- *****************************************************************************/
-
-__host__ int lb_io_info_commit(lb_t * lb, io_info_args_t args) {
-
-  io_implementation_t impl = {0};
-
-  assert(lb);
-  assert(lb->io_info == NULL);
-
-  sprintf(impl.name, "%1d x Distribution: d%dq%d", lb->ndist, lb->ndim,
-	  lb->nvel);
-
-  impl.write_ascii     = lb_f_write_ascii;
-  impl.read_ascii      = lb_f_read_ascii;
-  impl.write_binary    = lb_f_write;
-  impl.read_binary     = lb_f_read;
-  impl.bytesize_ascii  = 0; /* HOW MANY BYTES! */
-  impl.bytesize_binary = sizeof(double)*lb->ndist*lb->nvel;
-
-  io_info_create_impl(lb->pe, lb->cs, args, &impl, &lb->io_info);
-
-  return 0;
-}
-
-/*****************************************************************************
- *
  *  lb_io_info_set
  *
  *****************************************************************************/
@@ -1429,4 +1401,117 @@ int lb_halo_free(lb_t * lb, lb_halo_t * h) {
   lb_model_free(&h->map);
 
   return 0;
+}
+
+/*****************************************************************************
+ *
+ *  lb_write_buf
+ *
+ *  Write output buffer independent of in-memory order.
+ *
+ *****************************************************************************/
+
+int lb_write_buf(const lb_t * lb, int index, char * buf) {
+
+  double data[NVELMAX] = {0};
+
+  assert(lb);
+  assert(buf);
+
+  for (int n = 0; n < lb->ndist; n++) {
+    size_t sz = lb->model.nvel*sizeof(double);
+    for (int p = 0; p < lb->model.nvel; p++) {
+      int laddr = LB_ADDR(lb->nsite, lb->ndist, lb->model.nvel, index, n, p);
+      data[p] = lb->f[laddr];
+    }
+    memcpy(buf + n*sz, data, sz);
+  }
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  lb_read_buf
+ *
+ *****************************************************************************/
+
+int lb_read_buf(lb_t * lb, int index, const char * buf) {
+
+  double data[NVELMAX] = {0};
+
+  assert(lb);
+  assert(buf);
+
+  for (int n = 0; n < lb->ndist; n++) {
+    size_t sz = lb->model.nvel*sizeof(double);
+    memcpy(data, buf + n*sz, sz);
+    for (int p = 0; p < lb->model.nvel; p++) {
+      int laddr = LB_ADDR(lb->nsite, lb->ndist, lb->model.nvel, index, n, p);
+      lb->f[laddr] = data[p];
+    }
+  }
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  lb_write_buf_asc
+ *
+ *  For ascii, we are going to put ndist distributions on a single line...
+ *  This is merely cosmetic, and for appearances.
+ *
+ *****************************************************************************/
+
+int lb_write_buf_asc(const lb_t * lb, int index, char * buf) {
+
+  const int nbyte = 23;     /* bytes per " %22.15s" datum */
+  int ifail = 0;
+
+  assert(lb);
+  assert(buf);
+  assert((lb->ndist*nbyte + 1)*sizeof(char) < BUFSIZ);
+
+  for (int p = 0; p < lb->model.nvel; p++) {
+    char tmp[BUFSIZ] = {0};
+    size_t poffset = p*(lb->ndist*nbyte + 1); /* +1 for each newline */
+    for (int n = 0; n < lb->ndist; n++) {
+      int laddr = LB_ADDR(lb->nsite, lb->ndist, lb->model.nvel, index, n, p);
+      int np = snprintf(tmp, nbyte + 1, " %22.15e", lb->f[laddr]);
+      if (np != nbyte) ifail = 1;
+      memcpy(buf + poffset + n*nbyte, tmp, nbyte*sizeof(char));
+    }
+    /* Add newline */
+    if (1 != snprintf(tmp, 2, "\n")) ifail = 2;
+    memcpy(buf + poffset + lb->ndist*nbyte, tmp, sizeof(char));
+  }
+
+  return ifail;
+}
+
+/*****************************************************************************
+ *
+ *  lb_read_buf_asc
+ *
+ *****************************************************************************/
+
+int lb_read_buf_asc(lb_t * lb, int index, const char * buf) {
+
+  const int nbyte = 23;     /* bytes per " %22.15s" datum */
+  int ifail = 0;
+
+  assert(lb);
+  assert(buf);
+
+  for (int p = 0; p < lb->model.nvel; p++) {
+    size_t poffset = p*(lb->ndist*nbyte + 1); /* +1 for each newline */
+    for (int n = 0; n < lb->ndist; n++) {
+      int laddr = LB_ADDR(lb->nsite, lb->ndist, lb->model.nvel, index, n, p);
+      int nr = sscanf(buf + poffset + n*nbyte, "%le", lb->f + laddr);
+      if (nr != 1) ifail = 1;
+    }
+  }
+
+  return ifail;
 }

@@ -21,6 +21,7 @@
 #include <float.h>
 #include <math.h>
 #include <stdlib.h>
+#include <string.h>
 
 #include "pe.h"
 #include "coords.h"
@@ -34,6 +35,11 @@ int do_test_model_distributions(pe_t * pe, cs_t * cs);
 int do_test_model_halo_swap(pe_t * pe, cs_t * cs);
 int do_test_model_reduced_halo_swap(pe_t * pe, cs_t * cs);
 int do_test_lb_model_io(pe_t * pe, cs_t * cs);
+
+int test_lb_data_write(pe_t * pe, cs_t * cs);
+int test_lb_write_buf(pe_t * pe, cs_t * cs, const lb_data_options_t * opt);
+int test_lb_write_buf_asc(pe_t * pe, cs_t * cs, const lb_data_options_t * opt);
+
 static  int test_model_is_domain(cs_t * cs, int ic, int jc, int kc);
 
 
@@ -291,7 +297,8 @@ int test_model_suite(void) {
   do_test_model_distributions(pe, cs);
   do_test_model_halo_swap(pe, cs);
   do_test_model_reduced_halo_swap(pe, cs);
-  do_test_lb_model_io(pe, cs);
+
+  test_lb_data_write(pe, cs);
 
   pe_info(pe, "PASS     ./unit/test_model\n");
   cs_free(cs);
@@ -613,19 +620,164 @@ static int test_model_is_domain(cs_t * cs, int ic, int jc, int kc) {
 
 /*****************************************************************************
  *
- *  do_test_lb_model_io
+ *  test_lb_data_write
  *
  *****************************************************************************/
 
-int do_test_lb_model_io(pe_t * pe, cs_t * cs) {
+int test_lb_data_write(pe_t * pe, cs_t * cs) {
+
+  assert(NVELMAX == 27);
+
+  {
+    lb_data_options_t opts = lb_data_options_ndim_nvel_ndist(2, 9, 1);
+    test_lb_write_buf(pe, cs, &opts);
+    test_lb_write_buf_asc(pe, cs, &opts);
+  }
+
+  {
+    lb_data_options_t opts = lb_data_options_ndim_nvel_ndist(3, 15, 1);
+    test_lb_write_buf(pe, cs, &opts);
+    test_lb_write_buf_asc(pe, cs, &opts);
+  }
+
+  {
+    lb_data_options_t opts = lb_data_options_ndim_nvel_ndist(3, 19, 1);
+    test_lb_write_buf(pe, cs, &opts);
+    test_lb_write_buf_asc(pe, cs, &opts);
+  }
+
+  {
+    /* As D3Q19 is typically what was used for ndist = 2, here it is ... */
+    lb_data_options_t opts = lb_data_options_ndim_nvel_ndist(3, 19, 2);
+    test_lb_write_buf(pe, cs, &opts);
+    test_lb_write_buf_asc(pe, cs, &opts);
+  }
+
+  {
+    lb_data_options_t opts = lb_data_options_ndim_nvel_ndist(3, 27, 1);
+    test_lb_write_buf(pe, cs, &opts);
+    test_lb_write_buf_asc(pe, cs, &opts);
+  }
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  test_lb_write_buf
+ *
+ *  It is convenient to test lb_read_buf() at the same time.
+ *
+ *****************************************************************************/
+
+int test_lb_write_buf(pe_t * pe, cs_t * cs, const lb_data_options_t * opts) {
+
+  lb_t * lb = NULL;
+  char buf[BUFSIZ] = {0};
 
   assert(pe);
   assert(cs);
+  assert(opts);
 
-  /* Write */
-  /* Read */
+  lb_data_create(pe, cs, opts, &lb);
 
-  /* Compare */
+  assert(lb->ndist*lb->model.nvel*sizeof(double) < sizeof(buf));
+
+  {
+    /* Set some data at position (2,3,4) */
+    int index = cs_index(cs, 2, 3, 4);
+
+    for (int n = 0; n < lb->ndist; n++) {
+      for (int p = 0; p < lb->model.nvel; p++) {
+	double f = 1.0*(1 + n*lb->model.nvel + p); /* Test data, avoid zero */
+	lb_f_set(lb, index, p, n, f);
+      }
+    }
+
+    lb_write_buf(lb, index, buf);
+  }
+
+  {
+    /* Read same buf in a different location */
+    int index = cs_index(cs, 3, 4, 5);
+    lb_read_buf(lb, index, buf);
+
+    /* Check the result in new position */
+    for (int n = 0; n < lb->ndist; n++) {
+      for (int p = 0; p < lb->model.nvel; p++) {
+	double fref = 1.0*(1 + n*lb->model.nvel + p);
+	double f = -1.0;
+	lb_f(lb, index, p, n, &f);
+	assert(fabs(f - fref) < DBL_EPSILON);
+      }
+    }
+  }
+
+  lb_free(lb);
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  test_lb_write_buf_asc
+ *
+ *****************************************************************************/
+
+int test_lb_write_buf_asc(pe_t * pe, cs_t * cs,
+			  const lb_data_options_t * opts) {
+
+  lb_t * lb = NULL;
+  char buf[BUFSIZ] = {0};
+
+  assert(pe);
+  assert(cs);
+  assert(opts);
+
+  /* Size of ascii record musst fir in buffer ... */
+  assert(opts->nvel*(opts->ndist*23 + 1) < BUFSIZ);
+
+  lb_data_create(pe, cs, opts, &lb);
+
+  /* Write some data */
+
+  {
+    /* Set some data at position (2,3,4) */
+    int index = cs_index(cs, 2, 3, 4);
+
+    for (int n = 0; n < lb->ndist; n++) {
+      for (int p = 0; p < lb->model.nvel; p++) {
+	double f = 1.0*(1 + n*lb->model.nvel + p); /* Test data, avoid zero */
+	lb_f_set(lb, index, p, n, f);
+      }
+    }
+
+    lb_write_buf_asc(lb, index, buf);
+
+    {
+      /* Have we got the correct size? */
+      size_t sz = lb->model.nvel*(lb->ndist*23 + 1)*sizeof(char);
+      assert(sz == strnlen(buf, BUFSIZ));
+    }
+  }
+
+  {
+    /* Read back in different memory position */
+    int index = cs_index(cs, 4, 5, 6);
+    lb_read_buf_asc(lb, index, buf);
+
+    /* Check the result in new position */
+    for (int n = 0; n < lb->ndist; n++) {
+      for (int p = 0; p < lb->model.nvel; p++) {
+	double fref = 1.0*(1 + n*lb->model.nvel + p);
+	double f = -1.0;
+	lb_f(lb, index, p, n, &f);
+	assert(fabs(f - fref) < DBL_EPSILON);
+      }
+    }
+  }
+
+  lb_free(lb);
 
   return 0;
 }
