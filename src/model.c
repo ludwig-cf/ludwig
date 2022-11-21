@@ -1475,7 +1475,7 @@ int lb_write_buf_asc(const lb_t * lb, int index, char * buf) {
 
   for (int p = 0; p < lb->model.nvel; p++) {
     char tmp[BUFSIZ] = {0};
-    size_t poffset = p*(lb->ndist*nbyte + 1); /* +1 for each newline */
+    int poffset = p*(lb->ndist*nbyte + 1); /* +1 for each newline */
     for (int n = 0; n < lb->ndist; n++) {
       int laddr = LB_ADDR(lb->nsite, lb->ndist, lb->model.nvel, index, n, p);
       int np = snprintf(tmp, nbyte + 1, " %22.15e", lb->f[laddr]);
@@ -1505,7 +1505,7 @@ int lb_read_buf_asc(lb_t * lb, int index, const char * buf) {
   assert(buf);
 
   for (int p = 0; p < lb->model.nvel; p++) {
-    size_t poffset = p*(lb->ndist*nbyte + 1); /* +1 for each newline */
+    int poffset = p*(lb->ndist*nbyte + 1); /* +1 for each newline */
     for (int n = 0; n < lb->ndist; n++) {
       int laddr = LB_ADDR(lb->nsite, lb->ndist, lb->model.nvel, index, n, p);
       int nr = sscanf(buf + poffset + n*nbyte, "%le", lb->f + laddr);
