@@ -24,7 +24,8 @@
 #include "lb_data_options.h"
 #include "lb_model.h"
 
-#include "io_harness.h"
+#include "io_impl.h"
+#include "io_harness.h"  /* Scheduled for removal. Use io_impl.h */
 #include "halo_swap.h"
 
 /* Residual compile-time switches scheduled for removal */
@@ -40,6 +41,8 @@ enum {NDIM = 3, NVEL = 19};
 #ifdef _D3Q27_
 enum {NDIM = 3, NVEL = 27};
 #endif
+
+#define NVELMAX 27
 
 typedef struct lb_collide_param_s lb_collide_param_t;
 typedef struct lb_halo_s lb_halo_t;
@@ -151,19 +154,20 @@ __host__ int lb_io_info(lb_t * lb, io_info_t ** io_info);
 __host__ int lb_io_info_set(lb_t * lb, io_info_t * io_info, int fin, int fout);
 __host__ int lb_io_rho_set(lb_t *lb, io_info_t * io_rho, int fin, int fout);
 
-__host__ int lb_io_info_commit(lb_t * lb, io_info_args_t args);
-
 __host__ __device__ int lb_ndist(lb_t * lb, int * ndist);
 __host__ __device__ int lb_f(lb_t * lb, int index, int p, int n, double * f);
 __host__ __device__ int lb_f_set(lb_t * lb, int index, int p, int n, double f);
 __host__ __device__ int lb_0th_moment(lb_t * lb, int index, lb_dist_enum_t nd,
 				      double * rho);
-/* These  could be __host__ __device__ pending removal of
- * static constants */
 
 __host__ int lb_init_rest_f(lb_t * lb, double rho0);
 __host__ int lb_1st_moment(lb_t * lb, int index, lb_dist_enum_t nd, double g[3]);
 __host__ int lb_2nd_moment(lb_t * lb, int index, lb_dist_enum_t nd, double s[3][3]);
 __host__ int lb_1st_moment_equilib_set(lb_t * lb, int index, double rho, double u[3]);
+
+__host__ int lb_read_buf(lb_t * lb, int index, const char * buf);
+__host__ int lb_read_buf_asc(lb_t * lb, int index, const char * buf);
+__host__ int lb_write_buf(const lb_t * lb, int index, char * buf);
+__host__ int lb_write_buf_asc(const lb_t * lb, int index, char * buf);
 
 #endif
