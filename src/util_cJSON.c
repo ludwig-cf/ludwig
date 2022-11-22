@@ -69,6 +69,7 @@
 #endif
 #define false ((cJSON_bool)0)
 
+#ifdef TRY_WITHOUT
 /* define isnan and isinf for ANSI C, if in C99 or above, isnan and isinf has been defined in math.h */
 #ifndef isinf
 #define isinf(d) (isnan((d - d)) && !isnan(d))
@@ -76,6 +77,7 @@
 #ifndef isnan
 #define isnan(d) (d != d)
 #endif
+#endif /* TRY_WITHOUT */
 
 #ifndef NAN
 #ifdef _WIN32
@@ -3062,31 +3064,27 @@ CJSON_PUBLIC(cJSON_bool) cJSON_Compare(const cJSON * const a, const cJSON * cons
         {
             cJSON *a_element = NULL;
             cJSON *b_element = NULL;
-            cJSON_ArrayForEach(a_element, a)
-            {
-                /* TODO This has O(n^2) runtime, which is horrible! */
-                b_element = get_object_item(b, a_element->string, case_sensitive);
-                if (b_element == NULL) {
-		  return false;
-                }
-
-                if (!cJSON_Compare(a_element, b_element, case_sensitive)) {
-		  return false;
-                }
+            cJSON_ArrayForEach(a_element, a) {
+	      /* TODO This has O(n^2) runtime, which is horrible! */
+	      b_element = get_object_item(b, a_element->string, case_sensitive);
+	      if (b_element == NULL) {
+		return false;
+	      }
+	      if (!cJSON_Compare(a_element, b_element, case_sensitive)) {
+		return false;
+	      }
             }
 
             /* doing this twice, once on a and b to prevent true comparison if a subset of b
              * TODO: Do this the proper way, this is just a fix for now */
-            cJSON_ArrayForEach(b_element, b)
-            {
-                a_element = get_object_item(a, b_element->string, case_sensitive);
-                if (a_element == NULL) {
-		  return false;
-                }
-
-                if (!cJSON_Compare(b_element, a_element, case_sensitive)) {
-		  return false;
-                }
+            cJSON_ArrayForEach(b_element, b) {
+	      a_element = get_object_item(a, b_element->string, case_sensitive);
+	      if (a_element == NULL) {
+		return false;
+	      }
+	      if (!cJSON_Compare(b_element, a_element, case_sensitive)) {
+		return false;
+	      }
             }
 
             return true;
