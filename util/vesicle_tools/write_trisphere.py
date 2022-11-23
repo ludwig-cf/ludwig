@@ -9,21 +9,18 @@ NATOMS = 643
 sphere_l = 0.17
 
 # or choose vesicle radius
-RADIUS = 7.0
+RADIUS = 6.0
 
 #print(str(BOND_LENGTH) + "\n" + str(BOND_LENGTH*sphere_l) + "\n" + str(BOND_LENGTH*RADIUS0))
 
 nbonds= 7
 
-XSHIFT = 30
-YSHIFT = 30
-ZSHIFT = 30
+XSHIFT = 21
+YSHIFT = 21
+ZSHIFT = 21
 
-COL164 = np.array([0.00970886554569006, -0.7889782190322876, -0.6143444180488586])
-COL643 = np.array([0.5770666599273682, -0.5685132145881653, -0.5863333344459534])
-
-mx=0
-my=-1
+mx=-1
+my=0
 mz=0
 
 #nx=XXXnxXXX
@@ -52,10 +49,11 @@ indexcentre = np.ones((NATOMS*NVESICLES), dtype = int)
 
 
 # Coordinates
-xyz = utils.file_to_array("trisphere.xyz")
+xyz = utils.file_to_array("rawfiles/trisphere.xyz")
 
 #Renormalize distances so that the smallest of the two harmonic bonds has l_0=1
-xyz = utils.rescale(xyz, RADIUS)
+#xyz = utils.rescale(xyz, RADIUS)
+
 
 # Connectivities
 for i in range(NATOMS):
@@ -64,9 +62,9 @@ for i in range(NATOMS):
     dr = utils.dist(xyz.T[i], xyz.T[j])
     if i == j: continue
 
-    elif dr < sphere_l*RADIUS:
+    elif dr < sphere_l:
       Connec[i][bondmade] = np.int_(j) + 1
-      Connecdist[i][bondmade] = dr
+      Connecdist[i][bondmade] = dr*RADIUS
 
       nConnec[i] += 1
       bondmade += 1
@@ -75,7 +73,7 @@ for i in range(NATOMS):
     if j == 0:
       dr = utils.dist(xyz.T[i], xyz.T[j])
       Connec[i][bondmade] = np.int_(j) + 1
-      Connecdist[i][bondmade] = dr
+      Connecdist[i][bondmade] = dr*RADIUS
 
       nConnec[i] += 1
       bondmade += 1
@@ -84,8 +82,6 @@ Connec = np.array(Connec)
 
 #Renormalize distances so that the smallest of the two harmonic bonds has l_0=1
 
-#Rescale before find connec to decrease errors
-#xyz = rescale(xyz, RADIUS)
 
 #Other attributes
 iscentre[0] = 1 #0, NATOMS, etc...
@@ -109,6 +105,7 @@ for i, vec in enumerate(xyzt):
   xyz[1][i] = newvec[1]
   xyz[2][i] = newvec[2]
 
+xyz = utils.rescale(xyz, RADIUS)
 
 xyz[0, :] += XSHIFT
 xyz[1, :] += YSHIFT
@@ -116,26 +113,6 @@ xyz[2, :] += ZSHIFT
 
 table = np.column_stack((indices, xyz.T, nConnec, Connec, Connecdist, iscentre.T, ishole.T, indexcentre.T))
 np.savetxt("latticeTrisphere.txt", table, fmt = '%3d     %3f %3f %3f      %3d %3d %3d %3d %3d %3d %3d %3d   %3f %3f %3f %3f %3f %3f %3f    %3d %3d %3d')
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 

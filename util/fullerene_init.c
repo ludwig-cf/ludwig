@@ -118,7 +118,7 @@ int main(int argc, char ** argv) {
 
   if (from_file) {
     /* Must know number of colloids in advance */
-    nrequest = 643;
+    nrequest = 61;
   }
   else {
     nrequest=Npoly*Lpoly;
@@ -170,10 +170,10 @@ int main(int argc, char ** argv) {
     int iscentre, ishole, indexcentre;
 
     FILE* file;
-    file = fopen("latticeTrisphere.txt", "r");
+    file = fopen("latticeFullerene.txt", "r");
 
-    state[0].nbonds_mesh = 642;
-    for (int ind = 0; ind < 642; ind++) {
+    state[0].nbonds_mesh = 60;
+    for (int ind = 0; ind < 60; ind++) {
       state[0].bond_mesh[ind] = ind + 2;
     }
 
@@ -233,7 +233,7 @@ int main(int argc, char ** argv) {
         state[numcol].bond_mesh[5] = mi[5];
         state[numcol].bond_mesh[6] = mi[6];
 
-        for (int numbond = 7; numbond < 642; numbond++) {
+        for (int numbond = 7; numbond < 60; numbond++) {
           state[numcol].bond_mesh[numbond] = 0;
         }  
       }

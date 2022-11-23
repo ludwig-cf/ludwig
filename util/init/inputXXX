@@ -88,6 +88,7 @@ mask_phi_permeability XXXmask_phi_permeabilityXXX
 mask_psi_permeability XXXmask_psi_permeabilityXXX
 
 phi_interaction_mask XXXphi_interaction_maskXXX
+phi_interaction_external_only XXXphi_interaction_external_onlyXXX
 
 mask_std_width XXXmask_std_widthXXX
 mask_std_alpha XXXmask_std_alphaXXX
