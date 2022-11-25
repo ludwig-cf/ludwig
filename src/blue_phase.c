@@ -991,7 +991,6 @@ __host__ __device__ int fe_lc_mol_field(fe_lc_t * fe, int index,
   double dsq[3][3];
 
   assert(fe);
-  assert(fe->param->kappa0 == fe->param->kappa1); /* Exactly */
 
   field_tensor(fe->q, index, q);
   field_grad_tensor_grad(fe->dq, index, dq);

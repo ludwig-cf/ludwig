@@ -34,6 +34,7 @@
 
 #include "pe.h"
 #include "util.h"
+#include "util_fopen.h"
 #include "coords_s.h"
 #include "leesedwards.h"
 #include "io_harness.h"
@@ -466,7 +467,7 @@ int io_write_metadata_file(io_info_t * info, char * filename_stub) {
     ny = info->io_comm->ngroup[Y];
     nz = info->io_comm->ngroup[Z];
 
-    fp_meta = fopen(filename_io, "w");
+    fp_meta = util_fopen(filename_io, "w");
     if (fp_meta == NULL) pe_fatal(info->pe, "fopen(%s) failed\n", filename_io);
 
     fprintf(fp_meta, "Metadata for file set prefix:    %s\n", filename_stub);
@@ -837,7 +838,7 @@ int io_write_data_p(io_info_t * obj, const char * filename_stub, void * data) {
 
   if (obj->io_comm->rank == 0) {
     /* Open the file anew */
-    fp_state = fopen(filename_io, "wb");
+    fp_state = util_fopen(filename_io, "wb");
   }
   else {
 
@@ -847,7 +848,7 @@ int io_write_data_p(io_info_t * obj, const char * filename_stub, void * data) {
 
     MPI_Recv(&token, 1, MPI_INT, obj->io_comm->rank - 1, io_tag,
 	     obj->io_comm->comm, &status);
-    fp_state = fopen(filename_io, "ab");
+    fp_state = util_fopen(filename_io, "ab");
   }
 
   if (fp_state == NULL) pe_fatal(obj->pe, "Failed to open %s\n", filename_io);
@@ -936,7 +937,7 @@ int io_write_data_s(io_info_t * obj, const char * filename_stub, void * data) {
 
   localsz = itemsz*nlocal[X]*nlocal[Y]*nlocal[Z];
   buf = (char *) malloc(localsz*sizeof(char));
-  fp_buf = fopen("/dev/null", "w"); /* TODO: de-hardwire this */
+  fp_buf = util_fopen("/dev/null", "w"); /* TODO: de-hardwire this */
   setvbuf(fp_buf, buf, _IOFBF, localsz);
 
   if (buf == NULL || fp_buf == NULL) {
@@ -987,13 +988,13 @@ int io_write_data_s(io_info_t * obj, const char * filename_stub, void * data) {
      * before allowing other groups to write at appropriate offset. */
 
     if (obj->io_comm->index == 0) {
-      fp_state = fopen(filename_io, "w");
+      fp_state = util_fopen(filename_io, "w");
     }
 
     MPI_Bcast(&itemsz, 1, MPI_INT, 0, obj->io_comm->xcomm);
 
     if (obj->io_comm->index > 0) {
-      fp_state = fopen(filename_io, "r+");
+      fp_state = util_fopen(filename_io, "r+");
       offset = (long int) itemsz*
 	obj->io_comm->offset[X]*obj->io_comm->nsite[Y]*obj->io_comm->nsite[Z];
       fseek(fp_state, offset, SEEK_SET);
@@ -1122,7 +1123,7 @@ int io_read_data(io_info_t * obj, const char * filename_stub, void * data) {
 
   if (obj->io_comm->rank == 0) {
 
-    fp_state = fopen(filename_io, "r");
+    fp_state = util_fopen(filename_io, "r");
   }
   else {
 
@@ -1131,7 +1132,7 @@ int io_read_data(io_info_t * obj, const char * filename_stub, void * data) {
 
     MPI_Recv(&token, 1, MPI_LONG, obj->io_comm->rank - 1, io_tag,
 	     obj->io_comm->comm, &status);
-    fp_state = fopen(filename_io, "r");
+    fp_state = util_fopen(filename_io, "r");
   }
 
   if (fp_state == NULL) pe_fatal(obj->pe, "Failed to open %s\n", filename_io);
