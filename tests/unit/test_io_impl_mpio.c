@@ -470,7 +470,7 @@ static int test_buf_unpack_asc(cs_t * cs, const io_aggregator_t * buf) {
 	  if (nc != 4) ifail += 1;
 	  if (iz != izread) ifail += 1;
 	  if (iy != iyread) ifail += 1;
-	  if (ix != ixread) ifail =+ 1;
+	  if (ix != ixread) ifail += 1;
 	  if (ivalread != ival) ifail += 1;
 	}
 	ib += 1;

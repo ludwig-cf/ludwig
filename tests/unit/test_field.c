@@ -99,11 +99,13 @@ int test_field_suite(void) {
 int test_field_io_read_write(pe_t * pe) {
 
   int ntotal[3] = {32, 16, 8};
+  MPI_Comm comm = MPI_COMM_NULL;
   cs_t * cs = NULL;
 
   cs_create(pe, &cs);
   cs_ntotal_set(cs, ntotal);
   cs_init(cs);
+  cs_cart_comm(cs, &comm);
 
   /* ASCII */
   {
@@ -113,12 +115,22 @@ int test_field_io_read_write(pe_t * pe) {
     opts.iodata.output = io;
 
     test_field_io_write(pe, cs, &opts);
-    /* FIXME test_field_io_read(pe, cs, &opts); */
+    test_field_io_read(pe, cs, &opts);
+
+    MPI_Barrier(comm); /* Make sure we finish before any further action */
   }
 
   /* Binary (default) */
   {
-    /* PENDING */
+    io_options_t io = io_options_with_format(IO_MODE_MPIIO, IO_RECORD_BINARY);
+    field_options_t opts = field_options_ndata_nhalo(5, 2);
+    opts.iodata.input  = io;
+    opts.iodata.output = io;
+
+    test_field_io_write(pe, cs, &opts);
+    test_field_io_read(pe, cs, &opts);
+
+    MPI_Barrier(comm); /* Make sure we finish before any further action */
   }
 
   cs_free(cs);
