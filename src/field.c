@@ -1222,7 +1222,7 @@ int field_io_aggr_unpack(field_t * field, const io_aggregator_t * aggr) {
 
       /* Read/write data for (ic,jc,kc) */
       int index = cs_index(field->cs, ic, jc, kc);
-      int offset = ib*aggr->szelement;
+      size_t offset = ib*aggr->szelement;
       assert(0 <= offset && offset < aggr->szbuf);
       if (iasc) field_read_buf_ascii(field, index, aggr->buf + offset);
       if (ibin) field_read_buf(field, index, aggr->buf + offset);
