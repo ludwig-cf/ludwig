@@ -4,6 +4,11 @@
  *
  *  Read/write aggregated data buffers using MPI/IO.
  *
+ *  Historically, users have expected i/o to clobber existing files.
+ *  MPI/IO does not really have an analogue of this, so there is
+ *  some phaff at each MPI_File_open() to retain the expected
+ *  behaviour.
+ *
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -38,17 +43,22 @@ static int io_impl_mpio_types_create(io_impl_mpio_t * io);
 int io_impl_mpio_create(const io_metadata_t * metadata,
 			io_impl_mpio_t ** io) {
 
+  int ifail = 0;
   io_impl_mpio_t * mpio = NULL;
 
   mpio = (io_impl_mpio_t *) calloc(1, sizeof(io_impl_mpio_t));
   if (mpio == NULL) goto err;
 
-  io_impl_mpio_initialise(metadata, mpio);
+  ifail = io_impl_mpio_initialise(metadata, mpio);
+  if (ifail != 0) goto err;
+
   *io = mpio;
 
   return 0;
 
  err:
+  if (mpio) free(mpio);
+
   return -1;
 }
 
@@ -74,25 +84,28 @@ int io_impl_mpio_free(io_impl_mpio_t ** io) {
  *
  *  io_impl_mpio_initialise
  *
+ *  There could in principle be a failure to allocate the aggregator,
+ *  which will result in a non-zero exit code.
+ *
  *****************************************************************************/
 
 int io_impl_mpio_initialise(const io_metadata_t * metadata,
 			    io_impl_mpio_t * io) {
+  int ifail = 0;
   assert(metadata);
   assert(io);
 
   *io = (io_impl_mpio_t) {0};
 
   io->super.impl = &vt_;
-  io_aggregator_create(metadata->element, metadata->limits, &io->super.aggr);
-  /* ALLOW FAILURE? */
-
+  ifail = io_aggregator_create(metadata->element, metadata->limits,
+			       &io->super.aggr);
   io->metadata = metadata;
 
   io->fh = MPI_FILE_NULL;
   io_impl_mpio_types_create(io);
 
-  return 0;
+  return ifail;
 }
 
 /*****************************************************************************
@@ -249,7 +262,6 @@ int io_impl_mpio_write_begin(io_impl_mpio_t * io, const char * filename) {
 
   return 0;
 }
-
 
 /*****************************************************************************
  *
