@@ -80,6 +80,7 @@ __host__ int tests_create() {
   test_io_info_args_suite();
   test_io_info_args_rt_suite();
   test_io_subfile_suite();
+  test_io_metadata_suite();
   test_io_impl_mpio_suite();
   test_io_suite();
   test_lb_d2q9_suite();

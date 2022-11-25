@@ -78,7 +78,7 @@ int test_io_impl_mpio_suite(void) {
     const char * filename = "io-impl-mpio-asc.dat";
     const char * afilename = "io-impl-mpio-async-asc.dat";
 
-    io_metadata_create(cs, &opts, &element_asc, &metadata);
+    io_metadata_initialise(cs, &opts, &element_asc, &metadata);
 
     test_io_impl_mpio_create(cs, &metadata);
     test_io_impl_mpio_initialise(cs, &metadata);
@@ -93,7 +93,7 @@ int test_io_impl_mpio_suite(void) {
       test_io_impl_mpio_write_end(&io);
     }
 
-    io_metadata_free(&metadata);
+    io_metadata_finalise(&metadata);
 
     MPI_Barrier(MPI_COMM_WORLD);
     if (pe_mpi_rank(pe) == 0) remove(filename);
@@ -106,14 +106,14 @@ int test_io_impl_mpio_suite(void) {
     io_metadata_t metadata = {0};
     const char * filename = "io-impl-mpio-bin.dat";
 
-    io_metadata_create(cs, &opts, &element_bin, &metadata);
+    io_metadata_initialise(cs, &opts, &element_bin, &metadata);
 
     test_io_impl_mpio_create(cs, &metadata);
     test_io_impl_mpio_initialise(cs, &metadata);
     test_io_impl_mpio_write(cs, &metadata, filename);
     test_io_impl_mpio_read(cs, &metadata, filename);
 
-    io_metadata_free(&metadata);
+    io_metadata_finalise(&metadata);
 
     MPI_Barrier(MPI_COMM_WORLD);
     if (pe_mpi_rank(pe) == 0) remove(filename);
@@ -126,24 +126,24 @@ int test_io_impl_mpio_suite(void) {
     io_record_format_enum_t ior = IO_RECORD_ASCII;
     int iosize[3] = {2, 1, 1};
     io_options_t opts = io_options_with_iogrid(mode, ior, iosize);
-    io_metadata_t metadata = {0};
+    io_metadata_t * metadata = NULL;
 
     const char * filestub = "io-impl-mpio";
     char filename[BUFSIZ] = {0};
 
     io_metadata_create(cs, &opts, &element_asc, &metadata);
-    io_subfile_name(&metadata.subfile, filestub, 0, filename, BUFSIZ);
+    io_subfile_name(&metadata->subfile, filestub, 0, filename, BUFSIZ);
 
-    test_io_impl_mpio_create(cs, &metadata);
-    test_io_impl_mpio_initialise(cs, &metadata);
-    test_io_impl_mpio_write(cs, &metadata, filename);
-    test_io_impl_mpio_read(cs, &metadata, filename);
+    test_io_impl_mpio_create(cs, metadata);
+    test_io_impl_mpio_initialise(cs, metadata);
+    test_io_impl_mpio_write(cs, metadata, filename);
+    test_io_impl_mpio_read(cs, metadata, filename);
 
-    MPI_Barrier(metadata.comm);
+    MPI_Barrier(metadata->comm);
     {
       /* Clean up */
       int rank = -1;
-      MPI_Comm_rank(metadata.comm, &rank);
+      MPI_Comm_rank(metadata->comm, &rank);
       if (rank == 0) remove(filename);
     }
 

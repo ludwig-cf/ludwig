@@ -82,13 +82,7 @@ __host__ int field_create(pe_t * pe, cs_t * cs, lees_edw_t * le,
   if (obj == NULL) pe_fatal(pe, "calloc(obj) failed\n");
 
   obj->nf = opts->ndata;
-
-  obj->name = (char *) calloc(strlen(name) + 1, sizeof(char));
-  assert(obj->name);
-  if (obj->name == NULL) pe_fatal(pe, "calloc(name) failed\n");
-
-  strncpy(obj->name, name, imin(strlen(name), BUFSIZ));
-  obj->name[strlen(name)] = '\0';
+  obj->name = name;
 
   obj->pe = pe;
   obj->cs = cs;
@@ -111,8 +105,22 @@ __host__ int field_create(pe_t * pe, cs_t * cs, lees_edw_t * le,
 			  .datasize = sizeof(double),
 			  .count    = obj->opts.ndata,
 			  .endian   = io_endianness()};
-    obj->ascii = elasc;
-    obj->binary = elbin;
+    {
+      /* Input metadata */
+      int ifail = 0;
+      io_element_t element = {0};
+      if (opts->iodata.input.iorformat == IO_RECORD_ASCII)  element = elasc;
+      if (opts->iodata.input.iorformat == IO_RECORD_BINARY) element = elbin;
+      ifail = io_metadata_initialise(cs, &opts->iodata.input, &element,
+				     &obj->iometadata_in);
+      assert(ifail == 0); /* FIXME run time failure */
+      /* Output metadata */
+      if (opts->iodata.output.iorformat == IO_RECORD_ASCII)  element = elasc;
+      if (opts->iodata.output.iorformat == IO_RECORD_BINARY) element = elbin;
+      ifail = io_metadata_initialise(cs, &opts->iodata.output, &element,
+				     &obj->iometadata_out);
+      assert(ifail == 0); /* FIXME run time failure please */
+    }
   }
 
   if (obj->opts.haloverbose) field_halo_info(obj);
@@ -145,7 +153,6 @@ __host__ int field_free(field_t * obj) {
   }
 
   if (obj->data) free(obj->data);
-  if (obj->name) free(obj->name);
   if (obj->halo) halo_swap_free(obj->halo);
   if (obj->info) io_info_free(obj->info);
 
@@ -1631,6 +1638,90 @@ int field_halo_free(field_halo_t * h) {
   }
 
   *h = (field_halo_t) {0};
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  field_io_write
+ *
+ *****************************************************************************/
+
+int field_io_write(field_t * field, int timestep, io_event_t * event) {
+
+  const io_metadata_t * meta = &field->iometadata_out;
+
+  /* old ANSI */
+  if (meta->options.mode == IO_MODE_SINGLE) {
+    char filename[BUFSIZ] = {0};
+    sprintf(filename, "%s-%8.8d", field->name, timestep);
+    io_write_data(field->info, filename, field);
+  }
+
+  /* MPIIO only at the moment */
+
+  if (meta->options.mode == IO_MODE_MPIIO) {
+
+    io_impl_t * io = NULL;
+    char filename[BUFSIZ] = {0};
+
+    io_subfile_name(&meta->subfile, field->name, timestep, filename, BUFSIZ);
+    io_impl_create(meta, &io);  /* CAN FAIL */
+    assert(io);
+
+    field_io_aggr_pack(field, io->aggr);
+
+    io->impl->write(io, filename);
+
+    /* REPORT HERE >>>>> */
+
+    io->impl->free(&io);
+  }
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  field_io_read
+ *
+ *****************************************************************************/
+
+int field_io_read(field_t * field, int timestep, io_event_t * event) {
+
+  assert(field);
+  assert(event);
+
+  const io_metadata_t * meta = &field->iometadata_in;
+
+  /* old ANSI */
+  if (field->opts.iodata.input.mode == IO_MODE_SINGLE) {
+    char filename[BUFSIZ] = {0};
+    sprintf(filename, "%s-%8.8d", field->name, timestep);
+    io_read_data(field->info, filename, field);
+  }
+
+  /* MPIIO only at the moment */
+
+  if (meta->options.mode == IO_MODE_MPIIO) {
+
+    io_impl_t * io = NULL;
+    char filename[BUFSIZ] = {0};
+
+    io_subfile_name(&meta->subfile, field->name, timestep, filename, BUFSIZ);
+
+    io_impl_create(meta, &io);  /* CAN FAIL */
+    assert(io);
+
+    io->impl->read(io, filename);
+
+    field_io_aggr_unpack(field, io->aggr);
+
+    /* REPORT HERE >>>>> */
+
+    io->impl->free(&io);
+  }
 
   return 0;
 }

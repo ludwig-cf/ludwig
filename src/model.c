@@ -133,6 +133,26 @@ int lb_data_create(pe_t * pe, cs_t * cs, const lb_data_options_t * options,
   lb_halo_create(obj, &obj->h, obj->haloscheme);
   lb_init(obj);
 
+  /* i/o metadata */
+  {
+    io_element_t ascii = {
+      .datatype = MPI_CHAR,
+      .datasize = sizeof(char),
+      .count    = obj->nvel*(1 + LB_RECORD_LENGTH_ASCII*obj->ndist),
+      .endian   = io_endianness()
+    };
+
+    io_element_t binary = {
+      .datatype = MPI_DOUBLE,
+      .datasize = sizeof(double),
+      .count    = obj->nvel*obj->ndist,
+      .endian   = io_endianness()
+    };
+
+    obj->ascii = ascii;
+    obj->binary = binary;
+  }
+
   *lb = obj;
 
   return 0;
@@ -1457,16 +1477,16 @@ int lb_read_buf(lb_t * lb, int index, const char * buf) {
 
 /*****************************************************************************
  *
- *  lb_write_buf_asc
+ *  lb_write_buf_ascii
  *
  *  For ascii, we are going to put ndist distributions on a single line...
  *  This is merely cosmetic, and for appearances.
  *
  *****************************************************************************/
 
-int lb_write_buf_asc(const lb_t * lb, int index, char * buf) {
+int lb_write_buf_ascii(const lb_t * lb, int index, char * buf) {
 
-  const int nbyte = 23;     /* bytes per " %22.15s" datum */
+  const int nbyte = LB_RECORD_LENGTH_ASCII;  /* bytes per " %22.15s" datum */
   int ifail = 0;
 
   assert(lb);
@@ -1492,13 +1512,13 @@ int lb_write_buf_asc(const lb_t * lb, int index, char * buf) {
 
 /*****************************************************************************
  *
- *  lb_read_buf_asc
+ *  lb_read_buf_ascii
  *
  *****************************************************************************/
 
-int lb_read_buf_asc(lb_t * lb, int index, const char * buf) {
+int lb_read_buf_ascii(lb_t * lb, int index, const char * buf) {
 
-  const int nbyte = 23;     /* bytes per " %22.15s" datum */
+  const int nbyte = LB_RECORD_LENGTH_ASCII;  /* bytes per " %22.15s" datum */
   int ifail = 0;
 
   assert(lb);
@@ -1514,4 +1534,74 @@ int lb_read_buf_asc(lb_t * lb, int index, const char * buf) {
   }
 
   return ifail;
+}
+
+/*****************************************************************************
+ *
+ *  lb_io_aggr_pack
+ *
+ *****************************************************************************/
+
+__host__ int lb_io_aggr_pack(const lb_t * lb, io_aggregator_t * aggr) {
+
+  assert(lb);
+  assert(aggr);
+  assert(aggr->buf);
+
+  #pragma omp parallel
+  {
+    int iasc = lb->opts.iodata.output.iorformat == IO_RECORD_ASCII;
+    int ibin = lb->opts.iodata.output.iorformat == IO_RECORD_BINARY;
+    assert(iasc ^ ibin); /* One or other */
+
+    #pragma omp for
+    for (int ib = 0; ib < cs_limits_size(aggr->lim); ib++) {
+      int ic = cs_limits_ic(aggr->lim, ib);
+      int jc = cs_limits_jc(aggr->lim, ib);
+      int kc = cs_limits_kc(aggr->lim, ib);
+
+      /* Write data (ic,jc,kc) */
+      int index = cs_index(lb->cs, ic, jc, kc);
+      int offset = ib*aggr->szelement;
+      if (iasc) lb_write_buf_ascii(lb, index, aggr->buf + offset);
+      if (ibin) lb_write_buf(lb, index, aggr->buf + offset);
+    }
+  }
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  lb_io_aggr_buf_unpack
+ *
+ *****************************************************************************/
+
+__host__ int lb_io_aggr_unpack(lb_t * lb, const io_aggregator_t * aggr) {
+
+  assert(lb);
+  assert(aggr);
+  assert(aggr->buf);
+
+  #pragma omp parallel
+  {
+    int iasc = lb->opts.iodata.input.iorformat == IO_RECORD_ASCII;
+    int ibin = lb->opts.iodata.input.iorformat == IO_RECORD_BINARY;
+    assert(iasc ^ ibin);
+
+    #pragma omp for
+    for (int ib = 0; ib < cs_limits_size(aggr->lim); ib++) {
+      int ic = cs_limits_ic(aggr->lim, ib);
+      int jc = cs_limits_jc(aggr->lim, ib);
+      int kc = cs_limits_kc(aggr->lim, ib);
+
+      /* Read data at (ic,jc,kc) */
+      int index = cs_index(lb->cs, ic, jc, kc);
+      int offset = ib*aggr->szelement;
+      if (iasc) lb_read_buf_ascii(lb, index, aggr->buf + offset);
+      if (ibin) lb_read_buf(lb, index, aggr->buf + offset);
+    }
+  }
+
+  return 0;
 }

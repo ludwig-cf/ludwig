@@ -43,6 +43,7 @@ enum {NDIM = 3, NVEL = 27};
 #endif
 
 #define NVELMAX 27
+#define LB_RECORD_LENGTH_ASCII 23
 
 typedef struct lb_collide_param_s lb_collide_param_t;
 typedef struct lb_halo_s lb_halo_t;
@@ -105,8 +106,15 @@ struct lb_data_s {
 
   lb_model_t model;      /* Current LB model information */
   halo_swap_t * halo;    /* halo swap driver */
+
+  /* io_info_t scheduled to be replaced. Use metadata types */
   io_info_t * io_info;   /* Distributions */ 
   io_info_t * io_rho;    /* Fluid density (here; could be hydrodynamics...) */
+
+  io_element_t ascii;    /* ASCII record description */
+  io_element_t binary;   /* Binary record description */
+  io_metadata_t input;   /* Metadata for io implementation (input) */
+  io_metadata_t output;  /* Ditto (for output) */
 
   double * f;            /* Distributions */
   double * fprime;       /* used in propagation only */
@@ -166,8 +174,11 @@ __host__ int lb_2nd_moment(lb_t * lb, int index, lb_dist_enum_t nd, double s[3][
 __host__ int lb_1st_moment_equilib_set(lb_t * lb, int index, double rho, double u[3]);
 
 __host__ int lb_read_buf(lb_t * lb, int index, const char * buf);
-__host__ int lb_read_buf_asc(lb_t * lb, int index, const char * buf);
+__host__ int lb_read_buf_ascii(lb_t * lb, int index, const char * buf);
 __host__ int lb_write_buf(const lb_t * lb, int index, char * buf);
-__host__ int lb_write_buf_asc(const lb_t * lb, int index, char * buf);
+__host__ int lb_write_buf_ascii(const lb_t * lb, int index, char * buf);
+
+__host__ int lb_io_aggr_pack(const lb_t * lb, io_aggregator_t * aggr);
+__host__ int lb_io_aggr_unpack(lb_t * lb, const io_aggregator_t * aggr);
 
 #endif

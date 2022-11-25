@@ -37,7 +37,7 @@ struct lb_data_options_s {
   int reportimbalance;
   int usefirsttouch;
 
-  io_info_args_t data;
+  io_info_args_t iodata;
   io_info_args_t rho;
 };
 

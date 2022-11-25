@@ -26,15 +26,71 @@
  *
  *  io_metadata_create
  *
- *  Generate once only per run as the cost of the MPI_Comm_split()
- *  should not be repeated.
+ *  Note this can fail and return non-zero if there is no decomposition
+ *  available for the given coordinate system/options.
+ *
+ *  Success returns 0.
  *
  *****************************************************************************/
 
 int io_metadata_create(cs_t * cs,
 		       const io_options_t * options,
 		       const io_element_t * element,
-		       io_metadata_t * meta) {
+		       io_metadata_t ** metadata) {
+
+  io_metadata_t * meta = NULL;
+
+  assert(cs);
+  assert(options);
+  assert(element);
+  assert(metadata);
+
+  meta = (io_metadata_t *) calloc(1, sizeof(io_metadata_t));
+  assert(meta);
+  if (meta == NULL) goto err;
+
+  if (io_metadata_initialise(cs, options, element, meta) != 0) goto err;
+
+  *metadata = meta;
+
+  return 0;
+
+ err:
+
+  if (meta) free(meta);
+  return -1;
+}
+
+/*****************************************************************************
+ *
+ *  io_metadata_free
+ *
+ *****************************************************************************/
+
+int io_metadata_free(io_metadata_t ** metadata) {
+
+  assert(metadata);
+
+  io_metadata_finalise(*metadata);
+  free(*metadata);
+  *metadata = NULL;
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  io_metadata_initialise
+ *
+ *  Generate once only per run as the cost of the MPI_Comm_split()
+ *  should not be repeated.
+ *
+ *****************************************************************************/
+
+int io_metadata_initialise(cs_t * cs,
+			   const io_options_t * options,
+			   const io_element_t * element,
+			   io_metadata_t * meta) {
   assert(cs);
   assert(options);
   assert(element);
@@ -76,16 +132,17 @@ int io_metadata_create(cs_t * cs,
 
 /*****************************************************************************
  *
- *  io_metadata_free
+ *  io_metadata_finalise
  *
  *****************************************************************************/
 
-int io_metadata_free(io_metadata_t * meta) {
+int io_metadata_finalise(io_metadata_t * meta) {
 
   assert(meta);
 
   MPI_Comm_free(&meta->comm);
   *meta = (io_metadata_t) {0};
+  meta->comm = MPI_COMM_NULL;
 
   return 0;
 }

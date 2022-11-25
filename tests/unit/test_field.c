@@ -42,6 +42,10 @@ int test_field_write_buf(pe_t * pe);
 int test_field_write_buf_ascii(pe_t * pe);
 int test_field_io_aggr_pack(pe_t * pe);
 
+int test_field_io_read_write(pe_t * pe);
+int test_field_io_write(pe_t * pe, cs_t * cs, const field_options_t * opts);
+int test_field_io_read(pe_t * pe, cs_t * cs, const field_options_t * opts);
+
 int util_field_data_check(field_t * field);
 int util_field_data_check_set(field_t * field);
 
@@ -73,13 +77,51 @@ int test_field_suite(void) {
 
   test_field_halo_create(pe);
 
-  /* Experimental ... */
   test_field_write_buf(pe);
   test_field_write_buf_ascii(pe);
   test_field_io_aggr_pack(pe);
+  test_field_io_read_write(pe);
 
   pe_info(pe, "PASS     ./unit/test_field\n");
   pe_free(pe);
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  test_field_io_read_write
+ *
+ *  Driver for individual i/o routine tests. We actually do write then read.
+ *
+ *****************************************************************************/
+
+int test_field_io_read_write(pe_t * pe) {
+
+  int ntotal[3] = {32, 16, 8};
+  cs_t * cs = NULL;
+
+  cs_create(pe, &cs);
+  cs_ntotal_set(cs, ntotal);
+  cs_init(cs);
+
+  /* ASCII */
+  {
+    io_options_t io = io_options_with_format(IO_MODE_MPIIO, IO_RECORD_ASCII);
+    field_options_t opts = field_options_ndata_nhalo(3, 0);
+    opts.iodata.input  = io;
+    opts.iodata.output = io;
+
+    test_field_io_write(pe, cs, &opts);
+    /* FIXME test_field_io_read(pe, cs, &opts); */
+  }
+
+  /* Binary (default) */
+  {
+    /* PENDING */
+  }
+
+  cs_free(cs);
 
   return 0;
 }
@@ -619,50 +661,96 @@ int test_field_io_aggr_pack(pe_t * pe) {
   cs_init(cs);
   field_create(pe, cs, NULL, "test_field_io_aggr_pack", &options, &field);
 
-  /* This should be elsewhere as part of test_field_create() */
+  /* Default options is binary (use output metadata) */
   {
-    /* Note one can use == with pre-defined data types */
+    const io_metadata_t * meta = &field->iometadata_out;
+    io_aggregator_t buf = {0};
 
-    assert(field->ascii.datatype == MPI_CHAR);
-    assert(field->ascii.datasize == sizeof(char));
-    assert(field->ascii.count    == 1 + 23*nf);
-    assert(field->ascii.endian   == io_endianness());
+    io_aggregator_initialise(meta->element, meta->limits, &buf);
 
-    assert(field->binary.datatype == MPI_DOUBLE);
-    assert(field->binary.datasize == sizeof(double));
-    assert(field->binary.count    == nf);
-    assert(field->binary.endian   == io_endianness());
-  }
+    util_field_data_check_set(field);
+    field_io_aggr_pack(field, &buf);
 
-  {
-    /* Default is binary */
-    int nlocal[3] = {0};
-    cs_nlocal(cs, nlocal);
-    {
-      cs_limits_t lim = {1, nlocal[X], 1, nlocal[Y], 1, nlocal[Z]};
-      io_aggregator_t buf = {0};
+    /* Are the values in the buffer correct? */
+    /* Clear existing values and unpack. */
 
-      io_aggregator_initialise(field->binary, lim, &buf);
+    memset(field->data, 0, sizeof(double)*field->nsites*field->nf);
 
-      util_field_data_check_set(field);
-      field_io_aggr_pack(field, &buf);
+    field_io_aggr_unpack(field, &buf);
+    util_field_data_check(field);
 
-      /* Are the values in the buffer correct? */
-      /* Clear existing values and unpack. */
-
-      memset(field->data, 0, sizeof(double)*field->nsites*field->nf);
-
-      field_io_aggr_unpack(field, &buf);
-      util_field_data_check(field);
-
-      io_aggregator_finalise(&buf);
-    }
+    io_aggregator_finalise(&buf);
   }
 
   /* Repeat for ASCII */
 
   field_free(field);
   cs_free(cs);
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  test_field_io_write
+ *
+ *****************************************************************************/
+
+int test_field_io_write(pe_t * pe, cs_t * cs, const field_options_t * opts) {
+
+  field_t * field = NULL;
+
+  assert(pe);
+  assert(cs);
+  assert(opts);
+
+  /* Establish data and test values. */
+
+  field_create(pe, cs, NULL, "test-field-io", opts, &field);
+
+  util_field_data_check_set(field);
+
+  /* Write */
+
+  {
+    int it = 0;
+    io_event_t event = {0};
+    field_io_write(field, it, &event);
+  }
+
+  field_free(field);
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  test_field_io_read
+ *
+ *  This needs to be co-ordinated with test_field_io_write() above.
+ *
+ *****************************************************************************/
+
+int test_field_io_read(pe_t * pe, cs_t * cs, const field_options_t * opts) {
+
+  field_t * field = NULL;
+
+  assert(pe);
+  assert(cs);
+  assert(opts);
+
+  field_create(pe, cs, NULL, "test-field-io", opts, &field);
+
+  {
+    int it = 0;  /* matches time step zero in test_field_io_write() above */
+    io_event_t event = {0};
+
+    field_io_read(field, it, &event);
+
+    util_field_data_check(field);
+  }
+
+  field_free(field);
 
   return 0;
 }

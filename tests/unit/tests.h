@@ -59,6 +59,7 @@ int test_io_info_args_rt_suite(void);
 int test_io_options_suite(void);
 int test_io_options_rt_suite(void);
 int test_io_subfile_suite(void);
+int test_io_metadata_suite(void);
 int test_io_impl_mpio_suite(void);
 int test_io_suite(void);
 int test_lb_d2q9_suite(void);

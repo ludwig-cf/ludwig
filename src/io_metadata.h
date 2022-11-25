@@ -38,7 +38,12 @@ struct io_metadata_s {
 int io_metadata_create(cs_t * cs,
                        const io_options_t * options,
                        const io_element_t * element,
-                       io_metadata_t * metadata);
-int io_metadata_free(io_metadata_t * metadata);
+                       io_metadata_t ** metadata);
+int io_metadata_free(io_metadata_t ** metadata);
+int io_metadata_initialise(cs_t * cs,
+			   const io_options_t * options,
+			   const io_element_t * element,
+			   io_metadata_t * metadata);
+int io_metadata_finalise(io_metadata_t * metadata);
 
 #endif

@@ -16,6 +16,7 @@
 
 #include "io_metadata.h"
 
+int test_io_metadata_initialise(cs_t * cs);
 int test_io_metadata_create(cs_t * cs);
 
 /*****************************************************************************
@@ -34,6 +35,7 @@ int test_io_metadata_suite(void) {
   cs_create(pe, &cs);
   cs_init(cs);
 
+  test_io_metadata_initialise(cs);
   test_io_metadata_create(cs);
 
   pe_info(pe, "%-9s %s\n", "PASS", __FILE__);
@@ -52,11 +54,39 @@ int test_io_metadata_suite(void) {
 int test_io_metadata_create(cs_t * cs) {
 
   int ifail = 0;
+  io_options_t options = io_options_default();
+  io_element_t element = {0};
+  io_metadata_t * meta = NULL;
+
+  assert(cs);
+
+  ifail = io_metadata_create(cs, &options, &element, &meta);
+  assert(ifail == 0);
+
+  assert(meta);
+
+  io_metadata_free(&meta);
+  assert(meta == NULL);
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  test_io_metadata_initialise
+ *
+ *****************************************************************************/
+
+int test_io_metadata_initialise(cs_t * cs) {
+
+  int ifail = 0;
   io_metadata_t metadata = {0};
   io_element_t  element  = {0};
   io_options_t  options  = io_options_default();
 
-  ifail = io_metadata_create(cs, &options, &element, &metadata);
+  assert(cs);
+
+  ifail = io_metadata_initialise(cs, &options, &element, &metadata);
   assert(ifail == 0); /* Bad decomposition */
 
   /* Really want a proper compare method for components */
@@ -94,7 +124,8 @@ int test_io_metadata_create(cs_t * cs) {
     assert(myresult == MPI_CONGRUENT);
   }
 
-  io_metadata_free(&metadata);
+  io_metadata_finalise(&metadata);
+  assert(metadata.comm == MPI_COMM_NULL);
 
   return ifail;
 }
