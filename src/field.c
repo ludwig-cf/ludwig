@@ -95,6 +95,10 @@ __host__ int field_create(pe_t * pe, cs_t * cs, lees_edw_t * le,
   field_halo_create(obj, &obj->h);
 
   /* I/O single record information */
+  /* As the communicator creation is a relatively high overhead operation,
+   * we only want to create the metadata objects once. They're here. */
+  /* There should be a check on a valid i/o decomposition before this
+   * point, but in preicpile we can fail here... */
 
   {
     io_element_t elasc = {.datatype = MPI_CHAR,
@@ -113,13 +117,18 @@ __host__ int field_create(pe_t * pe, cs_t * cs, lees_edw_t * le,
       if (opts->iodata.input.iorformat == IO_RECORD_BINARY) element = elbin;
       ifail = io_metadata_initialise(cs, &opts->iodata.input, &element,
 				     &obj->iometadata_in);
-      assert(ifail == 0); /* FIXME run time failure */
+
+      assert(ifail == 0);
+      if (ifail != 0) pe_fatal(pe, "Field: Bad input i/o decomposition\n");
+
       /* Output metadata */
       if (opts->iodata.output.iorformat == IO_RECORD_ASCII)  element = elasc;
       if (opts->iodata.output.iorformat == IO_RECORD_BINARY) element = elbin;
       ifail = io_metadata_initialise(cs, &opts->iodata.output, &element,
 				     &obj->iometadata_out);
-      assert(ifail == 0); /* FIXME run time failure please */
+
+      assert(ifail == 0);
+      if (ifail != 0) pe_fatal(pe, "Field: Bad output i/o decomposition\n");
     }
   }
 
@@ -1136,7 +1145,10 @@ int field_read_buf_ascii(field_t * field, int index, const char * buf) {
   assert(buf);
 
   for (int n = 0; n < field->nf; n++) {
-    int nr = sscanf(buf + n*nbyte, "%le", array + n);
+    /* First, make sure we have a \0, before sscanf() */
+    char tmp[BUFSIZ] = {0};
+    memcpy(tmp, buf + n*nbyte, nbyte*sizeof(char));
+    int nr = sscanf(tmp, "%le", array + n);
     if (nr != 1) ifail = 1;
   }
 
@@ -1211,6 +1223,7 @@ int field_io_aggr_unpack(field_t * field, const io_aggregator_t * aggr) {
       /* Read/write data for (ic,jc,kc) */
       int index = cs_index(field->cs, ic, jc, kc);
       int offset = ib*aggr->szelement;
+      assert(0 <= offset && offset < aggr->szbuf);
       if (iasc) field_read_buf_ascii(field, index, aggr->buf + offset);
       if (ibin) field_read_buf(field, index, aggr->buf + offset);
     }

@@ -1528,7 +1528,9 @@ int lb_read_buf_ascii(lb_t * lb, int index, const char * buf) {
     int poffset = p*(lb->ndist*nbyte + 1); /* +1 for each newline */
     for (int n = 0; n < lb->ndist; n++) {
       int laddr = LB_ADDR(lb->nsite, lb->ndist, lb->model.nvel, index, n, p);
-      int nr = sscanf(buf + poffset + n*nbyte, "%le", lb->f + laddr);
+      char tmp[BUFSIZ] = {0};              /* Make sure we have a \0 */
+      memcpy(tmp, buf + poffset + n*nbyte, nbyte*sizeof(char));
+      int nr = sscanf(tmp, "%le", lb->f + laddr);
       if (nr != 1) ifail = 1;
     }
   }
