@@ -813,7 +813,8 @@ int test_lb_write_buf_ascii(pe_t * pe, cs_t * cs,
 
     {
       /* Have we got the correct size? */
-      size_t sz = lb->nvel*(lb->ndist*LB_RECORD_LENGTH_ASCII + 1)*sizeof(char);
+      int count = lb->nvel*(lb->ndist*LB_RECORD_LENGTH_ASCII + 1);
+      size_t sz = count*sizeof(char);
       assert(sz == strnlen(buf, BUFSIZ));
     }
   }
