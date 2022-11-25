@@ -174,8 +174,14 @@ int io_impl_mpio_write(io_impl_mpio_t * io, const char * filename) {
     MPI_Offset disp = 0;
     int count = 1;
 
-    MPI_File_open(comm, filename, MPI_MODE_WRONLY + MPI_MODE_CREATE, info,
-		  &io->fh);
+    /* We want the equivalent of fopen() with mode = "w", i.e., O_TRUNC  */
+    MPI_File_open(comm, filename,
+		  MPI_MODE_CREATE | MPI_MODE_DELETE_ON_CLOSE | MPI_MODE_WRONLY,
+		  info, &io->fh);
+    MPI_File_close(&io->fh);
+    MPI_File_open(comm, filename, MPI_MODE_CREATE | MPI_MODE_WRONLY,
+		  info, &io->fh);
+
     MPI_File_set_view(io->fh, disp, io->element, io->file, "native", info);
     MPI_File_write_all(io->fh, io->super.aggr->buf, count, io->array,
 		       &io->status);
@@ -229,8 +235,14 @@ int io_impl_mpio_write_begin(io_impl_mpio_t * io, const char * filename) {
     MPI_Offset disp = 0;
     int count = 1;
 
-    MPI_File_open(comm, filename, MPI_MODE_WRONLY + MPI_MODE_CREATE, info,
-		  &io->fh);
+    /* Again, this is O_TRUNC */
+    MPI_File_open(comm, filename,
+		  MPI_MODE_CREATE | MPI_MODE_DELETE_ON_CLOSE | MPI_MODE_WRONLY,
+		  info, &io->fh);
+    MPI_File_close(&io->fh);
+    MPI_File_open(comm, filename, MPI_MODE_CREATE | MPI_MODE_WRONLY,
+		  info, &io->fh);
+
     MPI_File_set_view(io->fh, disp, io->element, io->file, "native", info);
     MPI_File_write_all_begin(io->fh, io->super.aggr->buf, count, io->array);
   }
