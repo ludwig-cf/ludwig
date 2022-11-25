@@ -22,6 +22,8 @@ static int test_mpi_type_contiguous(void);
 static int test_mpi_type_create_struct(void);
 static int test_mpi_op_create(void);
 
+static int test_mpi_comm_split_type(void);
+
 int main (int argc, char ** argv) {
 
   int ireturn;
@@ -40,6 +42,7 @@ int main (int argc, char ** argv) {
   test_mpi_type_contiguous();
   test_mpi_type_create_struct();
   test_mpi_op_create();
+  test_mpi_comm_split_type();
 
   ireturn = MPI_Finalize();
   assert(ireturn == MPI_SUCCESS);
@@ -334,4 +337,22 @@ static int test_mpi_op_create(void) {
   assert(op == MPI_OP_NULL);
 
   return MPI_SUCCESS;
+}
+
+/*****************************************************************************
+ *
+ *  test_mpi_comm_split_type
+ *
+ *****************************************************************************/
+
+int test_mpi_comm_split_type(void) {
+
+  MPI_Comm comm = MPI_COMM_NULL;
+  int key = 0;
+
+  MPI_Comm_split_type(MPI_COMM_WORLD, MPI_COMM_TYPE_SHARED, key, MPI_INFO_NULL,
+		      &comm);
+  MPI_Comm_free(&comm);
+
+  return 0;
 }
