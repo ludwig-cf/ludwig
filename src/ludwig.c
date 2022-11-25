@@ -476,16 +476,34 @@ void ludwig_run(const char * inputfile) {
 
   pe_create(MPI_COMM_WORLD, PE_VERBOSE, &ludwig->pe);
   pe_mpi_comm(ludwig->pe, &comm);
-#ifdef __NVCC__
+
   {
-    /* Pending a more formal approach */
-    int nd = 0; /* GPU devices per node */
-    int id = 0; /* Assume MPI ranks per node == nd */
-    cudaGetDeviceCount(&nd);
-    id = pe_mpi_rank(ludwig->pe) % nd;
-    cudaSetDevice(id);
+    /* We currently assume one GPU per MPI task, and that GPU id
+     * can be equated to rank in the shared (node) communicator. */
+    MPI_Comm node_comm = MPI_COMM_NULL;
+    int rank = -1;
+    int node_rank = -1;
+    int node_size = -1;
+    int ndevice   = -1;
+
+    MPI_Comm_rank(comm, &rank);
+    MPI_Comm_split_type(comm, MPI_COMM_TYPE_SHARED, rank, MPI_INFO_NULL,
+                        &node_comm);
+    MPI_Comm_rank(node_comm, &node_rank);
+    MPI_Comm_size(node_comm, &node_size);
+
+    tdpGetDeviceCount(&ndevice);
+
+    if (ndevice > 0 && ndevice != node_size) {
+      pe_info(ludwig->pe,  "MPI tasks per node: %d\n", node_size);
+      pe_info(ludwig->pe,  "GPUs per node:      %d\n", ndevice);
+      pe_fatal(ludwig->pe, "Expecting one GPU per MPI task\n");
+    }
+
+    tdpAssert(tdpSetDevice(node_rank));
+    MPI_Comm_free(&node_comm);
   }
-#endif
+
   rt_create(ludwig->pe, &ludwig->rt);
   rt_read_input_file(ludwig->rt, inputfile);
   rt_info(ludwig->rt);

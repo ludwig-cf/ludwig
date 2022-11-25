@@ -610,6 +610,24 @@ int MPI_Comm_split(MPI_Comm comm, int colour, int key, MPI_Comm * newcomm) {
 
 /*****************************************************************************
  *
+ *  MPI_Comm_split_type
+ *
+ *****************************************************************************/
+
+int MPI_Comm_split_type(MPI_Comm comm, int split_type, int key, MPI_Info info,
+			MPI_Comm * newcomm) {
+
+  assert(mpi_is_valid_comm(comm));
+  assert(newcomm);
+  assert(split_type == MPI_COMM_TYPE_SHARED);
+
+  *newcomm = comm;
+
+  return MPI_SUCCESS;
+}
+
+/*****************************************************************************
+ *
  *  MPI_Comm_free
  *
  *****************************************************************************/
