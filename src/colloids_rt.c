@@ -628,6 +628,10 @@ int colloids_rt_cell_list_checks(pe_t * pe, cs_t * cs,
   nbest[Y] = (int) floor(1.0*(nlocal[Y]) / (dmax(a0max + nhalo - 0.5, 2.0)));
   nbest[Z] = (int) floor(1.0*(nlocal[Z]) / (dmax(a0max + nhalo - 0.5, 2.0)));
 
+  /* KLUDGE */
+  /* FIXME: That will not work for a two-dimensional colloid. */
+  if (nbest[Z] < 1) nbest[Z] = 1;
+  /* END KLUDGE */
 
   pe_info(pe, "\n");
   pe_info(pe, "Colloid cell list information\n");
@@ -1036,35 +1040,43 @@ int colloids_init_halo_range_check(pe_t * pe, cs_t * cs,
 
   colloids_info_a0max(cinfo, &a0max);
 
+  /* FIXME: The z-direction condition is a KLUDGE for 2d */
+
   if (2.0*a0max >= 1.0*(nlocal[X] - nhalo)) ifail = 1;
   if (2.0*a0max >= 1.0*(nlocal[Y] - nhalo)) ifail = 1;
-  if (2.0*a0max >= 1.0*(nlocal[Z] - nhalo)) ifail = 1;
+  if (2.0*a0max >= 1.0*(nlocal[Z] - nhalo) && NDIM == 3) ifail = 1;
+
   if (ifail == 1) {
     pe_fatal(pe, "Particle diameter larger than (nlocal - 1) domain size\n");
   }
 
+  /* FIXME: Likewise */
+
   if (lcell[X] <= a0max) ifail = 1;
   if (lcell[Y] <= a0max) ifail = 1;
-  if (lcell[Z] <= a0max) ifail = 1;
+  if (lcell[Z] <= a0max && NDIM == 3) ifail = 1;
   if (ifail == 1) {
     pe_fatal(pe, "Particle a0 > cell width breaks BBL message passing\n");
   }
 
+  /* FIXME: Likewise */
+
   if (ncell[X] < 2) ifail = 1;
   if (ncell[Y] < 2) ifail = 1;
-  if (ncell[Z] < 2) ifail = 1;
+  if (ncell[Z] < (NDIM - 1)) ifail = 1;
 
   if (ifail == 1) {
     pe_fatal(pe, "Must have two cells minimum\n");
   }
 
   /* Halo region colloid map constraint */
+  /* FIXME: Likewise, condition is z is irrelevant for two dimensions */
 
   cs_nhalo(cs, &nhalo);
 
   if (lcell[X] < (a0max + nhalo - 0.5)) ifail = 1;
   if (lcell[Y] < (a0max + nhalo - 0.5)) ifail = 1;
-  if (lcell[Z] < (a0max + nhalo - 0.5)) ifail = 1;
+  if (lcell[Z] < (a0max + nhalo - 0.5) && NDIM == 3) ifail = 1;
 
   if (ifail == 1) {
     pe_fatal(pe, "Must have cell width > a0_max + nhalo\n");
