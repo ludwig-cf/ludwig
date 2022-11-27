@@ -783,8 +783,15 @@ int bbl_update_colloids(bbl_t * bbl, wall_t * wall, colloids_info_t * cinfo) {
     /* Mass and moment of inertia are those of a hard sphere
      * with the input radius */
 
-    mass = (4.0/3.0)*pi*rho0*pow(pc->s.a0, 3);
-    moment = (2.0/5.0)*mass*pow(pc->s.a0, 2);
+    /* FIXME: Two dimensional colloid */
+    if (NDIM == 2) {
+      mass = pi*rho0*pow(pc->s.a0, 2);
+      moment = 0.25*mass*pow(pc->s.a0, 2);
+    }
+    else {
+      mass = (4.0/3.0)*pi*rho0*pow(pc->s.a0, 3);
+      moment = (2.0/5.0)*mass*pow(pc->s.a0, 2);
+    }
 
     /* Wall lubrication correction */
     wall_lubr_sphere(wall, pc->s.ah, pc->s.r, dwall);
