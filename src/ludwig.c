@@ -2207,9 +2207,6 @@ int ludwig_colloids_update(ludwig_t * ludwig) {
 
   tdpGetDeviceCount(&ndevice);
 
-  /* __NVCC__ TODO: remove */
-  lb_memcpy(ludwig->lb, tdpMemcpyDeviceToHost);
-
   lb_ndist(ludwig->lb, &ndist);
   iconserve = (ludwig->psi || (ludwig->phi && ndist == 1));
 
@@ -2231,6 +2228,8 @@ int ludwig_colloids_update(ludwig_t * ludwig) {
     lb_halo(ludwig->lb);
   }
   else {
+    /* Pull data back, then full host halo swap */
+    lb_memcpy(ludwig->lb, tdpMemcpyDeviceToHost);
     lb_halo_swap(ludwig->lb, LB_HALO_OPENMP_FULL);
   }
 
