@@ -1351,6 +1351,7 @@ int free_energy_init_rt(ludwig_t * ludwig) {
     pe_info(pe, "\n");
     pe_info(pe, "Using Cahn-Hilliard finite difference solver.\n");
 
+    rt_key_required(rt, "mobility", RT_FATAL);
     rt_double_parameter(rt, "mobility", &value);
     physics_mobility_set(ludwig->phys, value);
     pe_info(pe, "Mobility M            = %12.5e\n", value);
@@ -1432,6 +1433,7 @@ int free_energy_init_rt(ludwig_t * ludwig) {
     pe_info(pe, "\n");
     pe_info(pe, "Using full lattice Boltzmann solver for Cahn-Hilliard:\n");
 
+    rt_key_required(rt, "mobility", RT_FATAL);
     rt_double_parameter(rt, "mobility", &value);
     physics_mobility_set(ludwig->phys, value);
     pe_info(pe, "Mobility M            = %12.5e\n", value);
@@ -1474,6 +1476,7 @@ int free_energy_init_rt(ludwig_t * ludwig) {
     pe_info(pe, "\n");
     pe_info(pe, "Using Cahn-Hilliard solver:\n");
 
+    rt_key_required(rt, "mobility", RT_FATAL);
     rt_double_parameter(rt, "mobility", &value);
     physics_mobility_set(ludwig->phys, value);
     pe_info(pe, "Mobility M            = %12.5e\n", value);
@@ -1816,6 +1819,7 @@ int free_energy_init_rt(ludwig_t * ludwig) {
     pe_info(pe, "\n");
     pe_info(pe, "Using Cahn-Hilliard finite difference solver.\n");
 
+    rt_key_required(rt, "mobility", RT_FATAL);
     rt_double_parameter(rt, "mobility", &value);
     physics_mobility_set(ludwig->phys, value);
     pe_info(pe, "Mobility M            = %12.5e\n", value);
@@ -1991,6 +1995,7 @@ int free_energy_init_rt(ludwig_t * ludwig) {
     pe_info(pe, "\n");
     pe_info(pe, "Using Cahn-Hilliard finite difference solver.\n");
 
+    rt_key_required(rt, "mobility", RT_FATAL);
     rt_double_parameter(rt, "mobility", &value);
     physics_mobility_set(ludwig->phys, value);
     pe_info(pe, "Mobility M            = %12.5e\n", value);
