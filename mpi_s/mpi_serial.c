@@ -43,8 +43,8 @@
 
 /* Internal state */
 
-#define MAX_CART_COMM  16
-#define MAX_USER_DT    32
+#define MAX_CART_COMM  128
+#define MAX_USER_DT    128
 #define MAX_USER_FILE  16
 
 /* We are not going to deal with all possible data types; encode
