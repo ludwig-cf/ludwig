@@ -21,6 +21,7 @@
 
 #include "pe.h"
 #include "coords.h"
+#include "field.h"
 #include "halo_swap.h"
 #include "leesedwards.h"
 #include "io_harness.h"
@@ -55,10 +56,11 @@ typedef struct hydro_s hydro_t;
 struct hydro_s {
   int nsite;               /* Allocated sites (local) */
   int nhcomm;              /* Width of halo region for u field */
-  double * rho;            /* Density field */
+
   double * u;              /* Velocity field (on host) */
   double * f;              /* Body force field (on host) */
-  double * eta;            /* Local shear stress */
+  field_t * rho;           /* Density field */
+  field_t * eta;           /* Scalar viscosity field */
 
   pe_t * pe;               /* Parallel environment */
   cs_t * cs;               /* Coordinate system */

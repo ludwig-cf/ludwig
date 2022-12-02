@@ -395,7 +395,7 @@ void lb_collision_mrt1_site(lb_t * lb, hydro_t * hydro, map_t * map,
     /* Use viscosity model values hydro->eta */
     /* Bulk viscosity will be (eta_bulk/eta_shear)_newtonian*eta_local */
     for_simd_v(iv, NSIMDVL) {
-      eta[iv] = hydro->eta[addr_rank0(hydro->nsite, index0+iv)];
+      eta[iv] = hydro->eta->data[addr_rank0(hydro->nsite, index0+iv)];
       eta_bulk[iv] = (_cp.eta_bulk/_cp.eta_shear)*eta[iv];
     }
   }
@@ -570,7 +570,7 @@ void lb_collision_mrt1_site(lb_t * lb, hydro_t * hydro, map_t * map,
     }
     /* density */
     for_simd_v(iv, NSIMDVL) {
-      hydro->rho[addr_rank0(hydro->nsite, index0+iv)] = rho[iv];
+      hydro->rho->data[addr_rank0(hydro->nsite, index0+iv)] = rho[iv];
     }
     /* velocity */
     for (ia = 0; ia < 3; ia++) {

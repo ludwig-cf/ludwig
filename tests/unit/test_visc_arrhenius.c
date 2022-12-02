@@ -223,7 +223,7 @@ int test_visc_arrhenius_eta_uniform(cs_t * cs, hydro_t * hydro, double eta0) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 
 	index = cs_index(cs, ic, jc, kc);
-	eta = hydro->eta[addr_rank0(hydro->nsite, index)];
+	eta = hydro->eta->data[addr_rank0(hydro->nsite, index)];
 
 	if (fabs(eta - eta0) > DBL_EPSILON) ifail = 1;
       }
