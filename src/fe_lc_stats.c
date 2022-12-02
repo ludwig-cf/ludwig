@@ -8,7 +8,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2017-2020 The University of Edinburgh
+ *  (c) 2017-2022 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -420,11 +420,13 @@ static int fe_lc_colloid(fe_lc_t * fe, cs_t * cs, colloids_info_t * cinfo,
 	map_status(map, index, &status);
 	if (status != MAP_FLUID) continue;
 
+	/* This site is fluid. Look at six nearest neighbours... */
 	field_tensor(fe->q, index, qs);
 
         nhat[Y] = 0;
         nhat[Z] = 0;
 
+	/* Surface in direction of (ic+1,jc,kc) */
 	index1 = cs_index(cs, ic+1, jc, kc);
 	map_status(map, index1, &status);
 
@@ -436,6 +438,7 @@ static int fe_lc_colloid(fe_lc_t * fe, cs_t * cs, colloids_info_t * cinfo,
 	  fs[1] += 1.0;
         }
 
+	/* Surface in direction of (ic-1,jc,kc) */
 	index1 = cs_index(cs, ic-1, jc, kc);
 	map_status(map, index1, &status);
 
@@ -450,6 +453,7 @@ static int fe_lc_colloid(fe_lc_t * fe, cs_t * cs, colloids_info_t * cinfo,
 	nhat[X] = 0;
 	nhat[Z] = 0;
 
+	/* Surface in direction of (ic, jc+1,kc) */
 	index1 = cs_index(cs, ic, jc+1, kc);
 	map_status(map, index1, &status);
 
@@ -461,6 +465,7 @@ static int fe_lc_colloid(fe_lc_t * fe, cs_t * cs, colloids_info_t * cinfo,
 	  fs[1] += 1.0;
         }
 
+	/* Surface in direction of (ic,jc-1,kc) */
 	index1 = cs_index(cs, ic, jc-1, kc);
 	map_status(map, index1, &status);
 
@@ -475,6 +480,7 @@ static int fe_lc_colloid(fe_lc_t * fe, cs_t * cs, colloids_info_t * cinfo,
 	nhat[X] = 0;
 	nhat[Y] = 0;
 
+	/* Suface in direction of (ic,jc,kc+1) */
 	index1 = cs_index(cs, ic, jc, kc+1);
 	map_status(map, index1, &status);
 
@@ -486,6 +492,7 @@ static int fe_lc_colloid(fe_lc_t * fe, cs_t * cs, colloids_info_t * cinfo,
 	  fs[1] += 1.0;
         }
 
+	/* Surface in direction of (ic,jc,kc-1) */
 	index1 = cs_index(cs, ic, jc, kc-1);
 	map_status(map, index1, &status);
 
@@ -527,6 +534,8 @@ static int fe_lc_colloid(fe_lc_t * fe, cs_t * cs, colloids_info_t * cinfo,
  *  TODO:  There is a rather ugly depedency on the order parameter
  *         gradient calculation currently in gradient_3d_7pt_solid which 
  *         needs to be refactored. That is: colloids_q_boundary().
+ *
+ *         E.g., Can we use lc_anchoring.h?
  *
  *****************************************************************************/
 

@@ -1170,6 +1170,8 @@ int lb_halo_create(const lb_t * lb, lb_halo_t * h, lb_halo_enum_t scheme) {
   cs_cart_comm(lb->cs, &h->comm);
   h->tagbase = 211216;
 
+  /* Default to full swap unless reduced is requested. */
+
   h->full = 1;
   if (scheme == LB_HALO_OPENMP_REDUCED) h->full = 0;
 

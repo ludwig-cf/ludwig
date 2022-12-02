@@ -104,6 +104,8 @@ int util_double_same(double d1, double d2) {
   return util_bits_same(sizeof(double), &a, &b);
 }
 
+static int test_mpi_comm_split_type(void);
+
 int main (int argc, char ** argv) {
 
   int ireturn;
@@ -122,6 +124,7 @@ int main (int argc, char ** argv) {
   test_mpi_type_contiguous();
   test_mpi_type_create_struct();
   test_mpi_op_create();
+  test_mpi_comm_split_type();
 
   test_mpi_file_open();
   test_mpi_file_get_view();
@@ -682,3 +685,22 @@ int test_mpi_file_write_all(void) {
 
   return ifail;
 }
+
+/*****************************************************************************
+ *
+ *  test_mpi_comm_split_type
+ *
+ *****************************************************************************/
+
+int test_mpi_comm_split_type(void) {
+
+  MPI_Comm comm = MPI_COMM_NULL;
+  int key = 0;
+
+  MPI_Comm_split_type(MPI_COMM_WORLD, MPI_COMM_TYPE_SHARED, key, MPI_INFO_NULL,
+		      &comm);
+  MPI_Comm_free(&comm);
+
+  return 0;
+}
+

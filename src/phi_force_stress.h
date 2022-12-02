@@ -7,7 +7,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2012-2019 The University of Edinburgh
+ *  (c) 2012-2022 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -20,11 +20,18 @@
 #include "pe.h"
 #include "coords.h"
 #include "free_energy.h"
-
-enum {PTH_METHOD_NO_FORCE, PTH_METHOD_DIVERGENCE, PTH_METHOD_GRADMU, 
-      PTH_METHOD_STRESS_ONLY};
+#include "fe_force_method.h"
 
 typedef struct pth_s pth_t;
+
+struct pth_s {
+  pe_t * pe;            /* Parallel environment */
+  cs_t * cs;            /* Coordinate system */
+  int method;           /* Method for force computation */
+  int nsites;           /* Number of sites allocated */
+  double * str;         /* Stress may be antisymmetric */
+  pth_t * target;       /* Target memory */
+};
 
 __host__ int pth_create(pe_t * pe, cs_t * cs, int method, pth_t ** pth);
 __host__ int pth_free(pth_t * pth);

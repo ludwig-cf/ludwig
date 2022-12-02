@@ -31,7 +31,6 @@ Interfacial width     =  1.30231e+00
 
 Using Cahn-Hilliard finite difference solver.
 Mobility M            =  5.00000e-02
-Force calculation:      divergence method
 
 Free energy details
 -------------------
@@ -60,6 +59,9 @@ Liquid crystal droplet coupling parameters
 Isotropic/LC control gamma0 =  2.58600e+00
 Isotropic/LC control delta  =  2.50000e-01
 Anchoring parameter  W      = -5.00000e-02
+
+Coupled free energy
+Force calculation:      stress_divergence
 
 System properties
 ----------------

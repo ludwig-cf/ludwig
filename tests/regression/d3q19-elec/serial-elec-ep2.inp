@@ -23,7 +23,6 @@ N_cycles 100
 size 32_32_32
 grid 1_1_1
 periodicity 1_1_1
-reduced_halo no
 
 ##############################################################################
 #
@@ -46,9 +45,10 @@ temperature 3.3333e-4
 ###############################################################################
 
 free_energy fe_electro
+fe_force_method           phi_gradmu_correction
 
 fd_advection_scheme_order 3
-fd_force_divergence 0
+
 
 ###############################################################################
 #

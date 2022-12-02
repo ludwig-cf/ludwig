@@ -9,7 +9,7 @@
  *  Edinburgh Parallel Computing Centre
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
- *  (c) 2011-2021 The University of Edinburgh
+ *  (c) 2011-2022 The University of Edinburgh
  *
  *****************************************************************************/
 
@@ -31,7 +31,6 @@ int main(int argc, char ** argv) {
 
   char inputfile[FILENAME_MAX] = "input";
   int provided = MPI_THREAD_SINGLE;
-
 
   MPI_Init_thread(&argc, &argv, MPI_THREAD_FUNNELED, &provided);
 #ifdef PETSC

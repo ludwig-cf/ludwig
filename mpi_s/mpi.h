@@ -124,6 +124,9 @@ enum reserved_communicators{MPI_COMM_WORLD, MPI_COMM_SELF};
 
 #define MPI_IN_PLACE ((void *) 1)
 
+/* Only one "split_type" is available for MPI_Comm_split_type() */
+#define MPI_COMM_TYPE_SHARED   42
+
 /* Thread support level */
 
 #define MPI_THREAD_SINGLE      1
@@ -218,6 +221,8 @@ int MPI_Allreduce(void * send, void * recv, int count, MPI_Datatype type,
 		  MPI_Op op, MPI_Comm comm);
 
 int MPI_Comm_split(MPI_Comm comm, int colour, int key, MPI_Comm * newcomm);
+int MPI_Comm_split_type(MPI_Comm comm, int split_type, int key,
+			MPI_Info info, MPI_Comm * newcomm);
 int MPI_Comm_free(MPI_Comm * comm);
 int MPI_Comm_dup(MPI_Comm oldcomm, MPI_Comm * newcomm);
 

@@ -17,7 +17,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2010-2020 The University of Edinburgh
+ *  (c) 2010-2022 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -31,11 +31,11 @@
 
 #include "pe.h"
 #include "coords.h"
-#include "util.h"
 #include "control.h"
 #include "physics.h"
 #include "free_energy.h"
 #include "stats_rheology.h"
+#include "util_fopen.h"
 
 struct stats_rheo_s {
   pe_t * pe;
@@ -245,7 +245,7 @@ int stats_rheology_free_energy_density_profile(stats_rheo_t * stat, fe_t * fe,
 
     if (mpi_cartcoords[X] == 0) {
       /* First to write ... */
-      fp_output = fopen(filename, "w");
+      fp_output = util_fopen(filename, "w");
     }
     else {
       /* Block unitl the token is received from the previous process,
@@ -253,7 +253,7 @@ int stats_rheology_free_energy_density_profile(stats_rheo_t * stat, fe_t * fe,
 
       rank = cs_cart_neighb(stat->cs, CS_BACK, X);
       MPI_Recv(&token, 1, MPI_INT, rank, tag_token, comm, &status);
-      fp_output = fopen(filename, "a");
+      fp_output = util_fopen(filename, "a");
     }
 
     if (fp_output == NULL) pe_fatal(stat->pe, "fopen(%s) failed\n", filename);
@@ -498,7 +498,7 @@ int stats_rheology_stress_profile(stats_rheo_t * stat, const char * filename) {
 
     if (mpi_cartcoords[X] == 0) {
       /* First to write ... */
-      fp_output = fopen(filename, "w");
+      fp_output = util_fopen(filename, "w");
     }
     else {
       /* Block unitl the token is received from the previous process,
@@ -506,7 +506,7 @@ int stats_rheology_stress_profile(stats_rheo_t * stat, const char * filename) {
 
       rank = cs_cart_neighb(stat->cs, CS_BACK, X);
       MPI_Recv(&token, 1, MPI_INT, rank, tag_token, comm, &status);
-      fp_output = fopen(filename, "a");
+      fp_output = util_fopen(filename, "a");
     }
 
     if (fp_output == NULL) pe_fatal(stat->pe, "fopen(%s) failed\n", filename);
@@ -649,7 +649,7 @@ int stats_rheology_stress_section(stats_rheo_t * stat, const char * filename) {
 
     if (mpi_cartcoords[X] == 0) {
       /* Open the file */
-      if (is_writing) fp_output = fopen(filename, "w");
+      if (is_writing) fp_output = util_fopen(filename, "w");
     }
     else {
       /* Block until we get the token from the previous process and
@@ -657,7 +657,7 @@ int stats_rheology_stress_section(stats_rheo_t * stat, const char * filename) {
       rank = cs_cart_neighb(stat->cs, CS_BACK, X);
       MPI_Recv(&token, 1, MPI_INT, rank, tag_token, comm, &status);
 
-      if (is_writing) fp_output = fopen(filename, "a");
+      if (is_writing) fp_output = util_fopen(filename, "a");
     }
 
     if (is_writing) {
@@ -839,7 +839,7 @@ int stats_rheology_mean_stress(lb_t * lb, fe_t * fe, const char * filename) {
     /* Use filename supplied */
 
     if (pe_mpi_rank(lb->pe) == 0) {
-      fp = fopen(filename, "a");
+      fp = util_fopen(filename, "a");
       if (fp == NULL) pe_fatal(lb->pe, "fopen(%s) failed\n", filename);
 
       fprintf(fp, "%9d ", physics_control_timestep(phys));

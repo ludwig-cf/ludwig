@@ -16,7 +16,7 @@
 #
 #  Compositional order
 #
-#  The composition is 80:20  liquid crystal: i 1sotropic
+#  The composition is 80:20  liquid crystal: isotropic
 #  The reported mean phi should be around 0.6.
 #
 #  Symmetric free energy
@@ -31,7 +31,7 @@
 #  so \sigma \approx 5.4e-02 and \xi_0 \approx 1.3
 #  Cahn Hilliard equation mobility M = 0.05
 #
-#  Liquid crystel free energy
+#  Liquid crystal free energy
 #
 #    lc_a0      0.05
 #    lc_gamma   3.086
@@ -78,7 +78,7 @@ temperature 0.0000096
 ###############################################################################
 
 free_energy lc_droplet
-fe_use_stress_relaxation yes
+fe_force_method           relaxation_antisymmetric
 
 fd_advection_scheme_order 3
 fd_gradient_calculation 3d_7pt_fluid

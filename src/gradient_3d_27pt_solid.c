@@ -318,6 +318,12 @@ __global__ void grad_3d_27pt_solid_kernel(kernel_ctxt_t * ktx,
  *
  *  grad_3d_27pt_solid_dab
  *
+ *  This routine clearly carries a couple of health warnings:
+ *  1. There's no solid;
+ *  2. One order parameter only.
+ *
+ *  It needs to be reconsidered, if required.
+ *
  *****************************************************************************/
 
 __host__ int grad_3d_27pt_solid_dab(field_grad_t * df) {
@@ -356,6 +362,7 @@ __host__ int grad_3d_27pt_solid_dab(field_grad_t * df) {
 
         index = cs_index(cs, ic, jc, kc);
 
+	/* d_xx */
         dab[addr_rank1(nsites, NSYMM, index, XX)] = 0.2*
          (+ 1.0*field[addr_rank0(nsites, index + xs)]
           + 1.0*field[addr_rank0(nsites, index - xs)]
@@ -373,6 +380,7 @@ __host__ int grad_3d_27pt_solid_dab(field_grad_t * df) {
           + 1.0*field[addr_rank0(nsites, index - xs - 1)]
           - 2.0*field[addr_rank0(nsites, index - 1)]);
 
+	/* d_xy */
         dab[addr_rank1(nsites, NSYMM, index, XY)] = r12*
           (+ field[addr_rank0(nsites, index + xs + ys)]
            - field[addr_rank0(nsites, index + xs - ys)]
@@ -387,6 +395,7 @@ __host__ int grad_3d_27pt_solid_dab(field_grad_t * df) {
            - field[addr_rank0(nsites, index - xs + ys - 1)]
            + field[addr_rank0(nsites, index - xs - ys - 1)]);
 
+	/* d_xz */
         dab[addr_rank1(nsites, NSYMM, index, XZ)] = r12*
           (+ field[addr_rank0(nsites, index + xs + 1)]
            - field[addr_rank0(nsites, index + xs - 1)]
@@ -401,6 +410,7 @@ __host__ int grad_3d_27pt_solid_dab(field_grad_t * df) {
            - field[addr_rank0(nsites, index - xs - ys + 1)]
            + field[addr_rank0(nsites, index - xs - ys - 1)]);
 
+	/* d_yy */
         dab[addr_rank1(nsites, NSYMM, index, YY)] = 0.2*
          (+ 1.0*field[addr_rank0(nsites, index + ys)]
           + 1.0*field[addr_rank0(nsites, index - ys)]
@@ -419,6 +429,7 @@ __host__ int grad_3d_27pt_solid_dab(field_grad_t * df) {
           - 2.0*field[addr_rank0(nsites, index - 1 )]);
 
 
+	/* d_yz */
         dab[addr_rank1(nsites, NSYMM, index, YZ)] = r12*
           (+ field[addr_rank0(nsites, index + ys + 1)]
            - field[addr_rank0(nsites, index + ys - 1)]
@@ -433,6 +444,7 @@ __host__ int grad_3d_27pt_solid_dab(field_grad_t * df) {
            - field[addr_rank0(nsites, index - xs - ys + 1)]
            + field[addr_rank0(nsites, index - xs - ys - 1)]);
 
+	/* d_zz */
         dab[addr_rank1(nsites, NSYMM, index, ZZ)] = 0.2*
          (+ 1.0*field[addr_rank0(nsites, index + 1)]
           + 1.0*field[addr_rank0(nsites, index - 1)]

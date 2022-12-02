@@ -38,7 +38,6 @@ free_energy lc_droplet
 
 fd_advection_scheme_order 3
 fd_gradient_calculation 3d_7pt_fluid
-fd_force_divergence 1
 
 ###############################################################################
 #

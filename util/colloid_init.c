@@ -26,7 +26,7 @@
  *  Edinburgh Parallel Computing Centre
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
- *  (c) 2012-2020 The University of Edinburgh
+ *  (c) 2012-2022 The University of Edinburgh
  *
  *****************************************************************************/
 
@@ -39,6 +39,7 @@
 #include "../src/pe.h"
 #include "../src/coords.h"
 #include "../src/util.h"
+#include "../src/util_fopen.h"
 #include "../src/ran.h"
 
 enum format {ASCII, BINARY};
@@ -100,18 +101,23 @@ int main(int argc, char ** argv) {
   /* Check the command line, then parse the meta data information,
    * and sort out the data file name  */
 
-  for (optind = 1; optind < argc && argv[optind][0] == '-'; optind++) {
+  if ((argc-1) % 2 != 0) {
+    printf("Usage: %s [-a a0] [-h ah] [-v volume-fraction]\n", argv[0]);
+    exit(EXIT_FAILURE);
+  }
+
+  for (optind = 1; optind < argc && argv[optind][0] == '-'; optind += 2) {
     switch (argv[optind][1]) {
     case 'a':
-      a0 = atof(argv[++optind]);
+      a0 = atof(argv[optind+1]);
       printf("%s: option -a sets a0 = %f\n", argv[0], a0);
       break;
     case'h':
-      ah = atof(argv[++optind]);
+      ah = atof(argv[optind+1]);
       printf("%s: option -h sets ah = %f\n", argv[0], ah);
       break;
     case 'v':
-      vf = atof(argv[++optind]);
+      vf = atof(argv[optind+1]);
       printf("%s: option -v sets vf = %f\n", argv[0], vf);
       break;
     default:
@@ -568,7 +574,7 @@ void colloid_init_write_file(const int nc, const colloid_state_t * pc,
   const char * filename = "config.cds.init.001-001";
   FILE * fp;
 
-  fp = fopen(filename, "w");
+  fp = util_fopen(filename, "w");
   if (fp == NULL) {
     printf("Could not open %s\n", filename);
     exit(0);

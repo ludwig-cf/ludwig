@@ -30,7 +30,6 @@ Interfacial width     =  1.30231e+00
 
 Using Cahn-Hilliard finite difference solver.
 Mobility M            =  5.00000e+00
-Force calculation:      divergence method
 
 Free energy details
 -------------------
@@ -60,7 +59,8 @@ Isotropic/LC control gamma0 =  2.58600e+00
 Isotropic/LC control delta  =  2.50000e-01
 Anchoring parameter  W      =  0.00000e+00
 
-Split symmetric/antisymmetric stress relaxation/force
+Coupled free energy
+Force calculation:      relaxation_antisymmetric
 
 System properties
 ----------------

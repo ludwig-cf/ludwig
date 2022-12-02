@@ -23,7 +23,6 @@ N_cycles 100
 size 64_64_2
 grid 1_1_1
 periodicity 1_1_1
-reduced_halo no
 
 ##############################################################################
 #
@@ -49,7 +48,6 @@ free_energy fe_electro_symmetric
 
 fd_advection_scheme_order 3
 fd_gradient_calculation 3d_7pt_fluid
-fd_force_divergence 1
 
 ###############################################################################
 #

@@ -71,7 +71,7 @@ typedef enum vtk_enum {VTK_SCALARS, VTK_VECTORS} vtk_enum_t;
 typedef struct metadata_v1_s metadata_v1_t;
 
 struct metadata_v1_s {
-  char stub[BUFSIZ/2];         /* file stub */
+  const char * stub;           /* file stub name */
   int nrbyte;                  /* byte per record */
   int is_bigendean;            /* flag */
   int npe;                     /* comm sz */
@@ -145,6 +145,10 @@ void le_unroll(metadata_v1_t * meta, double *);
 int lc_transform_q5(int * nlocal, double * datasection);
 int lc_compute_scalar_ops(double q[3][3], double qs[5]);
 
+const char * file_stub_valid(const char * input);
+int file_get_file_nfile(const char * filename);
+int file_get_file_index(const char * filename);
+
 /*****************************************************************************
  *
  *  main
@@ -202,8 +206,22 @@ int main(int argc, char ** argv) {
     exit(EXIT_FAILURE);
   }
 
-  /* PENDING KEVIN uncontrolled path name */
-  read_meta_data_file(argv[optind], &metadata);
+  {
+    /* Must have a recognised metadata quantity */
+    const char * stub = file_stub_valid(argv[optind]);
+    if (stub == NULL) {
+      printf("Unrecognised metadata file %s\n", argv[optind]);
+      exit(-1);
+    }
+    else {
+      char buf[FILENAME_MAX] = {0};
+      char * filename = buf;
+      int ifile = file_get_file_index(argv[optind]);
+      int nfile = file_get_file_nfile(argv[optind]);
+      sprintf(filename, "%s.%3.3d-%3.3d.meta", stub, nfile, ifile);
+      read_meta_data_file(filename, &metadata);
+    }
+  }
 
   extract_driver(argv[optind+1], &metadata, version);
 
@@ -234,7 +252,7 @@ int extract_driver(const char * filename, metadata_v1_t * meta, int version) {
 
   /* Work out parallel local file size */
 
-  assert(io_size[0] == 1);
+  assert(io_size[0] == 1); /* No x-decompositions WILL FAIL */
 
   switch (version) {
   case 1:
@@ -327,12 +345,7 @@ int extract_driver(const char * filename, metadata_v1_t * meta, int version) {
 
     /* Write a single file with the final section */
 
-    {
-      char tmp[FILENAME_MAX/2] = {0}; /* Avoid potential buffer overflow */
-      strncpy(tmp, meta->stub,
-	      FILENAME_MAX/2 - strnlen(meta->stub, FILENAME_MAX/2-1) - 1);
-      snprintf(io_data, sizeof(io_data), "%s-%8.8d", tmp, ntime);
-    }
+    snprintf(io_data, sizeof(io_data), "%s-%8.8d", meta->stub, ntime);
 
     if (output_vtk_ == 1 || output_vtk_ == 2) {
 
@@ -530,6 +543,7 @@ void read_meta_data_file(const char * filename, metadata_v1_t * meta) {
   int nrbyte;
   int ifail;
   char tmp[FILENAME_MAX];
+  char buf[BUFSIZ] = {0};
   char * p;
   FILE * fp_meta;
   const int ncharoffset = 33;
@@ -545,12 +559,18 @@ void read_meta_data_file(const char * filename, metadata_v1_t * meta) {
 
   p = fgets(tmp, FILENAME_MAX, fp_meta);
   assert(p);
-  ifail = sscanf(tmp+ncharoffset, "%s\n", meta->stub);
+  ifail = sscanf(tmp+ncharoffset, "%s\n", buf);
   if (ifail != 1) {
     printf("Meta data stub not read correctly\n");
     exit(-1);
   }
+  meta->stub = file_stub_valid(buf);
+  if (meta->stub == NULL) {
+    printf("Meta data stub not recognised: %s\n", buf);
+  }
   printf("Read stub: %s\n", meta->stub);
+
+  /* Data description */
   p = fgets(tmp, FILENAME_MAX, fp_meta);
   assert(p);
 
@@ -618,9 +638,19 @@ void read_meta_data_file(const char * filename, metadata_v1_t * meta) {
   /* Number of I/O groups */
   p = fgets(tmp, FILENAME_MAX, fp_meta);
   assert(p);
-  ifail = sscanf(tmp+ncharoffset, "%d", &meta->nio);
-  assert(ifail == 1);
-  printf("Number of I/O groups: %d\n", meta->nio);
+
+  {
+    int nio = atoi(tmp + ncharoffset);
+    if (1 > nio || nio > 999) {
+      printf("Invalid number of i/o groups %d\n", meta->nio);
+      exit(-1);
+    }
+    else {
+      meta->nio = nio;
+    }
+    printf("Number of I/O groups: %d\n", meta->nio);
+  }
+
   /* I/O decomposition */
   p = fgets(tmp, FILENAME_MAX, fp_meta);
   if (p == NULL) printf("Not reached last line correctly\n");
@@ -1395,4 +1425,90 @@ int lc_compute_scalar_ops(double q[3][3], double qs[5]) {
   }
 
   return ifail;
+}
+
+/*****************************************************************************
+ *
+ *  file_stub_valid
+ *
+ *  Return a recognised name, or NULL if the input is not recognised.
+ *
+ *****************************************************************************/
+
+const char * file_stub_valid(const char * input) {
+
+  const char * output = NULL;
+
+  if (strncmp(input, "phi", 3) == 0) {
+    output = "phi"; /* scalar order parameter(s) */
+  }
+  else if (strncmp(input, "psi", 3) == 0) {
+    output = "psi"; /* charge */
+  }
+  else if (strncmp(input, "dist", 4) == 0) {
+    output = "dist";  /* distributions */
+  }
+  else if (strncmp(input, "rho", 3) == 0) {
+    output = "rho";   /* density */
+  }
+  else if (strncmp(input, "vel", 3) == 0) {
+    output = "vel";   /* velocity field */
+  }
+  else if (strncmp(input, "p", 1) == 0) {
+    output = "p";   /* vector order parameter */
+  }
+  else if (strncmp(input, "q", 1) == 0) {
+    output = "q";   /* tensor order parameter */
+  }
+
+  return output;
+}
+
+/*****************************************************************************
+ *
+ *  file_get_file_nfile
+ *
+ *  Metadata encoded in a set of parallel, decomposed, filenames e.g.,
+ *    phi-metadata.002-001
+ *    phi-metadata.002-002
+ *  would return nfile = 2.
+ *
+ *****************************************************************************/
+
+int file_get_file_nfile(const char * filename) {
+
+  int nfile = 0;
+  char dot = '.';
+  const char * str1 = strchr(filename, dot); /* First "." */
+
+  if (str1 != NULL) {
+    char buf[BUFSIZ] = {0};
+    strncpy(buf, str1 + 1, 3);
+    nfile = atoi(buf);
+  }
+
+  return nfile;
+}
+
+/*****************************************************************************
+ *
+ *  file_get_file_index
+ *
+ *  Likewise, returns the index (see file_get_file_nfile above).
+ *
+ *****************************************************************************/
+
+int file_get_file_index(const char * filename) {
+
+  int ifile = 0;
+  char dash = '-';
+  const char * str1 = strrchr(filename, dash); /* Last "-" */
+
+  if (str1 != NULL) {
+    char buf[BUFSIZ] = {0};
+    strncpy(buf, str1 + 1, 3);
+    ifile = atoi(buf);
+  }
+
+  return ifile;
 }
