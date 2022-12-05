@@ -53,6 +53,7 @@ int test_field_suite(void);
 int test_field_grad_suite(void);
 int test_gradient_d3q27_suite(void);
 int test_halo_suite(void);
+int test_hydro_options_suite(void);
 int test_hydro_suite(void);
 int test_io_aggregator_suite(void);
 int test_io_element_suite(void);

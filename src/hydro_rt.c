@@ -79,24 +79,26 @@ static int hydro_do_init(pe_t * pe, rt_t * rt, cs_t * cs, lees_edw_t * le,
   assert(phydro);
 
   if (rt_string_parameter(rt, "hydro_halo_scheme", value, BUFSIZ)) {
+    field_halo_enum_t haloscheme = FIELD_HALO_TARGET;
     /* The output is only provided if the key is present to
      * prevent the regression tests getting upset. */
     if (strcmp(value, "hydro_u_halo_target") == 0) {
       /* Should be the default */
-      opts.haloscheme = HYDRO_U_HALO_TARGET;
+      haloscheme = FIELD_HALO_TARGET;
       pe_info(pe, "Hydro halo:    %s\n", "hydro_u_halo_target");
     }
     else if (strcmp(value, "hydro_u_halo_openmp") == 0) {
-      opts.haloscheme = HYDRO_U_HALO_OPENMP;
+      haloscheme = FIELD_HALO_OPENMP;
       pe_info(pe, "Hydro halo:    %s\n", "hydro_u_halo_openmp");    
     }
     else if (strcmp(value, "hydro_u_halo_host") == 0) {
-      opts.haloscheme = HYDRO_U_HALO_HOST;
+      haloscheme = FIELD_HALO_HOST;
       pe_info(pe, "Hydro halo:    %s\n", "hydro_u_halo_host");
     }
     else {
       pe_fatal(pe, "hydro_halo_scheme is present but not recongnised\n");
     }
+    opts = hydro_options_haloscheme(haloscheme);
   }
 
   hydro_create(pe, cs, le, &opts, &obj);

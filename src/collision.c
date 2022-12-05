@@ -330,7 +330,7 @@ void lb_collision_mrt1_site(lb_t * lb, hydro_t * hydro, map_t * map,
   for (ia = 0; ia < 3; ia++) {
     for_simd_v(iv, NSIMDVL) {
       force[ia][iv] = _cp.force_global[ia] 
-	+ hydro->f[addr_rank1(hydro->nsite, NHDIM, index0+iv, ia)];
+	+ hydro->force->data[addr_rank1(hydro->nsite, 3, index0+iv, ia)];
     }
   }
   
@@ -575,7 +575,7 @@ void lb_collision_mrt1_site(lb_t * lb, hydro_t * hydro, map_t * map,
     /* velocity */
     for (ia = 0; ia < 3; ia++) {
       for_simd_v(iv, NSIMDVL) {
-	hydro->u[addr_rank1(hydro->nsite, NHDIM, index0+iv, ia)] = u[ia][iv];
+	hydro->u->data[addr_rank1(hydro->nsite, 3, index0+iv, ia)] = u[ia][iv];
       }
     }
   }
@@ -588,9 +588,9 @@ void lb_collision_mrt1_site(lb_t * lb, hydro_t * hydro, map_t * map,
 	    = fchunk[p*NSIMDVL+iv]; 
 	}
 	/* velocity */
-
 	for (ia = 0; ia < 3; ia++) {
-	  hydro->u[addr_rank1(hydro->nsite, NHDIM, index0 + iv, ia)] = u[ia][iv];
+	  int haddr = addr_rank1(hydro->nsite, 3, index0 + iv, ia);
+	  hydro->u->data[haddr] = u[ia][iv];
 	}
       }
     }
@@ -816,15 +816,16 @@ __device__ void lb_collision_mrt2_site(lb_t * lb, hydro_t * hydro,
   
   for (ia = 0; ia < 3; ia++) {
     for_simd_v(iv, NSIMDVL) {
-      force[ia][iv] = _cp.force_global[ia] 
-	+ hydro->f[addr_rank1(hydro->nsite, NHDIM, index0+iv, ia)];
+      int haddr = addr_rank1(hydro->nsite, 3, index0 + iv, ia);
+      force[ia][iv] = _cp.force_global[ia]  + hydro->force->data[haddr];
       u[ia][iv] = rrho[iv]*(u[ia][iv] + 0.5*force[ia][iv]);  
     }
   }
 
-  for (ia = 0; ia < 3; ia++) {   
+  for (ia = 0; ia < 3; ia++) {
     for_simd_v(iv, NSIMDVL) {
-      hydro->u[addr_rank1(hydro->nsite, NHDIM, index0+iv, ia)] = u[ia][iv];
+      int haddr = addr_rank1(hydro->nsite, 3, index0 + iv, ia);
+      hydro->u->data[haddr] = u[ia][iv];
     }
   }
   

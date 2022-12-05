@@ -74,7 +74,7 @@ __host__ int field_create(pe_t * pe, cs_t * cs, lees_edw_t * le,
   assert(pobj);
 
   if (field_options_valid(opts) == 0) {
-    pe_fatal(pe, "Internal error: invalid field options\n");
+    pe_fatal(pe, "Internal error: invalid field options: %s\n", name);
   }
 
   obj = (field_t *) calloc(1, sizeof(field_t));
