@@ -25,6 +25,7 @@
 #include "lb_model.h"
 
 #include "io_impl.h"
+#include "io_event.h"
 #include "io_harness.h"  /* Scheduled for removal. Use io_impl.h */
 #include "halo_swap.h"
 
@@ -107,12 +108,11 @@ struct lb_data_s {
   lb_model_t model;      /* Current LB model information */
   halo_swap_t * halo;    /* halo swap driver */
 
-  /* io_info_t scheduled to be replaced. Use metadata types */
-  io_info_t * io_info;   /* Distributions */ 
-  io_info_t * io_rho;    /* Fluid density (here; could be hydrodynamics...) */
+  /* io_info_t scheduled to be replaced. Use metadata types instead */
+  io_info_t * io_info;   /* Distributions */
 
-  io_element_t ascii;    /* ASCII record description */
-  io_element_t binary;   /* Binary record description */
+  io_element_t ascii;    /* Per site ASCII information. */
+  io_element_t binary;   /* Per site binary information. */
   io_metadata_t input;   /* Metadata for io implementation (input) */
   io_metadata_t output;  /* Ditto (for output) */
 
@@ -160,7 +160,6 @@ __host__ int lb_halo(lb_t * lb);
 __host__ int lb_halo_swap(lb_t * lb, lb_halo_enum_t flag);
 __host__ int lb_io_info(lb_t * lb, io_info_t ** io_info);
 __host__ int lb_io_info_set(lb_t * lb, io_info_t * io_info, int fin, int fout);
-__host__ int lb_io_rho_set(lb_t *lb, io_info_t * io_rho, int fin, int fout);
 
 __host__ __device__ int lb_ndist(lb_t * lb, int * ndist);
 __host__ __device__ int lb_f(lb_t * lb, int index, int p, int n, double * f);
@@ -180,5 +179,8 @@ __host__ int lb_write_buf_ascii(const lb_t * lb, int index, char * buf);
 
 __host__ int lb_io_aggr_pack(const lb_t * lb, io_aggregator_t * aggr);
 __host__ int lb_io_aggr_unpack(lb_t * lb, const io_aggregator_t * aggr);
+
+__host__ int lb_io_write(lb_t * lb, int timestep, io_event_t * event);
+__host__ int lb_io_read(lb_t * lb, int timestep, io_event_t * event);
 
 #endif

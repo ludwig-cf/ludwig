@@ -38,8 +38,6 @@ static int lb_f_read(FILE *, int index, void * self);
 static int lb_f_read_ascii(FILE *, int index, void * self);
 static int lb_f_write(FILE *, int index, void * self);
 static int lb_f_write_ascii(FILE *, int index, void * self);
-static int lb_rho_write(FILE *, int index, void * self);
-static int lb_rho_write_ascii(FILE *, int index, void * self);
 static int lb_model_param_init(lb_t * lb);
 static int lb_init(lb_t * lb);
 static int lb_data_touch(lb_t * lb);
@@ -149,8 +147,26 @@ int lb_data_create(pe_t * pe, cs_t * cs, const lb_data_options_t * options,
       .endian   = io_endianness()
     };
 
+    /* Record element information */
     obj->ascii = ascii;
     obj->binary = binary;
+
+    /* Establish metadata */
+    int ifail = 0;
+    io_element_t element = {0};
+
+    if (options->iodata.input.iorformat == IO_RECORD_ASCII)  element = ascii;
+    if (options->iodata.input.iorformat == IO_RECORD_BINARY) element = binary;
+    ifail = io_metadata_initialise(cs, &options->iodata.input, &element,
+				   &obj->input);
+    if (ifail != 0) pe_fatal(pe, "lb_data: bad i/o input decomposition\n");
+
+
+    if (options->iodata.output.iorformat == IO_RECORD_ASCII)  element = ascii;
+    if (options->iodata.output.iorformat == IO_RECORD_BINARY) element = binary;
+    ifail = io_metadata_initialise(cs, &options->iodata.output, &element,
+				   &obj->output);
+    if (ifail != 0) pe_fatal(pe, "lb_data: bad i/o output decomposition\n"); 
   }
 
   *lb = obj;
@@ -184,6 +200,9 @@ __host__ int lb_free(lb_t * lb) {
     tdpFree(tmp);
     tdpFree(lb->target);
   }
+
+  io_metadata_finalise(&lb->input);
+  io_metadata_finalise(&lb->output);
 
   if (lb->halo) halo_swap_free(lb->halo);
   if (lb->io_info) io_info_free(lb->io_info);
@@ -444,36 +463,6 @@ __host__ int lb_io_info_set(lb_t * lb, io_info_t * io_info, int form_in, int for
   io_info_read_set(lb->io_info, IO_FORMAT_ASCII, lb_f_read_ascii);
   io_info_write_set(lb->io_info, IO_FORMAT_ASCII, lb_f_write_ascii);
   io_info_format_set(lb->io_info, form_in, form_out);
-
-  return 0;
-}
-
-/*****************************************************************************
- *
- *  lb_io_rho_set
- *
- *  There is no input for rho, as it is never required.
- *
- *****************************************************************************/
-
-__host__ int lb_io_rho_set(lb_t * lb, io_info_t * io_rho, int form_in,
-                           int form_out) {
-
-  char string[FILENAME_MAX];
-
-  assert(lb);
-  assert(io_rho);
-
-  lb->io_rho = io_rho;
-
-  sprintf(string, "Fluid density (rho)");
-
-  io_info_set_name(lb->io_rho, string);
-  io_info_write_set(lb->io_rho, IO_FORMAT_BINARY, lb_rho_write);
-  io_info_set_bytesize(lb->io_rho, IO_FORMAT_BINARY, sizeof(double));
-  io_info_write_set(lb->io_rho, IO_FORMAT_ASCII, lb_rho_write_ascii);
-  io_info_set_bytesize(lb->io_rho, IO_FORMAT_ASCII, 23*sizeof(char));
-  io_info_format_set(lb->io_rho, form_in, form_out);
 
   return 0;
 }
@@ -752,53 +741,6 @@ static int lb_f_write_ascii(FILE * fp, int index, void * self) {
   if (nw != lb->ndist*lb->model.nvel) {
     pe_fatal(pe, "fwrite(lb) failed at %d\n", index);
   }
-
-  return 0;
-}
-
-/******************************************************************************
- *
- *  lb_rho_write
- *
- *  Write density data to file (binary)
- *
- *****************************************************************************/
-
-static int lb_rho_write(FILE * fp, int index, void * self) {
-
-  size_t iw;
-  double rho;
-  lb_t * lb = (lb_t *) self;
-
-  assert(fp);
-  assert(lb);
-
-  lb_0th_moment(lb, index, LB_RHO, &rho);
-  iw = fwrite(&rho, sizeof(double), 1, fp);
-
-  if (iw != 1) pe_fatal(lb->pe, "lb_rho-write failed\n");
-
-  return 0;
-}
-
-/*****************************************************************************
- *
- *  lb_rho_write_ascii
- *
- *****************************************************************************/
-
-static int lb_rho_write_ascii(FILE * fp, int index, void * self) {
-
-  int nwrite;
-  double rho;
-  lb_t * lb = (lb_t *) self;
-
-  assert(fp);
-  assert(lb);
-
-  lb_0th_moment(lb, index, LB_RHO, &rho);
-  nwrite = fprintf(fp, "%22.15e\n", rho);
-  if (nwrite != 23) pe_fatal(lb->pe, "lb_rho_write_ascii failed\n");
 
   return 0;
 }
@@ -1606,6 +1548,80 @@ __host__ int lb_io_aggr_unpack(lb_t * lb, const io_aggregator_t * aggr) {
       if (iasc) lb_read_buf_ascii(lb, index, aggr->buf + offset);
       if (ibin) lb_read_buf(lb, index, aggr->buf + offset);
     }
+  }
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  lb_io_write
+ *
+ *****************************************************************************/
+
+int lb_io_write(lb_t * lb, int timestep, io_event_t * event) {
+
+  assert(lb);
+  assert(event);
+
+  const io_metadata_t * meta = &lb->output;
+
+  if (meta->options.mode == IO_MODE_SINGLE) {
+    /* Old-style */
+    char filename[BUFSIZ] = {0};
+    sprintf(filename, "dist-%8.8d", timestep);
+    io_write_data(lb->io_info, filename, lb);
+  }
+
+  if (meta->options.mode == IO_MODE_MPIIO) {
+
+    io_impl_t * io = NULL;
+    char filename[BUFSIZ] = {0};
+
+    io_subfile_name(&meta->subfile, "dist", timestep, filename, BUFSIZ);
+    io_impl_create(meta, &io);
+    assert(io);
+
+    lb_memcpy(lb, tdpMemcpyDeviceToHost);
+    lb_io_aggr_pack(lb, io->aggr);
+
+    io->impl->write(io, filename);
+    io->impl->free(&io);
+  }
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  lb_io_read
+ *
+ *****************************************************************************/
+
+int lb_io_read(lb_t * lb, int timestep, io_event_t * event) {
+
+  assert(lb);
+  assert(event);
+
+  const io_metadata_t * meta = &lb->input;
+
+  if (meta->options.mode == IO_MODE_SINGLE) {
+    char filename[BUFSIZ] = {0};
+    sprintf(filename, "dist-%8.8d", timestep);
+    io_read_data(lb->io_info, filename, lb);
+  }
+
+  if (meta->options.mode == IO_MODE_MPIIO) {
+    io_impl_t * io = NULL;
+    char filename[BUFSIZ] = {0};
+
+    io_subfile_name(&meta->subfile, "dist", timestep, filename, BUFSIZ);
+    io_impl_create(meta, &io);
+    assert(io);
+
+    io->impl->read(io, filename);
+    lb_io_aggr_unpack(lb, io->aggr);
+    io->impl->free(&io);
   }
 
   return 0;
