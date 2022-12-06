@@ -117,7 +117,7 @@ Completed cycle 20
 
 colloid_io_write:
 writing colloid information to config.cds00000020.001-001 etc
-Writing velocity output at step 20!
+Writing rho/velocity output at step 20!
 
 Timer resolution: 1e-06 second
 
