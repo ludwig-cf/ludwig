@@ -65,6 +65,9 @@ __host__ int hydro_f_zero(hydro_t * obj, const double fzero[3]);
 __host__ int hydro_u_zero(hydro_t * obj, const double uzero[3]);
 __host__ int hydro_rho0(hydro_t * hydro, double rho0);
 
+__host__ int hydro_io_write(hydro_t * hydro, int timestep, io_event_t * event);
+__host__ int hydro_io_read(hydro_t * hydro, int timestep, io_event_t * event);
+
 #include "hydro_impl.h"
 
 #endif

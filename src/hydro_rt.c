@@ -17,6 +17,7 @@
 
 #include "pe.h"
 #include "runtime.h"
+#include "io_info_args_rt.h"
 #include "hydro_rt.h"
 
 static int hydro_do_init(pe_t * pe, rt_t * rt, cs_t * cs, lees_edw_t * le,
@@ -78,6 +79,8 @@ static int hydro_do_init(pe_t * pe, rt_t * rt, cs_t * cs, lees_edw_t * le,
   assert(rt);
   assert(phydro);
 
+  /* Halo scheme options (all fields have the same option!) */
+
   if (rt_string_parameter(rt, "hydro_halo_scheme", value, BUFSIZ)) {
     field_halo_enum_t haloscheme = FIELD_HALO_TARGET;
     /* The output is only provided if the key is present to
@@ -101,9 +104,14 @@ static int hydro_do_init(pe_t * pe, rt_t * rt, cs_t * cs, lees_edw_t * le,
     opts = hydro_options_haloscheme(haloscheme);
   }
 
+  /* User i/o options */
+  io_info_args_rt(rt, RT_FATAL, "rho", IO_INFO_READ_WRITE, &opts.rho.iodata);
+  io_info_args_rt(rt, RT_FATAL, "vel", IO_INFO_READ_WRITE, &opts.u.iodata);
+
   hydro_create(pe, cs, le, &opts, &obj);
   assert(obj);
 
+  /* Old-style input (to be removed) */
   rt_int_parameter_vector(rt, "default_io_grid", io_grid);
   rt_string_parameter(rt, "vel_format", value, BUFSIZ);
 

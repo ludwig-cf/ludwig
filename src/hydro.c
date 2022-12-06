@@ -1097,3 +1097,66 @@ __global__ void hydro_correct_kernel_v(kernel_ctxt_t * ktx, hydro_t * hydro,
 
   return;
 }
+
+/*****************************************************************************
+ *
+ *  hydro_io_write
+ *
+ *  This is intended for configuration output ("rho" and "vel"). If other
+ *  fields are wanted, may wish to use field_io_write() directly.
+ *
+ *****************************************************************************/
+
+int hydro_io_write(hydro_t * hydro, int timestep, io_event_t * event) {
+
+  /* For backwards compatibility, we currently allow old-style output */
+
+  const io_metadata_t * rmeta = &hydro->rho->iometadata_out;
+  const io_metadata_t * umeta = &hydro->u->iometadata_out;
+
+  if (rmeta->options.mode == IO_MODE_MPIIO) {
+    field_io_write(hydro->rho, timestep, event);
+  }
+
+  if (umeta->options.mode == IO_MODE_MPIIO) {
+    field_io_write(hydro->u, timestep, event);
+  }
+  else {
+    /* Old style has "vel" only. */
+    char filename[BUFSIZ] = {0};
+    sprintf(filename, "%s-%8.8d", hydro->u->name, timestep);
+    io_write_data(hydro->info, filename, hydro);
+  }
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  hydro_io_read
+ *
+ *  Configuration input is "rho" and "vel".
+ *
+ *****************************************************************************/
+
+int hydro_io_read(hydro_t * hydro, int timestep, io_event_t * event) {
+
+  const io_metadata_t * rmeta = &hydro->rho->iometadata_in;
+  const io_metadata_t * umeta = &hydro->u->iometadata_in;
+
+  if (rmeta->options.mode == IO_MODE_MPIIO) {
+    field_io_read(hydro->rho, timestep, event);
+  }
+
+  if (umeta->options.mode == IO_MODE_MPIIO) {
+    field_io_read(hydro->u, timestep, event);
+  }
+  else {
+    /* Old style has "vel" only. */
+    char filename[BUFSIZ] = {0};
+    sprintf(filename, "%s-%8.8d", hydro->u->name, timestep);
+    io_read_data(hydro->info, filename, hydro);
+  }
+
+  return 0;
+}
