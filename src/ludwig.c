@@ -337,40 +337,40 @@ static int ludwig_rt(ludwig_t * ludwig) {
   else {
     /* Distributions */
 
-    sprintf(filename, "%sdist-%8.8d", subdirectory, ntstep);
-    pe_info(pe, "Re-starting simulation at step %d with data read from "
-	    "config\nfile(s) %s\n", ntstep, filename);
-
-    lb_io_info(ludwig->lb, &iohandler);
-    io_read_data(iohandler, filename, ludwig->lb);
+    pe_info(pe, "Re-starting simulation at step %d with data read from file\n",
+	    ntstep);
+    {
+      io_event_t event = {0};
+      pe_info(pe, "Reading distribution files for step %d\n", ntstep);
+      lb_io_read(ludwig->lb, ntstep, &event);
+    }
 
     /* Restart t != 0 for order parameter */
 
     if (ludwig->phi) {
-      sprintf(filename, "%sphi-%8.8d", subdirectory, ntstep);
-      pe_info(pe, "files(s) %s\n", filename);
-      field_io_info(ludwig->phi, &iohandler);
-      io_read_data(iohandler, filename, ludwig->phi);
+      io_event_t event = {0};
+      pe_info(pe, "Reading phi files for step %d\n", ntstep);
+      field_io_read(ludwig->phi, ntstep, &event);
     }
 
     if (ludwig->p) {
-      sprintf(filename, "%sp-%8.8d", subdirectory, ntstep);
-      pe_info(pe, "files(s) %s\n", filename);
-      field_io_info(ludwig->p, &iohandler);
-      io_read_data(iohandler, filename, ludwig->p);
+      io_event_t event = {0};
+      pe_info(pe, "Reading p files for step %d\n", ntstep);
+      field_io_read(ludwig->p, ntstep, &event);
     }
+
     if (ludwig->q) {
-      sprintf(filename, "%sq-%8.8d", subdirectory, ntstep);
-      pe_info(pe, "files(s) %s\n", filename);
-      field_io_info(ludwig->q, &iohandler);
-      io_read_data(iohandler, filename, ludwig->q);
+      io_event_t event = {0};
+      pe_info(pe, "Reading q_ab files for step %d\n", ntstep);
+      field_io_read(ludwig->q, ntstep, &event);
     }
+
     if (ludwig->hydro) {
-      sprintf(filename, "%svel-%8.8d", subdirectory, ntstep);
-      pe_info(pe, "hydro files(s) %s\n", filename);
-      hydro_io_info(ludwig->hydro, &iohandler);
-      io_read_data(iohandler, filename, ludwig->hydro);
+      io_event_t event = {0};
+      pe_info(pe, "Reading rho/vel files for step %d\n", ntstep);
+      hydro_io_read(ludwig->hydro, ntstep, &event);
     }
+
     if (ludwig->psi) {
       psi_io_info(ludwig->psi, &iohandler);
       sprintf(filename,"%spsi-%8.8d", subdirectory, ntstep);
@@ -914,18 +914,9 @@ void ludwig_run(const char * inputfile) {
     /* Configuration dump */
 
     if (is_config_step()) {
-      lb_memcpy(ludwig->lb, tdpMemcpyDeviceToHost);
+      io_event_t event = {0};
       pe_info(ludwig->pe, "Writing distribution output at step %d!\n", step);
-      sprintf(filename, "%sdist-%8.8d", subdirectory, step);
-      lb_io_info(ludwig->lb, &iohandler);
-      io_write_data(iohandler, filename, ludwig->lb);
-    }
-
-    if (is_rho_output_step()) {
-      /* Potential device-host copy required */
-      pe_info(ludwig->pe, "Writing density output at step %d!\n", step);
-      sprintf(filename, "%srho-%8.8d", subdirectory, step);
-      io_write_data(ludwig->lb->io_rho, filename, ludwig->lb);
+      lb_io_write(ludwig->lb, step, &event);
     }
 
     /* is_measurement_step() is here to prevent 'breaking' old input
@@ -942,18 +933,22 @@ void ludwig_run(const char * inputfile) {
     if (is_phi_output_step() || is_config_step()) {
 
       if (ludwig->phi) {
-	field_io_info(ludwig->phi, &iohandler);
+	io_event_t event = {0};
 	pe_info(ludwig->pe, "Writing phi file at step %d!\n", step);
-	sprintf(filename,"%sphi-%8.8d", subdirectory, step);
-	io_write_data(iohandler, filename, ludwig->phi);
+	field_io_write(ludwig->phi, step, &event);
       }
+
+      if (ludwig->p) {
+	io_event_t event = {0};
+	pe_info(ludwig->pe, "Writing p file at step %d!\n", step);
+	field_io_write(ludwig->p, step, &event);
+      }
+
       if (ludwig->q) {
-	field_io_info(ludwig->q, &iohandler);
-	/* replace q-tensor on former colloid sites */
-	io_replace_values(ludwig->q, ludwig->map, MAP_COLLOID, 0.00001);
+	io_event_t event = {0};
 	pe_info(ludwig->pe, "Writing q file at step %d!\n", step);
-	sprintf(filename,"%sq-%8.8d", subdirectory, step);
-	io_write_data(iohandler, filename, ludwig->q);
+	io_replace_values(ludwig->q, ludwig->map, MAP_COLLOID, 0.00001);
+	field_io_write(ludwig->q, step, &event);
       }
     }
 
@@ -986,10 +981,9 @@ void ludwig_run(const char * inputfile) {
     }
 
     if (is_vel_output_step() || is_config_step()) {
-      hydro_io_info(ludwig->hydro, &iohandler);
-      pe_info(ludwig->pe, "Writing velocity output at step %d!\n", step);
-      sprintf(filename, "%svel-%8.8d", subdirectory, step);
-      io_write_data(iohandler, filename, ludwig->hydro);
+      io_event_t event = {0};
+      pe_info(ludwig->pe, "Writing rho/velocity output at step %d!\n", step);
+      hydro_io_write(ludwig->hydro, step, &event);
     }
 
     /* Print progress report */
@@ -1087,40 +1081,41 @@ void ludwig_run(const char * inputfile) {
   /* Dump the final configuration if required. */
 
   if (is_config_at_end()) {
-    lb_memcpy(ludwig->lb, tdpMemcpyDeviceToHost);
-    sprintf(filename, "%sdist-%8.8d", subdirectory, step);
-    lb_io_info(ludwig->lb, &iohandler);
-    io_write_data(iohandler, filename, ludwig->lb);
+    {
+      io_event_t event = {0};
+      lb_io_write(ludwig->lb, step, &event);
+    }
+
     sprintf(filename, "%s%s%8.8d", subdirectory, "config.cds", step);
 
     if (ncolloid > 0) colloid_io_write(ludwig->cio, filename);
 
     if (ludwig->phi) {
-      field_io_info(ludwig->phi, &iohandler);
+      io_event_t event = {0};
       pe_info(ludwig->pe, "Writing phi file at step %d!\n", step);
-      sprintf(filename,"%sphi-%8.8d", subdirectory, step);
-      io_write_data(iohandler, filename, ludwig->phi);
+      field_io_write(ludwig->phi, step, &event);
+    }
+
+    if (ludwig->p) {
+      io_event_t event = {0};
+      pe_info(ludwig->pe, "Writing p file at step %d!\n", step);
+      field_io_write(ludwig->p, step, &event);
     }
 
     if (ludwig->q) {
-      /* Run the replacement kernel, then copy back */
-      io_replace_field_values(ludwig->q, ludwig->map, MAP_COLLOID, 0.0);
-      field_memcpy(ludwig->q, tdpMemcpyDeviceToHost);
-
-      field_io_info(ludwig->q, &iohandler);
+      io_event_t event = {0};
       pe_info(ludwig->pe, "Writing q file at step %d!\n", step);
-      sprintf(filename,"%sq-%8.8d", subdirectory, step);
-      io_write_data(iohandler, filename, ludwig->q);
+      io_replace_field_values(ludwig->q, ludwig->map, MAP_COLLOID, 0.0);
+      field_io_write(ludwig->q, step, &event);
     }
+
     /* Only strictly required if have order parameter dynamics */ 
     if (ludwig->hydro) {
-
-      hydro_memcpy(ludwig->hydro, tdpMemcpyDeviceToHost);
-      hydro_io_info(ludwig->hydro, &iohandler);
-      pe_info(ludwig->pe, "Writing velocity output at step %d!\n", step);
-      sprintf(filename, "%svel-%8.8d", subdirectory, step);
-      io_write_data(iohandler, filename, ludwig->hydro);
+      io_event_t event = {0};
+      pe_info(ludwig->pe, "Writing rho/velocity output at step %d!\n", step);
+      hydro_io_write(ludwig->hydro, step, &event);
     }
+
     if (ludwig->psi) {
       psi_io_info(ludwig->psi, &iohandler);
       pe_info(ludwig->pe, "Writing psi file at step %d!\n", step);
