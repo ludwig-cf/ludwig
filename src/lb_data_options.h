@@ -38,7 +38,6 @@ struct lb_data_options_s {
   int usefirsttouch;
 
   io_info_args_t iodata;
-  io_info_args_t rho;
 };
 
 lb_data_options_t lb_data_options_default(void);

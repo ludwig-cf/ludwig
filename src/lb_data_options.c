@@ -32,8 +32,7 @@ lb_data_options_t lb_data_options_default(void) {
 			    .halo   = LB_HALO_TARGET,
 			    .reportimbalance = 0,
 			    .usefirsttouch   = 0,
-                            .iodata = io_info_args_default(),
-                            .rho    = io_info_args_default()};
+                            .iodata = io_info_args_default()};
 
   return opts;
 }
