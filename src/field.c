@@ -1679,14 +1679,15 @@ int field_io_write(field_t * field, int timestep, io_event_t * event) {
     char filename[BUFSIZ] = {0};
 
     io_subfile_name(&meta->subfile, field->name, timestep, filename, BUFSIZ);
-    io_impl_create(meta, &io);  /* CAN FAIL */
+    io_impl_create(meta, &io);  /* CAN FAIL in principle */
     assert(io);
 
+    field_memcpy(field, tdpMemcpyDeviceToHost);
     field_io_aggr_pack(field, io->aggr);
 
     io->impl->write(io, filename);
 
-    /* REPORT HERE >>>>> */
+    /* FIXME: REPORT HERE >>>>> */
 
     io->impl->free(&io);
   }
