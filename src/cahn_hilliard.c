@@ -39,12 +39,12 @@ __host__ int ch_update_forward_step(ch_t * ch, field_t * phif);
 __host__ int ch_flux_mu1(ch_t * ch, fe_t * fe);
 __host__ int ch_flux_interaction(ch_t * ch, fe_t * fe, field_t * subgrid_potential);
 __host__ int ch_flux_mu_ext(ch_t * ch);
-__host__ int ch_apply_mask(ch_t * ch, field_t * flux_mask);
+__host__ int ch_apply_mask(ch_t * ch, field_t * flux_mask, int mask_phi_switch, int mask_psi_switch);
 
 __global__ void ch_flux_mu1_kernel(kernel_ctxt_t * ktx, ch_t * ch, fe_t * fe,
 				   ch_info_t info);
 
-__global__ void ch_apply_mask_kernel(kernel_ctxt_t * ktx, ch_t * ch, field_t * flux_mask);
+__global__ void ch_apply_mask_kernel(kernel_ctxt_t * ktx, ch_t * ch, field_t * flux_mask, int mask_phi_switch, int mask_psi_switch);
 
 __global__ void ch_flux_interaction_kernel(kernel_ctxt_t * ktx, ch_t * ch, field_t * subgrid_potential, fe_t * fe, ch_info_t info);
 
@@ -219,7 +219,7 @@ __host__ int ch_solver(ch_t * ch, fe_t * fe, field_t * phi, hydro_t * hydro,
   
   mask_phi_switch = rt_switch(rt, "mask_phi_switch");
   mask_psi_switch = rt_switch(rt, "mask_psi_switch");
-  if (mask_phi_switch || mask_psi_switch) ch_apply_mask(ch, flux_mask);
+  if (mask_phi_switch || mask_psi_switch) ch_apply_mask(ch, flux_mask, mask_phi_switch, mask_psi_switch);
 
   if (map) advflux_cs_no_normal_flux(ch->flux, map);
   ch_update_forward_step(ch, phi);
@@ -700,7 +700,7 @@ __global__ void ch_update_kernel_3d(kernel_ctxt_t * ktx, ch_t * ch,
  *
  *****************************************************************************/
 
-__host__ int ch_apply_mask(ch_t * ch, field_t * flux_mask) {
+__host__ int ch_apply_mask(ch_t * ch, field_t * flux_mask, int mask_phi_switch, int mask_psi_switch) {
 
   int nlocal[3];
   dim3 nblk, ntpb;
@@ -720,7 +720,7 @@ __host__ int ch_apply_mask(ch_t * ch, field_t * flux_mask) {
   kernel_ctxt_launch_param(ctxt, &nblk, &ntpb);
 
   tdpLaunchKernel(ch_apply_mask_kernel, nblk, ntpb, 0, 0,
-                  ctxt->target, ch->target, flux_mask->target);
+                  ctxt->target, ch->target, flux_mask->target, mask_phi_switch, mask_psi_switch);
 
   tdpAssert(tdpPeekAtLastError());
   tdpAssert(tdpDeviceSynchronize());
@@ -740,7 +740,7 @@ __host__ int ch_apply_mask(ch_t * ch, field_t * flux_mask) {
  *****************************************************************************/
 
 __global__ void ch_apply_mask_kernel(kernel_ctxt_t * ktx,
-                                          ch_t * ch, field_t * flux_mask) {
+                                          ch_t * ch, field_t * flux_mask, int mask_phi_switch, int mask_psi_switch) {
   int kindex;
   __shared__ int kiter;
 
@@ -759,50 +759,76 @@ __global__ void ch_apply_mask_kernel(kernel_ctxt_t * ktx,
 
     index0 = kernel_coords_index(ktx, ic, jc, kc);
 
-
-    for (n = 0; n < ch->flux->nf; n++) {
-      
+    if (mask_phi_switch)      
       {	// Between ic and ic+1
 
         index1 = kernel_coords_index(ktx, ic+1, jc, kc);
+        m0[0]     = flux_mask->data[addr_rank1(flux_mask->nsites, ch->flux->nf, index0, 0)];
+        m1[0]     = flux_mask->data[addr_rank1(flux_mask->nsites, ch->flux->nf, index1, 0)];
 
-        m0[n]     = flux_mask->data[addr_rank1(flux_mask->nsites, ch->flux->nf, index0, n)];
-        m1[n]     = flux_mask->data[addr_rank1(flux_mask->nsites, ch->flux->nf, index1, n)];
+        mask[0]   = m0[0]*m1[0];
+        ch->flux->fx[addr_rank1(ch->flux->nsite, ch->flux->nf, index0, 0)] *= mask[0];
+      }
 
-        mask[n]   = m0[n]*m1[n];
-        ch->flux->fx[addr_rank1(ch->flux->nsite, ch->flux->nf, index0, n)] *= mask[n];
+    if (mask_psi_switch)      
+      {	// Between ic and ic+1
+
+        index1 = kernel_coords_index(ktx, ic+1, jc, kc);
+        m0[1]     = flux_mask->data[addr_rank1(flux_mask->nsites, ch->flux->nf, index0, 1)];
+        m1[1]     = flux_mask->data[addr_rank1(flux_mask->nsites, ch->flux->nf, index1, 1)];
+
+        mask[1]   = m0[1]*m1[1];
+        ch->flux->fx[addr_rank1(ch->flux->nsite, ch->flux->nf, index0, 1)] *= mask[1];
       }
 
 
-      { // Between jc and jc+1
+    if (mask_phi_switch)      
+      {	// Between jc and jc+1
 
         index1 = kernel_coords_index(ktx, ic, jc+1, kc);
+        m0[0]     = flux_mask->data[addr_rank1(flux_mask->nsites, ch->flux->nf, index0, 0)];
+        m1[0]     = flux_mask->data[addr_rank1(flux_mask->nsites, ch->flux->nf, index1, 0)];
 
-        m0[n]     = flux_mask->data[addr_rank1(flux_mask->nsites, ch->flux->nf, index0, n)];
-        m1[n]     = flux_mask->data[addr_rank1(flux_mask->nsites, ch->flux->nf, index1, n)];
-
-        mask[n]   = m0[n]*m1[n];
-        ch->flux->fy[addr_rank1(ch->flux->nsite, ch->flux->nf, index0, n)] *= mask[n];
-
+        mask[0]   = m0[0]*m1[0];
+        ch->flux->fy[addr_rank1(ch->flux->nsite, ch->flux->nf, index0, 0)] *= mask[0];
       }
 
+    if (mask_psi_switch)      
+      {	// Between jc and jc+1
 
-      { // Between kc and kc+1
+        index1 = kernel_coords_index(ktx, ic, jc+1, kc);
+        m0[1]     = flux_mask->data[addr_rank1(flux_mask->nsites, ch->flux->nf, index0, 1)];
+        m1[1]     = flux_mask->data[addr_rank1(flux_mask->nsites, ch->flux->nf, index1, 1)];
 
-        index1 = kernel_coords_index(ktx, ic, jc, kc+1);
+        mask[1]   = m0[1]*m1[1];
+        ch->flux->fy[addr_rank1(ch->flux->nsite, ch->flux->nf, index0, 1)] *= mask[1];
+      }
 
-        m0[n]     = flux_mask->data[addr_rank1(flux_mask->nsites, ch->flux->nf, index0, n)];
-        m1[n]     = flux_mask->data[addr_rank1(flux_mask->nsites, ch->flux->nf, index1, n)];
+    if (mask_phi_switch)      
+      {	// Between kc and kc+1
 
-        mask[n]   = m0[n]*m1[n];
-        ch->flux->fz[addr_rank1(ch->flux->nsite, ch->flux->nf, index0, n)] *= mask[n];
+        index1 = kernel_coords_index(ktx, ic, jc, kc + 1);
+        m0[0]     = flux_mask->data[addr_rank1(flux_mask->nsites, ch->flux->nf, index0, 0)];
+        m1[0]     = flux_mask->data[addr_rank1(flux_mask->nsites, ch->flux->nf, index1, 0)];
 
+        mask[0]   = m0[0]*m1[0];
+        ch->flux->fz[addr_rank1(ch->flux->nsite, ch->flux->nf, index0, 0)] *= mask[0];
+      }
+
+    if (mask_psi_switch)      
+      {	// Between kc and kc+1
+
+        index1 = kernel_coords_index(ktx, ic, jc, kc + 1);
+        m0[1]     = flux_mask->data[addr_rank1(flux_mask->nsites, ch->flux->nf, index0, 1)];
+        m1[1]     = flux_mask->data[addr_rank1(flux_mask->nsites, ch->flux->nf, index1, 1)];
+
+        mask[1]   = m0[1]*m1[1];
+        ch->flux->fz[addr_rank1(ch->flux->nsite, ch->flux->nf, index0, 1)] *= mask[1];
       }
 
     // Next order parameter
     }
   // Next site 
-  }
 
   return;
 }
