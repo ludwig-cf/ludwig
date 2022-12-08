@@ -8,7 +8,7 @@ module load gcc mvapich2 python
 
 # META PARAMETERS
 SWEEP_DIR=$PWD
-LUDWIG_DIR="/home/jbertran/ludwig4"
+LUDWIG_DIR="/home/jeremie/PhD/ludwig"
 UTIL_DIR=$LUDWIG_DIR"/util"
 
 
@@ -248,7 +248,7 @@ for param in ${sweepingRange[@]}; do
     cd $datafolder"/"$datafolder2
 
     #mpirun -n 8 ./Ludwig.exe
-    sbatch $simname 
+    #sbatch $simname 
   done
 done
 

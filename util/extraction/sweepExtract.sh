@@ -9,20 +9,20 @@ UTIL_DIR=/home/jeremie/PhD/ludwig/util/
 
 # SIMULATION PARAMETERS 
 N_start=0
-N_cycles=100000
+N_cycles=150000
 
 # EXTRACTION PARAMETERS
-freq=5000
+freq=1000
 nstart=$freq
 nend=$N_cycles
 nint=$freq
 nfiles=$(($N_cycles / $freq))
 
-first_folder="vesicle_radius"
-first_parameters=(6.0 7.0 8.0 9.0 10.0)
+first_folder=""
+first_parameters=("fullerene" "hexasphere" "trisphere")
 
-second_folder="phi_interaction_external"
-second_parameters=(1 0)
+second_folder=""
+second_parameters=(1e-3 1e-4 1e-5 1e-6)
 
 target_folder_list=()
 
@@ -45,7 +45,7 @@ else
   else
     for first_parameter in ${first_parameters[@]}; do
       for second_parameter in ${second_parameters[@]}; do
-        target_folder=$first_folder"_"$first_parameter"/"$second_folder"_"$second_parameter
+        target_folder=$first_folder""$first_parameter"/"$second_folder""$second_parameter
         target_folder_list+=($target_folder)
       done
     done
@@ -84,7 +84,7 @@ for target_folder in ${target_folder_list[@]}; do
   cp $UTIL_DIR"extraction/make_dircols.py" $target_folder
   cd $target_folder
 
-  python3 extract.py -pmvc --nstart $nstart --nend $nend --nint $nint
+  python3 extract.py -c --nstart $nstart --nend $nend --nint $nint
   python3 make_dircols.py $nstart $nend $nint
   rm extract.py extract extract_colloids make_dircols.py
 

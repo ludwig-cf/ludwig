@@ -131,6 +131,9 @@ grad_mu_psi XXXgrad_mu_psiXXX
 
 colloid_gravity  0.0_0.0_0.0
 
+add_tangential_force XXXadd_tangential_forceXXX
+tangential_force_magnitude XXXtangential_force_magnitudeXXX
+
 ###############################################################################
 #
 #  Colloid parameters

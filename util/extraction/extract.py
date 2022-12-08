@@ -48,13 +48,13 @@ a0_poly = None  # the radius of monomer
 
 vel=		0	# Switch for velocity 
 q=		0	# Switch for Q-tensor
-phi=		1	# Switch for binary fluid
-mask=		1	# Switch for binary fluid
-subgrid_potential=1
+phi=		0	# Switch for binary fluid
+mask=		0	# Switch for binary fluid
+subgrid_potential=0
 psi=		0	# Switch for electrokinetics
 fed=		0	# Switch for free energy
 colcds=		0	# Switch for colloid coordinate
-colcdsvel=	1	# Switch for colloid coordinate and lattice velocity
+colcdsvel=	0	# Switch for colloid coordinate and lattice velocity
 
 squ_poly_cds = False     # Squirmer, polymer co-ordinate
 squ_poly_cdsvel = False  # Squirmer, polymer co-ordinate; velocity 
@@ -79,12 +79,16 @@ for opt, arg in opts:
           vel = True
         elif (opt == "-c"):
           colcdsvel = True
+        elif (opt == "-s"):
+          subgrid_potential = True
+          
 
 print("Extracting ", end = "")
 if phi == True: print("phi fields, ", end = "")
 if vel == True: print("velocity fields, ", end = "")
 if mask == True: print("mask fields, ", end = "")
 if colcdsvel == True: print("and colloid coordinates and velocities ", end = "")
+if subgrid_potential == True: print("and subgrid potential ", end = "")
 print("from " + str(nstart) + " to " + str(nend) + " with increment " + str(nint))
 
 # Set lists for analysis

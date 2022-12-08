@@ -53,7 +53,7 @@ indexcentre = np.ones((NATOMS*NVESICLES), dtype = int)
 
 
 # Coordinates
-xyz = utils.file_to_array("trisphere.xyz")
+xyz = utils.file_to_array("vesicle_tools/rawfiles/trisphere.xyz")
 
 #Renormalize distances so that the smallest of the two harmonic bonds has l_0=1
 xyz = utils.rescale(xyz, RADIUS)

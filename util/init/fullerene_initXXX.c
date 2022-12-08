@@ -127,7 +127,7 @@ int main(int argc, char ** argv) {
   assert(state != NULL);
   for (int n = 0; n < nrequest; n++) {
 
-    state[n].isfixedr = 0;
+    state[n].isfixedr = XXXisfixedrXXX;
     state[n].isfixedv = 0;
 
     state[n].index = 1 + n;
@@ -150,9 +150,9 @@ int main(int argc, char ** argv) {
     if (type == COLLOID_TYPE_SUBGRID) {
       state[n].al= al;
       /* Needs a_L */
-      state[n].u0 = 1e-4;
-      state[n].delta = 8;
-      state[n].cutoff = 4.0;
+      state[n].u0 = XXXu0XXX;
+      state[n].delta = XXXdeltaXXX;
+      state[n].cutoff = XXXcutoffXXX;
     }
     state[n].rng = 1 + n;
     //CHANGE1

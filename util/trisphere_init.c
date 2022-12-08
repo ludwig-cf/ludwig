@@ -76,7 +76,7 @@ int main(int argc, char ** argv) {
   double a0 = 0.2;    /* Input radius */
   double ah = 0.2;      /* Hydrodynamic radius */ 
   double al = 1.25;     /* Offset parameter for subgrid particle */
-  double dh = 0.50;     /* grace distance */
+  double dh = 0.50;     /* "grace' distance */
   double q0 = 0.0;      /* positive charge */ 
   double q1 = 0.0;      /* negative charge */
   double b1 = 0.00;
@@ -150,8 +150,8 @@ int main(int argc, char ** argv) {
     if (type == COLLOID_TYPE_SUBGRID) {
       state[n].al= al;
       /* Needs a_L */
-      state[n].u0 = 0.00001;
-      state[n].delta = 4;
+      state[n].u0 = 1e-4;
+      state[n].delta = 8;
       state[n].cutoff = 4.0;
     }
     state[n].rng = 1 + n;
