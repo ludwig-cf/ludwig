@@ -16,6 +16,8 @@
  *****************************************************************************/
 
 #include <assert.h>
+#include <stdlib.h>
+#include <string.h>
 
 #include "pe.h"
 #include "io_options.h"
@@ -27,6 +29,12 @@ __host__ int test_io_options_default(void);
 __host__ int test_io_options_with_mode(void);
 __host__ int test_io_options_with_format(void);
 __host__ int test_io_options_with_iogrid(void);
+__host__ int test_io_mode_to_string(void);
+__host__ int test_io_mode_from_string(void);
+__host__ int test_io_record_format_to_string(void);
+__host__ int test_io_record_format_from_string(void);
+__host__ int test_io_options_to_json(void);
+__host__ int test_io_options_from_json(void);
 
 /*****************************************************************************
  *
@@ -47,6 +55,12 @@ __host__ int test_io_options_suite(void) {
   test_io_options_with_mode();
   test_io_options_with_format();
   test_io_options_with_iogrid();
+  test_io_mode_to_string();
+  test_io_mode_from_string();
+  test_io_record_format_to_string();
+  test_io_record_format_from_string();
+  test_io_options_to_json();
+  test_io_options_from_json();
 
   pe_info(pe, "PASS     ./unit/test_io_options\n");
 
@@ -295,6 +309,210 @@ __host__ int test_io_options_with_iogrid(void) {
     assert(opts.iogrid[2]   == iogrid[2]);
     if (opts.iogrid[0]*opts.iogrid[1]*opts.iogrid[2] != 24) ifail = -1;
   }
+
+  return ifail;
+}
+
+/*****************************************************************************
+ *
+ *  test_io_mode_to_string
+ *
+ *****************************************************************************/
+
+__host__ int test_io_mode_to_string(void) {
+
+  int ifail = 0;
+
+  /* Test each case in turn */
+  {
+    const char * str = NULL;
+    str = io_mode_to_string(IO_MODE_SINGLE);
+    ifail = strcmp(str, "single");
+    assert(ifail == 0);
+  }
+
+  {
+    const char * str = NULL;
+    str = io_mode_to_string(IO_MODE_MULTIPLE);
+    ifail = strcmp(str, "multiple");
+    assert(ifail == 0);
+  }
+
+  {
+    const char * str = NULL;
+    str = io_mode_to_string(IO_MODE_ANSI);
+    ifail = strcmp(str, "ansi");
+    assert(ifail == 0);
+  }
+
+  {
+    const char * str = NULL;
+    str = io_mode_to_string(IO_MODE_MPIIO);
+    ifail = strcmp(str, "mpiio");
+    assert(ifail == 0);
+  }
+
+  return ifail;
+}
+
+/*****************************************************************************
+ *
+ *  test_io_mode_from_string
+ *
+ *****************************************************************************/
+
+__host__ int test_io_mode_from_string(void) {
+
+  int ifail = 0;
+
+  {
+    io_mode_enum_t mode = io_mode_from_string("SINGLE");
+    if (mode != IO_MODE_SINGLE) ifail = -1;
+    assert(ifail == 0);
+  }
+
+  {
+    io_mode_enum_t mode = io_mode_from_string("MULTIPLE");
+    if (mode != IO_MODE_MULTIPLE) ifail = -1;
+    assert(ifail == 0);
+  }
+
+  {
+    io_mode_enum_t mode = io_mode_from_string("ANSI");
+    if (mode != IO_MODE_ANSI) ifail = -1;
+    assert(ifail == 0);
+  }
+
+  {
+    io_mode_enum_t mode = io_mode_from_string("MPIIO");
+    if (mode != IO_MODE_MPIIO) ifail = -1;
+    assert(ifail == 0);
+  }
+
+  return ifail;
+}
+
+/*****************************************************************************
+ *
+ *  test_io_record_format_to_string
+ *
+ *****************************************************************************/
+
+__host__ int test_io_record_format_to_string(void) {
+
+  int ifail = 0;
+
+  {
+    const char * str = io_record_format_to_string(IO_RECORD_ASCII);
+    ifail = strcmp(str, "ascii");
+    assert(ifail == 0);
+  }
+
+  {
+    const char * str = io_record_format_to_string(IO_RECORD_BINARY);
+    ifail = strcmp(str, "binary");
+    assert(ifail == 0);
+  }
+
+  return ifail;
+}
+
+/*****************************************************************************
+ *
+ *  test_io_record_format_from_string
+ *
+ *****************************************************************************/
+
+__host__ int test_io_record_format_from_string(void) {
+
+  int ifail = 0;
+
+  {
+    io_record_format_enum_t ior = io_record_format_from_string("ASCII");
+    if (ior != IO_RECORD_ASCII) ifail = -1;
+    assert(ifail == 0);
+  }
+
+  {
+    io_record_format_enum_t ior = io_record_format_from_string("BINARY");
+    if (ior != IO_RECORD_BINARY) ifail = -1;
+    assert(ifail == 0);
+  }
+
+  return ifail;
+}
+
+/*****************************************************************************
+ *
+ *  test_io_options_to_json
+ *
+ *****************************************************************************/
+
+__host__ int test_io_options_to_json(void) {
+
+  int ifail = 0;
+
+  io_options_t opts = io_options_default();
+  cJSON * json = NULL;
+
+  ifail = io_options_to_json(&opts, &json);
+  assert(ifail == 0);
+
+  {
+    /* A somewhat circular test which we excuse by saying the test on
+     * io_options_from_json() is not also circular */
+    io_options_t check = {0};
+    io_options_from_json(json, &check);
+    assert(check.mode == io_mode_default());
+    assert(check.iorformat == io_record_format_default());
+    assert(check.metadata_version == io_metadata_version_default());
+    assert(check.report == opts.report);
+    assert(check.asynchronous == opts.asynchronous);
+    assert(check.compression_levl == opts.compression_levl);
+    assert(check.iogrid[0] == 1);
+    assert(check.iogrid[1] == 1);
+    assert(check.iogrid[2] == 1);
+  }
+
+  cJSON_Delete(json);
+
+  return ifail;
+}
+
+/*****************************************************************************
+ *
+ *  test_io_options_from_json
+ *
+ *****************************************************************************/
+
+__host__ int test_io_options_from_json(void) {
+
+  int ifail = 0;
+  const char * jstr = "{\"Mode\": \"single\","
+                      "\"Record format\": \"binary\","
+                      "\"Metadata version\": 2,"
+                      "\"Report\": false, "
+                      "\"Asynchronous\": true,"
+                      "\"Compression level\": 9,"
+                      "\"I/O grid\": [2, 3, 4] }";
+
+  cJSON * json = cJSON_Parse(jstr);
+  assert(json);
+
+  {
+    /* Convert to options and test */
+    io_options_t opts = {0};
+    ifail = io_options_from_json(json, &opts);
+    assert(opts.metadata_version == 2);
+    assert(opts.report           == 0);
+    assert(opts.asynchronous         );
+    assert(opts.compression_levl == 9);
+    assert(opts.iogrid[0]        == 2);
+    assert(opts.iogrid[1]        == 3);
+    assert(opts.iogrid[2]        == 4);
+  }
+
+  cJSON_Delete(json);
 
   return ifail;
 }

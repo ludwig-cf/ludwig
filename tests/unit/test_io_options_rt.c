@@ -73,6 +73,10 @@ __host__ int test_io_options_rt_mode(pe_t * pe) {
   io_options_rt_mode(rt, RT_NONE, "example_output_io_mode", &mode);
   assert(mode == IO_MODE_MULTIPLE);
 
+  rt_add_key_value(rt, "vel_io_mode", "ansi");
+  io_options_rt_mode(rt, RT_NONE, "vel_io_mode", &mode);
+  assert(mode == IO_MODE_ANSI);
+
   rt_free(rt);
 
   return 0;

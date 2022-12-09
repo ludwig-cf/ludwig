@@ -88,13 +88,7 @@ __host__ int io_options_rt_mode(rt_t * rt, rt_enum_t lv, const char * key,
   key_present = rt_string_parameter(rt, key, value, BUFSIZ);
 
   if (key_present) {
-    io_mode_enum_t user_mode = IO_MODE_INVALID;
-
-    util_str_tolower(value, strlen(value));
-
-    if (strcmp(value, "single")   == 0) user_mode = IO_MODE_SINGLE;
-    if (strcmp(value, "multiple") == 0) user_mode = IO_MODE_MULTIPLE;
-    if (strcmp(value, "mpiio")    == 0) user_mode = IO_MODE_MPIIO;
+    io_mode_enum_t user_mode = io_mode_from_string(value);
 
     if (io_options_mode_valid(user_mode) == 1) {
       *mode = user_mode;
@@ -117,7 +111,8 @@ __host__ int io_options_rt_mode(rt_t * rt, rt_enum_t lv, const char * key,
  *
  *  io_options_rt_rformat
  *
- *  If the key is not present IO_RECORD_INVALID is returned.
+ *  If the key is present and valid, return RT_KEY_OK and set the
+ *  iorformat.
  *
  *****************************************************************************/
 
@@ -126,21 +121,16 @@ __host__ int io_options_rt_record_format(rt_t * rt, rt_enum_t lv,
 					 io_record_format_enum_t * iorformat) {
   int ifail = RT_KEY_MISSING;
   int key_present = 0;
-  char value[BUFSIZ] = {0};
+  char str[BUFSIZ] = {0};
 
   assert(rt);
   assert(key);
   assert(iorformat);
 
-  key_present = rt_string_parameter(rt, key, value, BUFSIZ);
+  key_present = rt_string_parameter(rt, key, str, BUFSIZ);
 
   if (key_present) {
-    io_record_format_enum_t user_iorformat = IO_RECORD_INVALID;
-
-    util_str_tolower(value, strlen(value));
-
-    if (strcmp(value, "ascii")  == 0) user_iorformat = IO_RECORD_ASCII;
-    if (strcmp(value, "binary") == 0) user_iorformat = IO_RECORD_BINARY;
+    io_record_format_enum_t user_iorformat = io_record_format_from_string(str);
 
     if (io_options_record_format_valid(user_iorformat) == 1) {
       ifail = RT_KEY_OK;
@@ -150,7 +140,7 @@ __host__ int io_options_rt_record_format(rt_t * rt, rt_enum_t lv,
       ifail = RT_KEY_INVALID;
       rt_vinfo(rt, lv, "I/O record format present but value not recognised\n");
       rt_vinfo(rt, lv, "key:   %s\n", key);
-      rt_vinfo(rt, lv, "value: %s\n", value);
+      rt_vinfo(rt, lv, "value: %s\n", str);
       rt_vinfo(rt, lv, "Should be either 'ascii' or 'binary'\n");
       rt_fatal(rt, lv, "Please check the input file and try again!\n");
     }

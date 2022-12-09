@@ -8,7 +8,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2020 The University of Edinburgh
+ *  (c) 2020-2022 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -19,6 +19,7 @@
 #define LUDWIG_IO_OPTIONS_H
 
 #include "pe.h"
+#include "util_cJSON.h"
 
 /*
  *  I/O Modes:
@@ -28,11 +29,12 @@
  *  IO_MODE_MULTIPLE:  one or more files with decomposition dependent order;
  *                     output must be post-processed to recover serial order.
  *
- *  IO_MODE_ANSI       ANSI implementation     PENDING
+ *  IO_MODE_ANSI       ANSI implementation     currently means IO_MODE_SINGLE
  *  IO_MODE_MPIO       MPIO-IO implementation
  */
 
 enum io_mode_enum {IO_MODE_INVALID, IO_MODE_SINGLE, IO_MODE_MULTIPLE,
+		   IO_MODE_ANSI,
 		   IO_MODE_MPIIO};
 
 /* Record formats: */
@@ -81,5 +83,14 @@ __host__ int io_options_valid(const io_options_t * options);
 __host__ int io_options_mode_valid(io_mode_enum_t mode);
 __host__ int io_options_record_format_valid(io_record_format_enum_t iorformat);
 __host__ int io_options_metadata_version_valid(const io_options_t * options);
+
+/* Various additional utility routines */
+
+__host__ const char * io_mode_to_string(io_mode_enum_t mode);
+__host__ io_mode_enum_t io_mode_from_string(const char * string);
+__host__ const char * io_record_format_to_string(io_record_format_enum_t ior);
+__host__ io_record_format_enum_t io_record_format_from_string(const char * s);
+__host__ int io_options_to_json(const io_options_t * opts, cJSON ** json);
+__host__ int io_options_from_json(const cJSON * json, io_options_t * opts);
 
 #endif
