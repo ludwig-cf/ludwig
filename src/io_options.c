@@ -305,7 +305,7 @@ __host__ const char * io_mode_to_string(io_mode_enum_t mode) {
 
 __host__ io_mode_enum_t io_mode_from_string(const char * str) {
 
-  int mode = IO_MODE_INVALID;
+  io_mode_enum_t mode = IO_MODE_INVALID;
   char value[BUFSIZ] = {0};
 
   assert(str);
@@ -434,7 +434,11 @@ __host__ int io_options_from_json(const cJSON * json, io_options_t * opts) {
       char * str = cJSON_GetStringValue(ior);
       opts->iorformat = io_record_format_from_string(str);
     }
-    if (meta)   opts->metadata_version = cJSON_GetNumberValue(meta);
+    if (meta) {
+      /* Care with type conversions here ... */
+      int version = cJSON_GetNumberValue(meta);
+      opts->metadata_version = (io_metadata_version_enum_t) version;
+    }
     if (report) opts->report = cJSON_IsTrue(report);
     if (async)  opts->asynchronous = cJSON_IsTrue(async);
     if (level)  opts->compression_levl = cJSON_GetNumberValue(level);

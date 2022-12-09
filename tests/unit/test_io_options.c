@@ -96,6 +96,12 @@ __host__ int test_io_options_mode_valid(void) {
   isvalid = io_options_mode_valid(mode9);
   assert(isvalid == 0);
 
+  /* nb., a declaration "io_options_t io  = {0};" will not pass
+   * muster for C++ (bad conversion to enum_t). One can instead do
+   * "io_options_t io = {IO_MODE_INVALID};" providing ... */
+
+  assert(IO_MODE_INVALID == 0);
+  
   return isvalid;
 }
 
@@ -461,7 +467,7 @@ __host__ int test_io_options_to_json(void) {
   {
     /* A somewhat circular test which we excuse by saying the test on
      * io_options_from_json() is not also circular */
-    io_options_t check = {0};
+    io_options_t check = {IO_MODE_INVALID};
     io_options_from_json(json, &check);
     assert(check.mode == io_mode_default());
     assert(check.iorformat == io_record_format_default());
@@ -501,7 +507,7 @@ __host__ int test_io_options_from_json(void) {
 
   {
     /* Convert to options and test */
-    io_options_t opts = {0};
+    io_options_t opts = {IO_MODE_INVALID};
     ifail = io_options_from_json(json, &opts);
     assert(opts.metadata_version == 2);
     assert(opts.report           == 0);
