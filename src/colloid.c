@@ -123,6 +123,8 @@ int colloid_state_read_ascii(colloid_state_t * ps, FILE * fp) {
   nread += fscanf(fp, vformat, &ps->fsprings[0], &ps->fsprings[1], &ps->fsprings[2]);
   nread += fscanf(fp, vformat, &ps->tphi[0], &ps->tphi[1], &ps->tphi[2]);
   nread += fscanf(fp, vformat, &ps->tsprings[0], &ps->tsprings[1], &ps->tsprings[2]);
+  nread += fscanf(fp, vformat, &ps->total_force[0], &ps->total_force[1], &ps->total_force[2]);
+  nread += fscanf(fp, vformat, &ps->total_torque[0], &ps->total_torque[1], &ps->total_torque[2]);
 /* <----- */
 
   for (n = 0; n < NPAD_DBL; n++) {
@@ -136,6 +138,7 @@ int colloid_state_read_ascii(colloid_state_t * ps, FILE * fp) {
 
   if (nread != NTOT_VAR) ifail = 1;
 
+  if (nread != NTOT_VAR) printf("%d %d\n", NTOT_VAR, nread);
   /* If assertions are off, we may want to catch this failure elsewhere */
   assert(ifail == 0);
 
@@ -278,6 +281,8 @@ int colloid_state_write_ascii(const colloid_state_t * s, FILE * fp) {
   nwrite += fprintf(fp, vformat, s->fsprings[0], s->fsprings[1], s->fsprings[2]);
   nwrite += fprintf(fp, vformat, s->tphi[0], s->tphi[1], s->tphi[2]);
   nwrite += fprintf(fp, vformat, s->tsprings[0], s->tsprings[1], s->tsprings[2]);
+  nwrite += fprintf(fp, vformat, s->total_force[0], s->total_force[1], s->total_force[2]);
+  nwrite += fprintf(fp, vformat, s->total_torque[0], s->total_torque[1], s->total_torque[2]);
 /* <----- */
 
   for (n = 0; n < NPAD_DBL; n++) {

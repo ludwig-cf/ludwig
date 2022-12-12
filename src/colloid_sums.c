@@ -77,7 +77,7 @@ static int colloid_sums_m7(colloid_sum_t * sum, int, int, int, int);
 /* Message sizes (doubles) */
 /* NULL is a dummy zero size */
 
-static const int msize_[COLLOID_SUM_MAX] = {0, 10, 35, 7, 4, 6, 22, 4};
+static const int msize_[COLLOID_SUM_MAX] = {0, 10, 35, 7, 4, 6, 28, 4};
 
 /* The following are used for internal communication */
 
@@ -781,6 +781,8 @@ static int colloid_sums_m6(colloid_sum_t * sum, int ic, int jc, int kc,
 	sum->send[n++] = pc->s.fsprings[ia];
 	sum->send[n++] = pc->s.tphi[ia];
 	sum->send[n++] = pc->s.tsprings[ia];
+	sum->send[n++] = pc->s.total_force[ia];
+	sum->send[n++] = pc->s.total_torque[ia];
 
       }
       assert(n == (noff + npart + 1)*sum->msize);
@@ -801,6 +803,8 @@ static int colloid_sums_m6(colloid_sum_t * sum, int ic, int jc, int kc,
 	pc->s.fsprings[ia] += sum->recv[n++];
 	pc->s.tphi[ia] += sum->recv[n++];
 	pc->s.tsprings[ia] += sum->recv[n++];
+	pc->s.total_force[ia] += sum->recv[n++];
+	pc->s.total_torque[ia] += sum->recv[n++];
 
       }
       assert(n == (noff + npart + 1)*sum->msize);

@@ -55,7 +55,7 @@ int subgrid_force_from_particles(colloids_info_t * cinfo, hydro_t * hydro,
   int nlocal[3], offset[3];
   int ncell[3];
 
-  double r[3], r0[3], force[3];
+  double r[3], r0[3], force[3], dcentre[3];
   double dr;
   colloid_t * p_colloid = NULL;  /* Subgrid colloid */
   colloid_t * presolved = NULL;  /* Resolved colloid occupuing node */
@@ -86,8 +86,21 @@ int subgrid_force_from_particles(colloids_info_t * cinfo, hydro_t * hydro,
 
 	for ( ; p_colloid; p_colloid = p_colloid->next) {
 
+	 
           if (p_colloid->s.type != COLLOID_TYPE_SUBGRID) continue;
 
+	  p_colloid->s.total_force[X] = p_colloid->fex[X];
+	  p_colloid->s.total_force[Y] = p_colloid->fex[Y];
+	  p_colloid->s.total_force[Z] = p_colloid->fex[Z];
+	  
+	  /* Extract centre of the vesicle */
+	  cs_minimum_distance(cinfo->cs, p_colloid->centerofmass, p_colloid->s.r, dcentre);
+
+	  /* Accumulate total torque on vesicle (Sum of all the torque exerted by each bead with respect to the centre of vesicle) */
+	  p_colloid->s.total_torque[X] += dcentre[Y]*p_colloid->s.total_force[Z]- dcentre[Z]*p_colloid->s.total_force[Y];
+	  p_colloid->s.total_torque[Y] += dcentre[Z]*p_colloid->s.total_force[X]- dcentre[X]*p_colloid->s.total_force[Z];
+	  p_colloid->s.total_torque[Z] += dcentre[X]*p_colloid->s.total_force[Y]- dcentre[Y]*p_colloid->s.total_force[X];
+	  
 /* -----> CHEMOVESICLE V2 */
 /* Central particle does not interact with fluid */
           //if (p_colloid->s.iscentre == 1) continue; //LIGHTHOUSE
@@ -671,8 +684,9 @@ int subgrid_flux_mask(pe_t * pe, colloids_info_t * cinfo, field_t * flux_mask, f
     mask_psi_switch = rt_switch(rt, "mask_psi_switch");
     reaction_switch = rt_switch(rt, "chemical_reaction_switch");
 
-    
-    if (!mask_phi_switch && !mask_psi_switch && !reaction_switch && !interaction_mask) return 0;
+    /* Go in anyway to get the txt files */ 
+    /*if (!mask_phi_switch && !mask_psi_switch && !reaction_switch && !interaction_mask) return 0; */
+
     if (interaction_mask || mask_phi_switch) { 
       p = rt_double_parameter(rt, "mask_phi_permeability", &permeability[0]);
       if (p != 1) pe_fatal(pe, "Please specify mask_phi_permeability\n");
@@ -716,7 +730,6 @@ int subgrid_flux_mask(pe_t * pe, colloids_info_t * cinfo, field_t * flux_mask, f
 
   /* Find central particle */
   colloids_info_local_head(cinfo, &pc);
-
   for ( ; pc; pc = pc->nextlocal) {
     if (pc->s.indexcentre != 1) continue;
     if (pc->s.iscentre == 1) {
@@ -735,21 +748,19 @@ int subgrid_flux_mask(pe_t * pe, colloids_info_t * cinfo, field_t * flux_mask, f
       MPI_Comm_rank(comm, &hole_id);
     }
 
-    if (pc->s.index == 164) {
+/*    if (pc->s.index == 164) {
       orthofound = 1;
       rortho[0] = pc->s.r[0]; 
       rortho[1] = pc->s.r[1]; 
       rortho[2] = pc->s.r[2]; 
       MPI_Comm_rank(comm, &ortho_id);
     }
+*/
   }
-
-  //pe_verbose(cinfo->pe, "I am process %d centrefound = %d, holefound = %d, orthofound = %d\n", my_id, centrefound, holefound, orthofound);
 
   MPI_Barrier(comm);
 
   if (centrefound == 1) {
-    //pe_verbose(cinfo->pe, "sending rcentre = %f %f %f\n", rcentre[0], rcentre[1], rcentre[2]);
     for (int id = 0; id < totnum_ids; id++) {
       if (my_id == id) continue;
       MPI_Send(rcentre, 3, MPI_DOUBLE, id, 0, comm);
@@ -758,13 +769,11 @@ int subgrid_flux_mask(pe_t * pe, colloids_info_t * cinfo, field_t * flux_mask, f
   MPI_Barrier(comm);
   if (centrefound != 1) {
     MPI_Recv(rcentre, 3, MPI_DOUBLE, MPI_ANY_SOURCE, 0, comm, MPI_STATUS_IGNORE);
-    //pe_verbose(cinfo->pe, "receiving rcentre = %f %f %f\n", rcentre[0], rcentre[1], rcentre[2]);
   }
 
   MPI_Barrier(comm);
 
   if (holefound == 1) {
-    //pe_verbose(cinfo->pe, "sending rhole = %f %f %f\n", rhole[0], rhole[1], rhole[2]);
     for (int id = 0; id < totnum_ids; id++) {
       if (my_id == id) continue;
       MPI_Send(rhole, 3, MPI_DOUBLE, id, 0, comm);
@@ -778,6 +787,7 @@ int subgrid_flux_mask(pe_t * pe, colloids_info_t * cinfo, field_t * flux_mask, f
 
 
   MPI_Barrier(comm);
+/*
   if (orthofound == 1) {
     for (int id = 0; id < totnum_ids; id++) {
       if (my_id == id) continue;
@@ -789,41 +799,35 @@ int subgrid_flux_mask(pe_t * pe, colloids_info_t * cinfo, field_t * flux_mask, f
     MPI_Recv(rortho, 3, MPI_DOUBLE, MPI_ANY_SOURCE, 0, comm, MPI_STATUS_IGNORE);
   }
   MPI_Barrier(comm);
-
-  //pe_verbose(cinfo->pe, "rcentre = %f %f %f rhole = %f %f %f\n", rcentre[X], rcentre[Y], rcentre[Z], rhole[X], rhole[Y], rhole[Z]);
+*/
 
   cs_minimum_distance(cinfo->cs, rcentre, rhole, m);
-  cs_minimum_distance(cinfo->cs, rcentre, rortho, n);
+//  cs_minimum_distance(cinfo->cs, rcentre, rortho, n);
     
   norm_m = sqrt(m[0]*m[0] + m[1]*m[1] + m[2]*m[2]);
-  norm_n = sqrt(n[0]*n[0] + n[1]*n[1] + n[2]*n[2]);
-  //pe_verbose(cinfo->pe, "n = %f %f %f\n", n[X], n[Y], n[Z]);
-  //pe_verbose(cinfo->pe, "m = %f %f %f\n", m[X], m[Y], m[Z]);
+//  norm_n = sqrt(n[0]*n[0] + n[1]*n[1] + n[2]*n[2]);
 
   for (int ia = 0; ia < 3; ia++) {
     m[ia] /= norm_m;
-    n[ia] /= norm_n;
+//    n[ia] /= norm_n;
   }
-
-  //pe_verbose(cinfo->pe, "rortho = %f %f %f, m = %f %f %f n = %f %f %f\n", my_id, rortho[X], rortho[Y], rortho[Z], m[0], m[1], m[2], n[0], n[1], n[2]);
 
   colloids_info_all_head(cinfo, &pc);
   for ( ; pc; pc = pc->nextall) {
-    if (pc->s.indexcentre != 1) continue;
+//    if (pc->s.indexcentre != 1) continue; LIGHTHOUSE when using several vesicles
     for (int ia = 0; ia < 3; ia++) {
       pc->s.m[ia] = m[ia];
-      pc->s.n[ia] = n[ia];
       pc->centerofmass[ia] = rcentre[ia];
+//      pc->s.n[ia] = n[ia];
     }
   }
  
-// Assign mask value 
+
+/* Assign mask value */
 
   rcentre_local[X] = rcentre[X] - offset[X];
   rcentre_local[Y] = rcentre[Y] - offset[Y];
   rcentre_local[Z] = rcentre[Z] - offset[Z];
- 
-  //pe_verbose(cinfo->pe,"rcentre local = %f %f %f\n", rcentre_local[X], rcentre_local[Y], rcentre_local[Z]);
 
   for (i = 1; i <= nlocal[X] + 0; i++) {
     for (j = 1; j <= nlocal[Y] + 0; j++) {
@@ -843,7 +847,6 @@ int subgrid_flux_mask(pe_t * pe, colloids_info_t * cinfo, field_t * flux_mask, f
 	// PRODUCE PHI
         if (reaction_switch) {
 	  if (rnorm < radius - std_width - 2) {
-
 	    if (strcmp(reaction_model, "uniform") == 0) 
 	    {
 	      phi->data[addr_rank1(phi->nsites, 2, index, 0)] += kappa;
@@ -932,7 +935,7 @@ int subgrid_flux_mask(pe_t * pe, colloids_info_t * cinfo, field_t * flux_mask, f
   }
 
   // COMMUNICATE TOTPHI
-
+/*
   if (timestep % writefreq == 0) {
     MPI_Reduce(&totphi_vesicle_local, &totphi_vesicle, 1, MPI_DOUBLE, MPI_SUM, 0, comm);
     MPI_Reduce(&totphi_box_local, &totphi_box, 1, MPI_DOUBLE, MPI_SUM, 0, comm);
@@ -942,6 +945,7 @@ int subgrid_flux_mask(pe_t * pe, colloids_info_t * cinfo, field_t * flux_mask, f
       fclose(fp);
     }
   }
+*/
   return 0;
 }
 

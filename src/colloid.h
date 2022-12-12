@@ -29,16 +29,15 @@ typedef enum colloid_io_version colloid_io_version_t;
  * useful to know to check the ASCII read/write. */
 
 
-/* -----> CHEMOVESICLE V2 */
 /* NPAD_INT 1 = 12 - iscentre - indexcentre - ishole - NBONDMAX2(3) -nbonds2 - NBONDMAX3 (3) - nbonds3*/
-/* NPAD_DOUBLE -6 = 15 - u0 - delta - cutoff - n[3] - fphi[3] - fsprings[3] - fsub[3] - tphi[3] - tsprings[3] */
-/* <----- */
 
-#define NTOT_VAR (12 + 3 + 3 + 240 + 642 + 11 + 0              + 54            + 0           + 14)
+/* NPAD_DOUBLE - 6 = 15 - u0 - delta - cutoff - n[3] - fphi[3] - fsprings[3] - fsub[3] - tphi[3] - tsprings[3] - total_force[3] */
+
+#define NTOT_VAR (12 + 3 + 3 + 240 + 642 + 11 + 0              + 60            + 0           + 14)
 //                ints nbonds 1 2 3 mesh ints pad	     double	   double pad       tuple
 
 
-// PADDING MUST BE INCLUDED IN NTOT_VAR !!
+// PADDING MUST BE INCLUDED IN NTOT_VAR !
 #define NPAD_INT  0
 #define NPAD_DBL  0
 
@@ -142,6 +141,8 @@ struct colloid_state_type {
   double fsprings[3]; /* idem */
   double tphi[3];
   double tsprings[3];
+  double total_force[3]; /* Total force acted on vesicle */
+  double total_torque[3]; /* Total torque acted on vesicle */
 /* <----- */
 
   double dpad[NPAD_DBL];/* Again, this pads to 512 bytes to allow

@@ -57,7 +57,7 @@ static const int  cds_with_m_v_fphi  = 0;  /* Output m, v, force and forcephi */
 static const int  cds_with_m_v_fphi_fsub_fsprings  = 0;  /* Output m, v, force and forcephi */
 static const int  cds_with_m_v_fphi_fsub_fsprings_tphi_tsprings  = 0;  /* Output m, v, force and forcephi */
 static const int  cds_with_m_v_fphi_fsub_fsprings_tphi_tsprings_total_force  = 0;  /* Output m, v, force and forcephi */
-static const int  cds_with_m_v_fphi_fsub_fsprings_tphi_tsprings_total_force_iscentre_ishole  = 1;  /* Output m, v, force and forcephi */
+static const int  cds_with_m_v_fphi_fsub_fsprings_tphi_tsprings_total_force_total_torque_iscentre_ishole  = 1;  /* Output m, v, force and forcephi */
 
 static const char * format3_    = "%10.5f, %10.5f, %10.5f, ";
 static const char * format3end_ = "%10.5f, %10.5f, %10.5f\n";
@@ -68,7 +68,7 @@ static const char * format13end_ = "%10.5f, %10.5f, %10.5f, %10.5f, %10.5f, %10.
 static const char * format19end_ = "%10.5f, %10.5f, %10.5f, %10.5f, %10.5f, %10.5f, %14.6e, %14.6e, %14.6e, %14.6e, %14.6e, %14.6e, %14.6e, %14.6e, %14.6e, %14.6e, %14.6e, %14.6e, %14.6e\n";
 static const char * format25end_ = "%10.5f, %10.5f, %10.5f, %10.5f, %10.5f, %10.5f, %14.6e, %14.6e, %14.6e, %14.6e, %14.6e, %14.6e, %14.6e, %14.6e, %14.6e, %14.6e, %14.6e, %14.6e, %14.6e, %14.6e, %14.6e, %14.6e, %14.6e, %14.6e, %14.6e\n";
 static const char * format28end_ = "%10.5f, %10.5f, %10.5f, %10.5f, %10.5f, %10.5f, %14.6e, %14.6e, %14.6e, %14.6e, %14.6e, %14.6e, %14.6e, %14.6e, %14.6e, %14.6e, %14.6e, %14.6e, %14.6e, %14.6e, %14.6e, %14.6e, %14.6e, %14.6e, %14.6e, %14.6e, %14.6e, %14.6e\n";
-static const char * format30end_ = "%10.5f, %10.5f, %10.5f, %10.5f, %10.5f, %10.5f, %14.6e, %14.6e, %14.6e, %14.6e, %14.6e, %14.6e, %14.6e, %14.6e, %14.6e, %14.6e, %14.6e, %14.6e, %14.6e, %14.6e, %14.6e, %14.6e, %14.6e, %14.6e, %14.6e, %14.6e, %14.6e, %14.6e, %d, %d\n";
+static const char * format33end_ = "%10.5f, %10.5f, %10.5f, %10.5f, %10.5f, %10.5f, %14.6e, %14.6e, %14.6e, %14.6e, %14.6e, %14.6e, %14.6e, %14.6e, %14.6e, %14.6e, %14.6e, %14.6e, %14.6e, %14.6e, %14.6e, %14.6e, %14.6e, %14.6e, %14.6e, %14.6e, %14.6e, %14.6e, %14.6e, %14.6e, %14.6e, %d, %d\n";
 
 void colloids_to_csv_header(FILE * fp);
 void colloids_to_csv_header_with_m(FILE * fp);
@@ -78,7 +78,7 @@ void colloids_to_csv_header_with_m_v_fphi(FILE * fp);
 void colloids_to_csv_header_with_m_v_fphi_fsub_fsprings(FILE * fp);
 void colloids_to_csv_header_with_m_v_fphi_fsub_fsprings_tphi_tsprings(FILE * fp);
 void colloids_to_csv_header_with_m_v_fphi_fsub_fsprings_tphi_tsprings_total_force(FILE * fp);
-void colloids_to_csv_header_with_m_v_fphi_fsub_fsprings_tphi_tsprings_total_force_iscentre_ishole(FILE * fp);
+void colloids_to_csv_header_with_m_v_fphi_fsub_fsprings_tphi_tsprings_total_force_total_torque_iscentre_ishole(FILE * fp);
 
 int main(int argc, char ** argv) {
 
@@ -120,7 +120,7 @@ int main(int argc, char ** argv) {
   if (cds_with_m_v_fphi_fsub_fsprings) colloids_to_csv_header_with_m_v_fphi_fsub_fsprings(fp_csv);
   if (cds_with_m_v_fphi_fsub_fsprings_tphi_tsprings) colloids_to_csv_header_with_m_v_fphi_fsub_fsprings_tphi_tsprings(fp_csv);
   if (cds_with_m_v_fphi_fsub_fsprings_tphi_tsprings_total_force) colloids_to_csv_header_with_m_v_fphi_fsub_fsprings_tphi_tsprings_total_force(fp_csv);
-  if (cds_with_m_v_fphi_fsub_fsprings_tphi_tsprings_total_force_iscentre_ishole) colloids_to_csv_header_with_m_v_fphi_fsub_fsprings_tphi_tsprings_total_force_iscentre_ishole(fp_csv);
+  if (cds_with_m_v_fphi_fsub_fsprings_tphi_tsprings_total_force_total_torque_iscentre_ishole) colloids_to_csv_header_with_m_v_fphi_fsub_fsprings_tphi_tsprings_total_force_total_torque_iscentre_ishole(fp_csv);
 
   for (nf = 1; nf <= nfile; nf++) {
 
@@ -194,9 +194,9 @@ int main(int argc, char ** argv) {
 	normv = sqrt(s1.v[0]*s1.v[0] + s1.v[1]*s1.v[1] + s1.v[2]*s1.v[2]);
 	fprintf(fp_csv, format28end_, s1.m[0], s1.m[1], s1.m[2], s1.n[0], s1.n[1], s1.n[2], s1.v[0], s1.v[1], s1.v[2], normv, s1.fphi[0], s1.fphi[1], s1.fphi[2], s1.fsub[0], s1.fsub[1], s1.fsub[2], s1.fsprings[0], s1.fsprings[1], s1.fsprings[2], s1.tphi[0], s1.tphi[1], s1.tphi[2], s1.tsprings[0], s1.tsprings[1], s1.tsprings[2], s1.total_force[0], s1.total_force[1], s1.total_force[2]);
       }
-      if (cds_with_m_v_fphi_fsub_fsprings_tphi_tsprings_total_force_iscentre_ishole) {
+      if (cds_with_m_v_fphi_fsub_fsprings_tphi_tsprings_total_force_total_torque_iscentre_ishole) {
 	normv = sqrt(s1.v[0]*s1.v[0] + s1.v[1]*s1.v[1] + s1.v[2]*s1.v[2]);
-	fprintf(fp_csv, format30end_, s1.m[0], s1.m[1], s1.m[2], s1.n[0], s1.n[1], s1.n[2], s1.v[0], s1.v[1], s1.v[2], normv, s1.fphi[0], s1.fphi[1], s1.fphi[2], s1.fsub[0], s1.fsub[1], s1.fsub[2], s1.fsprings[0], s1.fsprings[1], s1.fsprings[2], s1.tphi[0], s1.tphi[1], s1.tphi[2], s1.tsprings[0], s1.tsprings[1], s1.tsprings[2], s1.total_force[0], s1.total_force[1], s1.total_force[2], s1.ishole, s1.iscentre);
+	fprintf(fp_csv, format33end_, s1.m[0], s1.m[1], s1.m[2], s1.n[0], s1.n[1], s1.n[2], s1.v[0], s1.v[1], s1.v[2], normv, s1.fphi[0], s1.fphi[1], s1.fphi[2], s1.fsub[0], s1.fsub[1], s1.fsub[2], s1.fsprings[0], s1.fsprings[1], s1.fsprings[2], s1.tphi[0], s1.tphi[1], s1.tphi[2], s1.tsprings[0], s1.tsprings[1], s1.tsprings[2], s1.total_force[0], s1.total_force[1], s1.total_force[2], s1.total_torque[0], s1.total_torque[1], s1.total_torque[2], s1.ishole, s1.iscentre);
       }
  
       ncount += 1;
@@ -565,16 +565,16 @@ void colloids_to_csv_header_with_m_v_fphi_fsub_fsprings_tphi_tsprings_total_forc
 
 /*****************************************************************************
  *
- *  colloids_to_csv_header_with_m_v_f_fphi_fsub_fsprings_total_force_iscentre_ishole
+ *  colloids_to_csv_header_with_m_v_f_fphi_fsub_fsprings_total_force_total_torque_iscentre_ishole
  *
  *****************************************************************************/
 
-void colloids_to_csv_header_with_m_v_fphi_fsub_fsprings_tphi_tsprings_total_force_iscentre_ishole(FILE * fp) {
+void colloids_to_csv_header_with_m_v_fphi_fsub_fsprings_tphi_tsprings_total_force_total_torque_iscentre_ishole(FILE * fp) {
 
   double r[3];
 
   if (id) fprintf(fp, "%s", "id,");
-  fprintf(fp, "%s", "x,y,z,mx,my,mz,nx,ny,nz,vx,vy,vz,normv,fphix,fphiy,fphiz,fsubx,fsuby,fsubz,fspringsx,fspringsy,fspringsz,tphix,tphiy,tphiz,tspringsx,tspringsy,tspringsz,total_forcex,total_forcey,total_forcez,ishole,iscentre\n");
+  fprintf(fp, "%s", "x,y,z,mx,my,mz,nx,ny,nz,vx,vy,vz,normv,fphix,fphiy,fphiz,fsubx,fsuby,fsubz,fspringsx,fspringsy,fspringsz,tphix,tphiy,tphiz,tspringsx,tspringsy,tspringsz,total_forcex,total_forcey,total_forcez,total_torquex,total_torquey,total_torquez,ishole,iscentre\n");
 
   if (include_ref) {
 

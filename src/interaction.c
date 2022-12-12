@@ -202,8 +202,10 @@ int interact_compute(interact_t * interact, colloids_info_t * cinfo,
     colloids_update_forces_fluid_driven(cinfo, map);
     interact_wall(interact, cinfo);
 
-    rt_int_parameter(rt, "phi_subgrid_switch", &on);
-    if (on) colloids_update_discrete_forces_phi(cinfo, phi, subgrid_potential, u_mask, rt); 
+    colloids_update_discrete_forces_phi(cinfo, phi, subgrid_potential, u_mask, rt); 
+
+    rt_int_parameter(rt, "add_tangential_force", &on);
+    if (on) colloids_add_tangential_force(cinfo, rt); 
 
     if (nc > 1) {
       interact_bonds(interact, cinfo);
@@ -510,6 +512,10 @@ int colloids_update_forces_zero(colloids_info_t * cinfo) {
     pc->s.tsprings[X] = 0.0;
     pc->s.tsprings[Y] = 0.0;
     pc->s.tsprings[Z] = 0.0;
+
+    pc->s.total_torque[X] = 0.0;
+    pc->s.total_torque[Y] = 0.0;
+    pc->s.total_torque[Z] = 0.0;
   }
 
   return 0;
@@ -709,7 +715,7 @@ int colloids_update_discrete_forces_phi(colloids_info_t * cinfo, field_t * phi, 
   int i, j, k, ic, jc, kc;
   int i_min, i_max, j_min, j_max, k_min, k_max;
   int index, indexm1, indexp1, ia;
-  int interaction_mask_on, external_only_on;
+  int interaction_mask_on = 0, external_only_on = 0, subgrid_switch_on = 0;
 
   double phi_, u, um1, up1, u0, delta, cutoff;
   double rnorm, rsq, rsqm1, rsqp1;
@@ -721,8 +727,8 @@ int colloids_update_discrete_forces_phi(colloids_info_t * cinfo, field_t * phi, 
 
 /* ------------------------- For book-keeping ------------------------------> */
   int writefreq = 10000, timestep;
-  double colloidforce[3], localforce[3] = {0., 0., 0.}, globalforce[3];
-  double colloidtorque[3], localtorque[3] = {0., 0., 0.}, globaltorque[3];
+  double colloidforce[3], localforce[3] = {0., 0., 0.}, globalforce[3] = {0.0, 0.0, 0.0};
+  double colloidtorque[3], localtorque[3] = {0., 0., 0.}, globaltorque[3] = {0.0, 0.0, 0.0};
   FILE * fp;
 
 // time stuff
@@ -745,10 +751,27 @@ int colloids_update_discrete_forces_phi(colloids_info_t * cinfo, field_t * phi, 
   assert(phi->nf == 2);
   assert(subgrid_potential);
 
-  interaction_mask_on = 0;
+  rt_int_parameter(rt, "phi_subgrid_switch", &subgrid_switch_on);
   rt_int_parameter(rt, "phi_interaction_mask", &interaction_mask_on);
   rt_int_parameter(rt, "phi_interaction_external_only", &external_only_on);
   rt_int_parameter(rt, "freq_write", &writefreq);
+
+  if (!subgrid_switch_on) { 
+    if (timestep % writefreq == 0) {
+      if (rank == 0) {
+        fp = fopen("TOT_INTERACT_FORCE_SUBGRID.txt", "a");
+        fprintf(fp, "%14.7e,%14.7e,%14.7e\n", globalforce[X], globalforce[Y], globalforce[Z]);
+        fclose(fp);
+      }
+
+      if (rank == 0) {
+        fp = fopen("TOT_INTERACT_TORQUE_SUBGRID.txt", "a");
+        fprintf(fp, "%14.7e,%14.7e,%14.7e\n", globaltorque[X], globaltorque[Y], globaltorque[Z]);
+        fclose(fp);
+      }
+    }
+    return 0;
+  }
 
   /* Initialize subgrid potential to 0 */
   for (i = 1; i <= nlocal[X]; i++) {
@@ -773,10 +796,10 @@ int colloids_update_discrete_forces_phi(colloids_info_t * cinfo, field_t * phi, 
           delta = pc->s.delta;
           cutoff = pc->s.cutoff;
 
-	  // useful for calculating the torque of the structure, and for identifying which nodes are inside and which are outside
+	  /* necessary to get the torque of the structure and identify which nodes are inside/outside (external_only key) */
 	  cs_minimum_distance(cinfo->cs, pc->centerofmass, pc->s.r, dcentre);
 
-          /* Need to translate the colloid position to "local"
+          /* Need to translate the colloid position to local
           * coordinates, so that the correct range of lattice
           * nodes is found */
 
@@ -993,6 +1016,92 @@ int colloids_update_discrete_forces_phi(colloids_info_t * cinfo, field_t * phi, 
   //Next cell list
   return 0;
 }
+
+
+/*****************************************************************************
+ *
+ *  colloids_add_tangential_force
+ *
+ *  Add a force tangential to the vesicle to an arbitrary bead.
+ *
+ *****************************************************************************/
+
+int colloids_add_tangential_force(colloids_info_t * cinfo, rt_t * rt) {
+
+  int ic, jc, kc;
+  int ncell[3];
+  double fnorm, fmag; 
+  double f[3], rhole[3];
+
+  colloid_t * pc;
+  
+  assert(cinfo);
+  colloids_info_ncell(cinfo, ncell);
+  
+  rt_double_parameter(rt, "tangential_force_magnitude", &fmag);
+
+  for (ic = 1; ic <= ncell[X]; ic++) {
+    for (jc = 1; jc <= ncell[Y]; jc++) {
+      for (kc = 1; kc <= ncell[Z]; kc++) {
+
+	colloids_info_cell_list_head(cinfo, ic, jc, kc, &pc);
+
+	for (; pc; pc = pc->next) {
+
+	  if (pc->s.ishole == 1) {
+
+            cs_minimum_distance(cinfo->cs, pc->centerofmass, pc->s.r, rhole);
+	    /* Take f orthogonal to z and rhole */
+
+	    f[X] = rhole[Y]*1.0 - rhole[Z]*0.0;
+	    f[Y] = rhole[Z]*0.0 - rhole[X]*1.0;
+	    f[Z] = rhole[X]*0.0 - rhole[Y]*0.0;
+	    
+	    fnorm = sqrt(f[X]*f[X] + f[Y]*f[Y] + f[Z]*f[Z]);
+
+	    f[X] /= fnorm;
+	    f[Y] /= fnorm;
+	    f[Z] /= fnorm;
+
+	    /* f is now a unit vector normal to uz and r */
+
+	    /* Add tangential force */
+	    pc->force[X] += f[X]*fmag;
+	    pc->force[Y] += f[Y]*fmag;
+	    pc->force[Z] += f[Z]*fmag;
+	  }
+
+	  if (pc->s.index == 12) {
+
+            cs_minimum_distance(cinfo->cs, pc->centerofmass, pc->s.r, rhole);
+	    /* Take f orthogonal to z and rhole */
+
+	    f[X] = rhole[Y]*1.0 - rhole[Z]*0.0;
+	    f[Y] = rhole[Z]*0.0 - rhole[X]*1.0;
+	    f[Z] = rhole[X]*0.0 - rhole[Y]*0.0;
+	    
+	    fnorm = sqrt(f[X]*f[X] + f[Y]*f[Y] + f[Z]*f[Z]);
+
+	    f[X] /= fnorm;
+	    f[Y] /= fnorm;
+	    f[Z] /= fnorm;
+
+	    /* f is now a unit vector normal to uz and r */
+
+	    /* Add tangential force */
+	    pc->force[X] += f[X]*fmag;
+	    pc->force[Y] += f[Y]*fmag;
+	    pc->force[Z] += f[Z]*fmag;
+	  }
+	}
+      }
+    }
+  }
+
+  return 0;
+}
+
+
 
 
 /*****************************************************************************
