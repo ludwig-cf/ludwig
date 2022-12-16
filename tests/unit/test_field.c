@@ -111,6 +111,7 @@ int test_field_io_read_write(pe_t * pe) {
   {
     io_options_t io = io_options_with_format(IO_MODE_MPIIO, IO_RECORD_ASCII);
     field_options_t opts = field_options_ndata_nhalo(3, 0);
+    io.report = 0;
     opts.iodata.input  = io;
     opts.iodata.output = io;
 
@@ -124,6 +125,7 @@ int test_field_io_read_write(pe_t * pe) {
   {
     io_options_t io = io_options_with_format(IO_MODE_MPIIO, IO_RECORD_BINARY);
     field_options_t opts = field_options_ndata_nhalo(5, 2);
+    io.report = 0;
     opts.iodata.input  = io;
     opts.iodata.output = io;
 

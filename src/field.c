@@ -1665,7 +1665,7 @@ int field_io_write(field_t * field, int timestep, io_event_t * event) {
   const io_metadata_t * meta = &field->iometadata_out;
 
   /* old ANSI */
-  if (meta->options.mode == IO_MODE_SINGLE) {
+  if (meta->options.mode != IO_MODE_MPIIO) {
     char filename[BUFSIZ] = {0};
     sprintf(filename, "%s-%8.8d", field->name, timestep);
     io_write_data(field->info, filename, field);
@@ -1688,6 +1688,9 @@ int field_io_write(field_t * field, int timestep, io_event_t * event) {
     io->impl->write(io, filename);
 
     /* FIXME: REPORT HERE >>>>> */
+    if (meta->options.report) {
+      pe_info(field->pe, "MPIIO wrote to %s\n", filename);
+    }
 
     io->impl->free(&io);
   }
@@ -1709,7 +1712,7 @@ int field_io_read(field_t * field, int timestep, io_event_t * event) {
   const io_metadata_t * meta = &field->iometadata_in;
 
   /* old ANSI */
-  if (field->opts.iodata.input.mode == IO_MODE_SINGLE) {
+  if (field->opts.iodata.input.mode != IO_MODE_MPIIO) {
     char filename[BUFSIZ] = {0};
     sprintf(filename, "%s-%8.8d", field->name, timestep);
     io_read_data(field->info, filename, field);

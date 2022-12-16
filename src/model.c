@@ -1566,7 +1566,7 @@ int lb_io_write(lb_t * lb, int timestep, io_event_t * event) {
 
   const io_metadata_t * meta = &lb->output;
 
-  if (meta->options.mode == IO_MODE_SINGLE) {
+  if (meta->options.mode != IO_MODE_MPIIO) {
     /* Old-style */
     char filename[BUFSIZ] = {0};
     sprintf(filename, "dist-%8.8d", timestep);
@@ -1586,6 +1586,12 @@ int lb_io_write(lb_t * lb, int timestep, io_event_t * event) {
     lb_io_aggr_pack(lb, io->aggr);
 
     io->impl->write(io, filename);
+
+    /* FIXME need to add a proper report */
+    if (meta->options.report) {
+      pe_info(lb->pe, "MPIIO wrote to %s\n", filename);
+    }
+
     io->impl->free(&io);
   }
 
@@ -1605,7 +1611,7 @@ int lb_io_read(lb_t * lb, int timestep, io_event_t * event) {
 
   const io_metadata_t * meta = &lb->input;
 
-  if (meta->options.mode == IO_MODE_SINGLE) {
+  if (meta->options.mode != IO_MODE_MPIIO) {
     char filename[BUFSIZ] = {0};
     sprintf(filename, "dist-%8.8d", timestep);
     io_read_data(lb->io_info, filename, lb);

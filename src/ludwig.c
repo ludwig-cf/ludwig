@@ -49,6 +49,8 @@
 #include "hydro_rt.h"
 
 #include "io_harness.h"
+#include "io_info_args_rt.h"
+
 #include "phi_stats.h"
 #include "phi_force.h"
 #include "phi_force_colloid.h"
@@ -1333,6 +1335,7 @@ int free_energy_init_rt(ludwig_t * ludwig) {
 
     {
       field_options_t opts = field_options_ndata_nhalo(nf, nhalo);
+      io_info_args_rt(rt, RT_FATAL, "phi", IO_INFO_READ_WRITE, &opts.iodata);
       field_create(pe, cs, le, "phi", &opts, &ludwig->phi);
       field_grad_create(pe, ludwig->phi, ngrad, &ludwig->phi_grad);
     }
@@ -1414,6 +1417,7 @@ int free_energy_init_rt(ludwig_t * ludwig) {
 
     {
       field_options_t opts = field_options_ndata_nhalo(nf, nhalo);
+      io_info_args_rt(rt, RT_FATAL, "phi", IO_INFO_READ_WRITE, &opts.iodata);
       field_create(pe, cs, le, "phi", &opts, &ludwig->phi);
       field_grad_create(pe, ludwig->phi, ngrad, &ludwig->phi_grad);
     }
@@ -1455,6 +1459,7 @@ int free_energy_init_rt(ludwig_t * ludwig) {
 
     {
       field_options_t opts = field_options_ndata_nhalo(nf, nhalo);
+      io_info_args_rt(rt, RT_FATAL, "phi", IO_INFO_READ_WRITE, &opts.iodata);
       field_create(pe, cs, le, "phi", &opts, &ludwig->phi);
       field_grad_create(pe, ludwig->phi, ngrad, &ludwig->phi_grad);
       phi_ch_create(pe, cs, le, &ch_options, &ludwig->pch);
@@ -1588,6 +1593,7 @@ int free_energy_init_rt(ludwig_t * ludwig) {
 
     {
       field_options_t opts = field_options_ndata_nhalo(nf, nhalo);
+      io_info_args_rt(rt, RT_FATAL, "phi", IO_INFO_READ_WRITE, &opts.iodata);
       field_create(pe, cs, NULL, "phi", &opts, &ludwig->phi);
     }
 
@@ -1675,6 +1681,8 @@ int free_energy_init_rt(ludwig_t * ludwig) {
       if (rt_switch(rt, "field_data_use_first_touch")) {
 	opts.usefirsttouch = 1;
       }
+      io_info_args_rt(rt, RT_FATAL, "q", IO_INFO_READ_WRITE, &opts.iodata);
+
       field_create(pe, cs, le, "q", &opts, &ludwig->q);
       field_grad_create(pe, ludwig->q, ngrad, &ludwig->q_grad);
     }
@@ -1739,6 +1747,7 @@ int free_energy_init_rt(ludwig_t * ludwig) {
 
     {
       field_options_t opts = field_options_ndata_nhalo(nf, nhalo);
+      io_info_args_rt(rt, RT_FATAL, "p", IO_INFO_READ_WRITE, &opts.iodata);
       field_create(pe, cs, le, "p", &opts, &ludwig->p);
       field_grad_create(pe, ludwig->p, ngrad, &ludwig->p_grad);
     }
@@ -1797,6 +1806,8 @@ int free_energy_init_rt(ludwig_t * ludwig) {
       if (rt_switch(rt, "field_data_use_first_touch")) {
 	opts.usefirsttouch = 1;
       }
+      io_info_args_rt(rt, RT_FATAL, "phi", IO_INFO_READ_WRITE, &opts.iodata);
+
       field_create(pe, cs, le, "phi", &opts, &ludwig->phi);
       field_grad_create(pe, ludwig->phi, ngrad, &ludwig->phi_grad);
       phi_ch_create(pe, cs, le, &ch_options, &ludwig->pch);
@@ -1829,6 +1840,7 @@ int free_energy_init_rt(ludwig_t * ludwig) {
       if (rt_switch(rt, "field_data_use_first_touch")) {
 	opts.usefirsttouch = 1;
       }
+      io_info_args_rt(rt, RT_FATAL, "q", IO_INFO_READ_WRITE, &opts.iodata);
       field_create(pe, cs, le, "q", &opts, &ludwig->q);
       field_grad_create(pe, ludwig->q, ngrad, &ludwig->q_grad);
     }
