@@ -1582,17 +1582,19 @@ int lb_io_write(lb_t * lb, int timestep, io_event_t * event) {
     io_impl_create(meta, &io);
     assert(io);
 
+    io_event_record(event, IO_EVENT_AGGR);
     lb_memcpy(lb, tdpMemcpyDeviceToHost);
     lb_io_aggr_pack(lb, io->aggr);
 
+    io_event_record(event, IO_EVENT_WRITE);
     io->impl->write(io, filename);
 
-    /* FIXME need to add a proper report */
     if (meta->options.report) {
       pe_info(lb->pe, "MPIIO wrote to %s\n", filename);
     }
 
     io->impl->free(&io);
+    io_event_report(event, meta, "dist");
   }
 
   return 0;

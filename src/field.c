@@ -1682,17 +1682,19 @@ int field_io_write(field_t * field, int timestep, io_event_t * event) {
     io_impl_create(meta, &io);  /* CAN FAIL in principle */
     assert(io);
 
+    io_event_record(event, IO_EVENT_AGGR);
     field_memcpy(field, tdpMemcpyDeviceToHost);
     field_io_aggr_pack(field, io->aggr);
 
+    io_event_record(event, IO_EVENT_WRITE);
     io->impl->write(io, filename);
 
-    /* FIXME: REPORT HERE >>>>> */
     if (meta->options.report) {
       pe_info(field->pe, "MPIIO wrote to %s\n", filename);
     }
 
     io->impl->free(&io);
+    io_event_report(event, meta, field->name);
   }
 
   return 0;

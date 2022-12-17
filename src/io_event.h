@@ -18,10 +18,24 @@
 #ifndef LUDWIG_IO_EVENT_H
 #define LUDWIG_IO_EVENT_H
 
+#include "io_metadata.h"
+
+enum io_event_record_enum {
+  IO_EVENT_AGGR = 0,
+  IO_EVENT_WRITE,
+  IO_EVENT_REPORT,
+  IO_EVENT_MAX
+};
+
+typedef enum io_event_record_enum io_event_record_t;
 typedef struct io_event_s io_event_t;
 
 struct io_event_s {
-  int isconfig;        /* Is this a configuration step */
+  double time[IO_EVENT_MAX];    /* MPI_Wtime()s */
 };
+
+int io_event_record(io_event_t * event, io_event_record_t iorec);
+int io_event_report(io_event_t * event, const io_metadata_t * metadata,
+		    const char * name);
 
 #endif
