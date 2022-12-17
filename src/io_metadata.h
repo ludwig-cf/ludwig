@@ -19,6 +19,7 @@
 #include "io_options.h"
 #include "io_element.h"
 #include "io_subfile.h"
+#include "util_cjson.h"
 
 typedef struct io_metadata_s io_metadata_t;
 
@@ -45,5 +46,9 @@ int io_metadata_initialise(cs_t * cs,
 			   const io_element_t * element,
 			   io_metadata_t * metadata);
 int io_metadata_finalise(io_metadata_t * metadata);
+
+int io_metadata_to_json(const io_metadata_t * metadata, cJSON ** json);
+int io_metadata_from_json(cs_t * cs, const cJSON * json,
+			  io_metadata_t * metadata);
 
 #endif

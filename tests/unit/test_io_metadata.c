@@ -13,11 +13,13 @@
  *****************************************************************************/
 
 #include <assert.h>
+#include <stdlib.h>
 
 #include "io_metadata.h"
 
 int test_io_metadata_initialise(cs_t * cs);
 int test_io_metadata_create(cs_t * cs);
+int test_io_metadata_to_json(cs_t * cs);
 
 /*****************************************************************************
  *
@@ -37,6 +39,7 @@ int test_io_metadata_suite(void) {
 
   test_io_metadata_initialise(cs);
   test_io_metadata_create(cs);
+  test_io_metadata_to_json(cs);
 
   pe_info(pe, "%-9s %s\n", "PASS", __FILE__);
   cs_free(cs);
@@ -126,6 +129,56 @@ int test_io_metadata_initialise(cs_t * cs) {
 
   io_metadata_finalise(&metadata);
   assert(metadata.comm == MPI_COMM_NULL);
+
+  return ifail;
+}
+
+/*****************************************************************************
+ *
+ *  test_io_metadata_to_json
+ *
+ *****************************************************************************/
+
+int test_io_metadata_to_json(cs_t * cs) {
+
+  int ifail = 0;
+  io_metadata_t metadata = {0};
+  io_element_t  element  = {0};
+  io_options_t  options  = io_options_default();
+
+  assert(cs);
+
+  io_metadata_initialise(cs, &options, &element, &metadata);
+
+  {
+    cJSON * json = NULL;
+    ifail = io_metadata_to_json(&metadata, &json);
+    assert(ifail == 0);
+
+    {
+      char * str = cJSON_Print(json);
+      printf("io_metadata: %s\n\n", str);
+      free(str);
+    }
+    /* Check we have the requisite parts. */
+    /* We assume the parts themselves are well-formed. */
+    {
+      cJSON * part = NULL;
+      part = cJSON_GetObjectItemCaseSensitive(json, "io_options");
+      if (part == NULL) ifail = -1;
+      assert(ifail == 0);
+      part = cJSON_GetObjectItemCaseSensitive(json, "io_element");
+      if (part == NULL) ifail = -1;
+      assert(ifail == 0);
+      part = cJSON_GetObjectItemCaseSensitive(json, "io_subfile");
+      if (part == NULL) ifail = -1;
+      assert(ifail == 0);
+    }
+
+    cJSON_Delete(json);
+  }
+
+  io_metadata_finalise(&metadata);
 
   return ifail;
 }

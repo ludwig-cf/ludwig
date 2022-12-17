@@ -146,3 +146,78 @@ int io_metadata_finalise(io_metadata_t * meta) {
 
   return 0;
 }
+
+/*****************************************************************************
+ *
+ *  io_metadata_to_json
+ *
+ *  The "non-MPI" content can be translated meaningfully.
+ *
+ *****************************************************************************/
+
+int io_metadata_to_json(const io_metadata_t * meta, cJSON ** json) {
+
+  int ifail = 0;
+
+  assert(meta);
+
+  if (json == NULL || *json != NULL) {
+    ifail = -1;
+  }
+  else {
+    cJSON * myjson = cJSON_CreateObject();
+
+    {
+      /* options */
+      cJSON * jtmp = NULL;
+      ifail = io_options_to_json(&meta->options, &jtmp);
+      if (ifail == 0) cJSON_AddItemToObject(myjson, "io_options", jtmp);
+    }
+    {
+      /* element */
+      cJSON * jtmp = NULL;
+      ifail = io_element_to_json(&meta->element, &jtmp);
+      if (ifail == 0) cJSON_AddItemToObject(myjson, "io_element", jtmp);
+    }
+    {
+      /* subfile */
+      cJSON * jtmp = NULL;
+      ifail = io_subfile_to_json(&meta->subfile, &jtmp);
+      if (ifail == 0) cJSON_AddItemToObject(myjson, "io_subfile", jtmp);
+    }
+    *json = myjson;
+  }
+
+  return ifail;
+}
+
+/*****************************************************************************
+ *
+ *  io_metadata_from_json
+ *
+ *****************************************************************************/
+
+int io_metadata_from_json(cs_t * cs, const cJSON * json, io_metadata_t * m) {
+
+  int ifail = 0;
+
+  assert(cs);
+  assert(json);
+
+  if (m == NULL) {
+    ifail = -1;
+  }
+  else {
+    /* Generate options, element, from json, and initialise ... */
+    io_options_t options = {0};
+    io_element_t element = {0};
+
+    cJSON * jopt = cJSON_GetObjectItemCaseSensitive(json, "io_options");
+    cJSON * jelm = cJSON_GetObjectItemCaseSensitive(json, "io_element");
+    ifail = io_options_from_json(jopt, &options);
+    ifail = io_element_from_json(jelm, &element);
+    ifail = io_metadata_initialise(cs, &options, &element, m);
+  }
+
+  return ifail;
+}
