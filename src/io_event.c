@@ -89,7 +89,7 @@ int io_event_report(io_event_t * event, const io_metadata_t * metadata,
     pe_info(pe, "- %10s wrote      %7.3f %2s in %7.3f seconds\n",
 	    name, db, units, tw);
     pe_info(pe, "- %10s rate       %7.3f GB per second\n",
-	    name, dr*ds/dunit9/tw, units, tw);
+	    name, dr*ds/dunit9/tw);
   }
 
   return 0;
