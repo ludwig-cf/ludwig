@@ -60,7 +60,7 @@ int io_event_report(io_event_t * event, const io_metadata_t * metadata,
 
   if (metadata->options.report) {
 
-    pe_t * pe = pe = metadata->cs->pe;
+    pe_t * pe = metadata->cs->pe;
 
     const char * units = NULL;
     double dunit6 = 1.0e+06; /* Units of data size are MB */
