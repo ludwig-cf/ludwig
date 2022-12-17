@@ -84,6 +84,7 @@ int io_info_create(pe_t * pe, cs_t * cs, io_info_args_t * arg, io_info_t ** p) {
   info->single_file_read = 0;
 
   /* Patch to allow old parallel i/o to take effect */
+
   if (info->io_comm->n_io > 1) {
     info->args.output.mode = IO_MODE_MULTIPLE;
   }
@@ -736,28 +737,11 @@ __host__ int io_info_output_bytesize(io_info_t * info, size_t * bs) {
 
 int io_write_data(io_info_t * info, const char * filename_stub, void * data) {
 
-  double t0, t1;
-
   assert(info);
   assert(data);
 
-  if (info->args.output.mode == IO_MODE_MULTIPLE) {
-    /* Use the standard "parallel" method for the time being. */
-    io_write_data_p(info, filename_stub, data);
-  }
-  else {
-    /* This is serial output format if one I/O group */
-    t0 = MPI_Wtime();
-    io_write_data_s(info, filename_stub, data);
-    t1 = MPI_Wtime();
-    if (info->args.output.report) {
-      size_t bytesize = 0;
-      io_info_output_bytesize(info, &bytesize);
-      pe_info(info->pe, "Write %lu bytes in %f secs %f GB/s\n",
-	      info->nsites*bytesize, t1-t0,
-	      info->nsites*bytesize/(1.0e+09*(t1-t0)));
-    }
-  }
+  /* Use the standard "parallel" method. */
+  io_write_data_p(info, filename_stub, data);
 
   return 0;
 }

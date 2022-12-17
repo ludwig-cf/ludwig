@@ -201,14 +201,10 @@ int io_replace_field_values(field_t * field, map_t * map, int status,
 
 static int ludwig_rt(ludwig_t * ludwig) {
 
-  int form;
   int ntstep;
   int n, nstat;
   char filename[FILENAME_MAX];
   char subdirectory[FILENAME_MAX/2];
-  char value[BUFSIZ];
-  int io_grid_default[3] = {1, 1, 1};
-  int io_grid[3];
 
   pe_t * pe = NULL;
   cs_t * cs = NULL;
@@ -257,29 +253,18 @@ static int ludwig_rt(ludwig_t * ludwig) {
   lb_bc_open_rt(pe, rt, cs, ludwig->lb, &ludwig->inflow, &ludwig->outflow);
   phi_bc_open_rt(pe, rt, cs, &ludwig->phi_inflow, &ludwig->phi_outflow);
 
-  /* PHI I/O */
-
-  rt_int_parameter_vector(rt, "default_io_grid", io_grid_default);
-  for (n = 0; n < 3; n++) {
-    io_grid[n] = io_grid_default[n];
-  }
-  rt_int_parameter_vector(rt, "phi_io_grid", io_grid);
-
-  form = IO_FORMAT_DEFAULT;
-  strcpy(value, ""); /* REPLACE Really need a way to get string from "form" */
-  n = rt_string_parameter(rt, "phi_format", value, BUFSIZ);
-  if (n != 0 && strcmp(value, "ASCII") == 0) {
-    form = IO_FORMAT_ASCII;
-  }
-
-
-  /* All the same I/O grid  */
+  {
+  /* Old i/o options scheduled for removal */
+  /* Only default options are now possible. */
+  int form = IO_FORMAT_DEFAULT;
+  int io_grid[3] = {1, 1, 1};
 
   if (ludwig->phi) field_init_io_info(ludwig->phi, io_grid, form, form);
   if (ludwig->p) field_init_io_info(ludwig->p, io_grid, form, form);
   if (ludwig->q) field_init_io_info(ludwig->q, io_grid, form, form);
 
   if (ludwig->phi || ludwig->p || ludwig->q) {
+    const char * value = ""; /* BLANK appeared in old output */
     pe_info(pe, "\n");
     pe_info(pe, "Order parameter I/O\n");
     pe_info(pe, "-------------------\n");
@@ -288,6 +273,7 @@ static int ludwig_rt(ludwig_t * ludwig) {
     pe_info(pe, "I/O decomposition:            %d %d %d\n",
 	    io_grid[X], io_grid[Y], io_grid[Z]);
     advection_init_rt(pe, rt);
+  }
   }
 
   /* Can we move this down to t = 0 initialisation? */
