@@ -209,7 +209,7 @@ int io_metadata_from_json(cs_t * cs, const cJSON * json, io_metadata_t * m) {
   }
   else {
     /* Generate options, element, from json, and initialise ... */
-    io_options_t options = {0};
+    io_options_t options = {IO_MODE_INVALID};
     io_element_t element = {0};
 
     cJSON * jopt = cJSON_GetObjectItemCaseSensitive(json, "io_options");
