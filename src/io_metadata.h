@@ -19,7 +19,7 @@
 #include "io_options.h"
 #include "io_element.h"
 #include "io_subfile.h"
-#include "util_cjson.h"
+#include "util_json.h"
 
 typedef struct io_metadata_s io_metadata_t;
 
