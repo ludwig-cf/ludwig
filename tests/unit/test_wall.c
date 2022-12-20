@@ -6,13 +6,13 @@
  *
  *  (Porous media should be considered as a separate case).
  *
- * Edinburgh Soft Matter and Statistical Physics Group and
- * Edinburgh Parallel Computing Centre
+ *  Edinburgh Soft Matter and Statistical Physics Group and
+ *  Edinburgh Parallel Computing Centre
  *
- * (c) 2020-2022 The University of Edinburgh
+ *  (c) 2020-2022 The University of Edinburgh
  *
- * Contributing authors:
- * Kevin Stratford (kevin@epcc.ed.ac.uk)
+ *  Contributing authors:
+ *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *
  *****************************************************************************/
 
@@ -471,7 +471,10 @@ __host__ int test_wall_lubr_drag(void) {
     double h   = 1.0;
     double hc  = 1.2;
     double zeta = wall_lubr_drag(eta, ah, h, hc);
-    assert(fabs(zeta - -6.0*pi*eta*ah*ah*(1.0/h - 1.0/hc)) < DBL_EPSILON);
+    if (fabs(zeta - -6.0*pi*eta*ah*ah*(1.0/h - 1.0/hc)) >= DBL_EPSILON) {
+      ifail = -1;
+    }
+    assert(ifail == 0);
   }
 
   return ifail;

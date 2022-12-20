@@ -729,6 +729,7 @@ int test_lb_data_write(pe_t * pe, cs_t * cs) {
 
 int test_lb_write_buf(pe_t * pe, cs_t * cs, const lb_data_options_t * opts) {
 
+  int ifail = 0;
   lb_t * lb = NULL;
   char buf[BUFSIZ] = {0};
 
@@ -766,13 +767,14 @@ int test_lb_write_buf(pe_t * pe, cs_t * cs, const lb_data_options_t * opts) {
 	double f = -1.0;
 	lb_f(lb, index, p, n, &f);
 	assert(fabs(f - fref) < DBL_EPSILON);
+	if (fabs(f - fref) >= DBL_EPSILON) ifail += 1;
       }
     }
   }
 
   lb_free(lb);
 
-  return 0;
+  return ifail;
 }
 
 /*****************************************************************************
@@ -784,6 +786,7 @@ int test_lb_write_buf(pe_t * pe, cs_t * cs, const lb_data_options_t * opts) {
 int test_lb_write_buf_ascii(pe_t * pe, cs_t * cs,
 			    const lb_data_options_t * opts) {
 
+  int ifail = 0;
   lb_t * lb = NULL;
   char buf[BUFSIZ] = {0};
 
@@ -815,7 +818,8 @@ int test_lb_write_buf_ascii(pe_t * pe, cs_t * cs,
       /* Have we got the correct size? */
       int count = lb->nvel*(lb->ndist*LB_RECORD_LENGTH_ASCII + 1);
       size_t sz = count*sizeof(char);
-      assert(sz == strnlen(buf, BUFSIZ));
+      if (sz != strnlen(buf, BUFSIZ)) ifail = -1;
+      assert(ifail == 0);
     }
   }
 
@@ -830,14 +834,15 @@ int test_lb_write_buf_ascii(pe_t * pe, cs_t * cs,
 	double fref = 1.0*(1 + n*lb->model.nvel + p);
 	double f = -1.0;
 	lb_f(lb, index, p, n, &f);
-	assert(fabs(f - fref) < DBL_EPSILON);
+	if (fabs(f - fref) >= DBL_EPSILON) ifail = -1;
+	assert(ifail == 0);
       }
     }
   }
 
   lb_free(lb);
 
-  return 0;
+  return ifail;
 }
 
 /*****************************************************************************

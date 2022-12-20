@@ -84,6 +84,8 @@ int test_hydro_options_default(void) {
 
 int test_hydro_options_nhalo(void) {
 
+  int ifail = 0;
+
   {
     int nhalo = 2;
     hydro_options_t opts = hydro_options_nhalo(nhalo);
@@ -91,9 +93,10 @@ int test_hydro_options_nhalo(void) {
     assert(opts.u.nhcomm     == nhalo);
     assert(opts.force.nhcomm == nhalo);
     assert(opts.eta.nhcomm   == nhalo);
+    if (opts.rho.nhcomm != nhalo) ifail = -1;
   }
 
-  return 0;
+  return ifail;
 }
 
 /*****************************************************************************
@@ -104,6 +107,8 @@ int test_hydro_options_nhalo(void) {
 
 int test_hydro_options_haloscheme(void) {
 
+  int ifail = 0;
+
   {
     field_halo_enum_t hs = FIELD_HALO_OPENMP;
     hydro_options_t opts = hydro_options_haloscheme(hs);
@@ -112,7 +117,8 @@ int test_hydro_options_haloscheme(void) {
     assert(opts.u.haloscheme     == hs);
     assert(opts.force.haloscheme == hs);
     assert(opts.eta.haloscheme   == hs);
+    if (opts.rho.haloscheme != hs) ifail = -1;
   }
 
-  return 0;
+  return ifail;
 }
