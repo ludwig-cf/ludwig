@@ -461,8 +461,9 @@ __host__ int test_wall_lubr_drag(void) {
     double h   = 1.2;
     double hc  = 1.0;
     double zeta = wall_lubr_drag(eta, ah, h, hc);
-    assert(fabs(zeta) < DBL_EPSILON);
-    if (fabs(zeta) < DBL_EPSILON) ifail = 1;
+
+    if (fabs(zeta) >= DBL_EPSILON) ifail = 1;
+    assert(ifail == 0);
   }
   {
     /* h < hc */
