@@ -17,5 +17,6 @@
 #include "util_cJSON.h"
 
 int util_json_to_int_array(const cJSON * const json, int * array, int sz);
+int util_json_to_double_array(const cJSON * const json, double * array, int sz);
 
 #endif

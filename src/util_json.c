@@ -43,3 +43,27 @@ int util_json_to_int_array(const cJSON * const json, int * array, int sz) {
 
   return icount;
 }
+
+/*****************************************************************************
+ *
+ *  util_json_to_double_array
+ *
+ *  Actually the same as the int version except for the argument.
+ *
+ *****************************************************************************/
+
+int util_json_to_double_array(const cJSON * const json, double * array, int sz) {
+
+  int icount = 0;
+
+  if (cJSON_IsArray(json) && cJSON_GetArraySize(json) == sz) {
+    cJSON * element = NULL;
+    cJSON_ArrayForEach(element, json) {
+      if (cJSON_IsNumber(element)) {
+	array[icount++] = cJSON_GetNumberValue(element);
+      }
+    }
+  }
+
+  return icount;
+}
