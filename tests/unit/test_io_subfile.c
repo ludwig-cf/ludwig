@@ -21,7 +21,6 @@
 #include <string.h>
 
 #include "pe.h"
-#include "coords_s.h"
 #include "io_subfile.h"
 
 int test_io_subfile_default(pe_t * pe);

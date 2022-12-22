@@ -21,6 +21,7 @@
 #include <stdlib.h>
 
 #include "io_metadata.h"
+#include "util_fopen.h"
 
 /*****************************************************************************
  *
@@ -168,6 +169,12 @@ int io_metadata_to_json(const io_metadata_t * meta, cJSON ** json) {
     cJSON * myjson = cJSON_CreateObject();
 
     {
+      /* coords (including Lees Edwards information) */
+      cJSON * jtmp = NULL;
+      ifail = cs_to_json(meta->cs, &jtmp);
+      if (ifail == 0) cJSON_AddItemToObject(myjson, "coords", jtmp);
+    }
+    {
       /* options */
       cJSON * jtmp = NULL;
       ifail = io_options_to_json(&meta->options, &jtmp);
@@ -195,6 +202,10 @@ int io_metadata_to_json(const io_metadata_t * meta, cJSON ** json) {
  *
  *  io_metadata_from_json
  *
+ *  Assumes we have an existing coordinate system.
+ *  FIXME: However, Lees Edwards options cs->leopts is initialised here.
+ *  The question of initialising cs_t from JSON is PENDING.
+ *
  *****************************************************************************/
 
 int io_metadata_from_json(cs_t * cs, const cJSON * json, io_metadata_t * m) {
@@ -203,14 +214,16 @@ int io_metadata_from_json(cs_t * cs, const cJSON * json, io_metadata_t * m) {
 
   assert(cs);
   assert(json);
+  assert(cs->leopts.nplanes == 0); /* No exsiting information */
 
   if (m == NULL) {
     ifail = -1;
   }
   else {
     /* Generate options, element, from json, and initialise ... */
-    io_options_t options = {IO_MODE_INVALID};
-    io_element_t element = {0};
+    /* This initialises cs->leopts */
+    io_options_t options      = {IO_MODE_INVALID};
+    io_element_t element      = {0};
 
     cJSON * jopt = cJSON_GetObjectItemCaseSensitive(json, "io_options");
     cJSON * jelm = cJSON_GetObjectItemCaseSensitive(json, "io_element");
@@ -220,4 +233,55 @@ int io_metadata_from_json(cs_t * cs, const cJSON * json, io_metadata_t * m) {
   }
 
   return ifail;
+}
+
+/*****************************************************************************
+ *
+ *  io_metadata_write
+ *
+ *  Driver to write to file with an optional extra comment block.
+ *
+ *****************************************************************************/
+
+int io_metadata_write(const io_metadata_t * metadata,
+		      const char * stub,
+		      const cJSON * comments) {
+
+  cJSON * json = NULL;
+  char filename[BUFSIZ] = {0};
+
+  assert(metadata);
+  assert(stub);
+
+  if (metadata->iswriten) return 0;
+
+  /* Generate a json with the header inserted (gets deleted below) */
+
+  io_metadata_to_json(metadata, &json);
+  if (comments) {
+    cJSON * jtmp = cJSON_Duplicate(comments, 1);
+    cJSON_AddItemToObject(json, "comments", jtmp);
+  }
+
+  /* The extension uses indices in natural numbers 001-002 etc. */
+  sprintf(filename, "%s-metadata.%3.3d-%3.3d", stub,
+	  1 + metadata->subfile.index, metadata->subfile.nfile);
+
+  {
+    /* Write to file (root only) */
+    int rank = -1;
+    MPI_Comm_rank(metadata->comm, &rank);
+    if (rank == 0) {
+      FILE * fp = NULL;
+      char * str = cJSON_Print(json);
+      fp = util_fopen(filename, "w");
+      fprintf(fp, "%s\n", str);
+      fclose(fp);
+      free(str);
+    }
+  }
+
+  cJSON_Delete(json);
+
+  return 0;
 }

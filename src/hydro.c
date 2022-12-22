@@ -1110,6 +1110,9 @@ __global__ void hydro_correct_kernel_v(kernel_ctxt_t * ktx, hydro_t * hydro,
 int hydro_io_write(hydro_t * hydro, int timestep, io_event_t * event) {
 
   /* For backwards compatibility, we currently allow old-style output */
+  /* Call to io_write_data() must be here, as only have hydro->info
+     for the old options (not u->info etc). This will go away with
+     a consistent impl. */
 
   const io_metadata_t * rmeta = &hydro->rho->iometadata_out;
   const io_metadata_t * umeta = &hydro->u->iometadata_out;

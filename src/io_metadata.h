@@ -29,6 +29,7 @@ struct io_metadata_s {
   cs_limits_t limits;                /* Always local size with no halo */
   MPI_Comm parent;                   /* Cartesian communicator */
   MPI_Comm comm;                     /* Cartesian sub-communicator */
+  int iswriten;                      /* updated to true if file is writen */
 
   io_options_t options;
   io_element_t element;
@@ -51,4 +52,7 @@ int io_metadata_to_json(const io_metadata_t * metadata, cJSON ** json);
 int io_metadata_from_json(cs_t * cs, const cJSON * json,
 			  io_metadata_t * metadata);
 
+int io_metadata_write(const io_metadata_t * metadata,
+		      const char * stub,
+		      const cJSON * comments);
 #endif

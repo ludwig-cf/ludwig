@@ -17,9 +17,12 @@
 
 #include "io_metadata.h"
 
+#define IO_METADATA_VERBOSE 0
+
 int test_io_metadata_initialise(cs_t * cs);
 int test_io_metadata_create(cs_t * cs);
 int test_io_metadata_to_json(cs_t * cs);
+int test_io_metadata_write(cs_t * cs);
 
 /*****************************************************************************
  *
@@ -40,6 +43,7 @@ int test_io_metadata_suite(void) {
   test_io_metadata_initialise(cs);
   test_io_metadata_create(cs);
   test_io_metadata_to_json(cs);
+  test_io_metadata_write(cs);
 
   pe_info(pe, "%-9s %s\n", "PASS", __FILE__);
   cs_free(cs);
@@ -71,7 +75,7 @@ int test_io_metadata_create(cs_t * cs) {
   io_metadata_free(&meta);
   assert(meta == NULL);
 
-  return 0;
+  return ifail;
 }
 
 /*****************************************************************************
@@ -155,11 +159,12 @@ int test_io_metadata_to_json(cs_t * cs) {
     ifail = io_metadata_to_json(&metadata, &json);
     assert(ifail == 0);
 
-    {
+    if (IO_METADATA_VERBOSE) {
       char * str = cJSON_Print(json);
       printf("io_metadata: %s\n\n", str);
       free(str);
     }
+
     /* Check we have the requisite parts. */
     /* We assume the parts themselves are well-formed. */
     {
@@ -179,6 +184,45 @@ int test_io_metadata_to_json(cs_t * cs) {
   }
 
   io_metadata_finalise(&metadata);
+
+  return ifail;
+}
+
+/*****************************************************************************
+ *
+ *  test_io_metadata_write
+ *
+ *****************************************************************************/
+
+int test_io_metadata_write(cs_t * cs) {
+
+  int ifail = 0;
+  io_metadata_t * meta = NULL;
+
+  io_element_t element = {.datatype = MPI_DOUBLE,
+			  .datasize = sizeof(double),
+                          .count    = 5,
+                          .endian   = io_endianness()};
+  io_options_t options = io_options_with_format(IO_MODE_MPIIO,
+						IO_RECORD_BINARY);
+
+  cJSON * header = cJSON_Parse("{\"Test\": \"via test_io_metadata.c\"}");
+  assert(cs);
+
+  io_metadata_create(cs, &options, &element, &meta);
+  ifail = io_metadata_write(meta, "test-io", header);
+  assert(ifail == 0);
+
+  /* Remove at rank 0 (a test that the file exists with the correct name) */
+  {
+    int rank = -1;
+    MPI_Comm_rank(meta->comm, &rank);
+    if (rank == 0) ifail = remove("test-io-metadata.001-001");
+    assert(ifail == 0);
+  }
+
+  io_metadata_free(&meta);
+  cJSON_Delete(header);
 
   return ifail;
 }

@@ -1566,6 +1566,13 @@ int lb_io_write(lb_t * lb, int timestep, io_event_t * event) {
 
   const io_metadata_t * meta = &lb->output;
 
+  if (meta->iswriten == 0) {
+    /* No comments at the moment */
+    cJSON * comments = NULL;
+    int ifail = io_metadata_write(meta, "dist", comments);
+    if (ifail == 0) lb->output.iswriten = 1;
+  }
+
   if (meta->options.mode != IO_MODE_MPIIO) {
     /* Old-style */
     char filename[BUFSIZ] = {0};

@@ -1664,6 +1664,14 @@ int field_io_write(field_t * field, int timestep, io_event_t * event) {
 
   const io_metadata_t * meta = &field->iometadata_out;
 
+  /* Metadata */
+  if (meta->iswriten == 0) {
+    /* No extra comments at the moment */
+    cJSON * comments = NULL;
+    int ifail = io_metadata_write(meta, field->name, comments);
+    if (ifail == 0) field->iometadata_out.iswriten = 1;
+  }
+
   /* old ANSI */
   if (meta->options.mode != IO_MODE_MPIIO) {
     char filename[BUFSIZ] = {0};

@@ -68,7 +68,7 @@ int test_phi_ch_create(pe_t * pe) {
   cs_init(cs);
 
   {
-    lees_edw_info_t opts = {0};
+    lees_edw_options_t opts = {0};
     lees_edw_create(pe, cs, &opts, &le);
   }
 
@@ -133,7 +133,7 @@ int test_phi_cahn_hilliard(pe_t * pe) {
   fe_null_create(pe, &fe);
 
   {
-    lees_edw_info_t opts = {0};
+    lees_edw_options_t opts = {0};
     lees_edw_create(pe, cs, &opts, &le);
   }
 

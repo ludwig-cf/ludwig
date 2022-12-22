@@ -17,7 +17,6 @@
 #include <assert.h>
 #include <string.h>
 
-#include "coords_s.h"
 #include "io_subfile.h"
 
 /*****************************************************************************

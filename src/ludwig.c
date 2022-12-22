@@ -1267,8 +1267,8 @@ int free_energy_init_rt(ludwig_t * ludwig) {
   cs_t * cs = NULL;
   lees_edw_t * le = NULL;
 
-  lees_edw_info_t le_info = {0};
-  lees_edw_info_t * info = &le_info;
+  lees_edw_options_t le_info = {0};
+  lees_edw_options_t * info = &le_info;
 
   assert(ludwig);
   assert(ludwig->pe);

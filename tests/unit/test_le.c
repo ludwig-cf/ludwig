@@ -7,7 +7,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2010-2017 The University of Edinburgh
+ *  (c) 2010-2022 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -15,7 +15,10 @@
  *****************************************************************************/
 
 #include <assert.h>
+#include <float.h>
 #include <math.h>
+#include <stdlib.h>
+#include <string.h>
 
 #include "pe.h"
 #include "coords.h"
@@ -26,6 +29,11 @@
 
 static int test_parallel1(pe_t * pe, cs_t * cs);
 static int test_le_parallel2(pe_t * pe, cs_t * cs);
+
+int test_lees_edw_type_to_string(void);
+int test_lees_edw_type_from_string(void);
+int test_lees_edw_opts_to_json(void);
+int test_lees_edw_opts_from_json(void);
 
 /*****************************************************************************
  *
@@ -48,6 +56,11 @@ int test_le_suite(void) {
 
   test_parallel1(pe, cs);
   test_le_parallel2(pe, cs);
+
+  test_lees_edw_type_to_string();
+  test_lees_edw_type_from_string();
+  test_lees_edw_opts_to_json();
+  test_lees_edw_opts_from_json();
 
   physics_free(phys);
   cs_free(cs);
@@ -89,19 +102,19 @@ int test_parallel1(pe_t * pe, cs_t * cs) {
   double dy;
   double len[3];
 
-  lees_edw_info_t myinfo = {0};
-  lees_edw_info_t * info = &myinfo;
+  lees_edw_options_t myopts = {0};
+  lees_edw_options_t * opts = &myopts;
   lees_edw_t * le = NULL;
   MPI_Comm comm;
 
   assert(pe);
   assert(cs);
 
-  info->nplanes = nplane;
-  info->uy = uy_set;
+  opts->nplanes = nplane;
+  opts->uy = uy_set;
 
   cs_cartsz(cs, cartsz);
-  lees_edw_create(pe, cs, info, &le);
+  lees_edw_create(pe, cs, opts, &le);
 
   /* Total number of planes... */
   test_assert(lees_edw_nplane_total(le) == nplane);
@@ -268,4 +281,194 @@ static int test_le_parallel2(pe_t * pe, cs_t * cs) {
   }
 
   return 0;
+}
+
+/*****************************************************************************
+ *
+ *  test_lees_edw_type_to_string
+ *
+ *****************************************************************************/
+
+int test_lees_edw_type_to_string(void) {
+
+  int ifail = 0;
+
+  {
+    lees_edw_enum_t mytype = LE_SHEAR_TYPE_INVALID;
+    const char * str = lees_edw_type_to_string(mytype);
+
+    if (strcmp(str, "INVALID") != 0) ifail = -1;
+    assert(ifail == 0);
+  }
+
+  {
+    lees_edw_enum_t mytype = LE_SHEAR_TYPE_STEADY;
+    const char * str = lees_edw_type_to_string(mytype);
+
+    if (strcmp(str, "STEADY") != 0) ifail = -1;
+    assert(ifail == 0);
+  }
+
+  {
+    lees_edw_enum_t mytype = LE_SHEAR_TYPE_OSCILLATORY;
+    const char * str = lees_edw_type_to_string(mytype);
+
+    if (strcmp(str, "OSCILLATORY") != 0) ifail = -1;
+    assert(ifail == 0);
+  }
+
+  return ifail;
+}
+
+/*****************************************************************************
+ *
+ *  test_lees_edw_type_from_string
+ *
+ *****************************************************************************/
+
+int test_lees_edw_type_from_string(void) {
+
+  int ifail = 0;
+
+  {
+    lees_edw_enum_t mytype = lees_edw_type_from_string("RUBBISH");
+    if (mytype != LE_SHEAR_TYPE_INVALID) ifail = -1;
+    assert(ifail == 0);
+  }
+
+  {
+    lees_edw_enum_t mytype = lees_edw_type_from_string("STEADY");
+    if (mytype != LE_SHEAR_TYPE_STEADY) ifail = -1;
+    assert(ifail == 0);
+  }
+
+  {
+    lees_edw_enum_t mytype = lees_edw_type_from_string("OSCILLATORY");
+    if (mytype != LE_SHEAR_TYPE_OSCILLATORY) ifail = -1;
+    assert(ifail == 0);
+  }
+
+  return ifail;
+}
+
+/*****************************************************************************
+ *
+ *  test_lees_edw_opts_to_json
+ *
+ *****************************************************************************/
+
+int test_lees_edw_opts_to_json(void) {
+
+  int ifail = 0;
+
+  {
+    /* No planes. Something of a smoke test here ... */
+    cJSON * json = NULL;
+    lees_edw_options_t opts = {0};
+
+    ifail = lees_edw_opts_to_json(&opts, &json);
+    assert(ifail == 0);
+
+    assert(json);
+    cJSON_Delete(json);
+  }
+
+  {
+    /* Steady case. */
+    cJSON * json = NULL;
+    lees_edw_options_t opts = {.nplanes = 2,
+			    .type    = LE_SHEAR_TYPE_STEADY,
+			    .nt0     = 10,
+			    .uy      = 0.001};
+
+    ifail = lees_edw_opts_to_json(&opts, &json);
+    assert(ifail == 0);
+
+    assert(json);
+    cJSON_Delete(json);
+  }
+
+  {
+    /* Oscillatory case */
+    cJSON * json = NULL;
+    lees_edw_options_t opts = {.nplanes = 8,
+			    .type    = LE_SHEAR_TYPE_OSCILLATORY,
+			    .period  = 100,
+			    .nt0     = 0,
+			    .uy      = 0.02};
+
+    ifail = lees_edw_opts_to_json(&opts, &json);
+    assert(ifail == 0);
+
+    assert(json);
+    cJSON_Delete(json);
+  }
+
+  return ifail;
+}
+
+/*****************************************************************************
+ *
+ *  test_lees_edw_opts_from_json
+ *
+ *****************************************************************************/
+
+int test_lees_edw_opts_from_json(void) {
+
+  int ifail = 0;
+
+  {
+    /* No planes */
+    cJSON * json = cJSON_Parse("{\"Number of planes\": 0}");
+    lees_edw_options_t opts = {.nplanes = 1};
+    ifail = lees_edw_opts_from_json(json, &opts);
+    assert(ifail == 0);
+    assert(opts.nplanes == 0);
+
+    cJSON_Delete(json);
+  }
+
+  {
+    /* Steady shear case */
+    cJSON * json = cJSON_Parse("{"
+			       "\"Number of planes\": 2,"
+			       "\"Shear type\":       \"STEADY\","
+			       "\"Reference time\":   10,"
+			       "\"Plane speed\":      0.001"
+                               "}");
+    lees_edw_options_t opts = {0};
+
+    ifail = lees_edw_opts_from_json(json, &opts);
+    assert(ifail == 0);
+    assert(opts.nplanes == 2);
+    assert(opts.type    == LE_SHEAR_TYPE_STEADY);
+    assert(opts.nt0     == 10);
+    assert(fabs(opts.uy - 0.001) < DBL_EPSILON);
+
+    cJSON_Delete(json);
+  }
+
+  {
+    /* Oscillatory shear case */
+    cJSON * json = cJSON_Parse("{"
+			       "\"Number of planes\":    8,"
+			       "\"Shear type\":          \"OSCILLATORY\","
+			       "\"Period (timesteps)\":  100,"
+			       "\"Reference time\":      0,"
+			       "\"Plane speed\":         0.02"
+                               "}");
+    lees_edw_options_t opts = {0};
+
+    ifail = lees_edw_opts_from_json(json, &opts);
+    assert(ifail == 0);
+    assert(opts.nplanes == 8);
+    assert(opts.type    == LE_SHEAR_TYPE_OSCILLATORY);
+    assert(opts.period  == 100);
+    assert(opts.nt0     == 0);
+    assert(fabs(opts.uy - 0.02) < DBL_EPSILON);
+
+    cJSON_Delete(json);
+  }
+
+  return ifail;
 }
