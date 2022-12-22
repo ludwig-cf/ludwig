@@ -35,7 +35,6 @@
 #include "pe.h"
 #include "util.h"
 #include "util_fopen.h"
-#include "coords_s.h"
 #include "leesedwards.h"
 #include "io_harness.h"
 
@@ -740,8 +739,24 @@ int io_write_data(io_info_t * info, const char * filename_stub, void * data) {
   assert(info);
   assert(data);
 
-  /* Use the standard "parallel" method. */
-  io_write_data_p(info, filename_stub, data);
+  if (info->args.output.mode == IO_MODE_MULTIPLE) {
+    /* Use the standard "parallel" method for the time being. */
+    io_write_data_p(info, filename_stub, data);
+  }
+  else {
+    /* This is serial output format if one I/O group */
+    double t0, t1;
+    t0 = MPI_Wtime();
+    io_write_data_s(info, filename_stub, data);
+    t1 = MPI_Wtime();
+    if (info->args.output.report) {
+      size_t bytesize = 0;
+      io_info_output_bytesize(info, &bytesize);
+      pe_info(info->pe, "Write %lu bytes in %f secs %f GB/s\n",
+	      info->nsites*bytesize, t1-t0,
+	      info->nsites*bytesize/(1.0e+09*(t1-t0)));
+    }
+  }
 
   return 0;
 }
