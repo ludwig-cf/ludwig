@@ -28,7 +28,6 @@
 
 #include "pe.h"
 #include "util.h"
-#include "coords_s.h"
 #include "physics.h"
 #include "free_energy.h"
 #include "visc.h"
