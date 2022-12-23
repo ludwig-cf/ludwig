@@ -1023,7 +1023,9 @@ void ludwig_run(const char * inputfile) {
       }
 
       if (ludwig->p) {
+	/* Get the gradients as well for the free energy below */
 	field_memcpy(ludwig->p, tdpMemcpyDeviceToHost);
+	field_grad_memcpy(ludwig->p_grad, tdpMemcpyDeviceToHost);
 	stats_field_info(ludwig->p, ludwig->map);
       }
 
