@@ -37,7 +37,8 @@ __global__ static void leslie_self_advection_kernel(kernel_ctxt_t * ktx,
 						    hydro_t * hydro,
 						    double swim);
 
-__device__ static void leslie_u_gradient_tensor(hydro_t * hydro,
+__device__ static void leslie_u_gradient_tensor(kernel_ctxt_t * ktx,
+						hydro_t * hydro,
 						int ic, int jc, int kc,
 						double w[3][3]);
 
@@ -128,8 +129,8 @@ __host__ int leslie_ericksen_update(leslie_ericksen_t * obj, hydro_t * hydro) {
     kernel_ctxt_launch_param(ctxt, &nblk, &ntpb);
 
     tdpLaunchKernel(leslie_update_kernel, nblk, ntpb, 0, 0,
-		    ctxt->target, obj->fe, obj->p->target, hydro->target,
-		    flux->target, obj->param);
+		    ctxt->target, obj->fe->target, obj->p->target,
+		    hydro->target, flux->target, obj->param);
     tdpAssert(tdpPeekAtLastError());
     tdpAssert(tdpDeviceSynchronize());
 
@@ -182,7 +183,7 @@ __global__ static void leslie_update_kernel(kernel_ctxt_t * ktx,
 
     field_vector(fp, index, p);
     fe_polar_mol_field(fe, index, h);
-    if (hydro) leslie_u_gradient_tensor(hydro, ic, jc, kc, w);
+    if (hydro) leslie_u_gradient_tensor(ktx, hydro, ic, jc, kc, w);
 
     /* Note that the convection for Leslie Ericksen is that
      * w_ab = d_a u_b, which is the transpose of what the
@@ -321,13 +322,14 @@ __host__ int leslie_ericksen_self_advection(leslie_ericksen_t * obj,
  *
  *****************************************************************************/
 
-__device__ static void leslie_u_gradient_tensor(hydro_t * hydro,
+__device__ static void leslie_u_gradient_tensor(kernel_ctxt_t * ktx,
+						hydro_t * hydro,
 						int ic, int jc, int kc,
 						double w[3][3]) {
   assert(hydro);
 
-  int m1 = cs_index(hydro->cs, ic - 1, jc, kc);
-  int p1 = cs_index(hydro->cs, ic + 1, jc, kc);
+  int m1 = kernel_coords_index(ktx, ic - 1, jc, kc);
+  int p1 = kernel_coords_index(ktx, ic + 1, jc, kc);
 
   w[X][X] = 0.5*(hydro->u[addr_rank1(hydro->nsite, NHDIM, p1, X)] -
 		 hydro->u[addr_rank1(hydro->nsite, NHDIM, m1, X)]);
@@ -336,8 +338,8 @@ __device__ static void leslie_u_gradient_tensor(hydro_t * hydro,
   w[Z][X] = 0.5*(hydro->u[addr_rank1(hydro->nsite, NHDIM, p1, Z)] -
 		 hydro->u[addr_rank1(hydro->nsite, NHDIM, m1, Z)]);
 
-  m1 = cs_index(hydro->cs, ic, jc - 1, kc);
-  p1 = cs_index(hydro->cs, ic, jc + 1, kc);
+  m1 = kernel_coords_index(ktx, ic, jc - 1, kc);
+  p1 = kernel_coords_index(ktx, ic, jc + 1, kc);
 
   w[X][Y] = 0.5*(hydro->u[addr_rank1(hydro->nsite, NHDIM, p1, X)] -
 		 hydro->u[addr_rank1(hydro->nsite, NHDIM, m1, X)]);
@@ -346,8 +348,8 @@ __device__ static void leslie_u_gradient_tensor(hydro_t * hydro,
   w[Z][Y] = 0.5*(hydro->u[addr_rank1(hydro->nsite, NHDIM, p1, Z)] -
 		 hydro->u[addr_rank1(hydro->nsite, NHDIM, m1, Z)]);
 
-  m1 = cs_index(hydro->cs, ic, jc, kc - 1);
-  p1 = cs_index(hydro->cs, ic, jc, kc + 1);
+  m1 = kernel_coords_index(ktx, ic, jc, kc - 1);
+  p1 = kernel_coords_index(ktx, ic, jc, kc + 1);
 
   w[X][Z] = 0.5*(hydro->u[addr_rank1(hydro->nsite, NHDIM, p1, X)] -
 		 hydro->u[addr_rank1(hydro->nsite, NHDIM, m1, X)]);
