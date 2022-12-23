@@ -149,6 +149,7 @@ struct ludwig_s {
   fe_t * fe;                   /* Free energy "polymorphic" version */
   ch_t * ch;                   /* Cahn Hilliard (surfactants) */
   phi_ch_t * pch;              /* Cahn Hilliard dynamics (binary fluid) */
+  leslie_ericksen_t * leslie;  /* Leslie Ericksen Dynamics */
   beris_edw_t * be;            /* Beris Edwards dynamics */
   pth_t * pth;                 /* Thermodynamic stress/force calculation */
   fe_lc_t * fe_lc;             /* LC free energy */
@@ -807,8 +808,7 @@ void ludwig_run(const char * inputfile) {
       }
 
       if (ludwig->p) {
-	fe_polar_t * fe = (fe_polar_t *) ludwig->fe;
-	leslie_ericksen_update(ludwig->cs, fe, ludwig->p, ludwig->hydro);
+	leslie_ericksen_update(ludwig->leslie, ludwig->hydro);
       }
 
       if (ludwig->q) {
@@ -1735,6 +1735,7 @@ int free_energy_init_rt(ludwig_t * ludwig) {
 
     /* Polar active. */
     fe_polar_t * fe = NULL;
+    leslie_param_t lep = {0};
 
     nf = NVECTOR;/* Vector order parameter */
     nhalo = 2;   /* Required for stress diveregnce. */
@@ -1759,15 +1760,15 @@ int free_energy_init_rt(ludwig_t * ludwig) {
     polar_active_run_time(pe, rt, fe);
     ludwig->fe = (fe_t *) fe;
 
-    rt_double_parameter(rt, "leslie_ericksen_gamma", &value);
-    leslie_ericksen_gamma_set(value);
-    pe_info(pe, "Rotational diffusion     = %12.5e\n", value);
+    rt_double_parameter(rt, "leslie_ericksen_gamma", &lep.Gamma);
+    rt_double_parameter(rt, "leslie_ericksen_swim",  &lep.swim);
+    rt_double_parameter(rt, "polar_active_lambda",   &lep.lambda);
 
-    rt_double_parameter(rt, "leslie_ericksen_swim", &value);
-    leslie_ericksen_swim_set(value);
-    pe_info(pe, "Self-advection parameter = %12.5e\n", value);
+    pe_info(pe, "Rotational diffusion     = %12.5e\n", lep.Gamma);
+    pe_info(pe, "Self-advection parameter = %12.5e\n", lep.swim);
 
     pth_create(pe, cs, FE_FORCE_METHOD_STRESS_DIVERGENCE, &ludwig->pth);
+    leslie_ericksen_create(pe, cs, fe, ludwig->p, &lep, &ludwig->leslie);
   }
   else if(strcmp(description, "lc_droplet") == 0) {
 
