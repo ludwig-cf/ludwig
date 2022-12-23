@@ -37,6 +37,10 @@ __global__ static void leslie_self_advection_kernel(kernel_ctxt_t * ktx,
 						    hydro_t * hydro,
 						    double swim);
 
+__device__ static void leslie_u_gradient_tensor(hydro_t * hydro,
+						int ic, int jc, int kc,
+						double w[3][3]);
+
 /*****************************************************************************
  *
  *  leslie_ericksen_create
@@ -178,7 +182,7 @@ __global__ static void leslie_update_kernel(kernel_ctxt_t * ktx,
 
     field_vector(fp, index, p);
     fe_polar_mol_field(fe, index, h);
-    if (hydro) hydro_u_gradient_tensor(hydro, ic, jc, kc, w);
+    if (hydro) leslie_u_gradient_tensor(hydro, ic, jc, kc, w);
 
     /* Note that the convection for Leslie Ericksen is that
      * w_ab = d_a u_b, which is the transpose of what the
@@ -304,4 +308,62 @@ __host__ int leslie_ericksen_self_advection(leslie_ericksen_t * obj,
   }
 
   return 0;
+}
+
+/*****************************************************************************
+ *
+ *  leslie_u_gradient_tensor
+ *
+ *  A copy of the hydro_u_gradient_tensor() routine with no Lees-Edwards
+ *  conditions.
+ *
+ *  A __device__ version is required.
+ *
+ *****************************************************************************/
+
+__device__ static void leslie_u_gradient_tensor(hydro_t * hydro,
+						int ic, int jc, int kc,
+						double w[3][3]) {
+  assert(hydro);
+
+  int m1 = cs_index(hydro->cs, ic - 1, jc, kc);
+  int p1 = cs_index(hydro->cs, ic + 1, jc, kc);
+
+  w[X][X] = 0.5*(hydro->u[addr_rank1(hydro->nsite, NHDIM, p1, X)] -
+		 hydro->u[addr_rank1(hydro->nsite, NHDIM, m1, X)]);
+  w[Y][X] = 0.5*(hydro->u[addr_rank1(hydro->nsite, NHDIM, p1, Y)] -
+		 hydro->u[addr_rank1(hydro->nsite, NHDIM, m1, Y)]);
+  w[Z][X] = 0.5*(hydro->u[addr_rank1(hydro->nsite, NHDIM, p1, Z)] -
+		 hydro->u[addr_rank1(hydro->nsite, NHDIM, m1, Z)]);
+
+  m1 = cs_index(hydro->cs, ic, jc - 1, kc);
+  p1 = cs_index(hydro->cs, ic, jc + 1, kc);
+
+  w[X][Y] = 0.5*(hydro->u[addr_rank1(hydro->nsite, NHDIM, p1, X)] -
+		 hydro->u[addr_rank1(hydro->nsite, NHDIM, m1, X)]);
+  w[Y][Y] = 0.5*(hydro->u[addr_rank1(hydro->nsite, NHDIM, p1, Y)] -
+		 hydro->u[addr_rank1(hydro->nsite, NHDIM, m1, Y)]);
+  w[Z][Y] = 0.5*(hydro->u[addr_rank1(hydro->nsite, NHDIM, p1, Z)] -
+		 hydro->u[addr_rank1(hydro->nsite, NHDIM, m1, Z)]);
+
+  m1 = cs_index(hydro->cs, ic, jc, kc - 1);
+  p1 = cs_index(hydro->cs, ic, jc, kc + 1);
+
+  w[X][Z] = 0.5*(hydro->u[addr_rank1(hydro->nsite, NHDIM, p1, X)] -
+		 hydro->u[addr_rank1(hydro->nsite, NHDIM, m1, X)]);
+  w[Y][Z] = 0.5*(hydro->u[addr_rank1(hydro->nsite, NHDIM, p1, Y)] -
+		 hydro->u[addr_rank1(hydro->nsite, NHDIM, m1, Y)]);
+  w[Z][Z] = 0.5*(hydro->u[addr_rank1(hydro->nsite, NHDIM, p1, Z)] -
+		 hydro->u[addr_rank1(hydro->nsite, NHDIM, m1, Z)]);
+
+  /* Enforce tracelessness */
+
+  {
+    double tr = (1.0/3.0)*(w[X][X] + w[Y][Y] + w[Z][Z]);
+    w[X][X] -= tr;
+    w[Y][Y] -= tr;
+    w[Z][Z] -= tr;
+  }
+
+  return;
 }
