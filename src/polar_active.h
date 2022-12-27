@@ -37,6 +37,18 @@ struct fe_polar_param_s {
   double radius;            /* Used for spherical 'active region' */
 };
 
+/* Structure */
+
+struct fe_polar_s {
+  fe_t super;               /* Superclass */
+  pe_t * pe;                /* Parallel environment */
+  cs_t * cs;                /* Coordinate system */
+  fe_polar_param_t * param; /* Parameters */
+  field_t * p;              /* Vector order parameter */
+  field_grad_t * dp;        /* Gradients thereof */
+  fe_polar_t * target;      /* Device pointer */
+};
+
 
 __host__ int fe_polar_create(pe_t * pe, cs_t * cs, field_t * p,
 			     field_grad_t * dp, fe_polar_t ** fe);
