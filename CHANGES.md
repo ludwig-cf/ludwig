@@ -17,6 +17,8 @@ version 0.19.0
   [Px,Py,Pz] for vectors, and [Qxx, Qxy, Qxz, Qyy, Qyz] for liquid
   crystal. The computation of the total has been improved by using a
   compensated sum, which is more robust to threads/MPI.
+- Added compiler option information and git commit information at run
+  time.
 
 version 0.18.0
 
