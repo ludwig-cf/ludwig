@@ -102,7 +102,7 @@ int stats_field_info(field_t * field, map_t * map) {
   case 3:
     q = q3;
     break;
-  case 6: /* FIXME: 5 when tests are fixed */
+  case 5:
     q = q5;
     break;
   default:
