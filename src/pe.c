@@ -15,7 +15,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2010-2022 The University of Edinburgh
+ *  (c) 2010-2023 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -152,13 +152,20 @@ __host__ int pe_free(pe_t * pe) {
 
 __host__ int pe_message(pe_t * pe) {
 
+  compiler_info_t compiler = {0};
+
   assert(pe);
 
+  compiler_id(&compiler);
+
   pe_info(pe,
-       "Welcome to Ludwig v%d.%d.%d (%s version running on %d process%s)\n",
+       "Welcome to: Ludwig v%d.%d.%d (%s version running on %d process%s)\n",
        LUDWIG_MAJOR_VERSION, LUDWIG_MINOR_VERSION, LUDWIG_PATCH_VERSION,
        (pe->mpi_size > 1) ? "MPI" : "Serial", pe->mpi_size,
        (pe->mpi_size == 1) ? "" : "es");
+
+  /* Git */
+  printf("Git commit: %s\n\n", compiler.commit);
 
   {
     char strctime[BUFSIZ] = {0};
@@ -168,18 +175,16 @@ __host__ int pe_message(pe_t * pe) {
 
   if (pe->mpi_rank == 0) {
 
-    compiler_info_t compiler = {0};
-
-    compiler_id(&compiler);
-
     printf("Compiler:\n");
     printf("  name:           %s %d.%d.%d\n", compiler.name, compiler.major,
 	   compiler.minor, compiler.patchlevel);
     printf("  version-string: %s\n", compiler.version);
+    printf("  options:        %s\n", compiler.options);
     printf("\n");
-
     /* Compilation */
     assert(printf("Note assertions via standard C assert() are on.\n\n"));
+
+    /* Thread model */
     tdpThreadModelInfo(stdout);
     printf("\n");
   }
