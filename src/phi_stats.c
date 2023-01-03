@@ -6,6 +6,10 @@
  *  There is a general version using a compensated sum for the global
  *  total of each scalar (sensitive to threads/order in some cases).
  *
+ *  The variance is always computed in a single sweep form; we don't
+ *  care too much about the exact result, so this is just a standard
+ *  floating point sum.
+ *
  *  There is also a version which adds a correction for BBL
  *  (specifically for the case of binary fluid).
  *
@@ -22,14 +26,13 @@
 
 #include <assert.h>
 #include <float.h>
-#include <math.h>
 #include <stdlib.h>
 
 #include "phi_stats.h"
 #include "kernel.h"
 #include "util_sum.h"
 
-/* For internal use in accumulating sum for one sclar order parameter */
+/* For internal use in accumulating sum for one scalar order parameter */
 
 typedef struct sum_s sum_t;
 struct sum_s {
