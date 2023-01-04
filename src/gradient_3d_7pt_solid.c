@@ -43,7 +43,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2011-2021 The University of Edinburgh
+ *  (c) 2011-2023 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -62,12 +62,10 @@
 #include "colloids.h"
 #include "gradient_3d_7pt_solid.h"
 
-typedef struct param_s param_t;
-
 struct grad_lc_anch_s {
   pe_t * pe;
   cs_t * cs;
-  param_t * param;           /* Boundary condition parameters */
+  lc_anchoring_matrices_t bc;/* Boundary condition matrices */
   map_t * map;               /* Supports a map */
   field_t * phi;             /* Compositional order parameter */
   colloids_info_t * cinfo;   /* Supports colloids */
@@ -75,27 +73,15 @@ struct grad_lc_anch_s {
   grad_lc_anch_t * target;   /* Device memory */
 };
 
-struct param_s {
-  double a6inv[3][6];
-  double a12inv[3][12][12];
-  double a18inv[18][18];
-};
-
 static grad_lc_anch_t * static_grad = NULL;
-static __constant__ param_t static_param;
 
-
-__host__ int gradient_param_init(grad_lc_anch_t * anch);
-__host__ int gradient_param_commit(grad_lc_anch_t * anch);
 __host__ int gradient_6x6(grad_lc_anch_t * anch, field_grad_t *grad,
 			  int nextra);
+
 __global__
 void gradient_6x6_kernel(kernel_ctxt_t * ktx, cs_t * cs, grad_lc_anch_t * anch,
 			 fe_lc_t * fe, field_grad_t * fg,
 			 map_t * map, colloids_info_t * cinfo);
-__host__ __device__
-int gradient_bcs6x6_coeff(double kappa0, double kappa1, const int dn[3],
-			  double bc[NSYMM][NSYMM][3]);
 __host__ __device__
 int colloids_q_boundary(fe_lc_param_t * param, const double n[3],
 			double qs[3][3], double q0[3][3],
@@ -118,7 +104,6 @@ int q_boundary_constants(cs_t * cs, fe_lc_param_t * param, grad_lc_anch_t * anch
 __host__ int grad_lc_anch_create(pe_t * pe, cs_t * cs, map_t * map,
 				 field_t * phi, colloids_info_t * cinfo,
 				 fe_lc_t * fe, grad_lc_anch_t ** pobj) {
-
   int ndevice;
   grad_lc_anch_t * obj = NULL;
 
@@ -130,17 +115,19 @@ __host__ int grad_lc_anch_create(pe_t * pe, cs_t * cs, map_t * map,
   assert(obj);
   if (obj == NULL) pe_fatal(pe, "calloc(grad_lc_anch_t) failed\n");
 
-  obj->param = (param_t *) calloc(1, sizeof(param_t));
-  assert(obj->param);
-  if (obj->param == NULL) pe_fatal(pe, "calloc(param_t) failed\n");
-
   obj->pe = pe;
   obj->cs = cs;
   obj->map = map;
   obj->phi = phi;
   obj->cinfo = cinfo;
   obj->fe = fe;
-  gradient_param_init(obj);
+
+  {
+    /* Initialise matrix inverses */
+    fe_lc_param_t fep = {0};
+    fe_lc_param(fe, &fep);
+    lc_anchoring_matrices(fep.kappa0, fep.kappa1, &obj->bc);
+  }
 
   tdpGetDeviceCount(&ndevice);
 
@@ -148,12 +135,10 @@ __host__ int grad_lc_anch_create(pe_t * pe, cs_t * cs, map_t * map,
     obj->target = obj;
   }
   else {
-    param_t * tmp = NULL;
     tdpMalloc((void **) &obj->target, sizeof(grad_lc_anch_t));
-    tdpGetSymbolAddress((void **) &tmp, tdpSymbol(static_param));
-    tdpMemcpy(&obj->target->param, (const void *) &tmp, sizeof(param_t *),
-	      tdpMemcpyHostToDevice);
-    gradient_param_commit(obj);
+    tdpAssert(tdpMemcpy(&obj->target->bc, &obj->bc,
+			sizeof(lc_anchoring_matrices_t),
+			tdpMemcpyHostToDevice));
   }
 
   static_grad = obj;
@@ -172,25 +157,7 @@ __host__ int grad_lc_anch_free(grad_lc_anch_t * grad) {
   assert(grad);
 
   if (grad->target != grad) tdpFree(grad->target);
-
-  free(grad->param);
   free(grad);
-
-  return 0;
-}
-
-/*****************************************************************************
- *
- *  gradient_param_commit
- *
- *****************************************************************************/
-
-__host__ int gradient_param_commit(grad_lc_anch_t * anch) {
-
-  assert(anch);
-
-  tdpMemcpyToSymbol(tdpSymbol(static_param), anch->param, sizeof(param_t), 0,
-		    tdpMemcpyHostToDevice);
 
   return 0;
 }
@@ -271,9 +238,7 @@ int gradient_6x6(grad_lc_anch_t * anch, field_grad_t * fg, int nextra) {
   kernel_ctxt_create(anch->cs, NSIMDVL, limits, &ctxt);
   kernel_ctxt_launch_param(ctxt, &nblk, &ntpb);
 
-  gradient_param_commit(anch);
   fe_lc_param_commit(anch->fe);
-
   cs_target(anch->cs, &cstarget);
 
   tdpLaunchKernel(gradient_6x6_kernel, nblk, ntpb, 0, 0,
@@ -495,7 +460,7 @@ void gradient_6x6_kernel(kernel_ctxt_t * ktx, cs_t * cs, grad_lc_anch_t * anch,
 	/* Subtract all three gradient terms from the RHS and then cancel
 	 * the one unknown contribution ... works for any normal[0] */
 	
-	gradient_bcs6x6_coeff(kappa0, kappa1, bcs[normal[0]], bc);
+	lc_anchoring_coefficients(kappa0, kappa1, bcs[normal[0]], bc);
 	
 	for (n1 = 0; n1 < NSYMM; n1++) {
 	  for (n2 = 0; n2 < NSYMM; n2++) {
@@ -508,7 +473,7 @@ void gradient_6x6_kernel(kernel_ctxt_t * ktx, cs_t * cs, grad_lc_anch_t * anch,
 	  }
 	  
 	  b18[n1] *= bcsign[normal[0]];
-	  x18[n1] = anch->param->a6inv[normal[0]/2][n1]*b18[n1];
+	  x18[n1] = anch->bc.a6inv[normal[0]/2][n1]*b18[n1];
 	}
       }
       
@@ -520,7 +485,7 @@ void gradient_6x6_kernel(kernel_ctxt_t * ktx, cs_t * cs, grad_lc_anch_t * anch,
 	
 	/* Compute the RHS for two unknowns and one known */
 	
-	gradient_bcs6x6_coeff(kappa0, kappa1, bcs[normal[0]], bc);
+	lc_anchoring_coefficients(kappa0, kappa1, bcs[normal[0]], bc);
 	
 	for (n1 = 0; n1 < NSYMM; n1++) {
 	  for (n2 = 0; n2 < NSYMM; n2++) {
@@ -534,7 +499,7 @@ void gradient_6x6_kernel(kernel_ctxt_t * ktx, cs_t * cs, grad_lc_anch_t * anch,
 	  }
 	}
 	
-	gradient_bcs6x6_coeff(kappa0, kappa1, bcs[normal[1]], bc);
+	lc_anchoring_coefficients(kappa0, kappa1, bcs[normal[1]], bc);
 	
 	for (n1 = 0; n1 < NSYMM; n1++) {
 	  for (n2 = 0; n2 < NSYMM; n2++) {
@@ -557,17 +522,17 @@ void gradient_6x6_kernel(kernel_ctxt_t * ktx, cs_t * cs, grad_lc_anch_t * anch,
 	for (n1 = 0; n1 < 2*NSYMM; n1++) {
 	  x18[n1] = 0.0;
 	  for (n2 = 0; n2 < NSYMM; n2++) {
-	    x18[n1] += bcsign[normal[0]]*anch->param->a12inv[ia][n1][n2]*b18[n2];
+	    x18[n1] += bcsign[normal[0]]*anch->bc.a12inv[ia][n1][n2]*b18[n2];
 	  }
 	  for (n2 = NSYMM; n2 < 2*NSYMM; n2++) {
-	    x18[n1] += bcsign[normal[1]]*anch->param->a12inv[ia][n1][n2]*b18[n2];
+	    x18[n1] += bcsign[normal[1]]*anch->bc.a12inv[ia][n1][n2]*b18[n2];
 	  }
 	}
       }
       
       if (nunknown == 3) {
 	
-	gradient_bcs6x6_coeff(kappa0, kappa1, bcs[normal[0]], bc);
+	lc_anchoring_coefficients(kappa0, kappa1, bcs[normal[0]], bc);
 	
 	for (n1 = 0; n1 < NSYMM; n1++) {
 	  for (n2 = 0; n2 < NSYMM; n2++) {
@@ -580,7 +545,7 @@ void gradient_6x6_kernel(kernel_ctxt_t * ktx, cs_t * cs, grad_lc_anch_t * anch,
 	  b18[n1] *= bcsign[normal[0]];
 	}
 	
-	gradient_bcs6x6_coeff(kappa0, kappa1, bcs[normal[1]], bc);
+	lc_anchoring_coefficients(kappa0, kappa1, bcs[normal[1]], bc);
 	
 	for (n1 = 0; n1 < NSYMM; n1++) {
 	  for (n2 = 0; n2 < NSYMM; n2++) {
@@ -593,7 +558,7 @@ void gradient_6x6_kernel(kernel_ctxt_t * ktx, cs_t * cs, grad_lc_anch_t * anch,
 	  b18[NSYMM + n1] *= bcsign[normal[1]];
 	}
 	
-	gradient_bcs6x6_coeff(kappa0, kappa1, bcs[normal[2]], bc);
+	lc_anchoring_coefficients(kappa0, kappa1, bcs[normal[2]], bc);
 	
 	for (n1 = 0; n1 < NSYMM; n1++) {
 	  for (n2 = 0; n2 < NSYMM; n2++) {
@@ -611,7 +576,7 @@ void gradient_6x6_kernel(kernel_ctxt_t * ktx, cs_t * cs, grad_lc_anch_t * anch,
 	for (n1 = 0; n1 < 3*NSYMM; n1++) {
 	  x18[n1] = 0.0;
 	  for (n2 = 0; n2 < 3*NSYMM; n2++) {
-	    x18[n1] += anch->param->a18inv[n1][n2]*b18[n2];
+	    x18[n1] += anch->bc.a18inv[n1][n2]*b18[n2];
 	  }
 	}
       }
@@ -648,264 +613,6 @@ void gradient_6x6_kernel(kernel_ctxt_t * ktx, cs_t * cs, grad_lc_anch_t * anch,
   }
  
   return;
-}
-
-/*****************************************************************************
- *
- *  gradient_param_init
- *
- *  Compute and store the inverse matrices used in the boundary conditions.
- *
- *****************************************************************************/
-
-__host__
-int gradient_param_init(grad_lc_anch_t * anch) {
-
-  int ia, n1, n2;
-  const int bcs[6][3] = {{-1,0,0},{1,0,0},{0,-1,0},{0,1,0},{0,0,-1},{0,0,1}};
-
-  double bc[6][6][3];
-  double ** a12inv[3];
-  double ** a18inv;
-  fe_lc_param_t feparam;
-  KRONECKER_DELTA_CHAR(d_);
-
-  assert(anch);
-  fe_lc_param(anch->fe, &feparam);
-
-  /* Compute inverse matrices */
-
-  util_matrix_create(12, 12, &(a12inv[0]));
-  util_matrix_create(12, 12, &(a12inv[1]));
-  util_matrix_create(12, 12, &(a12inv[2]));
-  util_matrix_create(18, 18, &a18inv);
-
-  for (ia = 0; ia < 3; ia++) {
-
-    gradient_bcs6x6_coeff(feparam.kappa0, feparam.kappa1, bcs[2*ia + 1], bc);
-
-    for (n1 = 0; n1 < NSYMM; n1++) {
-      anch->param->a6inv[ia][n1] = 1.0/bc[n1][n1][ia];
-    }
-
-    for (n1 = 0; n1 < NSYMM; n1++) {
-      for (n2 = 0; n2 < NSYMM; n2++) {
-	a18inv[ia*NSYMM + n1][0*NSYMM + n2] = 0.5*(1+d_[ia][X])*bc[n1][n2][X];
-	a18inv[ia*NSYMM + n1][1*NSYMM + n2] = 0.5*(1+d_[ia][Y])*bc[n1][n2][Y];
-	a18inv[ia*NSYMM + n1][2*NSYMM + n2] = 0.5*(1+d_[ia][Z])*bc[n1][n2][Z];
-
-      }
-    }
-  }
-
-  for (n1 = 0; n1 < 12; n1++) {
-    for (n2 = 0; n2 < 12; n2++) {
-      a12inv[0][n1][n2] = a18inv[n1][n2];
-      a12inv[2][n1][n2] = a18inv[6+n1][6+n2];
-    }
-  }
-
-  for (n1 = 0; n1 < 6; n1++) {
-    for (n2 = 0; n2 < 6; n2++) {
-      a12inv[1][n1][n2] = a18inv[n1][n2];
-      a12inv[1][n1][6+n2] = a18inv[n1][12+n2];
-    }
-  }
-
-  for (n1 = 6; n1 < 12; n1++) {
-    for (n2 = 0; n2 < 6; n2++) {
-      a12inv[1][n1][n2] = a18inv[6+n1][n2];
-      a12inv[1][n1][6+n2] = a18inv[6+n1][12+n2];
-    }
-  }
-
-  ia = util_matrix_invert(12, a12inv[0]);
-  assert(ia == 0);
-  ia = util_matrix_invert(12, a12inv[1]);
-  assert(ia == 0);
-  ia = util_matrix_invert(12, a12inv[2]);
-  assert(ia == 0);
-  ia = util_matrix_invert(18, a18inv);
-  assert(ia == 0);
-
-  for (n1 = 0; n1 < 18; n1++) {
-    for (n2 = 0; n2 < 18; n2++) {
-      anch->param->a18inv[n1][n2] = a18inv[n1][n2];
-    }  
-  }
-
-  for (ia = 0; ia < 3; ia++) {
-    for (n1 = 0; n1 < 12; n1++) {
-      for (n2 = 0; n2 < 12; n2++) {
-	anch->param->a12inv[ia][n1][n2] = a12inv[ia][n1][n2];
-      }
-    }
-  }
-
-  util_matrix_free(18, &a18inv);
-  util_matrix_free(12, &(a12inv[2]));
-  util_matrix_free(12, &(a12inv[1]));
-  util_matrix_free(12, &(a12inv[0]));
-
-  return 0;
-}
-
-
-/*****************************************************************************
- *
- *  gradient_bcs6x6_coeff
- *
- *  Full set of coefficients in boundary condition equation for given
- *  surface normal dn.
- *
- *****************************************************************************/
-
-__host__ __device__
-int gradient_bcs6x6_coeff(double kappa0, double kappa1, const int dn[3],
-			  double bc[NSYMM][NSYMM][3]) {
-  double kappa2;
-
-  kappa2 = kappa0 + kappa1;
-
-  /* XX equation */
-
-  bc[XX][XX][X] =  kappa0*dn[X];
-  bc[XX][XY][X] = -kappa1*dn[Y];
-  bc[XX][XZ][X] = -kappa1*dn[Z];
-  bc[XX][YY][X] =  0.0;
-  bc[XX][YZ][X] =  0.0;
-  bc[XX][ZZ][X] =  0.0;
-
-  bc[XX][XX][Y] =  kappa1*dn[Y];
-  bc[XX][XY][Y] =  kappa0*dn[X];
-  bc[XX][XZ][Y] =  0.0;
-  bc[XX][YY][Y] =  0.0;
-  bc[XX][YZ][Y] =  0.0;
-  bc[XX][ZZ][Y] =  0.0;
-
-  bc[XX][XX][Z] =  kappa1*dn[Z];
-  bc[XX][XY][Z] =  0.0;
-  bc[XX][XZ][Z] =  kappa0*dn[X];
-  bc[XX][YY][Z] =  0.0;
-  bc[XX][YZ][Z] =  0.0;
-  bc[XX][ZZ][Z] =  0.0;
-
-  /* XY equation */
-
-  bc[XY][XX][X] =  kappa0*dn[Y];
-  bc[XY][XY][X] =  kappa2*dn[X];
-  bc[XY][XZ][X] =  0.0;
-  bc[XY][YY][X] = -kappa1*dn[Y];
-  bc[XY][YZ][X] = -kappa1*dn[Z];
-  bc[XY][ZZ][X] =  0.0;
-
-  bc[XY][XX][Y] = -kappa1*dn[X];
-  bc[XY][XY][Y] =  kappa2*dn[Y];
-  bc[XY][XZ][Y] = -kappa1*dn[Z];
-  bc[XY][YY][Y] =  kappa0*dn[X];
-  bc[XY][YZ][Y] =  0.0;
-  bc[XY][ZZ][Y] =  0.0;
-
-  bc[XY][XX][Z] =  0.0;
-  bc[XY][XY][Z] =  2.0*kappa1*dn[Z];
-  bc[XY][XZ][Z] =  kappa0*dn[Y];
-  bc[XY][YY][Z] =  0.0;
-  bc[XY][YZ][Z] =  kappa0*dn[X];
-  bc[XY][ZZ][Z] =  0.0;
-
-  /* XZ equation */
-
-  bc[XZ][XX][X] =  kappa0*dn[Z];
-  bc[XZ][XY][X] =  0.0;
-  bc[XZ][XZ][X] =  kappa2*dn[X];
-  bc[XZ][YY][X] =  0.0;
-  bc[XZ][YZ][X] = -kappa1*dn[Y];
-  bc[XZ][ZZ][X] = -kappa1*dn[Z];
-
-  bc[XZ][XX][Y] =  0.0;
-  bc[XZ][XY][Y] =  kappa0*dn[Z];
-  bc[XZ][XZ][Y] =  2.0*kappa1*dn[Y];
-  bc[XZ][YY][Y] =  0.0;
-  bc[XZ][YZ][Y] =  kappa0*dn[X];
-  bc[XZ][ZZ][Y] =  0.0;
-
-  bc[XZ][XX][Z] = -kappa1*dn[X];
-  bc[XZ][XY][Z] = -kappa1*dn[Y];
-  bc[XZ][XZ][Z] =  kappa2*dn[Z];
-  bc[XZ][YY][Z] =  0.0;
-  bc[XZ][YZ][Z] =  0.0;
-  bc[XZ][ZZ][Z] =  kappa0*dn[X];
-
-  /* YY equation */
-
-  bc[YY][XX][X] =  0.0;
-  bc[YY][XY][X] =  kappa0*dn[Y];
-  bc[YY][XZ][X] =  0.0;
-  bc[YY][YY][X] =  kappa1*dn[X];
-  bc[YY][YZ][X] =  0.0;
-  bc[YY][ZZ][X] =  0.0;
-
-  bc[YY][XX][Y] =  0.0;
-  bc[YY][XY][Y] = -kappa1*dn[X];
-  bc[YY][XZ][Y] =  0.0;
-  bc[YY][YY][Y] =  kappa0*dn[Y];
-  bc[YY][YZ][Y] = -kappa1*dn[Z];
-  bc[YY][ZZ][Y] =  0.0;
-
-  bc[YY][XX][Z] =  0.0;
-  bc[YY][XY][Z] =  0.0;
-  bc[YY][XZ][Z] =  0.0;
-  bc[YY][YY][Z] =  kappa1*dn[Z];
-  bc[YY][YZ][Z] =  kappa0*dn[Y];
-  bc[YY][ZZ][Z] =  0.0;
-
-  /* YZ equation */
-
-  bc[YZ][XX][X] =  0.0;
-  bc[YZ][XY][X] =  kappa0*dn[Z];
-  bc[YZ][XZ][X] =  kappa0*dn[Y];
-  bc[YZ][YY][X] =  0.0;
-  bc[YZ][YZ][X] =  2.0*kappa1*dn[X];
-  bc[YZ][ZZ][X] =  0.0;
-
-  bc[YZ][XX][Y] =  0.0;
-  bc[YZ][XY][Y] =  0.0;
-  bc[YZ][XZ][Y] = -kappa1*dn[X];
-  bc[YZ][YY][Y] =  kappa0*dn[Z];
-  bc[YZ][YZ][Y] =  kappa2*dn[Y];
-  bc[YZ][ZZ][Y] = -kappa1*dn[Z];
-
-  bc[YZ][XX][Z] =  0.0;
-  bc[YZ][XY][Z] = -kappa1*dn[X];
-  bc[YZ][XZ][Z] =  0.0;
-  bc[YZ][YY][Z] = -kappa1*dn[Y];
-  bc[YZ][YZ][Z] =  kappa2*dn[Z];
-  bc[YZ][ZZ][Z] =  kappa0*dn[Y];
-
-  /* ZZ equation */
-
-  bc[ZZ][XX][X] =  0.0;
-  bc[ZZ][XY][X] =  0.0;
-  bc[ZZ][XZ][X] =  kappa0*dn[Z];
-  bc[ZZ][YY][X] =  0.0;
-  bc[ZZ][YZ][X] =  0.0;
-  bc[ZZ][ZZ][X] =  kappa1*dn[X];
-  
-  bc[ZZ][XX][Y] =  0.0;
-  bc[ZZ][XY][Y] =  0.0;
-  bc[ZZ][XZ][Y] =  0.0;
-  bc[ZZ][YY][Y] =  0.0;
-  bc[ZZ][YZ][Y] =  kappa0*dn[Z];
-  bc[ZZ][ZZ][Y] =  kappa1*dn[Y];
-  
-  bc[ZZ][XX][Z] =  0.0;
-  bc[ZZ][XY][Z] =  0.0;
-  bc[ZZ][XZ][Z] = -kappa1*dn[X];
-  bc[ZZ][YY][Z] =  0.0;
-  bc[ZZ][YZ][Z] = -kappa1*dn[Y];
-  bc[ZZ][ZZ][Z] =  kappa0*dn[Z];
-
-  return 0;
 }
 
 /*****************************************************************************
@@ -1141,87 +848,6 @@ int colloids_q_boundary(fe_lc_param_t * param,
       }
     }
 
-  }
-
-  return 0;
-}
-
-/*****************************************************************************
- *
- *  grad_3d_7pt_solid_dab
- *
- *****************************************************************************/
-
-__host__ int grad_3d_7pt_solid_dab(field_grad_t * df) {
-
-  int nlocal[3];
-  int nhalo;
-  int nextra;
-  int nsites;
-  int ic, jc, kc;
-  int xs, ys, zs;
-  int index;
-  double * __restrict__ dab;
-  double * __restrict__ field;
-
-  cs_t * cs = NULL;
-
-  assert(df);
-  assert(cs);
-
-  cs_nhalo(cs, &nhalo);
-  cs_nlocal(cs, nlocal);
-  cs_nsites(cs, &nsites);
-  cs_strides(cs, &xs, &ys, &zs);
-
-  nextra = nhalo - 1;
-  assert(nextra >= 0);
-
-  field = df->field->data;
-  dab = df->d_ab;
-
-  for (ic = 1 - nextra; ic <= nlocal[X] + nextra; ic++) {
-    for (jc = 1 - nextra; jc <= nlocal[Y] + nextra; jc++) {
-      for (kc = 1 - nextra; kc <= nlocal[Z] + nextra; kc++) {
-
-        index = cs_index(cs, ic, jc, kc);
-
-        dab[addr_rank1(nsites, NSYMM, index, XX)] = 
-         (+ 1.0*field[addr_rank0(nsites, index + xs)]
-          + 1.0*field[addr_rank0(nsites, index - xs)]
-          - 2.0*field[addr_rank0(nsites, index)]);
-
-        dab[addr_rank1(nsites, NSYMM, index, XY)] = 0.25*
-          (+ field[addr_rank0(nsites, index + xs + ys)]
-           - field[addr_rank0(nsites, index + xs - ys)]
-           - field[addr_rank0(nsites, index - xs + ys)]
-           + field[addr_rank0(nsites, index - xs - ys)]);
-
-        dab[addr_rank1(nsites, NSYMM, index, XZ)] = 0.25*
-          (+ field[addr_rank0(nsites, index + xs + 1)]
-           - field[addr_rank0(nsites, index + xs - 1)]
-           - field[addr_rank0(nsites, index - xs + 1)]
-           + field[addr_rank0(nsites, index - xs - 1)]);
-
-        dab[addr_rank1(nsites, NSYMM, index, YY)] = 
-         (+ 1.0*field[addr_rank0(nsites, index + ys)]
-          + 1.0*field[addr_rank0(nsites, index - ys)]
-          - 2.0*field[addr_rank0(nsites, index)]);
-
-
-        dab[addr_rank1(nsites, NSYMM, index, YZ)] = 0.25*
-          (+ field[addr_rank0(nsites, index + ys + 1)]
-           - field[addr_rank0(nsites, index + ys - 1)]
-           - field[addr_rank0(nsites, index - ys + 1)]
-           + field[addr_rank0(nsites, index - ys - 1)]);
-
-        dab[addr_rank1(nsites, NSYMM, index, ZZ)] = 
-         (+ 1.0*field[addr_rank0(nsites, index + 1)]
-          + 1.0*field[addr_rank0(nsites, index - 1)]
-          - 2.0*field[addr_rank0(nsites, index)]);
-
-      }
-    }
   }
 
   return 0;

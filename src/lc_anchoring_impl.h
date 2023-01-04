@@ -272,4 +272,166 @@ static inline void lc_anchoring_planar_ct(const lc_anchoring_param_t * anchor,
   return;
 }
 
+/*****************************************************************************
+ *
+ *  lc_anchoring_coefficents
+ *
+ *  This computes the coefficients in the gradient terms of the boundary
+ *  conidtion equation which are related to the two elastic constants
+ *  and the unit outward normal (only). The outward normal is the
+ *  integer unit vector dn.
+ *
+ *  There are six equations each with eighteen terms d_gamma Q_ab.
+ *  The eighteen derivatives are the bc[][6][3] read Q_ab,gamma.
+ *
+ *****************************************************************************/
+
+__host__ __device__
+static inline void lc_anchoring_coefficients(double kappa0,
+					     double kappa1,
+					     const int dn[3],
+					     double bc[NSYMM][NSYMM][3]) {
+  double kappa2 = kappa0 + kappa1;
+
+  /* XX equation */
+
+  bc[XX][XX][X] =  kappa0*dn[X];
+  bc[XX][XY][X] = -kappa1*dn[Y];
+  bc[XX][XZ][X] = -kappa1*dn[Z];
+  bc[XX][YY][X] =  0.0;
+  bc[XX][YZ][X] =  0.0;
+  bc[XX][ZZ][X] =  0.0;
+
+  bc[XX][XX][Y] =  kappa1*dn[Y];
+  bc[XX][XY][Y] =  kappa0*dn[X];
+  bc[XX][XZ][Y] =  0.0;
+  bc[XX][YY][Y] =  0.0;
+  bc[XX][YZ][Y] =  0.0;
+  bc[XX][ZZ][Y] =  0.0;
+
+  bc[XX][XX][Z] =  kappa1*dn[Z];
+  bc[XX][XY][Z] =  0.0;
+  bc[XX][XZ][Z] =  kappa0*dn[X];
+  bc[XX][YY][Z] =  0.0;
+  bc[XX][YZ][Z] =  0.0;
+  bc[XX][ZZ][Z] =  0.0;
+
+  /* XY equation */
+
+  bc[XY][XX][X] =  kappa0*dn[Y];
+  bc[XY][XY][X] =  kappa2*dn[X];
+  bc[XY][XZ][X] =  0.0;
+  bc[XY][YY][X] = -kappa1*dn[Y];
+  bc[XY][YZ][X] = -kappa1*dn[Z];
+  bc[XY][ZZ][X] =  0.0;
+
+  bc[XY][XX][Y] = -kappa1*dn[X];
+  bc[XY][XY][Y] =  kappa2*dn[Y];
+  bc[XY][XZ][Y] = -kappa1*dn[Z];
+  bc[XY][YY][Y] =  kappa0*dn[X];
+  bc[XY][YZ][Y] =  0.0;
+  bc[XY][ZZ][Y] =  0.0;
+
+  bc[XY][XX][Z] =  0.0;
+  bc[XY][XY][Z] =  2.0*kappa1*dn[Z];
+  bc[XY][XZ][Z] =  kappa0*dn[Y];
+  bc[XY][YY][Z] =  0.0;
+  bc[XY][YZ][Z] =  kappa0*dn[X];
+  bc[XY][ZZ][Z] =  0.0;
+
+  /* XZ equation */
+
+  bc[XZ][XX][X] =  kappa0*dn[Z];
+  bc[XZ][XY][X] =  0.0;
+  bc[XZ][XZ][X] =  kappa2*dn[X];
+  bc[XZ][YY][X] =  0.0;
+  bc[XZ][YZ][X] = -kappa1*dn[Y];
+  bc[XZ][ZZ][X] = -kappa1*dn[Z];
+
+  bc[XZ][XX][Y] =  0.0;
+  bc[XZ][XY][Y] =  kappa0*dn[Z];
+  bc[XZ][XZ][Y] =  2.0*kappa1*dn[Y];
+  bc[XZ][YY][Y] =  0.0;
+  bc[XZ][YZ][Y] =  kappa0*dn[X];
+  bc[XZ][ZZ][Y] =  0.0;
+
+  bc[XZ][XX][Z] = -kappa1*dn[X];
+  bc[XZ][XY][Z] = -kappa1*dn[Y];
+  bc[XZ][XZ][Z] =  kappa2*dn[Z];
+  bc[XZ][YY][Z] =  0.0;
+  bc[XZ][YZ][Z] =  0.0;
+  bc[XZ][ZZ][Z] =  kappa0*dn[X];
+
+  /* YY equation */
+
+  bc[YY][XX][X] =  0.0;
+  bc[YY][XY][X] =  kappa0*dn[Y];
+  bc[YY][XZ][X] =  0.0;
+  bc[YY][YY][X] =  kappa1*dn[X];
+  bc[YY][YZ][X] =  0.0;
+  bc[YY][ZZ][X] =  0.0;
+
+  bc[YY][XX][Y] =  0.0;
+  bc[YY][XY][Y] = -kappa1*dn[X];
+  bc[YY][XZ][Y] =  0.0;
+  bc[YY][YY][Y] =  kappa0*dn[Y];
+  bc[YY][YZ][Y] = -kappa1*dn[Z];
+  bc[YY][ZZ][Y] =  0.0;
+
+  bc[YY][XX][Z] =  0.0;
+  bc[YY][XY][Z] =  0.0;
+  bc[YY][XZ][Z] =  0.0;
+  bc[YY][YY][Z] =  kappa1*dn[Z];
+  bc[YY][YZ][Z] =  kappa0*dn[Y];
+  bc[YY][ZZ][Z] =  0.0;
+
+  /* YZ equation */
+
+  bc[YZ][XX][X] =  0.0;
+  bc[YZ][XY][X] =  kappa0*dn[Z];
+  bc[YZ][XZ][X] =  kappa0*dn[Y];
+  bc[YZ][YY][X] =  0.0;
+  bc[YZ][YZ][X] =  2.0*kappa1*dn[X];
+  bc[YZ][ZZ][X] =  0.0;
+
+  bc[YZ][XX][Y] =  0.0;
+  bc[YZ][XY][Y] =  0.0;
+  bc[YZ][XZ][Y] = -kappa1*dn[X];
+  bc[YZ][YY][Y] =  kappa0*dn[Z];
+  bc[YZ][YZ][Y] =  kappa2*dn[Y];
+  bc[YZ][ZZ][Y] = -kappa1*dn[Z];
+
+  bc[YZ][XX][Z] =  0.0;
+  bc[YZ][XY][Z] = -kappa1*dn[X];
+  bc[YZ][XZ][Z] =  0.0;
+  bc[YZ][YY][Z] = -kappa1*dn[Y];
+  bc[YZ][YZ][Z] =  kappa2*dn[Z];
+  bc[YZ][ZZ][Z] =  kappa0*dn[Y];
+
+  /* ZZ equation */
+
+  bc[ZZ][XX][X] =  0.0;
+  bc[ZZ][XY][X] =  0.0;
+  bc[ZZ][XZ][X] =  kappa0*dn[Z];
+  bc[ZZ][YY][X] =  0.0;
+  bc[ZZ][YZ][X] =  0.0;
+  bc[ZZ][ZZ][X] =  kappa1*dn[X];
+
+  bc[ZZ][XX][Y] =  0.0;
+  bc[ZZ][XY][Y] =  0.0;
+  bc[ZZ][XZ][Y] =  0.0;
+  bc[ZZ][YY][Y] =  0.0;
+  bc[ZZ][YZ][Y] =  kappa0*dn[Z];
+  bc[ZZ][ZZ][Y] =  kappa1*dn[Y];
+
+  bc[ZZ][XX][Z] =  0.0;
+  bc[ZZ][XY][Z] =  0.0;
+  bc[ZZ][XZ][Z] = -kappa1*dn[X];
+  bc[ZZ][YY][Z] =  0.0;
+  bc[ZZ][YZ][Z] = -kappa1*dn[Y];
+  bc[ZZ][ZZ][Z] =  kappa0*dn[Z];
+
+  return;
+}
+
 #endif
