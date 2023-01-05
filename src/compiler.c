@@ -92,8 +92,8 @@ int compiler_id(compiler_info_t * compiler) {
   compiler->major = __CUDACC_VER_MAJOR__;
   compiler->minor = __CUDACC_VER_MINOR__;
   compiler->patchlevel = __CUDACC_VER_BUILD__;
-  compiler->version =  "null"); /* None provided */
-  compiler->name, "NVIDIA nvcc";
+  compiler->version =  "none";                 /* None provided */
+  compiler->name = "NVIDIA nvcc";
   compiler->options = compiler_options();
   compiler->commit = git_hash();
   /* Include __CUDA_ARCH__ */
