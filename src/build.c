@@ -9,7 +9,7 @@
  *  Edinburgh Soft Matter and Statisitical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2006-2021 The University of Edinburgh
+ *  (c) 2006-2023 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -1200,7 +1200,7 @@ int build_replace_q_local(fe_t * fe, colloids_info_t * info, colloid_t * pc,
   /* For planar degenerate anchoring we subtract the projection of a
      randomly oriented unit vector on rb and renormalise the result   */
 
-  if (lc_param->anchoring_coll == LC_ANCHORING_PLANAR) {
+  if (lc_param->coll.type == LC_ANCHORING_PLANAR) {
 
     util_random_unit_vector(&pc->s.rng, rhat);
 
