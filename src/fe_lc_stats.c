@@ -8,7 +8,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2017-2022 The University of Edinburgh
+ *  (c) 2017-2023 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -381,6 +381,87 @@ int fe_lc_wallz(cs_t * cs, fe_lc_t * fe, double * fs) {
 
 /*****************************************************************************
  *
+ *  colloids_q_boundary
+ *
+ *  Produce an estimate of the surface order parameter Q^0_ab for
+ *  normal or planar anchoring.
+ *
+ *  This will depend on the outward surface normal nhat, and in the
+ *  case of planar anchoring may depend on the estimate of the
+ *  existing order parameter at the surface Qs_ab.
+ *
+ *  This planar anchoring idea follows e.g., Fournier and Galatola
+ *  Europhys. Lett. 72, 403 (2005).
+ *
+ *****************************************************************************/
+
+int colloids_q_boundary(fe_lc_param_t * param,
+			const double nhat[3], double qs[3][3],
+			double q0[3][3], int map_status) {
+  int ia, ib, ic, id;
+  int anchoring;
+
+  double qtilde[3][3];
+  double amp;
+  KRONECKER_DELTA_CHAR(d);
+
+  assert(map_status == MAP_COLLOID || map_status == MAP_BOUNDARY);
+
+  anchoring = param->coll.type;
+  if (map_status == MAP_BOUNDARY) anchoring = param->wall.type;
+
+  fe_lc_amplitude_compute(param, &amp);
+
+  if (anchoring == LC_ANCHORING_FIXED) {
+    assert(map_status == MAP_BOUNDARY);
+    for (ia = 0; ia < 3; ia++) {
+      double na = param->wall.nfix[ia];
+      for (ib = 0; ib < 3; ib++) {
+	double nb = param->wall.nfix[ib];
+	q0[ia][ib] = 0.5*amp*(3.0*na*nb - d[ia][ib]);
+      }
+    }
+  }
+
+  if (anchoring == LC_ANCHORING_NORMAL) {
+    for (ia = 0; ia < 3; ia++) {
+      for (ib = 0; ib < 3; ib++) {
+	q0[ia][ib] = 0.5*amp*(3.0*nhat[ia]*nhat[ib] - d[ia][ib]);
+      }
+    }
+  }
+
+  if (anchoring == LC_ANCHORING_PLANAR) {
+
+    /* Planar: use the fluid Q_ab to find ~Q_ab */
+
+    for (ia = 0; ia < 3; ia++) {
+      for (ib = 0; ib < 3; ib++) {
+	qtilde[ia][ib] = qs[ia][ib] + 0.5*amp*d[ia][ib];
+      }
+    }
+
+    for (ia = 0; ia < 3; ia++) {
+      for (ib = 0; ib < 3; ib++) {
+	q0[ia][ib] = 0.0;
+	for (ic = 0; ic < 3; ic++) {
+	  for (id = 0; id < 3; id++) {
+	    q0[ia][ib] += (d[ia][ic] - nhat[ia]*nhat[ic])*qtilde[ic][id]
+	      *(d[id][ib] - nhat[id]*nhat[ib]);
+	  }
+	}
+	/* Return Q^0_ab = ~Q_ab - (1/2) A d_ab */
+	q0[ia][ib] -= 0.5*amp*d[ia][ib];
+      }
+    }
+
+  }
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
  *  fe_lc_colloid
  *
  *  Return f_s for the local colloid surface (and an area).
@@ -531,12 +612,6 @@ static int fe_lc_colloid(fe_lc_t * fe, cs_t * cs, colloids_info_t * cinfo,
  *    fluid Q_ab qs
  *    site map status
  *
- *  TODO:  There is a rather ugly depedency on the order parameter
- *         gradient calculation currently in gradient_3d_7pt_solid which 
- *         needs to be refactored. That is: colloids_q_boundary().
- *
- *         E.g., Can we use lc_anchoring.h?
- *
  *****************************************************************************/
 
 __host__ int blue_phase_fs(fe_lc_param_t * feparam, const double dn[3],
@@ -555,12 +630,12 @@ __host__ int blue_phase_fs(fe_lc_param_t * feparam, const double dn[3],
 
   colloids_q_boundary(feparam, dn, qs, q0, status);
 
-  w1 = feparam->w1_coll;
-  w2 = feparam->w2_coll;
+  w1 = feparam->coll.w1;
+  w2 = feparam->coll.w2;
 
   if (status == MAP_BOUNDARY) {
-    w1 = feparam->w1_wall;
-    w2 = feparam->w2_wall;
+    w1 = feparam->wall.w1;
+    w2 = feparam->wall.w2;
   }
 
   fe_lc_amplitude_compute(feparam, &amplitude);
@@ -582,6 +657,7 @@ __host__ int blue_phase_fs(fe_lc_param_t * feparam, const double dn[3],
 
   return 0;
 }
+
 /*****************************************************************************
  *
  *  fe_lc_bulk_grad

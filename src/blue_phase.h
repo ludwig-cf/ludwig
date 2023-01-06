@@ -1,15 +1,13 @@
-
 /*****************************************************************************
  *
  *  fe_lc.h
  *
- *  This file name is a bit of a misnomer. It's for any LC type, not
- *  just blue phases.
+ *  Liquid crystal free energy.
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2010-2022 The University of Edinburgh
+ *  (c) 2010-2023 The University of Edinburgh
  *
  *  Contributing authors:
  *    Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -69,14 +67,6 @@ struct fe_lc_param_s {
   double e0[3];                           /* Electric field (external) */
   double coswt;                           /* Electric field (phase) */
 
-  double w1_coll;                         /* Anchoring strength parameter */
-  double w2_coll;                         /* Second anchoring parameter */
-  double w1_wall;
-  double w2_wall;
-
-  double nfix[3];                         /* Fixed anchoring orientation */
-  int anchoring_coll;                     /* Colloids anchoring type */
-  int anchoring_wall;                     /* Wall anchoring type */
   int is_redshift_updated;                /* Switch */
   int is_active;                          /* Switch for active fluid */
 
@@ -187,7 +177,7 @@ __host__ int fe_lc_dimensionless_field_strength(const fe_lc_param_t * param,
 						double * e0);
 
 __host__ __device__
-int fe_lc_amplitude_compute(fe_lc_param_t * param, double * a);
+int fe_lc_amplitude_compute(const fe_lc_param_t * param, double * a);
 
 __host__ __device__
 int fe_lc_q_uniaxial(fe_lc_param_t * param, const double n[3], double q[3][3]);
