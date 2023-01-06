@@ -135,7 +135,19 @@ __host__ int grad_lc_anch_create(pe_t * pe, cs_t * cs, map_t * map,
     obj->target = obj;
   }
   else {
+    /* Copy required entities over ... */
+    cs_t * tcs = NULL;
     tdpMalloc((void **) &obj->target, sizeof(grad_lc_anch_t));
+
+    cs_target(obj->cs, &tcs);
+    tdpAssert(tdpMemcpy(&obj->target->cs, &tcs, sizeof(cs_t *),
+			tdpMemcpyHostToDevice));
+
+    if (cinfo) {
+    tdpAssert(tdpMemcpy(&obj->target->cinfo, &cinfo->target,
+			sizeof(colloids_info_t *), tdpMemcpyHostToDevice));
+    }
+
     tdpAssert(tdpMemcpy(&obj->target->bc, &obj->bc,
 			sizeof(lc_anchoring_matrices_t),
 			tdpMemcpyHostToDevice));
@@ -170,11 +182,19 @@ __host__ int grad_lc_anch_free(grad_lc_anch_t * grad) {
 
 __host__ int grad_3d_7pt_solid_set(map_t * map, colloids_info_t * cinfo) {
 
+  int ndevice = 0;
+
   assert(map);
   assert(static_grad);
 
   static_grad->map = map;
   static_grad->cinfo = cinfo;
+
+  tdpGetDeviceCount(&ndevice);
+  if (ndevice) {
+    tdpAssert(tdpMemcpy(&static_grad->target->cinfo, &cinfo->target,
+			sizeof(colloids_info_t *), tdpMemcpyHostToDevice));
+  }
 
   return 0;
 }
