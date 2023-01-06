@@ -86,14 +86,12 @@ const char * lc_anchoring_type_from_enum(lc_anchoring_enum_t type) {
 
 int lc_anchoring_matrix1(double kappa0, double kappa1, double a[3][6]) {
 
-  /* Normals in six-point stencil */
-  const int bcs[6][3] = {{-1,0,0},{1,0,0},{0,-1,0},{0,1,0},{0,0,-1},{0,0,1}};
-
   for (int ia = 0; ia < 3; ia++) {
 
+    int n[3] = {0}; n[ia] = 1; /* Unit normal */
     double bc[6][6][3] = {0};
 
-    lc_anchoring_coefficients(kappa0, kappa1, bcs[2*ia + 1], bc);
+    lc_anchoring_coefficients(kappa0, kappa1, n, bc);
 
     for (int n1 = 0; n1 < 6; n1++) {
       a[ia][n1] = 1.0/bc[n1][n1][ia];

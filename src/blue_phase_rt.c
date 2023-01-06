@@ -9,7 +9,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2009-2022 The University of Edinburgh
+ *  (c) 2009-2023 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -218,11 +218,6 @@ __host__ int blue_phase_init_rt(pe_t * pe, rt_t *rt,
       if (fe_param.wall.type == LC_ANCHORING_PLANAR) {
 	pe_info(pe, "Wall anchoring w2:           %14.7e\n", fe_param.wall.w2);
       }
-
-      /* Still need to get energy right ... */
-      fe_param.anchoring_wall = fe_param.wall.type;
-      fe_param.w1_wall = fe_param.wall.w1;
-      fe_param.w2_wall = fe_param.wall.w2;
     }
 
     if (fe_param.coll.type != LC_ANCHORING_NONE) {
@@ -240,13 +235,14 @@ __host__ int blue_phase_init_rt(pe_t * pe, rt_t *rt,
 	pe_info(pe, "Colloid anchoring w1:        %14.7e\n", fe_param.coll.w1);
 	pe_info(pe, "Colloid anchoring w2:        %14.7e\n", fe_param.coll.w2);
       }
-      /* Temporary fix to get energy right ... */
-      fe_param.anchoring_coll = fe_param.coll.type;
-      fe_param.w1_coll = fe_param.coll.w1;
-      fe_param.w2_coll = fe_param.coll.w2;
     }
   }
   else if (strcmp(method, "two") == 0) {
+
+    lc_anchoring_enum_t anchoring_wall = LC_ANCHORING_NONE;
+    lc_anchoring_enum_t anchoring_coll = LC_ANCHORING_NONE;
+    double w1_coll;
+    double w2_coll;
 
     /* Older-style input for "lc_anchoring_method". The name "two"
      * is because, historically, it was the second method tried. */
@@ -264,11 +260,11 @@ __host__ int blue_phase_init_rt(pe_t * pe, rt_t *rt,
     rt_string_parameter(rt, "lc_coll_anchoring", type, FILENAME_MAX);
 
     if (strcmp(type, "normal") == 0) {
-      fe_param.anchoring_coll = LC_ANCHORING_NORMAL;
+      anchoring_coll = LC_ANCHORING_NORMAL;
     }
 
     if (strcmp(type, "planar") == 0) {
-      fe_param.anchoring_coll = LC_ANCHORING_PLANAR;
+      anchoring_coll = LC_ANCHORING_PLANAR;
     }
 
     /* Surface free energy parameter */
@@ -292,13 +288,13 @@ __host__ int blue_phase_init_rt(pe_t * pe, rt_t *rt,
     rt_string_parameter(rt, "lc_wall_anchoring", type_wall, FILENAME_MAX);
 
     if (strcmp(type_wall, "normal") == 0) {
-      fe_param.anchoring_wall = LC_ANCHORING_NORMAL;
+      anchoring_wall = LC_ANCHORING_NORMAL;
       w1_wall = w1;
       w2_wall = 0.0;
     }
 
     if (strcmp(type_wall, "planar") == 0) {
-      fe_param.anchoring_wall = LC_ANCHORING_PLANAR;
+      anchoring_wall = LC_ANCHORING_PLANAR;
       w1_wall = w1;
       w2_wall = w2;
     }
@@ -306,15 +302,18 @@ __host__ int blue_phase_init_rt(pe_t * pe, rt_t *rt,
     if (strcmp(type_wall, "fixed") == 0) {
       double nfix[3] = {0.0, 1.0, 0.0}; /* default orientation */
       double rmod;
-      fe_param.anchoring_wall = LC_ANCHORING_FIXED;
+      anchoring_wall = LC_ANCHORING_FIXED;
       w1_wall = w1;
       w2_wall = 0.0;
       rt_double_parameter_vector(rt, "lc_wall_fixed_orientation", nfix);
       /* Make sure it's a unit vector */
       rmod = 1.0/sqrt(nfix[X]*nfix[X] + nfix[Y]*nfix[Y] + nfix[Z]*nfix[Z]);
-      fe_param.nfix[X] = rmod*nfix[X];
-      fe_param.nfix[Y] = rmod*nfix[Y];
-      fe_param.nfix[Z] = rmod*nfix[Z];
+      nfix[X] = rmod*nfix[X];
+      nfix[Y] = rmod*nfix[Y];
+      nfix[Z] = rmod*nfix[Z];
+      fe_param.wall.nfix[X] = nfix[X];
+      fe_param.wall.nfix[Y] = nfix[Y];
+      fe_param.wall.nfix[Z] = nfix[Z];
     }
 
     /* Colloids default, then look for specific value */
@@ -330,8 +329,8 @@ __host__ int blue_phase_init_rt(pe_t * pe, rt_t *rt,
       if (strcmp(type, "fixed")  == 0) w2 = 0.0;
     }
 
-    fe_param.w1_coll = w1;
-    fe_param.w2_coll = w2;
+    w1_coll = w1;
+    w2_coll = w2;
 
     /* Wall */
 
@@ -342,8 +341,8 @@ __host__ int blue_phase_init_rt(pe_t * pe, rt_t *rt,
       if (strcmp(type_wall, "fixed")  == 0) w2_wall = 0.0;
     }
 
-    fe_param.w1_wall = w1_wall;
-    fe_param.w2_wall = w2_wall;
+    w1_wall = w1_wall;
+    w2_wall = w2_wall;
     fe_lc_amplitude_compute(&fe_param, &amp0);
 
     pe_info(pe, "Anchoring type (walls):          = %14s\n",   type_wall);
@@ -357,15 +356,22 @@ __host__ int blue_phase_init_rt(pe_t * pe, rt_t *rt,
 	    w1_wall/fe_param.kappa0);
     pe_info(pe, "Computed surface order f(gamma)  = %14.7e\n", amp0);
 
-    if (fe_param.anchoring_wall == LC_ANCHORING_FIXED) {
+    if (anchoring_wall == LC_ANCHORING_FIXED) {
       pe_info(pe, "Wall fixed anchoring orientation = %14.7e %14.7e %14.7e\n",
-	      fe_param.nfix[X], fe_param.nfix[Y], fe_param.nfix[Z]);
+	      fe_param.wall.nfix[X], fe_param.wall.nfix[Y], fe_param.wall.nfix[Z]);
     }
 
     /* For computed anchoring order [see fe_lc_amplitude_compute()] */
     if (fe_param.gamma < (8.0/3.0)) {
       pe_fatal(pe, "Please check anchoring amplitude\n");
     }
+
+    fe_param.coll.type    = anchoring_coll;
+    fe_param.coll.w1      = w1_coll;
+    fe_param.coll.w2      = w2_coll;
+    fe_param.wall.type    = anchoring_wall;
+    fe_param.wall.w1      = w1_wall;
+    fe_param.wall.w2      = w2_wall;
   }
   else {
     /* not recognised */

@@ -56,10 +56,12 @@
 #include <stdlib.h>
 
 #include "pe.h"
-#include "util.h"
 #include "coords.h"
 #include "kernel.h"
 #include "colloids.h"
+
+#include "util.h"
+#include "lc_anchoring.h"
 #include "gradient_3d_7pt_solid.h"
 
 struct grad_lc_anch_s {
@@ -82,16 +84,14 @@ __global__
 void gradient_6x6_kernel(kernel_ctxt_t * ktx, cs_t * cs, grad_lc_anch_t * anch,
 			 fe_lc_t * fe, field_grad_t * fg,
 			 map_t * map, colloids_info_t * cinfo);
-__host__ __device__
-int colloids_q_boundary(fe_lc_param_t * param, const double n[3],
-			double qs[3][3], double q0[3][3],
-			int map_status);
-__host__ __device__
-int q_boundary_constants(cs_t * cs, fe_lc_param_t * param, grad_lc_anch_t * anch, 
-			 int ic, int jc, int kc,
-			 double qs[3][3],
-			 const int di[3], int status, double c[3][3],
-			 colloids_info_t * cinfo);
+
+__host__ __device__ int grad_3d_7pt_bc(grad_lc_anch_t * anch,
+				       fe_lc_param_t * fep,
+				       int ic, int jc, int kc,
+				       int status,
+				       const double qs[3][3],
+				       const int di[3],
+				       double c[3][3]);
 
 /*****************************************************************************
  *
@@ -391,10 +391,10 @@ void gradient_6x6_kernel(kernel_ctxt_t * ktx, cs_t * cs, grad_lc_anch_t * anch,
 	qs[Z][Z] = 0.0
 	  - q->data[addr_rank1(q->nsites, NQAB, index, XX)]
 	  - q->data[addr_rank1(q->nsites, NQAB, index, YY)];
-	
-	q_boundary_constants(cs, fe->param, anch, ic, jc, kc, qs,
-			     bcs[normal[0]], status[normal[0]], c, cinfo);
-	
+
+	grad_3d_7pt_bc(anch, fe->param, ic, jc, kc, status[normal[0]], qs,
+		       bcs[normal[0]], c);
+
 	/* Constant terms all move to RHS (hence -ve sign). Factors
 	 * of two in off-diagonals agree with matrix coefficients. */
 	
@@ -415,10 +415,10 @@ void gradient_6x6_kernel(kernel_ctxt_t * ktx, cs_t * cs, grad_lc_anch_t * anch,
       }
       
       if (nunknown > 1) {
-	
-	q_boundary_constants(cs, fe->param, anch, ic, jc, kc, qs,
-			     bcs[normal[1]], status[normal[1]], c, cinfo);
-	
+
+	grad_3d_7pt_bc(anch, fe->param, ic, jc, kc, status[normal[1]], qs,
+		       bcs[normal[1]], c);
+
 	b18[1*NSYMM + XX] = -1.0*c[X][X];
 	b18[1*NSYMM + XY] = -2.0*c[X][Y];
 	b18[1*NSYMM + XZ] = -2.0*c[X][Z];
@@ -435,10 +435,10 @@ void gradient_6x6_kernel(kernel_ctxt_t * ktx, cs_t * cs, grad_lc_anch_t * anch,
       }
       
       if (nunknown > 2) {
-	
-	q_boundary_constants(cs, fe->param, anch, ic, jc, kc, qs,
-			     bcs[normal[2]], status[normal[2]], c, cinfo);
-	
+
+	grad_3d_7pt_bc(anch, fe->param, ic, jc, kc, status[normal[2]], qs,
+		       bcs[normal[2]], c);
+
 	b18[2*NSYMM + XX] = -1.0*c[X][X];
 	b18[2*NSYMM + XY] = -2.0*c[X][Y];
 	b18[2*NSYMM + XZ] = -2.0*c[X][Z];
@@ -617,65 +617,68 @@ void gradient_6x6_kernel(kernel_ctxt_t * ktx, cs_t * cs, grad_lc_anch_t * anch,
 
 /*****************************************************************************
  *
- *  q_boundary_constants
+ *  grad_3d_7pt_bc
  *
- *  Compute the constant term in the cholesteric boundary condition.
- *  Fluid point is (ic, jc, kc) with fluid Q_ab = qs
- *  The outward normal is di[3], and the map status is as given.
+ *  Driver to compute the constant term c_ab in the boundary consition
+ *  dependent on the relevant surface free energy.
+ *
+ *  (1) Watch out for the different unit vectors here. di[] is the
+ *      lattice vector at the outward face; dnhat is relative to
+ *      colloid centre in the colloid case and is used to compute the
+ *      preferred surface Q_0. This was the choice at
+ *      the time this was first implemented.
+ *
+ *  (2) The "s7" method, in contrast, uses dnhat for both purposes,
+ *      and so may be a more consistent choice.
  *
  *****************************************************************************/
 
-__host__ __device__
-int q_boundary_constants(cs_t * cs,
-			 fe_lc_param_t * param, grad_lc_anch_t * anch,
-			 int ic, int jc, int kc,
-			 double qs[3][3],
-			 const int di[3], int status, double c[3][3],
-			 colloids_info_t * cinfo) {
-  int index;
-  int ia, ib, ig, ih;
+__host__ __device__ int grad_3d_7pt_bc(grad_lc_anch_t * anch,
+				       fe_lc_param_t * fep,
+				       int ic, int jc, int kc,
+				       int status,
+				       const double qs[3][3],
+				       const int di[3],
+				       double c[3][3]) {
+  assert(anch);
+  assert(fep);
+
   int anchor;
   int noffset[3];
 
   double w1, w2;
   double dnhat[3];
-  double qtilde[3][3];
+  double qtilde[3][3] = {0};
   double q0[3][3];
   double q2 = 0.0;
   double rd;
   double amp;
-  double phi, wphi;
   KRONECKER_DELTA_CHAR(d);
-  LEVI_CIVITA_CHAR(e);
 
-  colloid_t * pc = NULL;
-
-  assert(cs);
-  assert(param);
-  assert(cinfo);
+  fe_lc_amplitude_compute(fep, &amp);
 
   /* Default -> outward normal, ie., flat wall */
 
-  w1 = param->w1_wall;
-  w2 = param->w2_wall;
-  anchor = param->anchoring_wall;
+  w1 = fep->wall.w1;
+  w2 = fep->wall.w2;
+  anchor = fep->wall.type;
 
   dnhat[X] = 1.0*di[X];
   dnhat[Y] = 1.0*di[Y];
   dnhat[Z] = 1.0*di[Z];
-  fe_lc_amplitude_compute(param, &amp);
 
   if (status == MAP_COLLOID) {
 
-    cs_nlocal_offset(cs, noffset);
-    index = cs_index(cs, ic - di[X], jc - di[Y], kc - di[Z]);
+    int index = cs_index(anch->cs, ic - di[X], jc - di[Y], kc - di[Z]);
+    colloid_t * pc = anch->cinfo->map_new[index];
 
-    pc = cinfo->map_new[index];
+    cs_nlocal_offset(anch->cs, noffset);
+
     assert(pc);
 
-    w1 = param->w1_coll;
-    w2 = param->w2_coll;
-    anchor = param->anchoring_coll;
+    w1 = fep->coll.w1;
+    w2 = fep->coll.w2;
+    anchor = fep->coll.type;
 
     dnhat[X] = 1.0*(noffset[X] + ic) - pc->s.r[X];
     dnhat[Y] = 1.0*(noffset[Y] + jc) - pc->s.r[Y];
@@ -688,39 +691,40 @@ int q_boundary_constants(cs_t * cs,
     dnhat[Z] *= rd;
   }
 
+
+
   if (anchor == LC_ANCHORING_FIXED) {
-    for (ia = 0; ia < 3; ia++) {
-      for (ib = 0; ib < 3; ib++) {
-        q0[ia][ib] = 0.5*amp*(3.0*param->nfix[ia]*param->nfix[ib] - d[ia][ib]);
-	qtilde[ia][ib] = 0.0;
-      }
-    }
+    /* Wall anchoring only. */
+    lc_anchoring_fixed_ct(&fep->wall, qs, dnhat, fep->kappa1, fep->q0, amp, c);
   }
 
   if (anchor == LC_ANCHORING_NORMAL) {
-    for (ia = 0; ia < 3; ia++) {
-      for (ib = 0; ib < 3; ib++) {
-        q0[ia][ib] = 0.5*amp*(3.0*dnhat[ia]*dnhat[ib] - d[ia][ib]);
-	qtilde[ia][ib] = 0.0;
+    /* Here's the latice unit vector (note dnhat used for preferred Q_0) */
+    double nhat[3] = {1.0*di[X], 1.0*di[Y], 1.0*di[Z]};
+
+    lc_anchoring_normal_q0(dnhat, amp, q0);
+    lc_anchoring_kappa1_ct(fep->kappa1, fep->q0, nhat, qs, c);
+
+    for (int ia = 0; ia < 3; ia++) {
+      for (int ib = 0; ib < 3; ib++) {
+	c[ia][ib] += -w1*(qs[ia][ib] - q0[ia][ib]);
       }
     }
   }
 
   if (anchor == LC_ANCHORING_PLANAR) {
-    /* Compute qtilde, and its projection */
-    q2 = 0.0;
-    for (ia = 0; ia < 3; ia++) {
-      for (ib = 0; ib < 3; ib++) {
-        qtilde[ia][ib] = qs[ia][ib] + 0.5*amp*d[ia][ib];
-        q2 += qtilde[ia][ib]*qtilde[ia][ib];
-      }
-    }
+    /* See note above */
+    double hat[3] = {1.0*di[X], 1.0*di[Y], 1.0*di[Z]};
 
-    for (ia = 0; ia < 3; ia++) {
-      for (ib = 0; ib < 3; ib++) {
+    q2 = 0.0;
+    lc_anchoring_planar_qtilde(amp, qs, qtilde);
+
+    for (int ia = 0; ia < 3; ia++) {
+      for (int ib = 0; ib < 3; ib++) {
         q0[ia][ib] = 0.0;
-        for (ig = 0; ig < 3; ig++) {
-          for (ih = 0; ih < 3; ih++) {
+	q2 += qtilde[ia][ib]*qtilde[ia][ib];
+        for (int ig = 0; ig < 3; ig++) {
+          for (int ih = 0; ih < 3; ih++) {
             q0[ia][ib] += (d[ia][ig] - dnhat[ia]*dnhat[ig])*qtilde[ig][ih]
               *(d[ih][ib] - dnhat[ih]*dnhat[ib]);
           }
@@ -728,126 +732,40 @@ int q_boundary_constants(cs_t * cs,
         q0[ia][ib] -= 0.5*amp*d[ia][ib];
       }
     }
-  }
 
-  /* Compute c[a][b] */
+    /* Compute c[a][b] */
 
-  for (ia = 0; ia < 3; ia++) {
-    for (ib = 0; ib < 3; ib++) {
+    lc_anchoring_kappa1_ct(fep->kappa1, fep->q0, hat, qs, c);
 
-      c[ia][ib] = 0.0;
-
-      for (ig = 0; ig < 3; ig++) {
-        for (ih = 0; ih < 3; ih++) {
-          c[ia][ib] -= param->kappa1*param->q0*di[ig]*
-	    (e[ia][ig][ih]*qs[ih][ib] + e[ib][ig][ih]*qs[ih][ia]);
-        }
-      }
-
-      /* Normal anchoring: w2 must be zero and q0 is preferred Q
-       * Planar anchoring: in w1 term q0 is effectively
-       *                   (Qtilde^perp - 0.5S_0) while in w2 we
-       *                   have Qtilde appearing explicitly.
-       *                   See colloids_q_boundary() etc */
-
-      /* Default case without compositional order parameter */
-      if (anch->phi == NULL) {
-	wphi = 1.0;
-      }
-      else {
-	/* Compositional order parameter for LC wetting:
-	 * The LC anchoring strengths w1 and w2 vanish in the disordered phase.
-	 * We assume this is the phase which has a negative binary
-	 * order parameter e.g. phi = -1. 
-	 * The standard anchoring case corresponds to phi = +1 */
-	index = cs_index(cs, ic, jc, kc);
-	phi = anch->phi->data[addr_rank0(anch->phi->nsites, index)];
-	wphi = 0.5*(1.0+phi);
-      }
-
-      c[ia][ib] +=
-	-w1*wphi*(qs[ia][ib] - q0[ia][ib])
-	-w2*wphi*(2.0*q2 - 4.5*amp*amp)*qtilde[ia][ib];
-    }
-  }
-
-  return 0;
-}
-
-/*****************************************************************************
- *
- *  colloids_q_boundary
- *
- *  Produce an estimate of the surface order parameter Q^0_ab for
- *  normal or planar anchoring.
- *
- *  This will depend on the outward surface normal nhat, and in the
- *  case of planar anchoring may depend on the estimate of the
- *  existing order parameter at the surface Qs_ab.
- *
- *  This planar anchoring idea follows e.g., Fournier and Galatola
- *  Europhys. Lett. 72, 403 (2005).
- *
- *****************************************************************************/
-
-__host__ __device__
-int colloids_q_boundary(fe_lc_param_t * param,
-			const double nhat[3], double qs[3][3],
-			double q0[3][3], int map_status) {
-  int ia, ib, ic, id;
-  int anchoring;
-
-  double qtilde[3][3];
-  double amp;
-  KRONECKER_DELTA_CHAR(d);
-
-  assert(map_status == MAP_COLLOID || map_status == MAP_BOUNDARY);
-
-  anchoring = param->anchoring_coll;
-  if (map_status == MAP_BOUNDARY) anchoring = param->anchoring_wall;
-
-  fe_lc_amplitude_compute(param, &amp);
-
-  if (anchoring == LC_ANCHORING_FIXED) {
-    for (ia = 0; ia < 3; ia++) {
-      for (ib = 0; ib < 3; ib++) {
-	q0[ia][ib] = 0.5*amp*(3.0*param->nfix[ia]*param->nfix[ib] - d[ia][ib]);
+    for (int ia = 0; ia < 3; ia++) {
+      for (int ib = 0; ib < 3; ib++) {
+	c[ia][ib] +=
+	  -w1*(qs[ia][ib] - q0[ia][ib])
+	  -w2*(2.0*q2 - 4.5*amp*amp)*qtilde[ia][ib];
       }
     }
   }
 
-  if (anchoring == LC_ANCHORING_NORMAL) {
-    for (ia = 0; ia < 3; ia++) {
-      for (ib = 0; ib < 3; ib++) {
-	q0[ia][ib] = 0.5*amp*(3.0*nhat[ia]*nhat[ib] - d[ia][ib]);
+  /* Experimental liquid crystal emulsion term */
+
+  if (anch->phi) {
+
+    /* Compositional order parameter for LC wetting:
+     * The LC anchoring strengths w1 and w2 vanish in the disordered phase.
+     * We assume this is the phase which has a negative binary
+     * order parameter e.g. phi = -1.
+     * The standard anchoring case corresponds to phi = +1 */
+
+    int index   = cs_index(anch->cs, ic, jc, kc);
+    double phi  = anch->phi->data[addr_rank0(anch->phi->nsites, index)];
+    double wphi = 0.5*(1.0 + phi);
+
+    /* Just an additional factor of wphi ... */
+    for (int ia = 0; ia < 3; ia++) {
+      for (int ib = 0; ib < 3; ib++) {
+	c[ia][ib] *= wphi;
       }
     }
-  }
-
-  if (anchoring == LC_ANCHORING_PLANAR) {
-
-    /* Planar: use the fluid Q_ab to find ~Q_ab */
-
-    for (ia = 0; ia < 3; ia++) {
-      for (ib = 0; ib < 3; ib++) {
-	qtilde[ia][ib] = qs[ia][ib] + 0.5*amp*d[ia][ib];
-      }
-    }
-
-    for (ia = 0; ia < 3; ia++) {
-      for (ib = 0; ib < 3; ib++) {
-	q0[ia][ib] = 0.0;
-	for (ic = 0; ic < 3; ic++) {
-	  for (id = 0; id < 3; id++) {
-	    q0[ia][ib] += (d[ia][ic] - nhat[ia]*nhat[ic])*qtilde[ic][id]
-	      *(d[id][ib] - nhat[id]*nhat[ib]);
-	  }
-	}
-	/* Return Q^0_ab = ~Q_ab - (1/2) A d_ab */
-	q0[ia][ib] -= 0.5*amp*d[ia][ib];
-      }
-    }
-
   }
 
   return 0;
