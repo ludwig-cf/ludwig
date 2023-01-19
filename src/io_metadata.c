@@ -11,7 +11,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2022 The University of Edinburgh
+ *  (c) 2022-2023 The University of Edinburgh
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *
@@ -247,6 +247,7 @@ int io_metadata_write(const io_metadata_t * metadata,
 		      const char * stub,
 		      const cJSON * comments) {
 
+  int ifail = 0;
   cJSON * json = NULL;
   char filename[BUFSIZ] = {0};
 
@@ -272,16 +273,66 @@ int io_metadata_write(const io_metadata_t * metadata,
     int rank = -1;
     MPI_Comm_rank(metadata->comm, &rank);
     if (rank == 0) {
-      FILE * fp = NULL;
-      char * str = cJSON_Print(json);
-      fp = util_fopen(filename, "w");
-      fprintf(fp, "%s\n", str);
-      fclose(fp);
-      free(str);
+      ifail = util_json_to_file(filename, json);
     }
   }
 
   cJSON_Delete(json);
 
-  return 0;
+  return ifail;
+}
+
+/*****************************************************************************
+ *
+ *  io_metadata_from_file
+ *
+ *  Somewhat experimental in that we need to generate a cs_t from the
+ *  file as a first step. This is slightly "in the air" until a
+ *  refactored cs_t is available providing a cleaner mechanism.
+ *
+ *  This is ok for iogrid = {1,1,1}. Otherwise, the subfile_t
+ *  component must be generated in a different way. This reflects a
+ *  possible difference in the pe_t between writting and reading.
+ *
+ *  A new cs_t * is returned as part of the new io_metadata_t structure.
+ *
+ *****************************************************************************/
+
+int io_metadata_from_file(pe_t * pe, const char * filename,
+			  io_metadata_t ** metadata) {
+
+  int ifail = 0;
+  cs_t * cs = NULL;
+  cJSON * json = NULL;
+
+  /* Read json */
+  ifail = util_json_from_file(filename, &json);
+  if (ifail != 0 || json == NULL) goto err;
+
+  {
+    io_options_t options = {0};
+    io_element_t element = {0};
+
+    cJSON * jcoords  = cJSON_GetObjectItemCaseSensitive(json, "coords");
+    cJSON * joptions = cJSON_GetObjectItemCaseSensitive(json, "io_options");
+    cJSON * jelement = cJSON_GetObjectItemCaseSensitive(json, "io_element");
+
+    ifail += cs_from_json(pe, jcoords, &cs);
+    ifail += io_options_from_json(joptions, &options);
+    ifail += io_element_from_json(jelement, &element);
+    if (ifail != 0) goto err;
+
+    ifail += io_metadata_create(cs, &options, &element, metadata);
+    if (ifail != 0) goto err;
+
+    cJSON_Delete(json);
+  }
+
+  return ifail;
+
+ err:
+  if (json) cJSON_Delete(json);
+  if (cs)   cs_free(cs);
+
+  return ifail;
 }

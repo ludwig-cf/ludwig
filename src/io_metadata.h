@@ -5,7 +5,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2022 The University of Edinburgh
+ *  (c) 2022-2023 The University of Edinburgh
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *
@@ -14,6 +14,7 @@
 #ifndef LUDWIG_IO_METADATA_H
 #define LUDWIG_IO_METADATA_H
 
+#include "pe.h"
 #include "coords.h"
 #include "cs_limits.h"
 #include "io_options.h"
@@ -55,4 +56,7 @@ int io_metadata_from_json(cs_t * cs, const cJSON * json,
 int io_metadata_write(const io_metadata_t * metadata,
 		      const char * stub,
 		      const cJSON * comments);
+int io_metadata_from_file(pe_t * pe, const char * filename,
+			  io_metadata_t ** metadata);
+
 #endif
