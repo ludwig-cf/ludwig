@@ -308,7 +308,7 @@ int io_metadata_from_file(pe_t * pe, const char * filename,
   if (ifail != 0 || json == NULL) goto err;
 
   {
-    io_options_t options = {0};
+    io_options_t options = {IO_MODE_INVALID};
     io_element_t element = {0};
 
     cJSON * jcoords  = cJSON_GetObjectItemCaseSensitive(json, "coords");

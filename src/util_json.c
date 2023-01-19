@@ -127,7 +127,7 @@ int util_json_from_file(const char * filename, cJSON ** json) {
     fseek(fp, 0, SEEK_END);
     len = ftell(fp);
     fseek(fp, 0, SEEK_SET);
-    buf = calloc(len+1, sizeof(char));
+    buf = (char *) calloc(len+1, sizeof(char));
     if (buf) {
       size_t nread = fread(buf, 1, len, fp);
       if (nread != len) ifail = +1;
