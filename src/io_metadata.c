@@ -203,8 +203,6 @@ int io_metadata_to_json(const io_metadata_t * meta, cJSON ** json) {
  *  io_metadata_from_json
  *
  *  Assumes we have an existing coordinate system.
- *  FIXME: However, Lees Edwards options cs->leopts is initialised here.
- *  The question of initialising cs_t from JSON is PENDING.
  *
  *****************************************************************************/
 
