@@ -2,6 +2,18 @@
  *
  *  extract.c
  *
+ *  This is under revision as part of the move to new metadata.
+ *  For most users, there will be no need to consolidate
+ *  parallel output. Only post-processing is relevant (unrolling
+ *  Lees Edwards plane, diagonalisation of liquid crystal order parameter).
+ *
+ *  ./extract data-file
+ *
+ *  The relevant metadata file is located from the file stub.
+ *  Most options are still available (see below).
+ *
+ *  Older version ...
+ *
  *  This program deals with the consolidation of parallel I/O
  *  (and in serial with Lees-Edwards planes). This program is
  *  serial.
@@ -48,7 +60,7 @@
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *  Oliver Henrich  (oliver.henrich@strath.ac.uk)
  *
- *  (c) 2011-2022 The University of Edinburgh
+ *  (c) 2011-2023 The University of Edinburgh
  *
  ****************************************************************************/
 
@@ -58,6 +70,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "io_metadata.h"
 #include "util.h"
 #include "util_fopen.h"
 
@@ -148,6 +161,8 @@ int lc_compute_scalar_ops(double q[3][3], double qs[5]);
 const char * file_stub_valid(const char * input);
 int file_get_file_nfile(const char * filename);
 int file_get_file_index(const char * filename);
+int extract_process_and_output(const char * stub, int ntime,
+			       io_metadata_t * meta);
 
 /*****************************************************************************
  *
@@ -201,6 +216,44 @@ int main(int argc, char ** argv) {
     }   
   }
 
+  /* New metadata format: completely short circuit the original
+     processing via a new driver */
+  if (optind == argc - 1) {
+    /* Must have a recognised metadata quantity */
+    const char * stub = file_stub_valid(argv[argc-1]);
+    if (stub == NULL) {
+      printf("Unrecognised data quantity %s\n", argv[argc-1]);
+      exit(-1);
+    }
+    else {
+      pe_t * pe = NULL;
+      char buf[FILENAME_MAX] = {0};
+      char * filename = buf;
+      int ifail = 0;
+      int itime = 0;
+
+      int ifile = file_get_file_index(argv[argc-1]);
+      int nfile = file_get_file_nfile(argv[argc-1]);
+      io_metadata_t * meta = NULL;
+
+      printf("%s %s\n", argv[0], argv[argc-1]);
+      printf("Identified file name as %s\n", stub);
+      sprintf(filename, "%s-metadata.%3.3d-%3.3d", stub, nfile, ifile);
+      printf("Attempt to read metadata file %s\n", filename);
+      pe_create(MPI_COMM_WORLD, PE_QUIET, &pe);
+      ifail = io_metadata_from_file(pe, filename, &meta);
+      if (ifail != 0) printf("Failed to read/parse metadata file\n");
+
+      itime = read_data_file_name(argv[argc-1]);
+      ifail = extract_process_and_output(stub, itime, meta);
+      /* Release meta resources */
+      pe_free(pe);
+      printf("Complete processing for %s\n", argv[argc-1]);
+    }
+    exit(0);
+  }
+
+  /* Continue with older invocation <metadata file> <data file> */
   if (optind > argc-2) {
     printf("Usage: %s [-abk] meta-file data-file\n", argv[0]);
     exit(EXIT_FAILURE);
@@ -1511,4 +1564,349 @@ int file_get_file_index(const char * filename) {
   }
 
   return ifile;
+}
+
+
+/*****************************************************************************
+ *
+ *  extract_read_single_file
+ *
+ *****************************************************************************/
+
+int io_metadata_nrecord(const io_metadata_t * meta) {
+
+  /* This is still not very satisfactory. Need no,. of records in metadata */
+  int nrecord = meta->element.count;
+  if (meta->element.datatype == MPI_CHAR) nrecord /= 23;
+  nrec_ = nrecord;
+
+  return nrecord;
+}
+
+int extract_read_single_file(io_metadata_t * meta, const char * stub,
+			     int itime, double * datatotal) {
+
+  int nrecord = io_metadata_nrecord(meta);
+  char filename[BUFSIZ] = {0};
+  FILE * fp = NULL;
+
+  io_subfile_name(&meta->subfile, stub, itime, filename, BUFSIZ);
+
+  fp = util_fopen(filename, "r+b");
+  if (fp == NULL) printf("fopen(%s) failed\n", filename);
+
+  for (int ic = 1; ic <= meta->subfile.sizes[X]; ic++) {
+    for (int jc = 1; jc <= meta->subfile.sizes[Y]; jc++) {
+      for (int kc = 1; kc <= meta->subfile.sizes[Z]; kc++) {
+
+	int icd = meta->subfile.offset[X] + ic;
+	int jcd = meta->subfile.offset[Y] + jc;
+	int kcd = meta->subfile.offset[Z] + kc;
+	int indexd = site_index(icd, jcd, kcd, meta->cs->param->ntotal);
+
+	for (int nr = 0; nr < nrecord; nr++) {
+	  double datum = 0.0;
+	  int nread = 0;
+	  if (meta->options.iorformat == IO_RECORD_BINARY) {
+	    nread = fread(&datum, sizeof(double), 1, fp);
+	  }
+	  else {
+	    nread = fscanf(fp, "%le", &datum);
+	  }
+	  if (nread != 1) printf("File out of records!!\n");
+
+	  /* Place at correct offset in the full array */
+	  *(datatotal + nrecord*indexd + nr) = datum;
+	}
+
+      }
+    }
+  }
+
+  fclose(fp);
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  extract_unroll
+ *
+ *****************************************************************************/
+
+int le_block_id(int nplanes, int nx, int ic) {
+
+  /* Could take local ic and and offset here */
+  /* Halo points should be in the outer most block (always) */
+
+  assert(nplanes >= 0);
+  assert(nx > 0);
+  assert(1 <= ic && ic <= nx);
+
+  int bid = 0;
+
+  if (nplanes > 0) {
+    int s   = nx/nplanes;        /* Separation */ 
+    int ic0 = nx/2;              /* Ref. is centre */
+
+    if (nplanes % 2 == 0) {
+      /* blocks are ... -2 | -1 | 0 | +1 | +2 ... */
+      if (ic >  ic0) bid = (+s/2 + ic - ic0 - 1)/s;
+      if (ic <= ic0) bid = (-s/2 + ic - ic0    )/s;
+    }
+    else {
+      /* blocks are ... -2 | -1 | +1 | +2 ... (no "block zero") */
+      if (ic >  ic0) bid =  1 + (ic - ic0 - 1)/s;
+      if (ic <= ic0) bid = -1 + (ic - ic0    )/s;
+    }
+  }
+
+  return bid;
+}
+
+double le_block_displacement_uyt(const cs_t * cs, int ic, int itime) {
+
+  int nplanes = cs->leopts.nplanes;
+  double uyt = 0.0;
+
+  if (nplanes > 0) {
+    int nx = cs->param->ntotal[X];
+    double uy = cs->leopts.uy;
+
+    if (nplanes % 2 == 0) {
+      uyt = uy*itime*le_block_id(nplanes, nx, ic);
+    }
+    else {
+      int bid = le_block_id(nplanes, nx, ic);
+      if (bid <  0) uyt = uy*itime*(0.5 + bid);
+      if (bid >= 0) uyt = uy*itime*(bid - 0.5);
+    }
+  }
+
+  return uyt;
+}
+
+/* A function of time only for non-steady shear. */
+
+double le_block_uy(cs_t * cs, int ic, int itime) {
+
+  int nplanes = cs->leopts.nplanes;
+  int nx = cs->param->ntotal[X];
+  double uy = 0.0;
+
+  if (nplanes > 0) {
+    int bid = le_block_id(nplanes, nx, ic);
+    if (nplanes % 2 == 0) {
+     uy = cs->leopts.uy*bid;
+    }
+    else {
+      if (bid > 0) uy = cs->leopts.uy*(bid - 0.5);
+      if (bid < 0) uy = cs->leopts.uy*(bid + 0.5);
+    }
+  }
+
+  return uy;
+}
+
+/*****************************************************************************
+ *
+ *  extract_unroll
+ *
+ *  Unroll the time-dependent LE displacements.
+ *
+ *  If it's the velocity, there's a correction to u_y to account for
+ *  the relative block motion.
+ *
+ *****************************************************************************/
+
+int extract_unroll(const io_metadata_t * meta, double * data, int itime,
+		   int is_vel) {
+
+  int nrecord = io_metadata_nrecord(meta);
+  int ntotal[3] = {0};
+  double * buffer = NULL;
+  double du[BUFSIZ] = {0};
+
+  cs_ntotal(meta->cs, ntotal);
+
+  {
+    /* Temporary for y-z plane (all reocrds) */
+    int nsz = nrecord*ntotal[Y]*ntotal[Z];
+    buffer = (double *) malloc(nsz*sizeof(double));
+    if (buffer == NULL) printf("malloc(buffer) failed!\n");
+  }
+
+  for (int ic = 1; ic <= ntotal[X]; ic++) {
+
+    double dy = le_block_displacement_uyt(meta->cs, ic, itime);
+    int   jdy = floor(dy);
+    double fr = 1.0 - (dy - jdy);
+    if (is_vel) du[Y] = le_block_uy(meta->cs, ic, itime);
+    printf("time %6d ic %3d  uyt %7.3f dv %7.4f %3d\n" , itime, ic, dy,
+	   le_block_uy(meta->cs, ic, itime),
+	   le_block_id(meta->cs->leopts.nplanes, ntotal[X], ic));
+
+    for (int jc = 1; jc <= ntotal[Y]; jc++) {
+      int j0 = 1 + (jc - jdy - 3 + 1000*ntotal[Y]) % ntotal[Y];
+      int j1 = 1 + j0 % ntotal[Y];
+      int j2 = 1 + j1 % ntotal[Y];
+      int j3 = 1 + j2 % ntotal[Y];
+
+      for (int kc = 1; kc <= ntotal[Z]; kc++) {
+	for (int n = 0; n < nrecord; n++) {
+	  int index0 = site_index(ic, j0, kc, ntotal);
+	  int index1 = site_index(ic, j1, kc, ntotal);
+	  int index2 = site_index(ic, j2, kc, ntotal);
+	  int index3 = site_index(ic, j3, kc, ntotal);
+	  buffer[nrecord*site_index(1,jc,kc,ntotal) + n] =
+	    - (1.0/6.0)*fr*(fr-1.0)*(fr-2.0)*data[nrecord*index0 + n]
+	    + 0.5*(fr*fr-1.0)*(fr-2.0)*data[nrecord*index1 + n]
+	    - 0.5*fr*(fr+1.0)*(fr-2.0)*data[nrecord*index2 + n]
+	    + (1.0/6.0)*fr*(fr*fr-1.0)*data[nrecord*index3 + n];
+	}
+      }
+    }
+
+    /* Put the whole buffer plane back in place */
+
+    for (int jc = 1; jc <= ntotal[Y]; jc++) {
+      for (int kc = 1; kc <= ntotal[Z]; kc++) {
+	int index  = site_index(ic, jc, kc, ntotal);
+	int index1 = site_index(1,  jc, kc, ntotal);
+	for (int n = 0; n < nrecord; n++) {
+	  data[nrecord*index + n] = buffer[nrecord*index1 + n] + du[n];
+	}
+      }
+    }
+    /* Next ic */
+  }
+
+  free(buffer);
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  extract_process_and_output
+ *
+ *****************************************************************************/
+
+int extract_process_and_output(const char * stub, int ntime,
+			       io_metadata_t * meta) {
+
+  int nrecord = -1;                   /* Number of records per site (nf) */
+  double * datasection = NULL;        /* field data */
+  FILE * fp_output = NULL;            /* Output file */
+
+  assert(stub);
+  assert(0 <= ntime && ntime < 1000*1000*1000);
+
+  /* Records */
+
+  nrecord = io_metadata_nrecord(meta);
+  assert(nrecord > 0);
+
+  /* No. sites in the target section (always original at moment) */
+
+  cs_ntotal(meta->cs, ntargets);
+
+  {
+    size_t n = nrecord*ntargets[0]*ntargets[1]*ntargets[2];
+    datasection = (double *) calloc(n, sizeof(double));
+    if (datasection == NULL) printf("calloc(datasection) failed\n");
+  }
+
+  extract_read_single_file(meta, stub, ntime, datasection);
+
+  /* Unroll the data if Lees Edwards planes are present */
+
+  if (meta->cs->leopts.nplanes > 0) {
+    int is_vel = (strcmp(stub, "vel") == 0);
+    printf("Unrolling LE planes from centre (displacement %f)\n", -999.999);
+    if (is_vel) printf("Data is velocity field (nrecords = %d)\n", nrecord);
+    extract_unroll(meta, datasection, ntime, is_vel);
+  }
+
+  if (nrecord == 5 && strncmp(stub, "q", 1) == 0) {
+
+    if (output_vtk_ == 1 || output_vtk_ == 2) {
+      /* We mandate this is the transformed Q_ab */
+      lc_transform_q5(ntargets, datasection);
+      write_qab_vtk(ntime, ntargets, datasection);
+    }
+    else {
+      char io_data[BUFSIZ] = {0};
+      sprintf(io_data, "q-%9.9d", ntime);
+      fp_output = util_fopen(io_data, "w+b");
+      if (fp_output == NULL) {
+	printf("fopen(%s) failed\n", io_data);
+	exit(-1);
+      }
+
+      /* Here, we could respect the -d, -s, -x options. */
+      /* But at the moment, always 5 components ... */
+      if (output_q_raw_) {
+	printf("Writing raw q to %s\n", io_data);
+      }
+      else {
+	printf("Writing computed scalar q etc: %s\n", io_data);
+	lc_transform_q5(ntargets, datasection);
+      }
+
+      if (output_cmf_ == 0) write_data(fp_output, ntargets, 0, 5, datasection);
+      if (output_cmf_ == 1) write_data_cmf(fp_output, ntargets, 0, 5, datasection);
+
+      fclose(fp_output);
+    }
+  }
+  else {
+    /* A direct input / output */
+
+    /* Write a single file with the final section */
+    char io_data[BUFSIZ] = {0};
+    snprintf(io_data, sizeof(io_data), "%s-%9.9d", stub, ntime);
+
+    if (output_vtk_ == 1 || output_vtk_ == 2) {
+
+      strcat(io_data, ".vtk");
+      fp_output = util_fopen(io_data, "w+b");
+      if (fp_output == NULL) printf("fopen(%s) failed\n", io_data);
+      printf("\nWriting result to %s\n", io_data);
+
+      if (nrecord == 3 && strncmp(stub, "vel", 3) == 0) {
+	write_vtk_header(fp_output, nrecord, ntargets, "velocity_field",
+			 VTK_VECTORS);
+      }
+      else if (nrecord == 1 && strncmp(stub, "phi", 3) == 0) {
+	write_vtk_header(fp_output, nrecord, ntargets, "composition",
+			 VTK_SCALARS);
+      }
+      else {
+	/* Assume scalars */
+	write_vtk_header(fp_output, nrecord, ntargets, stub, VTK_SCALARS);
+      }
+
+    }
+    else {
+
+      fp_output = util_fopen(io_data, "w+b");
+      if (fp_output == NULL) printf("fopen(%s) failed\n", io_data);
+      printf("\nWriting result to %s\n", io_data);
+
+    }
+
+    if (output_cmf_ == 0) {
+      write_data(fp_output, ntargets, 0, nrecord, datasection);
+    }
+    if (output_cmf_ == 1) {
+      write_data_cmf(fp_output, ntargets, 0, nrecord, datasection);
+    }
+
+    fclose(fp_output);
+  }
+
+  free(datasection);
+
+  return 0;
 }
