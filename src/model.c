@@ -969,7 +969,6 @@ int lb_halo_size(cs_limits_t lim) {
 int lb_halo_enqueue_send(const lb_t * lb, lb_halo_t * h, int ireq) {
 
   assert(0 <= ireq && ireq < h->map.nvel);
-  assert(lb->ndist == 1);
 
   if (h->count[ireq] > 0) {
 
@@ -995,17 +994,19 @@ int lb_halo_enqueue_send(const lb_t * lb, lb_halo_t * h, int ireq) {
       int kc = h->slim[ireq].kmin + (ih % stry)/strz;
       int ib = 0; /* Buffer index */
 
-      for (int p = 0; p < lb->nvel; p++) {
-	/* Recall, if full, we need p = 0 */
-	int8_t px = lb->model.cv[p][X];
-	int8_t py = lb->model.cv[p][Y];
-	int8_t pz = lb->model.cv[p][Z];
-	int dot = mx*px + my*py + mz*pz;
-	if (h->full || dot == mm) {
-	  int index = cs_index(lb->cs, ic, jc, kc);
-	  int laddr = LB_ADDR(lb->nsite, lb->ndist, lb->nvel, index, 0, p);
-	  h->send[ireq][ih*h->count[ireq] + ib] = lb->f[laddr];
-	  ib++;
+      for (int n = 0; n < lb->ndist; n++) {
+	for (int p = 0; p < lb->nvel; p++) {
+	  /* Recall, if full, we need p = 0 */
+	  int8_t px = lb->model.cv[p][X];
+	  int8_t py = lb->model.cv[p][Y];
+	  int8_t pz = lb->model.cv[p][Z];
+	  int dot = mx*px + my*py + mz*pz;
+	  if (h->full || dot == mm) {
+	    int index = cs_index(lb->cs, ic, jc, kc);
+	    int laddr = LB_ADDR(lb->nsite, lb->ndist, lb->nvel, index, n, p);
+	    h->send[ireq][ih*h->count[ireq] + ib] = lb->f[laddr];
+	    ib++;
+	  }
 	}
       }
       assert(ib == h->count[ireq]);
@@ -1028,7 +1029,6 @@ int lb_halo_dequeue_recv(lb_t * lb, const lb_halo_t * h, int ireq) {
   assert(lb);
   assert(h);
   assert(0 <= ireq && ireq < h->map.nvel);
-  assert(lb->ndist == 1);
 
   if (h->count[ireq] > 0) {
 
@@ -1065,18 +1065,20 @@ int lb_halo_dequeue_recv(lb_t * lb, const lb_halo_t * h, int ireq) {
       int kc = h->rlim[ireq].kmin + (ih % stry)/strz;
       int ib = 0; /* Buffer index */
 
-      for (int p = 0; p < lb->nvel; p++) {
-	/* For reduced swap, we must have -cv[p] here... */
-	int8_t px = lb->model.cv[lb->nvel-p][X];
-	int8_t py = lb->model.cv[lb->nvel-p][Y];
-	int8_t pz = lb->model.cv[lb->nvel-p][Z];
-	int dot = mx*px + my*py + mz*pz;
+      for (int n = 0; n < lb->ndist; n++) {
+	for (int p = 0; p < lb->nvel; p++) {
+	  /* For reduced swap, we must have -cv[p] here... */
+	  int8_t px = lb->model.cv[lb->nvel-p][X];
+	  int8_t py = lb->model.cv[lb->nvel-p][Y];
+	  int8_t pz = lb->model.cv[lb->nvel-p][Z];
+	  int dot = mx*px + my*py + mz*pz;
 
-	if (h->full || dot == mm) {
-	  int index = cs_index(lb->cs, ic, jc, kc);
-	  int laddr = LB_ADDR(lb->nsite, lb->ndist, lb->nvel, index, 0, p);
-	  lb->f[laddr] = recv[ih*h->count[ireq] + ib];
-	  ib++;
+	  if (h->full || dot == mm) {
+	    int index = cs_index(lb->cs, ic, jc, kc);
+	    int laddr = LB_ADDR(lb->nsite, lb->ndist, lb->nvel, index, n, p);
+	    lb->f[laddr] = recv[ih*h->count[ireq] + ib];
+	    ib++;
+	  }
 	}
       }
       assert(ib == h->count[ireq]);
@@ -1210,6 +1212,7 @@ int lb_halo_create(const lb_t * lb, lb_halo_t * h, lb_halo_enum_t scheme) {
       }
     }
 
+    count = lb->ndist*count;
     h->count[p] = count;
     /* Allocate send buffer for send region */
     if (count > 0) {

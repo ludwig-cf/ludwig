@@ -47,7 +47,6 @@
 #include "phi_cahn_hilliard.h"
 
 static int phi_ch_flux_mu1(phi_ch_t * pch, fe_t * fes);
-static int phi_ch_flux_mu2(phi_ch_t * pch, fe_t * fes);
 static int phi_ch_update_forward_step(phi_ch_t * pch, field_t * phif);
 static int phi_ch_flux_mu_ext(phi_ch_t * pch);
 
@@ -55,8 +54,10 @@ static int phi_ch_update_conserve(phi_ch_t * pch, field_t * phif);
 
 static int phi_ch_le_fix_fluxes(phi_ch_t * pch, int nf);
 static int phi_ch_le_fix_fluxes_parallel(phi_ch_t * pch, int nf);
+#ifdef NOT_USED
+static int phi_ch_flux_mu2(phi_ch_t * pch, fe_t * fes);
 static int phi_ch_random_flux(phi_ch_t * pch, noise_t * noise);
-
+#endif
 static int phi_ch_subtract_sum_phi_after_forward_step(phi_ch_t * pch,
 						      field_t * phif,
 						      map_t * map);
@@ -78,6 +79,7 @@ struct phi_correct_s {
   double phi;    /* Sum current. */
 };
 
+
 __global__ void phi_ch_flux_mu1_kernel(kernel_ctxt_t * ktx,
 				       lees_edw_t * le, fe_t * fe,
 				       advflux_t * flux, double mobility);
@@ -90,6 +92,25 @@ __global__ void phi_ch_ufs_kernel(kernel_ctxt_t * ktx, lees_edw_t *le,
 __global__ void phi_ch_csum_kernel(kernel_ctxt_t * ktx, lees_edw_t *le,
 				   field_t * field, advflux_t * flux,
 				   field_t * csum, int ys, double wz);
+
+__host__ int phi_ch_dif_flux_driver(phi_ch_t * pch, fe_t * fe,
+				    double mobility);
+__global__ static void phi_ch_dif_flux_kernel(kernel_ctxt_t * ktx,
+					      advflux_t * flux,
+					      fe_t * fe,
+					      double mobility);
+
+__host__ int phi_ch_var_flux_driver(field_t * var, noise_t * noise,
+				    double mobility, double kt);
+__global__ static void phi_ch_var_flux_kernel(kernel_ctxt_t * ktx,
+					      field_t * var,
+					      noise_t * noise,
+					      double mktvar);
+
+__host__ int phi_ch_var_flux_acc_driver(phi_ch_t * pch, const field_t * var);
+__global__ static void phi_ch_var_flux_acc_kernel(kernel_ctxt_t * ktx,
+						  const field_t * var,
+						  advflux_t * flux);
 
 /*****************************************************************************
  *
@@ -210,12 +231,32 @@ int phi_cahn_hilliard(phi_ch_t * pch, fe_t * fe, field_t * phi,
     advflux_zero(pch->flux);
   }
 
-  if (noise_phi) {
-    phi_ch_flux_mu2(pch, fe);
-    phi_ch_random_flux(pch, noise);
+  if (noise_phi == 0) {
+    phi_ch_flux_mu1(pch, fe);
   }
   else {
-    phi_ch_flux_mu1(pch, fe);
+    /* Bring the mobility and temperature in here, as physics_t is slated
+     * for removal; the information is part of the Cahn Hilliard parameters. */
+    /* We also have a temporary field for random fluxes computed per site
+     * which should really be made permanent if performance is a
+     * consideration. */
+    physics_t * phys = NULL;
+    double mobility = 0.0;
+    double kt = 0.0;
+    field_options_t opts = field_options_ndata_nhalo(3, 3);
+    field_t * var = NULL;
+
+    physics_ref(&phys);
+    physics_mobility(phys, &mobility);
+    physics_kt(phys, &kt);
+
+    field_create(pch->pe, pch->cs, pch->le, "pch-var", &opts, &var);
+
+    phi_ch_dif_flux_driver(pch, fe, mobility);
+    phi_ch_var_flux_driver(var, noise, mobility, kt);
+    phi_ch_var_flux_acc_driver(pch, var);
+
+    field_free(var);
   }
 
   /* External chemical potential gradient (could switch out if zero) */
@@ -367,7 +408,7 @@ __global__ void phi_ch_flux_mu1_kernel(kernel_ctxt_t * ktx,
   return;
 }
 
-
+#ifdef NOT_USED
 /*****************************************************************************
  *
  *  phi_ch_flux_mu2
@@ -557,7 +598,7 @@ static int phi_ch_random_flux(phi_ch_t * pch, noise_t * noise) {
 
   return 0;
 }
-
+#endif
 /*****************************************************************************
  *
  *  phi_ch_le_fix_fluxes
@@ -1388,6 +1429,318 @@ __global__ void phi_ch_flux_mu_ext_kernel(kernel_ctxt_t * ktx,
     flux->fe[addr_rank0(flux->nsite, index0)] -= ch.mobility*ch.gradmu_ex[X];
     flux->fy[addr_rank0(flux->nsite, index0)] -= ch.mobility*ch.gradmu_ex[Y];
     flux->fz[addr_rank0(flux->nsite, index0)] -= ch.mobility*ch.gradmu_ex[Z];
+  }
+
+  return;
+}
+
+/*****************************************************************************
+ *
+ *  phi_ch_dif_flux_driver
+ *
+ *  Driver for fourth order diffusive fluxes.
+ *
+ *****************************************************************************/
+
+__host__ int phi_ch_dif_flux_driver(phi_ch_t * pch, fe_t * fe,
+				    double mobility) {
+  int nlocal[3] = {0};
+  fe_t * fetarget = NULL;
+
+  assert(pch);
+  assert(fe);
+
+  cs_nlocal(pch->cs, nlocal);
+  fe->func->target(fe, &fetarget);
+
+  {
+    dim3 nblk, ntpb;
+    kernel_info_t lim = {1, nlocal[X], 0, nlocal[Y], 0, nlocal[Z]};
+    kernel_ctxt_t * ctxt = NULL;
+
+    kernel_ctxt_create(pch->cs, 1, lim, &ctxt);
+    kernel_ctxt_launch_param(ctxt, &nblk, &ntpb);
+
+    tdpLaunchKernel(phi_ch_dif_flux_kernel, nblk, ntpb, 0, 0,
+		    ctxt->target, pch->flux->target, fetarget, mobility);
+    tdpAssert(tdpPeekAtLastError());
+    tdpAssert(tdpDeviceSynchronize());
+
+    kernel_ctxt_free(ctxt);
+  }
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  phi_ch_dif_flux_kernel
+ *
+ *  Accumulate [add to previously computed advective fluxes]
+ *  diffusive fluxes related to the mobility.
+ *
+ *  This version is based on Sumesh et al to allow correct
+ *  treatment of noise. The fluxes are calculated via
+ *
+ *  grad_x mu = 0.5*(mu(i+1) - mu(i-1)) etc
+ *  flux_x(x + 1/2) = -0.5*M*(grad_x mu(i) + grad_x mu(i+1)) etc
+ *
+ *  In contrast to Sumesh et al., we don't have 'diagonal' fluxes.
+ *  There are no Lees Edwards planes implemented, but we maintain
+ *  the distiction between east and west in the fluxes.
+ *
+ *****************************************************************************/
+
+__global__ static void phi_ch_dif_flux_kernel(kernel_ctxt_t * ktx,
+					      advflux_t * flux,
+					      fe_t * fe,
+					      double mobility) {
+  int kindex = 0;
+  int kiterations = 0;
+
+  assert(ktx);
+  assert(flux);
+  assert(fe);
+  assert(fe->func->mu);
+
+  kiterations = kernel_iterations(ktx);
+
+  for_simt_parallel(kindex, kiterations, 1) {
+
+    int ic = kernel_coords_ic(ktx, kindex);
+    int jc = kernel_coords_jc(ktx, kindex);
+    int kc = kernel_coords_kc(ktx, kindex);
+
+    int indexm2 = kernel_coords_index(ktx, ic-2, jc, kc);
+    int indexm1 = kernel_coords_index(ktx, ic-1, jc, kc);
+    int index00 = kernel_coords_index(ktx, ic,   jc, kc);
+    int indexp1 = kernel_coords_index(ktx, ic+1, jc, kc);
+    int indexp2 = kernel_coords_index(ktx, ic+2, jc, kc);
+
+    double mum2 = 0.0;
+    double mum1 = 0.0;
+    double mu00 = 0.0;
+    double mup1 = 0.0;
+    double mup2 = 0.0;
+
+    fe->func->mu(fe, indexm2, &mum2);
+    fe->func->mu(fe, indexm1, &mum1);
+    fe->func->mu(fe, index00, &mu00);
+    fe->func->mu(fe, indexp1, &mup1);
+    fe->func->mu(fe, indexp2, &mup2);
+
+    /* x-direction (between ic-1 and ic) */
+
+    flux->fw[addr_rank0(flux->nsite, index00)]
+      -= 0.25*mobility*(mup1 + mu00 - mum1 - mum2);
+
+    /* ...and between ic and ic+1 */
+
+    flux->fe[addr_rank0(flux->nsite, index00)]
+      -= 0.25*mobility*(mup2 + mup1 - mu00 - mum1);
+
+    /* y direction between jc and jc+1 */
+
+    indexm1 = kernel_coords_index(ktx, ic, jc-1, kc);
+    indexp1 = kernel_coords_index(ktx, ic, jc+1, kc);
+    indexp2 = kernel_coords_index(ktx, ic, jc+2, kc);
+
+    fe->func->mu(fe, indexm1, &mum1);
+    fe->func->mu(fe, indexp1, &mup1);
+    fe->func->mu(fe, indexp2, &mup2);
+
+    flux->fy[addr_rank0(flux->nsite, index00)]
+      -= 0.25*mobility*(mup2 + mup1 - mu00 - mum1);
+
+    /* z direction between kc and kc+1 */
+
+    indexm1 = kernel_coords_index(ktx, ic, jc, kc-1);
+    indexp1 = kernel_coords_index(ktx, ic, jc, kc+1);
+    indexp2 = kernel_coords_index(ktx, ic, jc, kc+2);
+
+    fe->func->mu(fe, indexm1, &mum1);
+    fe->func->mu(fe, indexp1, &mup1);
+    fe->func->mu(fe, indexp2, &mup2);
+
+    flux->fz[addr_rank0(flux->nsite, index00)]
+      -= 0.25*mobility*(mup2 + mup1 - mu00 - mum1);
+  }
+
+  return;
+}
+
+/*****************************************************************************
+ *
+ *  phi_ch_var_flux_driver
+ *
+ *  Compute fluctuating contribution to fluxes per site. The results must
+ *  be translated to face-fluxes before appearing in the final update.
+ *
+ *****************************************************************************/
+
+__host__ int phi_ch_var_flux_driver(field_t * var,
+				    noise_t * noise,
+				    double mobility,
+				    double kt) {
+  int nlocal[3] = {0};
+
+  cs_nlocal(var->cs, nlocal);
+
+  {
+    /* Fluctuation dissipation says ... */
+    double mktvar = sqrt(2.0*mobility*kt);
+    /* Limits have nextra = 1 site at each end */
+    kernel_info_t lim = {0, nlocal[X]+1, 0, nlocal[Y]+1, 0, nlocal[Z]+1};
+    kernel_ctxt_t * ctxt = NULL;
+    dim3 nblk, ntpb;
+
+    kernel_ctxt_create(var->cs, 1, lim, &ctxt);
+    kernel_ctxt_launch_param(ctxt, &nblk, &ntpb);
+
+    tdpLaunchKernel(phi_ch_var_flux_kernel, nblk, ntpb, 0, 0,
+		    ctxt->target, var->target, noise->target, mktvar);
+
+    tdpAssert(tdpPeekAtLastError());
+    tdpAssert(tdpDeviceSynchronize());
+
+    kernel_ctxt_free(ctxt);
+  }
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  phi_ch_var_flux_kernel
+ *
+ *  Compute per site.
+ *  Variance of the noise is from fluctuation dissipation relation.
+ *
+ *****************************************************************************/
+
+__global__ static void phi_ch_var_flux_kernel(kernel_ctxt_t * ktx,
+					      field_t * var,
+					      noise_t * noise,
+					      double mktvar) {
+  int kindex = 0;
+  int kiterations = 0;
+
+  kiterations = kernel_iterations(ktx);
+
+  for_simt_parallel(kindex, kiterations, 1) {
+
+    int ic = kernel_coords_ic(ktx, kindex);
+    int jc = kernel_coords_jc(ktx, kindex);
+    int kc = kernel_coords_kc(ktx, kindex);
+
+    int index0 = kernel_coords_index(ktx, ic, jc, kc);
+
+    double reap[3] = {0};
+    noise_reap_n(noise, index0, 3, reap);
+
+    var->data[addr_rank1(var->nsites, 3, index0, X)] = mktvar*reap[X];
+    var->data[addr_rank1(var->nsites, 3, index0, Y)] = mktvar*reap[Y];
+    var->data[addr_rank1(var->nsites, 3, index0, Z)] = mktvar*reap[Z];
+  }
+
+  return;
+}
+
+/*****************************************************************************
+ *
+ *  phi_ch_var_flux_acc_driver
+ *
+ *  Accumulate the random fluxes computed at sites to the relevant face
+ *  faces. This is just a simple average of the two site either side of
+ *  a given cell face.
+ *
+ *****************************************************************************/
+
+__host__ int phi_ch_var_flux_acc_driver(phi_ch_t * pch, const field_t * var) {
+
+  int nlocal[3] = {0};
+
+  cs_nlocal(pch->cs, nlocal);
+
+  {
+    kernel_info_t lim = {1, nlocal[X], 0, nlocal[Y], 0, nlocal[Z]};
+    kernel_ctxt_t * ctxt = NULL;
+    dim3 nblk, ntpb;
+
+    kernel_ctxt_create(pch->cs, 1, lim, &ctxt);
+    kernel_ctxt_launch_param(ctxt, &nblk, &ntpb);
+
+    tdpLaunchKernel(phi_ch_var_flux_acc_kernel, nblk, ntpb, 0, 0,
+		    ctxt->target, var->target, pch->flux->target);
+
+    tdpAssert(tdpPeekAtLastError());
+    tdpAssert(tdpDeviceSynchronize());
+
+    kernel_ctxt_free(ctxt);
+  }
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  phi_ch_var_flux_acc_kernel
+ *
+ *  Accumulate fluctuation-dissipation part of face fluxes.
+ *
+ *****************************************************************************/
+
+__global__ static void phi_ch_var_flux_acc_kernel(kernel_ctxt_t * ktx,
+						  const field_t * var,
+						  advflux_t * flux) {
+  int kindex = 0;
+  int kiterations = 0;
+
+  kiterations = kernel_iterations(ktx);
+
+  for_simt_parallel(kindex, kiterations, 1) {
+
+    int ic = kernel_coords_ic(ktx, kindex);
+    int jc = kernel_coords_jc(ktx, kindex);
+    int kc = kernel_coords_kc(ktx, kindex);
+
+    int index0 = kernel_coords_index(ktx, ic, jc, kc);
+
+    /* x-direction (west face) */
+    {
+      int index1 = kernel_coords_index(ktx, ic-1, jc, kc);
+      int vaddr0 = addr_rank1(var->nsites, 3, index0, X);
+      int vaddr1 = addr_rank1(var->nsites, 3, index1, X);
+      flux->fw[addr_rank0(flux->nsite, index0)]
+	+= 0.5*(var->data[vaddr0] + var->data[vaddr1]);
+    }
+
+    /* x-direction (east face) */
+    {
+      int index1 = kernel_coords_index(ktx, ic+1, jc, kc);
+      int vaddr0 = addr_rank1(var->nsites, 3, index0, X);
+      int vaddr1 = addr_rank1(var->nsites, 3, index1, X);
+      flux->fe[addr_rank0(flux->nsite, index0)]
+	+= 0.5*(var->data[vaddr0] + var->data[vaddr1]);
+    }
+
+    /* y direction */
+    {
+      int index1 = kernel_coords_index(ktx, ic, jc+1, kc);
+      int vaddr0 = addr_rank1(var->nsites, 3, index0, Y);
+      int vaddr1 = addr_rank1(var->nsites, 3, index1, Y);
+      flux->fy[addr_rank0(flux->nsite, index0)]
+	  += 0.5*(var->data[vaddr0] + var->data[vaddr1]);
+    }
+
+    /* z direction */
+    {
+      int index1 = kernel_coords_index(ktx, ic, jc, kc+1);
+      int vaddr0 = addr_rank1(var->nsites, 3, index0, Z);
+      int vaddr1 = addr_rank1(var->nsites, 3, index1, Z);
+      flux->fz[addr_rank0(flux->nsite, index0)]
+	+= 0.5*(var->data[vaddr0] + var->data[vaddr1]);
+    }
   }
 
   return;

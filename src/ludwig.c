@@ -151,6 +151,7 @@ struct ludwig_s {
   fe_t * fe;                   /* Free energy "polymorphic" version */
   ch_t * ch;                   /* Cahn Hilliard (surfactants) */
   phi_ch_t * pch;              /* Cahn Hilliard dynamics (binary fluid) */
+  leslie_ericksen_t * leslie;  /* Leslie Ericksen Dynamics */
   beris_edw_t * be;            /* Beris Edwards dynamics */
   pth_t * pth;                 /* Thermodynamic stress/force calculation */
   fe_lc_t * fe_lc;             /* LC free energy */
@@ -795,8 +796,7 @@ void ludwig_run(const char * inputfile) {
       }
 
       if (ludwig->p) {
-	fe_polar_t * fe = (fe_polar_t *) ludwig->fe;
-	leslie_ericksen_update(ludwig->cs, fe, ludwig->p, ludwig->hydro);
+	leslie_ericksen_update(ludwig->leslie, ludwig->hydro);
       }
 
       if (ludwig->q) {
@@ -1005,7 +1005,9 @@ void ludwig_run(const char * inputfile) {
       }
 
       if (ludwig->p) {
+	/* Get the gradients as well for the free energy below */
 	field_memcpy(ludwig->p, tdpMemcpyDeviceToHost);
+	field_grad_memcpy(ludwig->p_grad, tdpMemcpyDeviceToHost);
 	stats_field_info(ludwig->p, ludwig->map);
       }
 
@@ -1335,6 +1337,7 @@ int free_energy_init_rt(ludwig_t * ludwig) {
     pe_info(pe, "\n");
     pe_info(pe, "Using Cahn-Hilliard finite difference solver.\n");
 
+    rt_key_required(rt, "mobility", RT_FATAL);
     rt_double_parameter(rt, "mobility", &value);
     physics_mobility_set(ludwig->phys, value);
     pe_info(pe, "Mobility M            = %12.5e\n", value);
@@ -1417,6 +1420,7 @@ int free_energy_init_rt(ludwig_t * ludwig) {
     pe_info(pe, "\n");
     pe_info(pe, "Using full lattice Boltzmann solver for Cahn-Hilliard:\n");
 
+    rt_key_required(rt, "mobility", RT_FATAL);
     rt_double_parameter(rt, "mobility", &value);
     physics_mobility_set(ludwig->phys, value);
     pe_info(pe, "Mobility M            = %12.5e\n", value);
@@ -1460,6 +1464,7 @@ int free_energy_init_rt(ludwig_t * ludwig) {
     pe_info(pe, "\n");
     pe_info(pe, "Using Cahn-Hilliard solver:\n");
 
+    rt_key_required(rt, "mobility", RT_FATAL);
     rt_double_parameter(rt, "mobility", &value);
     physics_mobility_set(ludwig->phys, value);
     pe_info(pe, "Mobility M            = %12.5e\n", value);
@@ -1721,6 +1726,7 @@ int free_energy_init_rt(ludwig_t * ludwig) {
 
     /* Polar active. */
     fe_polar_t * fe = NULL;
+    leslie_param_t lep = {0};
 
     nf = NVECTOR;/* Vector order parameter */
     nhalo = 2;   /* Required for stress diveregnce. */
@@ -1746,15 +1752,15 @@ int free_energy_init_rt(ludwig_t * ludwig) {
     polar_active_run_time(pe, rt, fe);
     ludwig->fe = (fe_t *) fe;
 
-    rt_double_parameter(rt, "leslie_ericksen_gamma", &value);
-    leslie_ericksen_gamma_set(value);
-    pe_info(pe, "Rotational diffusion     = %12.5e\n", value);
+    rt_double_parameter(rt, "leslie_ericksen_gamma", &lep.Gamma);
+    rt_double_parameter(rt, "leslie_ericksen_swim",  &lep.swim);
+    rt_double_parameter(rt, "polar_active_lambda",   &lep.lambda);
 
-    rt_double_parameter(rt, "leslie_ericksen_swim", &value);
-    leslie_ericksen_swim_set(value);
-    pe_info(pe, "Self-advection parameter = %12.5e\n", value);
+    pe_info(pe, "Rotational diffusion     = %12.5e\n", lep.Gamma);
+    pe_info(pe, "Self-advection parameter = %12.5e\n", lep.swim);
 
     pth_create(pe, cs, FE_FORCE_METHOD_STRESS_DIVERGENCE, &ludwig->pth);
+    leslie_ericksen_create(pe, cs, fe, ludwig->p, &lep, &ludwig->leslie);
   }
   else if(strcmp(description, "lc_droplet") == 0) {
 
@@ -1808,6 +1814,7 @@ int free_energy_init_rt(ludwig_t * ludwig) {
     pe_info(pe, "\n");
     pe_info(pe, "Using Cahn-Hilliard finite difference solver.\n");
 
+    rt_key_required(rt, "mobility", RT_FATAL);
     rt_double_parameter(rt, "mobility", &value);
     physics_mobility_set(ludwig->phys, value);
     pe_info(pe, "Mobility M            = %12.5e\n", value);
@@ -1984,6 +1991,7 @@ int free_energy_init_rt(ludwig_t * ludwig) {
     pe_info(pe, "\n");
     pe_info(pe, "Using Cahn-Hilliard finite difference solver.\n");
 
+    rt_key_required(rt, "mobility", RT_FATAL);
     rt_double_parameter(rt, "mobility", &value);
     physics_mobility_set(ludwig->phys, value);
     pe_info(pe, "Mobility M            = %12.5e\n", value);

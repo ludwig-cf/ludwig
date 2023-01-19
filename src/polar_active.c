@@ -51,16 +51,6 @@
 #include "polar_active.h"
 #include "util.h"
 
-struct fe_polar_s {
-  fe_t super;               /* Superclass */
-  pe_t * pe;                /* Parallel environment */
-  cs_t * cs;                /* Coordinate system */
-  fe_polar_param_t * param; /* Parameters */
-  field_t * p;              /* Vector order parameter */
-  field_grad_t * dp;        /* Gradients thereof */
-  fe_polar_t * target;      /* Device pointer */
-};
-
 static __constant__ fe_polar_param_t const_param;
 
 static fe_vt_t fe_polar_hvt = {

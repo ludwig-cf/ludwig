@@ -13,6 +13,12 @@ version 0.19.0
   - For scalar order parameters an extra version of the "phi_gradmu"
     approach is avaialble" "phi_gradmu_correction".
   - See https://ludwig.epcc.ed.ac.uk/inputs/force.html for details.
+- Order parameter statistics are now reported as "phi" for scalars
+  [Px,Py,Pz] for vectors, and [Qxx, Qxy, Qxz, Qyy, Qyz] for liquid
+  crystal. The computation of the total has been improved by using a
+  compensated sum, which is more robust to threads/MPI.
+- Added compiler option information and git commit information at run
+  time.
 
 version 0.18.0
 

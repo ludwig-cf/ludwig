@@ -60,18 +60,10 @@
 #include "lc_anchoring.h"
 #include "gradient_s7_anchoring.h"
 
-typedef struct param_s param_t;
-
-struct param_s {
-  double a6inv[3][6];
-  double a12inv[3][12][12];
-  double a18inv[18][18];
-};
-
 struct grad_s7_anch_s {
   pe_t * pe;
   cs_t * cs;
-  param_t bc;                /* Boundary condition parameters */
+  lc_anchoring_matrices_t bc;/* Boundary condition parameters */
   map_t * map;               /* Supports a map */
   fe_lc_t * fe;              /* Liquid crystal free energy */
   colloids_info_t * cinfo;   /* Colloid information */
@@ -80,14 +72,10 @@ struct grad_s7_anch_s {
 
 static grad_s7_anch_t * static_grad = NULL;
 
-__host__ int grad_s7_anchoring_param_init(grad_s7_anch_t * anch);
 
 __global__
 void grad_s7_kernel(kernel_ctxt_t * ktx, cs_t * cs, grad_s7_anch_t * anch,
 		    fe_lc_t * fe, field_grad_t * fg, map_t * map);
-__host__ __device__
-int grad_s7_bcs_coeff(double kappa0, double kappa1, const int dn[3],
-		      double bc[NSYMM][NSYMM][3]);
 
 __host__ __device__ int grad_s7_boundary_c(fe_lc_param_t * param,
 					   grad_s7_anch_t * anch,
@@ -124,7 +112,12 @@ __host__ int grad_s7_anchoring_create(pe_t * pe, cs_t * cs, map_t * map,
   obj->cs = cs;
   obj->map = map;
   obj->fe = fe;
-  grad_s7_anchoring_param_init(obj);
+
+  {
+    fe_lc_param_t fep = {0};
+    fe_lc_param(fe, &fep);
+    lc_anchoring_matrices(fep.kappa0, fep.kappa1, &obj->bc);
+  }
 
   tdpGetDeviceCount(&ndevice);
 
@@ -140,7 +133,8 @@ __host__ int grad_s7_anchoring_create(pe_t * pe, cs_t * cs, map_t * map,
     tdpMemcpy(&obj->target->cs, &cstarget, sizeof(cs_t *),
               tdpMemcpyHostToDevice);
 
-    tdpAssert(tdpMemcpy(&obj->target->bc, &obj->bc, sizeof(param_t),
+    tdpAssert(tdpMemcpy(&obj->target->bc, &obj->bc,
+			sizeof(lc_anchoring_matrices_t),
 			tdpMemcpyHostToDevice));
   }
 
@@ -512,7 +506,7 @@ void grad_s7_kernel(kernel_ctxt_t * ktx, cs_t * cs, grad_s7_anch_t * anch,
 	/* Subtract all three gradient terms from the RHS and then cancel
 	 * the one unknown contribution ... works for any normal[0] */
 	
-	grad_s7_bcs_coeff(kappa0, kappa1, bcs[normal[0]], bc);
+	lc_anchoring_coefficients(kappa0, kappa1, bcs[normal[0]], bc);
 	
 	for (n1 = 0; n1 < NSYMM; n1++) {
 	  for (n2 = 0; n2 < NSYMM; n2++) {
@@ -537,7 +531,7 @@ void grad_s7_kernel(kernel_ctxt_t * ktx, cs_t * cs, grad_s7_anch_t * anch,
 	
 	/* Compute the RHS for two unknowns and one known */
 	
-	grad_s7_bcs_coeff(kappa0, kappa1, bcs[normal[0]], bc);
+	lc_anchoring_coefficients(kappa0, kappa1, bcs[normal[0]], bc);
 	
 	for (n1 = 0; n1 < NSYMM; n1++) {
 	  for (n2 = 0; n2 < NSYMM; n2++) {
@@ -550,7 +544,7 @@ void grad_s7_kernel(kernel_ctxt_t * ktx, cs_t * cs, grad_s7_anch_t * anch,
 	  }
 	}
 	
-	grad_s7_bcs_coeff(kappa0, kappa1, bcs[normal[1]], bc);
+	lc_anchoring_coefficients(kappa0, kappa1, bcs[normal[1]], bc);
 	
 	for (n1 = 0; n1 < NSYMM; n1++) {
 	  for (n2 = 0; n2 < NSYMM; n2++) {
@@ -583,7 +577,7 @@ void grad_s7_kernel(kernel_ctxt_t * ktx, cs_t * cs, grad_s7_anch_t * anch,
       
       if (nunknown == 3) {
 	
-	grad_s7_bcs_coeff(kappa0, kappa1, bcs[normal[0]], bc);
+	lc_anchoring_coefficients(kappa0, kappa1, bcs[normal[0]], bc);
 	
 	for (n1 = 0; n1 < NSYMM; n1++) {
 	  for (n2 = 0; n2 < NSYMM; n2++) {
@@ -596,7 +590,7 @@ void grad_s7_kernel(kernel_ctxt_t * ktx, cs_t * cs, grad_s7_anch_t * anch,
 	  b18[n1] *= bcsign[normal[0]];
 	}
 	
-	grad_s7_bcs_coeff(kappa0, kappa1, bcs[normal[1]], bc);
+	lc_anchoring_coefficients(kappa0, kappa1, bcs[normal[1]], bc);
 	
 	for (n1 = 0; n1 < NSYMM; n1++) {
 	  for (n2 = 0; n2 < NSYMM; n2++) {
@@ -609,7 +603,7 @@ void grad_s7_kernel(kernel_ctxt_t * ktx, cs_t * cs, grad_s7_anch_t * anch,
 	  b18[NSYMM + n1] *= bcsign[normal[1]];
 	}
 	
-	grad_s7_bcs_coeff(kappa0, kappa1, bcs[normal[2]], bc);
+	lc_anchoring_coefficients(kappa0, kappa1, bcs[normal[2]], bc);
 	
 	for (n1 = 0; n1 < NSYMM; n1++) {
 	  for (n2 = 0; n2 < NSYMM; n2++) {
@@ -664,264 +658,6 @@ void grad_s7_kernel(kernel_ctxt_t * ktx, cs_t * cs, grad_s7_anch_t * anch,
   }
 
   return;
-}
-
-/*****************************************************************************
- *
- *  grad_s7_anchoring_param_init
- *
- *  Compute and store the inverse matrices used in the boundary conditions.
- *
- *****************************************************************************/
-
-__host__
-int grad_s7_anchoring_param_init(grad_s7_anch_t * anch) {
-
-  int ia, n1, n2;
-  const int bcs[6][3] = {{-1,0,0},{1,0,0},{0,-1,0},{0,1,0},{0,0,-1},{0,0,1}};
-
-  double bc[6][6][3];
-  double ** a12inv[3];
-  double ** a18inv;
-  fe_lc_param_t feparam;
-  KRONECKER_DELTA_CHAR(d_);
-
-  assert(anch);
-  fe_lc_param(anch->fe, &feparam);
-
-  /* Compute inverse matrices */
-
-  util_matrix_create(12, 12, &(a12inv[0]));
-  util_matrix_create(12, 12, &(a12inv[1]));
-  util_matrix_create(12, 12, &(a12inv[2]));
-  util_matrix_create(18, 18, &a18inv);
-
-  for (ia = 0; ia < 3; ia++) {
-
-    grad_s7_bcs_coeff(feparam.kappa0, feparam.kappa1, bcs[2*ia + 1], bc);
-
-    for (n1 = 0; n1 < NSYMM; n1++) {
-      anch->bc.a6inv[ia][n1] = 1.0/bc[n1][n1][ia];
-    }
-
-    for (n1 = 0; n1 < NSYMM; n1++) {
-      for (n2 = 0; n2 < NSYMM; n2++) {
-	a18inv[ia*NSYMM + n1][0*NSYMM + n2] = 0.5*(1+d_[ia][X])*bc[n1][n2][X];
-	a18inv[ia*NSYMM + n1][1*NSYMM + n2] = 0.5*(1+d_[ia][Y])*bc[n1][n2][Y];
-	a18inv[ia*NSYMM + n1][2*NSYMM + n2] = 0.5*(1+d_[ia][Z])*bc[n1][n2][Z];
-
-      }
-    }
-  }
-
-  for (n1 = 0; n1 < 12; n1++) {
-    for (n2 = 0; n2 < 12; n2++) {
-      a12inv[0][n1][n2] = a18inv[n1][n2];
-      a12inv[2][n1][n2] = a18inv[6+n1][6+n2];
-    }
-  }
-
-  for (n1 = 0; n1 < 6; n1++) {
-    for (n2 = 0; n2 < 6; n2++) {
-      a12inv[1][n1][n2] = a18inv[n1][n2];
-      a12inv[1][n1][6+n2] = a18inv[n1][12+n2];
-    }
-  }
-
-  for (n1 = 6; n1 < 12; n1++) {
-    for (n2 = 0; n2 < 6; n2++) {
-      a12inv[1][n1][n2] = a18inv[6+n1][n2];
-      a12inv[1][n1][6+n2] = a18inv[6+n1][12+n2];
-    }
-  }
-
-  ia = util_matrix_invert(12, a12inv[0]);
-  assert(ia == 0);
-  ia = util_matrix_invert(12, a12inv[1]);
-  assert(ia == 0);
-  ia = util_matrix_invert(12, a12inv[2]);
-  assert(ia == 0);
-  ia = util_matrix_invert(18, a18inv);
-  assert(ia == 0);
-
-  for (n1 = 0; n1 < 18; n1++) {
-    for (n2 = 0; n2 < 18; n2++) {
-      anch->bc.a18inv[n1][n2] = a18inv[n1][n2];
-    }  
-  }
-
-  for (ia = 0; ia < 3; ia++) {
-    for (n1 = 0; n1 < 12; n1++) {
-      for (n2 = 0; n2 < 12; n2++) {
-	anch->bc.a12inv[ia][n1][n2] = a12inv[ia][n1][n2];
-      }
-    }
-  }
-
-  util_matrix_free(18, &a18inv);
-  util_matrix_free(12, &(a12inv[2]));
-  util_matrix_free(12, &(a12inv[1]));
-  util_matrix_free(12, &(a12inv[0]));
-
-  return 0;
-}
-
-
-/*****************************************************************************
- *
- *  grad_s7_bcs_coeff
- *
- *  Full set of coefficients in boundary condition equation for given
- *  surface normal dn.
- *
- *****************************************************************************/
-
-__host__ __device__
-int grad_s7_bcs_coeff(double kappa0, double kappa1, const int dn[3],
-		      double bc[NSYMM][NSYMM][3]) {
-  double kappa2;
-
-  kappa2 = kappa0 + kappa1;
-
-  /* XX equation */
-
-  bc[XX][XX][X] =  kappa0*dn[X];
-  bc[XX][XY][X] = -kappa1*dn[Y];
-  bc[XX][XZ][X] = -kappa1*dn[Z];
-  bc[XX][YY][X] =  0.0;
-  bc[XX][YZ][X] =  0.0;
-  bc[XX][ZZ][X] =  0.0;
-
-  bc[XX][XX][Y] =  kappa1*dn[Y];
-  bc[XX][XY][Y] =  kappa0*dn[X];
-  bc[XX][XZ][Y] =  0.0;
-  bc[XX][YY][Y] =  0.0;
-  bc[XX][YZ][Y] =  0.0;
-  bc[XX][ZZ][Y] =  0.0;
-
-  bc[XX][XX][Z] =  kappa1*dn[Z];
-  bc[XX][XY][Z] =  0.0;
-  bc[XX][XZ][Z] =  kappa0*dn[X];
-  bc[XX][YY][Z] =  0.0;
-  bc[XX][YZ][Z] =  0.0;
-  bc[XX][ZZ][Z] =  0.0;
-
-  /* XY equation */
-
-  bc[XY][XX][X] =  kappa0*dn[Y];
-  bc[XY][XY][X] =  kappa2*dn[X];
-  bc[XY][XZ][X] =  0.0;
-  bc[XY][YY][X] = -kappa1*dn[Y];
-  bc[XY][YZ][X] = -kappa1*dn[Z];
-  bc[XY][ZZ][X] =  0.0;
-
-  bc[XY][XX][Y] = -kappa1*dn[X];
-  bc[XY][XY][Y] =  kappa2*dn[Y];
-  bc[XY][XZ][Y] = -kappa1*dn[Z];
-  bc[XY][YY][Y] =  kappa0*dn[X];
-  bc[XY][YZ][Y] =  0.0;
-  bc[XY][ZZ][Y] =  0.0;
-
-  bc[XY][XX][Z] =  0.0;
-  bc[XY][XY][Z] =  2.0*kappa1*dn[Z];
-  bc[XY][XZ][Z] =  kappa0*dn[Y];
-  bc[XY][YY][Z] =  0.0;
-  bc[XY][YZ][Z] =  kappa0*dn[X];
-  bc[XY][ZZ][Z] =  0.0;
-
-  /* XZ equation */
-
-  bc[XZ][XX][X] =  kappa0*dn[Z];
-  bc[XZ][XY][X] =  0.0;
-  bc[XZ][XZ][X] =  kappa2*dn[X];
-  bc[XZ][YY][X] =  0.0;
-  bc[XZ][YZ][X] = -kappa1*dn[Y];
-  bc[XZ][ZZ][X] = -kappa1*dn[Z];
-
-  bc[XZ][XX][Y] =  0.0;
-  bc[XZ][XY][Y] =  kappa0*dn[Z];
-  bc[XZ][XZ][Y] =  2.0*kappa1*dn[Y];
-  bc[XZ][YY][Y] =  0.0;
-  bc[XZ][YZ][Y] =  kappa0*dn[X];
-  bc[XZ][ZZ][Y] =  0.0;
-
-  bc[XZ][XX][Z] = -kappa1*dn[X];
-  bc[XZ][XY][Z] = -kappa1*dn[Y];
-  bc[XZ][XZ][Z] =  kappa2*dn[Z];
-  bc[XZ][YY][Z] =  0.0;
-  bc[XZ][YZ][Z] =  0.0;
-  bc[XZ][ZZ][Z] =  kappa0*dn[X];
-
-  /* YY equation */
-
-  bc[YY][XX][X] =  0.0;
-  bc[YY][XY][X] =  kappa0*dn[Y];
-  bc[YY][XZ][X] =  0.0;
-  bc[YY][YY][X] =  kappa1*dn[X];
-  bc[YY][YZ][X] =  0.0;
-  bc[YY][ZZ][X] =  0.0;
-
-  bc[YY][XX][Y] =  0.0;
-  bc[YY][XY][Y] = -kappa1*dn[X];
-  bc[YY][XZ][Y] =  0.0;
-  bc[YY][YY][Y] =  kappa0*dn[Y];
-  bc[YY][YZ][Y] = -kappa1*dn[Z];
-  bc[YY][ZZ][Y] =  0.0;
-
-  bc[YY][XX][Z] =  0.0;
-  bc[YY][XY][Z] =  0.0;
-  bc[YY][XZ][Z] =  0.0;
-  bc[YY][YY][Z] =  kappa1*dn[Z];
-  bc[YY][YZ][Z] =  kappa0*dn[Y];
-  bc[YY][ZZ][Z] =  0.0;
-
-  /* YZ equation */
-
-  bc[YZ][XX][X] =  0.0;
-  bc[YZ][XY][X] =  kappa0*dn[Z];
-  bc[YZ][XZ][X] =  kappa0*dn[Y];
-  bc[YZ][YY][X] =  0.0;
-  bc[YZ][YZ][X] =  2.0*kappa1*dn[X];
-  bc[YZ][ZZ][X] =  0.0;
-
-  bc[YZ][XX][Y] =  0.0;
-  bc[YZ][XY][Y] =  0.0;
-  bc[YZ][XZ][Y] = -kappa1*dn[X];
-  bc[YZ][YY][Y] =  kappa0*dn[Z];
-  bc[YZ][YZ][Y] =  kappa2*dn[Y];
-  bc[YZ][ZZ][Y] = -kappa1*dn[Z];
-
-  bc[YZ][XX][Z] =  0.0;
-  bc[YZ][XY][Z] = -kappa1*dn[X];
-  bc[YZ][XZ][Z] =  0.0;
-  bc[YZ][YY][Z] = -kappa1*dn[Y];
-  bc[YZ][YZ][Z] =  kappa2*dn[Z];
-  bc[YZ][ZZ][Z] =  kappa0*dn[Y];
-
-  /* ZZ equation */
-
-  bc[ZZ][XX][X] =  0.0;
-  bc[ZZ][XY][X] =  0.0;
-  bc[ZZ][XZ][X] =  kappa0*dn[Z];
-  bc[ZZ][YY][X] =  0.0;
-  bc[ZZ][YZ][X] =  0.0;
-  bc[ZZ][ZZ][X] =  kappa1*dn[X];
-  
-  bc[ZZ][XX][Y] =  0.0;
-  bc[ZZ][XY][Y] =  0.0;
-  bc[ZZ][XZ][Y] =  0.0;
-  bc[ZZ][YY][Y] =  0.0;
-  bc[ZZ][YZ][Y] =  kappa0*dn[Z];
-  bc[ZZ][ZZ][Y] =  kappa1*dn[Y];
-  
-  bc[ZZ][XX][Z] =  0.0;
-  bc[ZZ][XY][Z] =  0.0;
-  bc[ZZ][XZ][Z] = -kappa1*dn[X];
-  bc[ZZ][YY][Z] =  0.0;
-  bc[ZZ][YZ][Z] = -kappa1*dn[Y];
-  bc[ZZ][ZZ][Z] =  kappa0*dn[Z];
-
-  return 0;
 }
 
 /*****************************************************************************
