@@ -1566,22 +1566,27 @@ int file_get_file_index(const char * filename) {
   return ifile;
 }
 
-
-/*****************************************************************************
+/****************************************************************************
  *
- *  extract_read_single_file
+ *  io_metadata_nrecord
  *
- *****************************************************************************/
+ ****************************************************************************/
 
 int io_metadata_nrecord(const io_metadata_t * meta) {
 
-  /* This is still not very satisfactory. Need no,. of records in metadata */
+  /* This is still not very satisfactory. Need no. of records in metadata */
   int nrecord = meta->element.count;
   if (meta->element.datatype == MPI_CHAR) nrecord /= 23;
   nrec_ = nrecord;
 
   return nrecord;
 }
+
+/*****************************************************************************
+ *
+ *  extract_read_single_file
+ *
+ *****************************************************************************/
 
 int extract_read_single_file(io_metadata_t * meta, const char * stub,
 			     int itime, double * datatotal) {
@@ -1613,10 +1618,14 @@ int extract_read_single_file(io_metadata_t * meta, const char * stub,
 	  else {
 	    nread = fscanf(fp, "%le", &datum);
 	  }
-	  if (nread != 1) printf("File out of records!!\n");
 
-	  /* Place at correct offset in the full array */
-	  *(datatotal + nrecord*indexd + nr) = datum;
+	  if (nread != 1) {
+	    printf("File missing or out of records!!\n");
+	  }
+	  else {
+	    /* Place at correct offset in the full array */
+	    *(datatotal + nrecord*indexd + nr) = datum;
+	  }
 	}
 
       }
@@ -1812,7 +1821,8 @@ int extract_process_and_output(const char * stub, int ntime,
   cs_ntotal(meta->cs, ntargets);
 
   {
-    size_t n = nrecord*ntargets[0]*ntargets[1]*ntargets[2];
+    size_t nr = nrecord;
+    size_t n = nr*ntargets[0]*ntargets[1]*ntargets[2];
     datasection = (double *) calloc(n, sizeof(double));
     if (datasection == NULL) printf("calloc(datasection) failed\n");
   }
