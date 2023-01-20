@@ -1614,18 +1614,15 @@ int extract_read_single_file(io_metadata_t * meta, const char * stub,
 	  int nread = 0;
 	  if (meta->options.iorformat == IO_RECORD_BINARY) {
 	    nread = fread(&datum, sizeof(double), 1, fp);
+	    if (nread != 1) goto err;
 	  }
 	  else {
 	    nread = fscanf(fp, "%le", &datum);
+	    if (nread != 1) goto err;
 	  }
 
-	  if (nread != 1) {
-	    printf("File missing or out of records!!\n");
-	  }
-	  else {
-	    /* Place at correct offset in the full array */
-	    *(datatotal + nrecord*indexd + nr) = datum;
-	  }
+	  /* Place at correct offset in the full array */
+	  *(datatotal + nrecord*indexd + nr) = datum;
 	}
 
       }
@@ -1633,8 +1630,12 @@ int extract_read_single_file(io_metadata_t * meta, const char * stub,
   }
 
   fclose(fp);
-
   return 0;
+
+ err:
+
+  if (fp) fclose(fp);
+  return -1;
 }
 
 /*****************************************************************************
