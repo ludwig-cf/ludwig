@@ -941,7 +941,7 @@ void ludwig_run(const char * inputfile) {
     }
 
     if (ludwig->psi) {
-      if (is_psi_output_step()) {
+      if (is_psi_output_step() || is_config_step()) {
 	psi_io_info(ludwig->psi, &iohandler);
 	pe_info(ludwig->pe, "Writing psi file at step %d!\n", step);
 	sprintf(filename,"%spsi-%8.8d", subdirectory, step);
@@ -1063,56 +1063,9 @@ void ludwig_run(const char * inputfile) {
     /* Next time step */
   }
 
-  /* To prevent any conflict between the last regular dump, and
-   * a final dump, there's a barrier here. */
 
-  MPI_Barrier(comm); 
-
-  /* Dump the final configuration if required. */
-
-  if (is_config_at_end()) {
-    {
-      io_event_t event = {0};
-      lb_io_write(ludwig->lb, step, &event);
-    }
-
-    sprintf(filename, "%s%s%8.8d", subdirectory, "config.cds", step);
-
-    if (ncolloid > 0) colloid_io_write(ludwig->cio, filename);
-
-    if (ludwig->phi) {
-      io_event_t event = {0};
-      pe_info(ludwig->pe, "Writing phi file at step %d!\n", step);
-      field_io_write(ludwig->phi, step, &event);
-    }
-
-    if (ludwig->p) {
-      io_event_t event = {0};
-      pe_info(ludwig->pe, "Writing p file at step %d!\n", step);
-      field_io_write(ludwig->p, step, &event);
-    }
-
-    if (ludwig->q) {
-      io_event_t event = {0};
-      pe_info(ludwig->pe, "Writing q file at step %d!\n", step);
-      io_replace_field_values(ludwig->q, ludwig->map, MAP_COLLOID, 0.0);
-      field_io_write(ludwig->q, step, &event);
-    }
-
-    /* Only strictly required if have order parameter dynamics */ 
-    if (ludwig->hydro) {
-      io_event_t event = {0};
-      pe_info(ludwig->pe, "Writing rho/velocity output at step %d!\n", step);
-      hydro_io_write(ludwig->hydro, step, &event);
-    }
-
-    if (ludwig->psi) {
-      psi_io_info(ludwig->psi, &iohandler);
-      pe_info(ludwig->pe, "Writing psi file at step %d!\n", step);
-      sprintf(filename,"%spsi-%8.8d", subdirectory, step);
-      io_write_data(iohandler, filename, ludwig->psi);
-    }
-  }
+  /* End of time step loop. A barrier, before closing down. */
+  MPI_Barrier(comm);
 
   /* Shut down cleanly. Give the timer statistics. Finalise PE. */
 #ifdef PETSC

@@ -100,6 +100,12 @@ Particle statistics:
 Colloid velocities - x y z
 [minimum ]  4.3620293e-03  3.0155764e-03  3.0155764e-03
 [maximum ]  4.3620293e-03  3.0155764e-03  3.0155764e-03
+Writing distribution output at step 20!
+Writing colloid output at step 20!
+
+colloid_io_write:
+writing colloid information to config.cds00000020.001-001 etc
+Writing rho/velocity output at step 20!
 
 Scalars - total mean variance min max
 [rho]      262094.00  1.00000000000  2.6522509e-08  0.99854657671  1.00149980641
@@ -114,10 +120,6 @@ Velocity - x y z
 [maximum ]  4.2567107e-03  3.1316838e-03  3.1316838e-03
 
 Completed cycle 20
-
-colloid_io_write:
-writing colloid information to config.cds00000020.001-001 etc
-Writing rho/velocity output at step 20!
 
 Timer resolution: 1e-06 second
 
