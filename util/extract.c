@@ -746,7 +746,8 @@ int read_data_file_name(const char * filename) {
     int ns = sscanf(tmp+1, "%d.", &ntime);
     if (ns < 1) {
       printf("Could not determine time from %s\n", filename);
-      assert(0);
+      printf("Please check the file and try again!\n");
+      exit(-1);
     }
     else {
       return ntime;
@@ -1470,7 +1471,7 @@ int lc_compute_scalar_ops(double q[3][3], double qs[5]) {
     q2 = s*s + t*t + (s + t)*(s + t);
     q3 = 3.0*s*t*(s + t);
 
-    /* Note the value here can drip just below zero by about DBL_EPSILON */
+    /* Note the value here can dip just below zero by about DBL_EPSILON */
     /* So just set to zero to prevent an NaN */
     q4 = 1.0 - 6.0*q3*q3 / (q2*q2*q2);
     if (q4 < 0.0) q4 = 0.0;
