@@ -1611,19 +1611,18 @@ int extract_read_single_file(io_metadata_t * meta, const char * stub,
 	int indexd = site_index(icd, jcd, kcd, meta->cs->param->ntotal);
 
 	for (int nr = 0; nr < nrecord; nr++) {
-	  double datum = 0.0;
-	  int nread = 0;
+	  /* Place at correct offset in the full array */
 	  if (meta->options.iorformat == IO_RECORD_BINARY) {
-	    nread = fread(&datum, sizeof(double), 1, fp);
-	    if (nread != 1) goto err;
+	    double datum = 0.0;
+	    int nread = fread(&datum, sizeof(double), 1, fp);
+	    if (nread == 1) *(datatotal + nrecord*indexd + nr) = datum;
 	  }
 	  else {
-	    nread = fscanf(fp, "%le", &datum);
-	    if (nread != 1) goto err;
+	    double datum = 0.0;
+	    int nread = fscanf(fp, "%le", &datum);
+	    if (nread == 1) *(datatotal + nrecord*indexd + nr) = datum;
 	  }
 
-	  /* Place at correct offset in the full array */
-	  *(datatotal + nrecord*indexd + nr) = datum;
 	}
 
       }
@@ -1632,11 +1631,6 @@ int extract_read_single_file(io_metadata_t * meta, const char * stub,
 
   fclose(fp);
   return 0;
-
- err:
-
-  if (fp) fclose(fp);
-  return -1;
 }
 
 /*****************************************************************************
