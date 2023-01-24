@@ -24,7 +24,9 @@
 #include "lb_data_options.h"
 #include "lb_model.h"
 
-#include "io_harness.h"
+#include "io_impl.h"
+#include "io_event.h"
+#include "io_harness.h"  /* Scheduled for removal. Use io_impl.h */
 #include "halo_swap.h"
 
 /* Residual compile-time switches scheduled for removal */
@@ -40,6 +42,9 @@ enum {NDIM = 3, NVEL = 19};
 #ifdef _D3Q27_
 enum {NDIM = 3, NVEL = 27};
 #endif
+
+#define NVELMAX 27
+#define LB_RECORD_LENGTH_ASCII 23
 
 typedef struct lb_collide_param_s lb_collide_param_t;
 typedef struct lb_halo_s lb_halo_t;
@@ -102,8 +107,14 @@ struct lb_data_s {
 
   lb_model_t model;      /* Current LB model information */
   halo_swap_t * halo;    /* halo swap driver */
-  io_info_t * io_info;   /* Distributions */ 
-  io_info_t * io_rho;    /* Fluid density (here; could be hydrodynamics...) */
+
+  /* io_info_t scheduled to be replaced. Use metadata types instead */
+  io_info_t * io_info;   /* Distributions */
+
+  io_element_t ascii;    /* Per site ASCII information. */
+  io_element_t binary;   /* Per site binary information. */
+  io_metadata_t input;   /* Metadata for io implementation (input) */
+  io_metadata_t output;  /* Ditto (for output) */
 
   double * f;            /* Distributions */
   double * fprime;       /* used in propagation only */
@@ -149,21 +160,27 @@ __host__ int lb_halo(lb_t * lb);
 __host__ int lb_halo_swap(lb_t * lb, lb_halo_enum_t flag);
 __host__ int lb_io_info(lb_t * lb, io_info_t ** io_info);
 __host__ int lb_io_info_set(lb_t * lb, io_info_t * io_info, int fin, int fout);
-__host__ int lb_io_rho_set(lb_t *lb, io_info_t * io_rho, int fin, int fout);
-
-__host__ int lb_io_info_commit(lb_t * lb, io_info_args_t args);
 
 __host__ __device__ int lb_ndist(lb_t * lb, int * ndist);
 __host__ __device__ int lb_f(lb_t * lb, int index, int p, int n, double * f);
 __host__ __device__ int lb_f_set(lb_t * lb, int index, int p, int n, double f);
 __host__ __device__ int lb_0th_moment(lb_t * lb, int index, lb_dist_enum_t nd,
 				      double * rho);
-/* These  could be __host__ __device__ pending removal of
- * static constants */
 
 __host__ int lb_init_rest_f(lb_t * lb, double rho0);
 __host__ int lb_1st_moment(lb_t * lb, int index, lb_dist_enum_t nd, double g[3]);
 __host__ int lb_2nd_moment(lb_t * lb, int index, lb_dist_enum_t nd, double s[3][3]);
 __host__ int lb_1st_moment_equilib_set(lb_t * lb, int index, double rho, double u[3]);
+
+__host__ int lb_read_buf(lb_t * lb, int index, const char * buf);
+__host__ int lb_read_buf_ascii(lb_t * lb, int index, const char * buf);
+__host__ int lb_write_buf(const lb_t * lb, int index, char * buf);
+__host__ int lb_write_buf_ascii(const lb_t * lb, int index, char * buf);
+
+__host__ int lb_io_aggr_pack(const lb_t * lb, io_aggregator_t * aggr);
+__host__ int lb_io_aggr_unpack(lb_t * lb, const io_aggregator_t * aggr);
+
+__host__ int lb_io_write(lb_t * lb, int timestep, io_event_t * event);
+__host__ int lb_io_read(lb_t * lb, int timestep, io_event_t * event);
 
 #endif

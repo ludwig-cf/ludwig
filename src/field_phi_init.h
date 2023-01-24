@@ -5,7 +5,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2018-2019 The University of Edinburgh
+ *  (c) 2018-2023 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -26,7 +26,7 @@ struct field_phi_info_s {
 };
 
 int field_phi_init_drop(field_t * phi, double xi, double radius,
-			double phistar);
+			double phistar, int is_centred);
 int field_phi_init_uniform(field_t * phi, double phi0);
 int field_phi_init_block(field_t * phi, double xi);
 int field_phi_init_block_X(field_t * phi, double xi, double block_dimension);

@@ -630,22 +630,22 @@ void beris_edw_kernel_v(kernel_ctxt_t * ktx, beris_edw_t * be,
       for_simd_v(iv, NSIMDVL) { 
 	if (maskv[iv]) {
 	  w[X][X][iv] = 0.5*
-	    (hydro->u[addr_rank1(hydro->nsite, NHDIM, ip1[iv], X)] -
-	     hydro->u[addr_rank1(hydro->nsite, NHDIM, im1[iv], X)]);
+	    (hydro->u->data[addr_rank1(hydro->nsite, NHDIM, ip1[iv], X)] -
+	     hydro->u->data[addr_rank1(hydro->nsite, NHDIM, im1[iv], X)]);
 	    }
 	  }
       for_simd_v(iv, NSIMDVL) { 
 	if (maskv[iv]) {
 	  w[Y][X][iv] = 0.5*
-	    (hydro->u[addr_rank1(hydro->nsite, NHDIM, ip1[iv], Y)] -
-	     hydro->u[addr_rank1(hydro->nsite, NHDIM, im1[iv], Y)]);
+	    (hydro->u->data[addr_rank1(hydro->nsite, NHDIM, ip1[iv], Y)] -
+	     hydro->u->data[addr_rank1(hydro->nsite, NHDIM, im1[iv], Y)]);
 	}
       }
       for_simd_v(iv, NSIMDVL) { 
 	if (maskv[iv]) {
 	  w[Z][X][iv] = 0.5*
-	    (hydro->u[addr_rank1(hydro->nsite, NHDIM, ip1[iv], Z)] -
-	     hydro->u[addr_rank1(hydro->nsite, NHDIM, im1[iv], Z)]);
+	    (hydro->u->data[addr_rank1(hydro->nsite, NHDIM, ip1[iv], Z)] -
+	     hydro->u->data[addr_rank1(hydro->nsite, NHDIM, im1[iv], Z)]);
 	}
       }
 
@@ -658,18 +658,18 @@ void beris_edw_kernel_v(kernel_ctxt_t * ktx, beris_edw_t * be,
 	  
       for_simd_v(iv, NSIMDVL) { 
 	w[X][Y][iv] = 0.5*
-	  (hydro->u[addr_rank1(hydro->nsite, NHDIM, ip1[iv], X)] -
-	   hydro->u[addr_rank1(hydro->nsite, NHDIM, im1[iv], X)]);
+	  (hydro->u->data[addr_rank1(hydro->nsite, NHDIM, ip1[iv], X)] -
+	   hydro->u->data[addr_rank1(hydro->nsite, NHDIM, im1[iv], X)]);
       }
       for_simd_v(iv, NSIMDVL) { 
 	w[Y][Y][iv] = 0.5*
-	  (hydro->u[addr_rank1(hydro->nsite, NHDIM, ip1[iv], Y)] -
-	   hydro->u[addr_rank1(hydro->nsite, NHDIM, im1[iv], Y)]);
+	  (hydro->u->data[addr_rank1(hydro->nsite, NHDIM, ip1[iv], Y)] -
+	   hydro->u->data[addr_rank1(hydro->nsite, NHDIM, im1[iv], Y)]);
       }
       for_simd_v(iv, NSIMDVL) { 
 	w[Z][Y][iv] = 0.5*
-	  (hydro->u[addr_rank1(hydro->nsite, NHDIM, ip1[iv], Z)] -
-	   hydro->u[addr_rank1(hydro->nsite, NHDIM, im1[iv], Z)]);
+	  (hydro->u->data[addr_rank1(hydro->nsite, NHDIM, ip1[iv], Z)] -
+	   hydro->u->data[addr_rank1(hydro->nsite, NHDIM, im1[iv], Z)]);
       }
 
       for_simd_v(iv, NSIMDVL) {
@@ -681,18 +681,18 @@ void beris_edw_kernel_v(kernel_ctxt_t * ktx, beris_edw_t * be,
 	  
       for_simd_v(iv, NSIMDVL) { 
 	w[X][Z][iv] = 0.5*
-	  (hydro->u[addr_rank1(hydro->nsite, NHDIM, ip1[iv], X)] -
-	   hydro->u[addr_rank1(hydro->nsite, NHDIM, im1[iv], X)]);
+	  (hydro->u->data[addr_rank1(hydro->nsite, NHDIM, ip1[iv], X)] -
+	   hydro->u->data[addr_rank1(hydro->nsite, NHDIM, im1[iv], X)]);
       }
       for_simd_v(iv, NSIMDVL) { 
 	w[Y][Z][iv] = 0.5*
-	  (hydro->u[addr_rank1(hydro->nsite, NHDIM, ip1[iv], Y)] -
-	   hydro->u[addr_rank1(hydro->nsite, NHDIM, im1[iv], Y)]);
+	  (hydro->u->data[addr_rank1(hydro->nsite, NHDIM, ip1[iv], Y)] -
+	   hydro->u->data[addr_rank1(hydro->nsite, NHDIM, im1[iv], Y)]);
       }
       for_simd_v(iv, NSIMDVL) { 
 	w[Z][Z][iv] = 0.5*
-	  (hydro->u[addr_rank1(hydro->nsite, NHDIM, ip1[iv], Z)] -
-	   hydro->u[addr_rank1(hydro->nsite, NHDIM, im1[iv], Z)]);
+	  (hydro->u->data[addr_rank1(hydro->nsite, NHDIM, ip1[iv], Z)] -
+	   hydro->u->data[addr_rank1(hydro->nsite, NHDIM, im1[iv], Z)]);
       }
 
       /* Enforce tracelessness */
@@ -1080,26 +1080,18 @@ void beris_edw_fix_swd_kernel(kernel_ctxt_t * ktx, colloids_info_t * cinfo,
   kiterations = kernel_iterations(ktx);
 
   for_simt_parallel(kindex, kiterations, 1) {
-
-    int ic, jc, kc, index;
-    int ia;
-
-    double u[3];
-    double rb[3];
-    double x, y, z;
     
     colloid_t * pc = NULL;
 
-    ic = kernel_coords_ic(ktx, kindex);
-    jc = kernel_coords_jc(ktx, kindex);
-    kc = kernel_coords_kc(ktx, kindex);
-    index = kernel_coords_index(ktx, ic, jc, kc);
+    int ic = kernel_coords_ic(ktx, kindex);
+    int jc = kernel_coords_jc(ktx, kindex);
+    int kc = kernel_coords_kc(ktx, kindex);
+    int index = kernel_coords_index(ktx, ic, jc, kc);
 
     /* To include stationary walls. */
     if (map->status[index] != MAP_FLUID) {
-      for (ia = 0; ia < 3; ia++) {
-	hydro->u[addr_rank1(hydro->nsite, NHDIM, index, ia)] = 0.0;
-      }  
+      double u0[3] = {0.0, 0.0, 0.0};
+      hydro_u_set(hydro, index, u0);
     }
 
     /* Colloids */
@@ -1109,9 +1101,12 @@ void beris_edw_fix_swd_kernel(kernel_ctxt_t * ktx, colloids_info_t * cinfo,
       /* Set the lattice velocity here to the solid body
        * rotational velocity: v + Omega x r_b */
 
-      x = noffsetx + ic;
-      y = noffsety + jc;
-      z = noffsetz + kc;      
+      double u[3];
+      double rb[3];
+
+      double x = noffsetx + ic;
+      double y = noffsety + jc;
+      double z = noffsetz + kc;
 	
       rb[X] = x - pc->s.r[X];
       rb[Y] = y - pc->s.r[Y];
@@ -1125,9 +1120,7 @@ void beris_edw_fix_swd_kernel(kernel_ctxt_t * ktx, colloids_info_t * cinfo,
       u[Y] += pc->s.v[Y];
       u[Z] += pc->s.v[Z];
 
-      for (ia = 0; ia < 3; ia++) {
-	hydro->u[addr_rank1(hydro->nsite, NHDIM, index, ia)] = u[ia];
-      }
+      hydro_u_set(hydro, index, u);
     }
   }
 

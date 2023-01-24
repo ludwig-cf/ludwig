@@ -2,6 +2,8 @@
  *
  *  leesedwards_rt.c
  *
+ *  This could be combined with lees_edwards_options.[ch]
+ *
  *****************************************************************************/
 
 #include <assert.h>
@@ -13,7 +15,7 @@
  *
  *****************************************************************************/
 
-int lees_edw_init_rt(rt_t * rt, lees_edw_info_t * info) {
+int lees_edw_init_rt(rt_t * rt, lees_edw_options_t * info) {
 
   int key;
 

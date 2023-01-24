@@ -4,7 +4,7 @@
 version 0.19.0
 
 - The extract_colloids.c utility has been updated so that it takes
-  only one comand line argument.
+  only one comand line argument for new I/O metadata.
 - LTGM.com analysis has been retired as the service is closing. The
   two outstanding recommendations are covered by CodeQL notes.
 - Input associated with the choice of force arising from the free energy
@@ -19,6 +19,9 @@ version 0.19.0
   compensated sum, which is more robust to threads/MPI.
 - Added compiler option information and git commit information at run
   time.
+- The LaTeX tutorials document has been replaced by html tutorials
+  at https://ludwig.epcc.ed.ac.uk/ to reflect new I/O and to add a
+  number of new topics.
 
 version 0.18.0
 

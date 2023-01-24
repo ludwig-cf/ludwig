@@ -213,7 +213,7 @@ static __global__ void visc_update_kernel(kernel_ctxt_t * ktx,
     etaminus = pow(visc_param.eta_minus, 0.5*(1.0 - phi0));
     etaplus  = pow(visc_param.eta_plus,  0.5*(1.0 + phi0));
 
-    hydro->eta[addr_rank0(hydro->nsite, index)] = etaminus*etaplus;
+    hydro->eta->data[addr_rank0(hydro->nsite, index)] = etaminus*etaplus;
   }
 
   return;

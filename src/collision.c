@@ -28,7 +28,6 @@
 
 #include "pe.h"
 #include "util.h"
-#include "coords_s.h"
 #include "physics.h"
 #include "free_energy.h"
 #include "visc.h"
@@ -330,7 +329,7 @@ void lb_collision_mrt1_site(lb_t * lb, hydro_t * hydro, map_t * map,
   for (ia = 0; ia < 3; ia++) {
     for_simd_v(iv, NSIMDVL) {
       force[ia][iv] = _cp.force_global[ia] 
-	+ hydro->f[addr_rank1(hydro->nsite, NHDIM, index0+iv, ia)];
+	+ hydro->force->data[addr_rank1(hydro->nsite, 3, index0+iv, ia)];
     }
   }
   
@@ -395,7 +394,7 @@ void lb_collision_mrt1_site(lb_t * lb, hydro_t * hydro, map_t * map,
     /* Use viscosity model values hydro->eta */
     /* Bulk viscosity will be (eta_bulk/eta_shear)_newtonian*eta_local */
     for_simd_v(iv, NSIMDVL) {
-      eta[iv] = hydro->eta[addr_rank0(hydro->nsite, index0+iv)];
+      eta[iv] = hydro->eta->data[addr_rank0(hydro->nsite, index0+iv)];
       eta_bulk[iv] = (_cp.eta_bulk/_cp.eta_shear)*eta[iv];
     }
   }
@@ -570,12 +569,12 @@ void lb_collision_mrt1_site(lb_t * lb, hydro_t * hydro, map_t * map,
     }
     /* density */
     for_simd_v(iv, NSIMDVL) {
-      hydro->rho[addr_rank0(hydro->nsite, index0+iv)] = rho[iv];
+      hydro->rho->data[addr_rank0(hydro->nsite, index0+iv)] = rho[iv];
     }
     /* velocity */
     for (ia = 0; ia < 3; ia++) {
       for_simd_v(iv, NSIMDVL) {
-	hydro->u[addr_rank1(hydro->nsite, NHDIM, index0+iv, ia)] = u[ia][iv];
+	hydro->u->data[addr_rank1(hydro->nsite, 3, index0+iv, ia)] = u[ia][iv];
       }
     }
   }
@@ -588,9 +587,9 @@ void lb_collision_mrt1_site(lb_t * lb, hydro_t * hydro, map_t * map,
 	    = fchunk[p*NSIMDVL+iv]; 
 	}
 	/* velocity */
-
 	for (ia = 0; ia < 3; ia++) {
-	  hydro->u[addr_rank1(hydro->nsite, NHDIM, index0 + iv, ia)] = u[ia][iv];
+	  int haddr = addr_rank1(hydro->nsite, 3, index0 + iv, ia);
+	  hydro->u->data[haddr] = u[ia][iv];
 	}
       }
     }
@@ -816,15 +815,16 @@ __device__ void lb_collision_mrt2_site(lb_t * lb, hydro_t * hydro,
   
   for (ia = 0; ia < 3; ia++) {
     for_simd_v(iv, NSIMDVL) {
-      force[ia][iv] = _cp.force_global[ia] 
-	+ hydro->f[addr_rank1(hydro->nsite, NHDIM, index0+iv, ia)];
+      int haddr = addr_rank1(hydro->nsite, 3, index0 + iv, ia);
+      force[ia][iv] = _cp.force_global[ia]  + hydro->force->data[haddr];
       u[ia][iv] = rrho[iv]*(u[ia][iv] + 0.5*force[ia][iv]);  
     }
   }
 
-  for (ia = 0; ia < 3; ia++) {   
+  for (ia = 0; ia < 3; ia++) {
     for_simd_v(iv, NSIMDVL) {
-      hydro->u[addr_rank1(hydro->nsite, NHDIM, index0+iv, ia)] = u[ia][iv];
+      int haddr = addr_rank1(hydro->nsite, 3, index0 + iv, ia);
+      hydro->u->data[haddr] = u[ia][iv];
     }
   }
   

@@ -72,12 +72,15 @@ See `CONTRIBUTING.md` for further details of testing and
 development.
 
 
-#### Attribution
+#### Credits
 
 [![DOI](https://zenodo.org/badge/137508275.svg)](https://zenodo.org/badge/latestdoi/137508275)
 
 Recent release versions have a Zenodo-provided DOI. Please consider using the
 appropriate DOI as a reference if you use Ludwig in your publications.
+
+From Version 0.19.0 we have included a copy of `cJSON` which is released
+under an MIT license by Gave Gamble at https://github.com/DaveGamble/cJSON.
 
 #### Help
 

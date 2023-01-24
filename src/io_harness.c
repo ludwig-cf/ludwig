@@ -35,7 +35,6 @@
 #include "pe.h"
 #include "util.h"
 #include "util_fopen.h"
-#include "coords_s.h"
 #include "leesedwards.h"
 #include "io_harness.h"
 
@@ -84,6 +83,7 @@ int io_info_create(pe_t * pe, cs_t * cs, io_info_args_t * arg, io_info_t ** p) {
   info->single_file_read = 0;
 
   /* Patch to allow old parallel i/o to take effect */
+
   if (info->io_comm->n_io > 1) {
     info->args.output.mode = IO_MODE_MULTIPLE;
   }
@@ -96,51 +96,6 @@ int io_info_create(pe_t * pe, cs_t * cs, io_info_args_t * arg, io_info_t ** p) {
 	     info->io_comm->comm);
 
   *p = info;
-
-  return 0;
-}
-
-/*****************************************************************************
- *
- *  io_info_create_impl
- *
- *  Create and initialise an io_info_t.
- *
- *****************************************************************************/
-
-__host__ int io_info_create_impl(pe_t * pe, cs_t * cs, io_info_args_t args,
-				 const io_implementation_t * impl,
-				 io_info_t ** info) {
-  io_info_t * p = NULL;
-
-  assert(pe);
-  assert(cs);
-  assert(info);
-
-  p = (io_info_t *) calloc(1, sizeof(io_info_t));
-  assert(p);
-
-  if (p == NULL) pe_fatal(pe, "Failed to allocate io_info_t struct\n");
-
-  /* Retain pointers to the parallel environment, coordinate system.
-   * Copy the argument and implementation details (assumed correct here).
-   * Create decomposition from the grid */
-
-  p->pe = pe;
-  p->cs = cs;
-
-  p->args = args;
-  p->impl = *impl;
-
-  io_decomposition_create(pe, cs, args.grid, &p->comm);
-
-  /* Local rank and group counts */
-  /* Root stores max group size in case of irregular decomposition */
-
-  p->nsites = p->comm->nsite[X]*p->comm->nsite[Y]*p->comm->nsite[Z];
-  MPI_Reduce(&p->nsites, &p->maxlocal, 1, MPI_INT, MPI_MAX, 0, p->comm->comm);
-
-  *info = p;
 
   return 0;
 }
@@ -714,10 +669,10 @@ static __host__ int io_info_bytesize(io_info_t * info,
 
   switch (iorformat) {
   case IO_RECORD_ASCII:
-    *bs = info->impl.bytesize_ascii;
+    *bs = info->bytesize_ascii;
     break;
   case IO_RECORD_BINARY:
-    *bs = info->impl.bytesize_binary;
+    *bs = info->bytesize_binary;
     break;
   default:
     err = 1;
@@ -781,8 +736,6 @@ __host__ int io_info_output_bytesize(io_info_t * info, size_t * bs) {
 
 int io_write_data(io_info_t * info, const char * filename_stub, void * data) {
 
-  double t0, t1;
-
   assert(info);
   assert(data);
 
@@ -792,6 +745,7 @@ int io_write_data(io_info_t * info, const char * filename_stub, void * data) {
   }
   else {
     /* This is serial output format if one I/O group */
+    double t0, t1;
     t0 = MPI_Wtime();
     io_write_data_s(info, filename_stub, data);
     t1 = MPI_Wtime();

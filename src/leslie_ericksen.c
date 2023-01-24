@@ -8,7 +8,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2010-2022 The University of Edinburgh
+ *  (c) 2010-2023 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -331,32 +331,32 @@ __device__ static void leslie_u_gradient_tensor(kernel_ctxt_t * ktx,
   int m1 = kernel_coords_index(ktx, ic - 1, jc, kc);
   int p1 = kernel_coords_index(ktx, ic + 1, jc, kc);
 
-  w[X][X] = 0.5*(hydro->u[addr_rank1(hydro->nsite, NHDIM, p1, X)] -
-		 hydro->u[addr_rank1(hydro->nsite, NHDIM, m1, X)]);
-  w[Y][X] = 0.5*(hydro->u[addr_rank1(hydro->nsite, NHDIM, p1, Y)] -
-		 hydro->u[addr_rank1(hydro->nsite, NHDIM, m1, Y)]);
-  w[Z][X] = 0.5*(hydro->u[addr_rank1(hydro->nsite, NHDIM, p1, Z)] -
-		 hydro->u[addr_rank1(hydro->nsite, NHDIM, m1, Z)]);
+  w[X][X] = 0.5*(hydro->u->data[addr_rank1(hydro->nsite, NHDIM, p1, X)] -
+		 hydro->u->data[addr_rank1(hydro->nsite, NHDIM, m1, X)]);
+  w[Y][X] = 0.5*(hydro->u->data[addr_rank1(hydro->nsite, NHDIM, p1, Y)] -
+		 hydro->u->data[addr_rank1(hydro->nsite, NHDIM, m1, Y)]);
+  w[Z][X] = 0.5*(hydro->u->data[addr_rank1(hydro->nsite, NHDIM, p1, Z)] -
+		 hydro->u->data[addr_rank1(hydro->nsite, NHDIM, m1, Z)]);
 
   m1 = kernel_coords_index(ktx, ic, jc - 1, kc);
   p1 = kernel_coords_index(ktx, ic, jc + 1, kc);
 
-  w[X][Y] = 0.5*(hydro->u[addr_rank1(hydro->nsite, NHDIM, p1, X)] -
-		 hydro->u[addr_rank1(hydro->nsite, NHDIM, m1, X)]);
-  w[Y][Y] = 0.5*(hydro->u[addr_rank1(hydro->nsite, NHDIM, p1, Y)] -
-		 hydro->u[addr_rank1(hydro->nsite, NHDIM, m1, Y)]);
-  w[Z][Y] = 0.5*(hydro->u[addr_rank1(hydro->nsite, NHDIM, p1, Z)] -
-		 hydro->u[addr_rank1(hydro->nsite, NHDIM, m1, Z)]);
+  w[X][Y] = 0.5*(hydro->u->data[addr_rank1(hydro->nsite, NHDIM, p1, X)] -
+		 hydro->u->data[addr_rank1(hydro->nsite, NHDIM, m1, X)]);
+  w[Y][Y] = 0.5*(hydro->u->data[addr_rank1(hydro->nsite, NHDIM, p1, Y)] -
+		 hydro->u->data[addr_rank1(hydro->nsite, NHDIM, m1, Y)]);
+  w[Z][Y] = 0.5*(hydro->u->data[addr_rank1(hydro->nsite, NHDIM, p1, Z)] -
+		 hydro->u->data[addr_rank1(hydro->nsite, NHDIM, m1, Z)]);
 
   m1 = kernel_coords_index(ktx, ic, jc, kc - 1);
   p1 = kernel_coords_index(ktx, ic, jc, kc + 1);
 
-  w[X][Z] = 0.5*(hydro->u[addr_rank1(hydro->nsite, NHDIM, p1, X)] -
-		 hydro->u[addr_rank1(hydro->nsite, NHDIM, m1, X)]);
-  w[Y][Z] = 0.5*(hydro->u[addr_rank1(hydro->nsite, NHDIM, p1, Y)] -
-		 hydro->u[addr_rank1(hydro->nsite, NHDIM, m1, Y)]);
-  w[Z][Z] = 0.5*(hydro->u[addr_rank1(hydro->nsite, NHDIM, p1, Z)] -
-		 hydro->u[addr_rank1(hydro->nsite, NHDIM, m1, Z)]);
+  w[X][Z] = 0.5*(hydro->u->data[addr_rank1(hydro->nsite, NHDIM, p1, X)] -
+		 hydro->u->data[addr_rank1(hydro->nsite, NHDIM, m1, X)]);
+  w[Y][Z] = 0.5*(hydro->u->data[addr_rank1(hydro->nsite, NHDIM, p1, Y)] -
+		 hydro->u->data[addr_rank1(hydro->nsite, NHDIM, m1, Y)]);
+  w[Z][Z] = 0.5*(hydro->u->data[addr_rank1(hydro->nsite, NHDIM, p1, Z)] -
+		 hydro->u->data[addr_rank1(hydro->nsite, NHDIM, m1, Z)]);
 
   /* Enforce tracelessness */
 

@@ -15,22 +15,22 @@
 #ifndef LUDWIG_HYDRO_OPTIONS_H
 #define LUDWIG_HYDRO_OPTIONS_H
 
-/* Possible halo schemes */
-
-typedef enum hydro_halo_enum {
-  HYDRO_U_HALO_HOST,                 /* older host version */
-  HYDRO_U_HALO_TARGET,               /* host or target */
-  HYDRO_U_HALO_OPENMP                /* Host-only OpenMP implementation */ 
-} hydro_halo_enum_t;
+#include "field_options.h"
 
 typedef struct hydro_options_s hydro_options_t;
 
 struct hydro_options_s {
+
   int nhcomm;                        /* Actual halo width */
-  hydro_halo_enum_t haloscheme;      /* Halo exchange method */
+
+  field_options_t rho;               /* Density field (scalar) */
+  field_options_t u;                 /* Velocity field (vector) */
+  field_options_t force;             /* Body force density on fluid (vector) */
+  field_options_t eta;               /* Viscosity field (scalar) */
 };
 
 hydro_options_t hydro_options_default(void);
 hydro_options_t hydro_options_nhalo(int nhalo);
+hydro_options_t hydro_options_haloscheme(field_halo_enum_t hs);
 
 #endif

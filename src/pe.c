@@ -165,7 +165,7 @@ __host__ int pe_message(pe_t * pe) {
        (pe->mpi_size == 1) ? "" : "es");
 
   /* Git */
-  printf("Git commit: %s\n\n", compiler.commit);
+  pe_info(pe, "Git commit: %s\n\n", compiler.commit);
 
   {
     char strctime[BUFSIZ] = {0};

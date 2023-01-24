@@ -450,19 +450,21 @@ static int phi_force_flux_divergence(cs_t * cs, hydro_t * hydro,
     for (jc = 1; jc <= nlocal[Y]; jc++) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 
+	double force[3] = {0};
+
         index  = cs_index(cs, ic, jc, kc);
 	indexj = cs_index(cs, ic, jc-1, kc);
 	indexk = cs_index(cs, ic, jc, kc-1);
 
 	for (ia = 0; ia < 3; ia++) {
-	  hydro->f[addr_rank1(hydro->nsite, NHDIM, index, ia)]
-	    += -(+ fluxe[addr_rank1(nsf,3,index,ia)]
-		 - fluxw[addr_rank1(nsf,3,index,ia)]
-		 + fluxy[addr_rank1(nsf,3,index,ia)]
-		 - fluxy[addr_rank1(nsf,3,indexj,ia)]
-		 + fluxz[addr_rank1(nsf,3,index,ia)]
-		 - fluxz[addr_rank1(nsf,3,indexk,ia)]);
+	  force[ia] = -(+ fluxe[addr_rank1(nsf,3,index,ia)]
+			- fluxw[addr_rank1(nsf,3,index,ia)]
+			+ fluxy[addr_rank1(nsf,3,index,ia)]
+			- fluxy[addr_rank1(nsf,3,indexj,ia)]
+			+ fluxz[addr_rank1(nsf,3,index,ia)]
+			- fluxz[addr_rank1(nsf,3,indexk,ia)]);
 	}
+	hydro_f_local_add(hydro, index, force);
       }
     }
   }

@@ -74,7 +74,7 @@ __host__ int field_create(pe_t * pe, cs_t * cs, lees_edw_t * le,
   assert(pobj);
 
   if (field_options_valid(opts) == 0) {
-    pe_fatal(pe, "Internal error: invalid field options\n");
+    pe_fatal(pe, "Internal error: invalid field options: %s\n", name);
   }
 
   obj = (field_t *) calloc(1, sizeof(field_t));
@@ -82,13 +82,7 @@ __host__ int field_create(pe_t * pe, cs_t * cs, lees_edw_t * le,
   if (obj == NULL) pe_fatal(pe, "calloc(obj) failed\n");
 
   obj->nf = opts->ndata;
-
-  obj->name = (char *) calloc(strlen(name) + 1, sizeof(char));
-  assert(obj->name);
-  if (obj->name == NULL) pe_fatal(pe, "calloc(name) failed\n");
-
-  strncpy(obj->name, name, imin(strlen(name), BUFSIZ));
-  obj->name[strlen(name)] = '\0';
+  obj->name = name;
 
   obj->pe = pe;
   obj->cs = cs;
@@ -99,6 +93,44 @@ __host__ int field_create(pe_t * pe, cs_t * cs, lees_edw_t * le,
 
   field_init(obj, opts->nhcomm, le);
   field_halo_create(obj, &obj->h);
+
+  /* I/O single record information */
+  /* As the communicator creation is a relatively high overhead operation,
+   * we only want to create the metadata objects once. They're here. */
+  /* There should be a check on a valid i/o decomposition before this
+   * point, but in preicpile we can fail here... */
+
+  {
+    io_element_t elasc = {.datatype = MPI_CHAR,
+			  .datasize = sizeof(char),
+			  .count    = 1 + 23*obj->opts.ndata,
+			  .endian   = io_endianness()};
+    io_element_t elbin = {.datatype = MPI_DOUBLE,
+			  .datasize = sizeof(double),
+			  .count    = obj->opts.ndata,
+			  .endian   = io_endianness()};
+    {
+      /* Input metadata */
+      int ifail = 0;
+      io_element_t element = {0};
+      if (opts->iodata.input.iorformat == IO_RECORD_ASCII)  element = elasc;
+      if (opts->iodata.input.iorformat == IO_RECORD_BINARY) element = elbin;
+      ifail = io_metadata_initialise(cs, &opts->iodata.input, &element,
+				     &obj->iometadata_in);
+
+      assert(ifail == 0);
+      if (ifail != 0) pe_fatal(pe, "Field: Bad input i/o decomposition\n");
+
+      /* Output metadata */
+      if (opts->iodata.output.iorformat == IO_RECORD_ASCII)  element = elasc;
+      if (opts->iodata.output.iorformat == IO_RECORD_BINARY) element = elbin;
+      ifail = io_metadata_initialise(cs, &opts->iodata.output, &element,
+				     &obj->iometadata_out);
+
+      assert(ifail == 0);
+      if (ifail != 0) pe_fatal(pe, "Field: Bad output i/o decomposition\n");
+    }
+  }
 
   if (obj->opts.haloverbose) field_halo_info(obj);
 
@@ -130,7 +162,6 @@ __host__ int field_free(field_t * obj) {
   }
 
   if (obj->data) free(obj->data);
-  if (obj->name) free(obj->name);
   if (obj->halo) halo_swap_free(obj->halo);
   if (obj->info) io_info_free(obj->info);
 
@@ -1018,6 +1049,191 @@ static int field_write(FILE * fp, int index, void * self) {
 
 /*****************************************************************************
  *
+ *  field_write_buf
+ *
+ *  Per-lattice site binary write.
+ *
+ *****************************************************************************/
+
+int field_write_buf(field_t * field, int index, char * buf) {
+
+  double array[NQAB] = {0};
+
+  assert(field);
+
+  field_scalar_array(field, index, array);
+  memcpy(buf, array, field->nf*sizeof(double));
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  field_read_buf
+ *
+ *  Per lattice site read (binary)
+ *
+ *****************************************************************************/
+
+int field_read_buf(field_t * field, int index, const char * buf) {
+
+  double array[NQAB] = {0};
+
+  assert(field);
+  assert(buf);
+
+  memcpy(array, buf, field->nf*sizeof(double));
+  field_scalar_array_set(field, index, array);
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  field_write_buf_ascii
+ *
+ *  Per lattice site write (binary).
+ *
+ *****************************************************************************/
+
+int field_write_buf_ascii(field_t * field, int index, char * buf) {
+
+  const int nbyte = 23;
+
+  double array[NQAB] = {0};
+  int ifail = 0;
+
+  assert(field);
+  assert(buf);
+
+  field_scalar_array(field, index, array);
+
+  /* We will overwrite any `\0` coming from sprintf() */
+  /* Use tmp with +1 to allow for the \0 */
+
+  for (int n = 0; n < field->nf; n++) {
+    char tmp[BUFSIZ] = {0};
+    int np = snprintf(tmp, nbyte + 1, " %22.15e", array[n]);
+    if (np != nbyte) ifail = 1;
+    memcpy(buf + n*nbyte, tmp, nbyte*sizeof(char));
+    if (n == field->nf - 1) {
+      np = snprintf(tmp, 2, "\n");
+      if (np != 1) ifail = 2;
+      memcpy(buf + field->nf*nbyte, tmp, sizeof(char)); 
+    }
+  }
+
+  return ifail;
+}
+
+/*****************************************************************************
+ *
+ *  field_read_buf_ascii
+ *
+ *  Per lattice site read (ascii).
+ *
+ *****************************************************************************/
+
+int field_read_buf_ascii(field_t * field, int index, const char * buf) {
+
+  const int nbyte = 23;
+
+  double array[NQAB] = {0};
+  int ifail = 0;
+
+  assert(field);
+  assert(buf);
+
+  for (int n = 0; n < field->nf; n++) {
+    /* First, make sure we have a \0, before sscanf() */
+    char tmp[BUFSIZ] = {0};
+    memcpy(tmp, buf + n*nbyte, nbyte*sizeof(char));
+    int nr = sscanf(tmp, "%le", array + n);
+    if (nr != 1) ifail = 1;
+  }
+
+  field_scalar_array_set(field, index, array);
+
+  return ifail;
+}
+
+/*****************************************************************************
+ *
+ *  field_io_aggr_pack
+ *
+ *  Aggregator for packing the field to io_aggr_buf_t.
+ *
+ *****************************************************************************/
+
+int field_io_aggr_pack(field_t * field, io_aggregator_t * aggr) {
+
+  assert(field);
+  assert(aggr);
+  assert(aggr->buf);
+
+  #pragma omp parallel
+  {
+    int iasc = field->opts.iodata.output.iorformat == IO_RECORD_ASCII;
+    int ibin = field->opts.iodata.output.iorformat == IO_RECORD_BINARY;
+    assert(iasc ^ ibin); /* one or other */
+
+    #pragma omp for
+    for (int ib = 0; ib < cs_limits_size(aggr->lim); ib++) {
+      int ic = cs_limits_ic(aggr->lim, ib);
+      int jc = cs_limits_jc(aggr->lim, ib);
+      int kc = cs_limits_kc(aggr->lim, ib);
+
+      /* Read/write data for (ic,jc,kc) */
+      int index = cs_index(field->cs, ic, jc, kc);
+      int offset = ib*aggr->szelement;
+      if (iasc) field_write_buf_ascii(field, index, aggr->buf + offset);
+      if (ibin) field_write_buf(field, index, aggr->buf + offset);
+    }
+  }
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  field_io_aggr_unpack
+ *
+ *  Aggregator for the upack (read) stage.
+ *
+ *****************************************************************************/
+
+int field_io_aggr_unpack(field_t * field, const io_aggregator_t * aggr) {
+
+  assert(field);
+  assert(aggr);
+  assert(aggr->buf);
+
+  #pragma omp parallel
+  {
+    int iasc = field->opts.iodata.input.iorformat == IO_RECORD_ASCII;
+    int ibin = field->opts.iodata.input.iorformat == IO_RECORD_BINARY;
+    assert(iasc ^ ibin); /* one or other */
+
+    #pragma omp for
+    for (int ib = 0; ib < cs_limits_size(aggr->lim); ib++) {
+      int ic = cs_limits_ic(aggr->lim, ib);
+      int jc = cs_limits_jc(aggr->lim, ib);
+      int kc = cs_limits_kc(aggr->lim, ib);
+
+      /* Read data for (ic,jc,kc) */
+      int index = cs_index(field->cs, ic, jc, kc);
+      size_t offset = ib*aggr->szelement;
+      if (iasc) field_read_buf_ascii(field, index, aggr->buf + offset);
+      if (ibin) field_read_buf(field, index, aggr->buf + offset);
+    }
+  }
+
+  return 0;
+}
+
+
+/*****************************************************************************
+ *
  *  field_write_ascii
  *
  *****************************************************************************/
@@ -1434,6 +1650,104 @@ int field_halo_free(field_halo_t * h) {
   }
 
   *h = (field_halo_t) {0};
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  field_io_write
+ *
+ *****************************************************************************/
+
+int field_io_write(field_t * field, int timestep, io_event_t * event) {
+
+  const io_metadata_t * meta = &field->iometadata_out;
+
+  /* Metadata */
+  if (meta->iswriten == 0) {
+    /* No extra comments at the moment */
+    cJSON * comments = NULL;
+    int ifail = io_metadata_write(meta, field->name, comments);
+    if (ifail == 0) field->iometadata_out.iswriten = 1;
+  }
+
+  /* old ANSI */
+  if (meta->options.mode != IO_MODE_MPIIO) {
+    char filename[BUFSIZ] = {0};
+    sprintf(filename, "%s-%8.8d", field->name, timestep);
+    io_write_data(field->info, filename, field);
+  }
+
+  /* MPIIO only at the moment */
+
+  if (meta->options.mode == IO_MODE_MPIIO) {
+
+    io_impl_t * io = NULL;
+    char filename[BUFSIZ] = {0};
+
+    io_subfile_name(&meta->subfile, field->name, timestep, filename, BUFSIZ);
+    io_impl_create(meta, &io);  /* CAN FAIL in principle */
+    assert(io);
+
+    io_event_record(event, IO_EVENT_AGGR);
+    field_memcpy(field, tdpMemcpyDeviceToHost);
+    field_io_aggr_pack(field, io->aggr);
+
+    io_event_record(event, IO_EVENT_WRITE);
+    io->impl->write(io, filename);
+
+    if (meta->options.report) {
+      pe_info(field->pe, "MPIIO wrote to %s\n", filename);
+    }
+
+    io->impl->free(&io);
+    io_event_report(event, meta, field->name);
+  }
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  field_io_read
+ *
+ *****************************************************************************/
+
+int field_io_read(field_t * field, int timestep, io_event_t * event) {
+
+  assert(field);
+  assert(event);
+
+  const io_metadata_t * meta = &field->iometadata_in;
+
+  /* old ANSI */
+  if (field->opts.iodata.input.mode != IO_MODE_MPIIO) {
+    char filename[BUFSIZ] = {0};
+    sprintf(filename, "%s-%8.8d", field->name, timestep);
+    io_read_data(field->info, filename, field);
+  }
+
+  /* MPIIO only at the moment */
+
+  if (meta->options.mode == IO_MODE_MPIIO) {
+
+    io_impl_t * io = NULL;
+    char filename[BUFSIZ] = {0};
+
+    io_subfile_name(&meta->subfile, field->name, timestep, filename, BUFSIZ);
+
+    io_impl_create(meta, &io);  /* CAN FAIL */
+    assert(io);
+
+    io->impl->read(io, filename);
+
+    field_io_aggr_unpack(field, io->aggr);
+
+    /* REPORT HERE >>>>> */
+
+    io->impl->free(&io);
+  }
 
   return 0;
 }

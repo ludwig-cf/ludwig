@@ -10,7 +10,6 @@ N_cycles 10
 
 size 64_64_64
 grid 4_1_1
-reduced_halo no
 
 ##############################################################################
 #
@@ -37,7 +36,6 @@ free_energy none
 #
 ###############################################################################
 
-colloid_type        inactive
 colloid_init        from_file
 
 colloid_gravity  0.0_0.0_0.0
@@ -56,7 +54,6 @@ soft_sphere_cutoff 2.25
 #
 ###############################################################################
 
-boundary_walls_on no
 periodicity 1_1_1
 
 ###############################################################################
@@ -69,7 +66,6 @@ freq_statistics 10
 config_at_end no
 
 colloid_file_stub colloids-serial-pair
-colloids_io_grid 1_1_1
 colloid_io_format_input  ASCII_SERIAL
 
 ###############################################################################

@@ -49,6 +49,8 @@
 #include "hydro_rt.h"
 
 #include "io_harness.h"
+#include "io_info_args_rt.h"
+
 #include "phi_stats.h"
 #include "phi_force.h"
 #include "phi_force_colloid.h"
@@ -200,14 +202,10 @@ int io_replace_field_values(field_t * field, map_t * map, int status,
 
 static int ludwig_rt(ludwig_t * ludwig) {
 
-  int form;
   int ntstep;
   int n, nstat;
   char filename[FILENAME_MAX];
   char subdirectory[FILENAME_MAX/2];
-  char value[BUFSIZ];
-  int io_grid_default[3] = {1, 1, 1};
-  int io_grid[3];
 
   pe_t * pe = NULL;
   cs_t * cs = NULL;
@@ -256,29 +254,18 @@ static int ludwig_rt(ludwig_t * ludwig) {
   lb_bc_open_rt(pe, rt, cs, ludwig->lb, &ludwig->inflow, &ludwig->outflow);
   phi_bc_open_rt(pe, rt, cs, &ludwig->phi_inflow, &ludwig->phi_outflow);
 
-  /* PHI I/O */
-
-  rt_int_parameter_vector(rt, "default_io_grid", io_grid_default);
-  for (n = 0; n < 3; n++) {
-    io_grid[n] = io_grid_default[n];
-  }
-  rt_int_parameter_vector(rt, "phi_io_grid", io_grid);
-
-  form = IO_FORMAT_DEFAULT;
-  strcpy(value, ""); /* REPLACE Really need a way to get string from "form" */
-  n = rt_string_parameter(rt, "phi_format", value, BUFSIZ);
-  if (n != 0 && strcmp(value, "ASCII") == 0) {
-    form = IO_FORMAT_ASCII;
-  }
-
-
-  /* All the same I/O grid  */
+  {
+  /* Old i/o options scheduled for removal */
+  /* Only default options are now possible. */
+  int form = IO_FORMAT_DEFAULT;
+  int io_grid[3] = {1, 1, 1};
 
   if (ludwig->phi) field_init_io_info(ludwig->phi, io_grid, form, form);
   if (ludwig->p) field_init_io_info(ludwig->p, io_grid, form, form);
   if (ludwig->q) field_init_io_info(ludwig->q, io_grid, form, form);
 
   if (ludwig->phi || ludwig->p || ludwig->q) {
+    const char * value = ""; /* BLANK appeared in old output */
     pe_info(pe, "\n");
     pe_info(pe, "Order parameter I/O\n");
     pe_info(pe, "-------------------\n");
@@ -287,6 +274,7 @@ static int ludwig_rt(ludwig_t * ludwig) {
     pe_info(pe, "I/O decomposition:            %d %d %d\n",
 	    io_grid[X], io_grid[Y], io_grid[Z]);
     advection_init_rt(pe, rt);
+  }
   }
 
   /* Can we move this down to t = 0 initialisation? */
@@ -338,40 +326,40 @@ static int ludwig_rt(ludwig_t * ludwig) {
   else {
     /* Distributions */
 
-    sprintf(filename, "%sdist-%8.8d", subdirectory, ntstep);
-    pe_info(pe, "Re-starting simulation at step %d with data read from "
-	    "config\nfile(s) %s\n", ntstep, filename);
-
-    lb_io_info(ludwig->lb, &iohandler);
-    io_read_data(iohandler, filename, ludwig->lb);
+    pe_info(pe, "Re-starting simulation at step %d with data read from file\n",
+	    ntstep);
+    {
+      io_event_t event = {0};
+      pe_info(pe, "Reading distribution files for step %d\n", ntstep);
+      lb_io_read(ludwig->lb, ntstep, &event);
+    }
 
     /* Restart t != 0 for order parameter */
 
     if (ludwig->phi) {
-      sprintf(filename, "%sphi-%8.8d", subdirectory, ntstep);
-      pe_info(pe, "files(s) %s\n", filename);
-      field_io_info(ludwig->phi, &iohandler);
-      io_read_data(iohandler, filename, ludwig->phi);
+      io_event_t event = {0};
+      pe_info(pe, "Reading phi files for step %d\n", ntstep);
+      field_io_read(ludwig->phi, ntstep, &event);
     }
 
     if (ludwig->p) {
-      sprintf(filename, "%sp-%8.8d", subdirectory, ntstep);
-      pe_info(pe, "files(s) %s\n", filename);
-      field_io_info(ludwig->p, &iohandler);
-      io_read_data(iohandler, filename, ludwig->p);
+      io_event_t event = {0};
+      pe_info(pe, "Reading p files for step %d\n", ntstep);
+      field_io_read(ludwig->p, ntstep, &event);
     }
+
     if (ludwig->q) {
-      sprintf(filename, "%sq-%8.8d", subdirectory, ntstep);
-      pe_info(pe, "files(s) %s\n", filename);
-      field_io_info(ludwig->q, &iohandler);
-      io_read_data(iohandler, filename, ludwig->q);
+      io_event_t event = {0};
+      pe_info(pe, "Reading q_ab files for step %d\n", ntstep);
+      field_io_read(ludwig->q, ntstep, &event);
     }
+
     if (ludwig->hydro) {
-      sprintf(filename, "%svel-%8.8d", subdirectory, ntstep);
-      pe_info(pe, "hydro files(s) %s\n", filename);
-      hydro_io_info(ludwig->hydro, &iohandler);
-      io_read_data(iohandler, filename, ludwig->hydro);
+      io_event_t event = {0};
+      pe_info(pe, "Reading rho/vel files for step %d\n", ntstep);
+      hydro_io_read(ludwig->hydro, ntstep, &event);
     }
+
     if (ludwig->psi) {
       psi_io_info(ludwig->psi, &iohandler);
       sprintf(filename,"%spsi-%8.8d", subdirectory, ntstep);
@@ -914,18 +902,9 @@ void ludwig_run(const char * inputfile) {
     /* Configuration dump */
 
     if (is_config_step()) {
-      lb_memcpy(ludwig->lb, tdpMemcpyDeviceToHost);
+      io_event_t event = {0};
       pe_info(ludwig->pe, "Writing distribution output at step %d!\n", step);
-      sprintf(filename, "%sdist-%8.8d", subdirectory, step);
-      lb_io_info(ludwig->lb, &iohandler);
-      io_write_data(iohandler, filename, ludwig->lb);
-    }
-
-    if (is_rho_output_step()) {
-      /* Potential device-host copy required */
-      pe_info(ludwig->pe, "Writing density output at step %d!\n", step);
-      sprintf(filename, "%srho-%8.8d", subdirectory, step);
-      io_write_data(ludwig->lb->io_rho, filename, ludwig->lb);
+      lb_io_write(ludwig->lb, step, &event);
     }
 
     /* is_measurement_step() is here to prevent 'breaking' old input
@@ -942,23 +921,27 @@ void ludwig_run(const char * inputfile) {
     if (is_phi_output_step() || is_config_step()) {
 
       if (ludwig->phi) {
-	field_io_info(ludwig->phi, &iohandler);
+	io_event_t event = {0};
 	pe_info(ludwig->pe, "Writing phi file at step %d!\n", step);
-	sprintf(filename,"%sphi-%8.8d", subdirectory, step);
-	io_write_data(iohandler, filename, ludwig->phi);
+	field_io_write(ludwig->phi, step, &event);
       }
+
+      if (ludwig->p) {
+	io_event_t event = {0};
+	pe_info(ludwig->pe, "Writing p file at step %d!\n", step);
+	field_io_write(ludwig->p, step, &event);
+      }
+
       if (ludwig->q) {
-	field_io_info(ludwig->q, &iohandler);
-	/* replace q-tensor on former colloid sites */
-	io_replace_values(ludwig->q, ludwig->map, MAP_COLLOID, 0.00001);
+	io_event_t event = {0};
 	pe_info(ludwig->pe, "Writing q file at step %d!\n", step);
-	sprintf(filename,"%sq-%8.8d", subdirectory, step);
-	io_write_data(iohandler, filename, ludwig->q);
+	io_replace_values(ludwig->q, ludwig->map, MAP_COLLOID, 0.00001);
+	field_io_write(ludwig->q, step, &event);
       }
     }
 
     if (ludwig->psi) {
-      if (is_psi_output_step()) {
+      if (is_psi_output_step() || is_config_step()) {
 	psi_io_info(ludwig->psi, &iohandler);
 	pe_info(ludwig->pe, "Writing psi file at step %d!\n", step);
 	sprintf(filename,"%spsi-%8.8d", subdirectory, step);
@@ -986,10 +969,9 @@ void ludwig_run(const char * inputfile) {
     }
 
     if (is_vel_output_step() || is_config_step()) {
-      hydro_io_info(ludwig->hydro, &iohandler);
-      pe_info(ludwig->pe, "Writing velocity output at step %d!\n", step);
-      sprintf(filename, "%svel-%8.8d", subdirectory, step);
-      io_write_data(iohandler, filename, ludwig->hydro);
+      io_event_t event = {0};
+      pe_info(ludwig->pe, "Writing rho/velocity output at step %d!\n", step);
+      hydro_io_write(ludwig->hydro, step, &event);
     }
 
     /* Print progress report */
@@ -1081,55 +1063,9 @@ void ludwig_run(const char * inputfile) {
     /* Next time step */
   }
 
-  /* To prevent any conflict between the last regular dump, and
-   * a final dump, there's a barrier here. */
 
-  MPI_Barrier(comm); 
-
-  /* Dump the final configuration if required. */
-
-  if (is_config_at_end()) {
-    lb_memcpy(ludwig->lb, tdpMemcpyDeviceToHost);
-    sprintf(filename, "%sdist-%8.8d", subdirectory, step);
-    lb_io_info(ludwig->lb, &iohandler);
-    io_write_data(iohandler, filename, ludwig->lb);
-    sprintf(filename, "%s%s%8.8d", subdirectory, "config.cds", step);
-
-    if (ncolloid > 0) colloid_io_write(ludwig->cio, filename);
-
-    if (ludwig->phi) {
-      field_io_info(ludwig->phi, &iohandler);
-      pe_info(ludwig->pe, "Writing phi file at step %d!\n", step);
-      sprintf(filename,"%sphi-%8.8d", subdirectory, step);
-      io_write_data(iohandler, filename, ludwig->phi);
-    }
-
-    if (ludwig->q) {
-      /* Run the replacement kernel, then copy back */
-      io_replace_field_values(ludwig->q, ludwig->map, MAP_COLLOID, 0.0);
-      field_memcpy(ludwig->q, tdpMemcpyDeviceToHost);
-
-      field_io_info(ludwig->q, &iohandler);
-      pe_info(ludwig->pe, "Writing q file at step %d!\n", step);
-      sprintf(filename,"%sq-%8.8d", subdirectory, step);
-      io_write_data(iohandler, filename, ludwig->q);
-    }
-    /* Only strictly required if have order parameter dynamics */ 
-    if (ludwig->hydro) {
-
-      hydro_memcpy(ludwig->hydro, tdpMemcpyDeviceToHost);
-      hydro_io_info(ludwig->hydro, &iohandler);
-      pe_info(ludwig->pe, "Writing velocity output at step %d!\n", step);
-      sprintf(filename, "%svel-%8.8d", subdirectory, step);
-      io_write_data(iohandler, filename, ludwig->hydro);
-    }
-    if (ludwig->psi) {
-      psi_io_info(ludwig->psi, &iohandler);
-      pe_info(ludwig->pe, "Writing psi file at step %d!\n", step);
-      sprintf(filename,"%spsi-%8.8d", subdirectory, step);
-      io_write_data(iohandler, filename, ludwig->psi);
-    }
-  }
+  /* End of time step loop. A barrier, before closing down. */
+  MPI_Barrier(comm);
 
   /* Shut down cleanly. Give the timer statistics. Finalise PE. */
 #ifdef PETSC
@@ -1286,8 +1222,8 @@ int free_energy_init_rt(ludwig_t * ludwig) {
   cs_t * cs = NULL;
   lees_edw_t * le = NULL;
 
-  lees_edw_info_t le_info = {0};
-  lees_edw_info_t * info = &le_info;
+  lees_edw_options_t le_info = {0};
+  lees_edw_options_t * info = &le_info;
 
   assert(ludwig);
   assert(ludwig->pe);
@@ -1340,6 +1276,7 @@ int free_energy_init_rt(ludwig_t * ludwig) {
 
     {
       field_options_t opts = field_options_ndata_nhalo(nf, nhalo);
+      io_info_args_rt(rt, RT_FATAL, "phi", IO_INFO_READ_WRITE, &opts.iodata);
       field_create(pe, cs, le, "phi", &opts, &ludwig->phi);
       field_grad_create(pe, ludwig->phi, ngrad, &ludwig->phi_grad);
     }
@@ -1422,6 +1359,7 @@ int free_energy_init_rt(ludwig_t * ludwig) {
 
     {
       field_options_t opts = field_options_ndata_nhalo(nf, nhalo);
+      io_info_args_rt(rt, RT_FATAL, "phi", IO_INFO_READ_WRITE, &opts.iodata);
       field_create(pe, cs, le, "phi", &opts, &ludwig->phi);
       field_grad_create(pe, ludwig->phi, ngrad, &ludwig->phi_grad);
     }
@@ -1464,6 +1402,7 @@ int free_energy_init_rt(ludwig_t * ludwig) {
 
     {
       field_options_t opts = field_options_ndata_nhalo(nf, nhalo);
+      io_info_args_rt(rt, RT_FATAL, "phi", IO_INFO_READ_WRITE, &opts.iodata);
       field_create(pe, cs, le, "phi", &opts, &ludwig->phi);
       field_grad_create(pe, ludwig->phi, ngrad, &ludwig->phi_grad);
       phi_ch_create(pe, cs, le, &ch_options, &ludwig->pch);
@@ -1598,6 +1537,7 @@ int free_energy_init_rt(ludwig_t * ludwig) {
 
     {
       field_options_t opts = field_options_ndata_nhalo(nf, nhalo);
+      io_info_args_rt(rt, RT_FATAL, "phi", IO_INFO_READ_WRITE, &opts.iodata);
       field_create(pe, cs, NULL, "phi", &opts, &ludwig->phi);
     }
 
@@ -1685,6 +1625,8 @@ int free_energy_init_rt(ludwig_t * ludwig) {
       if (rt_switch(rt, "field_data_use_first_touch")) {
 	opts.usefirsttouch = 1;
       }
+      io_info_args_rt(rt, RT_FATAL, "q", IO_INFO_READ_WRITE, &opts.iodata);
+
       field_create(pe, cs, le, "q", &opts, &ludwig->q);
       field_grad_create(pe, ludwig->q, ngrad, &ludwig->q_grad);
     }
@@ -1750,6 +1692,7 @@ int free_energy_init_rt(ludwig_t * ludwig) {
 
     {
       field_options_t opts = field_options_ndata_nhalo(nf, nhalo);
+      io_info_args_rt(rt, RT_FATAL, "p", IO_INFO_READ_WRITE, &opts.iodata);
       field_create(pe, cs, le, "p", &opts, &ludwig->p);
       field_grad_create(pe, ludwig->p, ngrad, &ludwig->p_grad);
     }
@@ -1808,6 +1751,8 @@ int free_energy_init_rt(ludwig_t * ludwig) {
       if (rt_switch(rt, "field_data_use_first_touch")) {
 	opts.usefirsttouch = 1;
       }
+      io_info_args_rt(rt, RT_FATAL, "phi", IO_INFO_READ_WRITE, &opts.iodata);
+
       field_create(pe, cs, le, "phi", &opts, &ludwig->phi);
       field_grad_create(pe, ludwig->phi, ngrad, &ludwig->phi_grad);
       phi_ch_create(pe, cs, le, &ch_options, &ludwig->pch);
@@ -1841,6 +1786,7 @@ int free_energy_init_rt(ludwig_t * ludwig) {
       if (rt_switch(rt, "field_data_use_first_touch")) {
 	opts.usefirsttouch = 1;
       }
+      io_info_args_rt(rt, RT_FATAL, "q", IO_INFO_READ_WRITE, &opts.iodata);
       field_create(pe, cs, le, "q", &opts, &ludwig->q);
       field_grad_create(pe, ludwig->q, ngrad, &ludwig->q_grad);
     }
