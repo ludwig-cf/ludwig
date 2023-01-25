@@ -1,0 +1,367 @@
+Welcome to: Ludwig v0.19.0 (Serial version running on 1 process)
+Git commit: 728176d0efb74c2522b413a82024a5b1701465d8
+
+Start time: Mon Jan 23 15:12:45 2023
+
+Compiler:
+  name:           Gnu 12.2.0
+  version-string: 12.2.0
+  options:        -O2 -g -fopenmp -Wall
+
+Note assertions via standard C assert() are on.
+
+Target thread model: OpenMP.
+OpenMP threads: 4; maximum number of threads: 8.
+
+Read 21 user parameters from blue-phase-visual.inp
+
+System details
+--------------
+System size:    16 16 16
+Decomposition:  1 1 1
+Local domain:   16 16 16
+Periodic:       1 1 1
+Halo nhalo:     2
+Reorder:        true
+Initialised:    1
+
+Free energy details
+-------------------
+
+Blue phase free energy selected.
+
+Liquid crystal blue phase free energy
+Bulk parameter A0:         =  1.4384711e-02
+Magnitude of order gamma   =  3.1764706e+00
+Pitch wavevector q0        =  2.7768018e-01
+... gives pitch length     =  2.2627417e+01
+Elastic constant kappa0    =  1.0000000e-02
+Elastic constant kappa1    =  1.0000000e-02
+Amplitude (uniaxial) order = -2.0000000e-01
+Effective aspect ratio xi  =  7.0000000e-01
+Chirality                  =  1.3500000e+00
+Reduced temperature        = -5.0000003e-01
+Initial redshift           =  8.3000000e-01
+Dynamic redshift update    =             no
+Liquid crystal activity                  No
+
+Using Beris-Edwards solver:
+Rotational diffusion const =  1.0000000e-01
+LC fluctuations:           =  off
+
+System properties
+----------------
+Mean fluid density:           1.00000e+00
+Shear viscosity               1.66667e+00
+Bulk viscosity                1.66667e+00
+Temperature                   0.00000e+00
+External body force density   0.00000e+00  0.00000e+00  0.00000e+00
+External E-field amplitude    0.00000e+00  0.00000e+00  0.00000e+00
+External E-field frequency    0.00000e+00
+External magnetic field       0.00000e+00  0.00000e+00  0.00000e+00
+
+Lattice Boltzmann distributions
+-------------------------------
+Model:            d3q19  
+SIMD vector len:  1
+Number of sets:   1
+Halo type:        lb_halo_target (full halo)
+Input format:     binary
+Output format:    binary
+I/O grid:         1 1 1
+
+Lattice Boltzmann collision
+---------------------------
+Relaxation time scheme:   M10
+Hydrodynamic modes:       on
+Ghost modes:              on
+Isothermal fluctuations:  off
+Shear relaxation time:    5.50000e+00
+Bulk relaxation time:     5.50000e+00
+Ghost relaxation time:    1.00000e+00
+[User   ] Random number seed: 8361235
+
+Hydrodynamics
+-------------
+Hydrodynamics: on
+
+Order parameter I/O
+-------------------
+Order parameter I/O format:   
+I/O decomposition:            1 1 1
+
+Advection scheme order:  1 (default)
+Gradient calculation: 3d_7pt_fluid
+
+
+Initialising Q_ab using O8M (BPI)
+Initial conditions.
+
+Scalars - total mean variance min max
+[rho]        4096.00  1.00000000000  2.2204460e-16  1.00000000000  1.00000000000
+[Qxx]  2.6766783e-15  6.5348592e-19  6.0000000e-02 -4.4966058e-01  4.4966058e-01
+[Qxy] -1.7414342e-13 -4.2515484e-17  5.0000000e-02 -6.0000000e-01  6.0000000e-01
+[Qxz] -1.7414342e-13 -4.2515484e-17  5.0000000e-02 -6.0000000e-01  6.0000000e-01
+[Qyy]  2.6766783e-15  6.5348592e-19  6.0000000e-02 -4.4966058e-01  4.4966058e-01
+[Qyz] -1.7414342e-13 -4.2515484e-17  5.0000000e-02 -6.0000000e-01  6.0000000e-01
+
+Momentum - x y z
+[total   ]  0.0000000e+00  0.0000000e+00  0.0000000e+00
+[fluid   ]  0.0000000e+00  0.0000000e+00  0.0000000e+00
+
+Starting time step loop.
+
+Scalars - total mean variance min max
+[rho]        4096.00  1.00000000000  1.1873015e-07  0.99954734972  1.00092184763
+[Qxx]  4.9988623e-14  1.2204254e-17  2.3690483e-02 -1.9415614e-01  3.7077120e-01
+[Qxy]  1.2498655e-06  3.0514294e-10  1.2311460e-02 -2.5292886e-01  2.5292886e-01
+[Qxz]  1.2498655e-06  3.0514294e-10  1.2311460e-02 -2.5292886e-01  2.5292886e-01
+[Qyy]  4.2478154e-14  1.0370643e-17  2.3690483e-02 -1.9415614e-01  3.7077120e-01
+[Qyz]  1.2498655e-06  3.0514295e-10  1.2311460e-02 -2.5292886e-01  2.5292886e-01
+
+Free energies - timestep f v f/v f_bulk/v f_grad/v redshift
+[fe]           1000 -3.9774699091e-01  4.0960000000e+03 -9.7106198953e-05 -1.1691716227e-04  1.9810963320e-05  8.3000000000e-01
+
+Momentum - x y z
+[total   ]  7.5484757e-14  1.9921564e-14  8.6632090e-15
+[fluid   ]  7.5484757e-14  1.9921564e-14  8.6632090e-15
+
+Velocity - x y z
+[minimum ] -1.4701045e-04 -1.4701045e-04 -1.4701045e-04
+[maximum ]  1.4701046e-04  1.4701046e-04  1.4701046e-04
+
+Completed cycle 1000
+
+Scalars - total mean variance min max
+[rho]        4096.00  1.00000000000  4.6553718e-08  0.99977184250  1.00086831792
+[Qxx]  6.6287527e-14  1.6183478e-17  2.2471881e-02 -1.8275815e-01  3.6497222e-01
+[Qxy]  1.1806448e-06  2.8824335e-10  1.3246483e-02 -2.5408531e-01  2.5408531e-01
+[Qxz]  1.1806447e-06  2.8824335e-10  1.3246483e-02 -2.5408531e-01  2.5408531e-01
+[Qyy]  4.9220775e-14  1.2016791e-17  2.2471881e-02 -1.8275815e-01  3.6497222e-01
+[Qyz]  1.1806448e-06  2.8824336e-10  1.3246483e-02 -2.5408531e-01  2.5408531e-01
+
+Free energies - timestep f v f/v f_bulk/v f_grad/v redshift
+[fe]           2000 -5.5568105238e-01  4.0960000000e+03 -1.3566431943e-04 -1.4963554775e-04  1.3971228321e-05  8.3000000000e-01
+
+Momentum - x y z
+[total   ]  1.1259743e-13  6.9371592e-14 -1.2420620e-14
+[fluid   ]  1.1259743e-13  6.9371592e-14 -1.2420620e-14
+
+Velocity - x y z
+[minimum ] -3.4079499e-05 -3.4079499e-05 -3.4079499e-05
+[maximum ]  3.4079499e-05  3.4079499e-05  3.4079499e-05
+
+Completed cycle 2000
+
+Scalars - total mean variance min max
+[rho]        4096.00  1.00000000000  1.1891808e-08  0.99987627458  1.00045877831
+[Qxx]  7.5990384e-14  1.8552340e-17  2.2528101e-02 -1.8670958e-01  3.6638554e-01
+[Qxy]  9.7292797e-07  2.3753124e-10  1.4500379e-02 -2.5425133e-01  2.5425133e-01
+[Qxz]  9.7292794e-07  2.3753124e-10  1.4500379e-02 -2.5425133e-01  2.5425133e-01
+[Qyy]  5.0604682e-14  1.2354659e-17  2.2528101e-02 -1.8670958e-01  3.6638554e-01
+[Qyz]  9.7292796e-07  2.3753124e-10  1.4500379e-02 -2.5425133e-01  2.5425133e-01
+
+Free energies - timestep f v f/v f_bulk/v f_grad/v redshift
+[fe]           3000 -5.8631199901e-01  4.0960000000e+03 -1.4314257788e-04 -1.5652472821e-04  1.3382150323e-05  8.3000000000e-01
+
+Momentum - x y z
+[total   ]  7.8544810e-14  6.6554401e-14  2.0507901e-14
+[fluid   ]  7.8544810e-14  6.6554401e-14  2.0507901e-14
+
+Velocity - x y z
+[minimum ] -1.0128932e-05 -1.0128932e-05 -1.0128932e-05
+[maximum ]  1.0128933e-05  1.0128933e-05  1.0128933e-05
+
+Completed cycle 3000
+
+Scalars - total mean variance min max
+[rho]        4096.00  1.00000000000  3.7638450e-09  0.99992102854  1.00025282973
+[Qxx]  5.0440776e-14  1.2314643e-17  2.2646312e-02 -1.8901570e-01  3.6805468e-01
+[Qxy]  7.7177158e-07  1.8842080e-10  1.5237839e-02 -2.5491204e-01  2.5491204e-01
+[Qxz]  7.7177156e-07  1.8842079e-10  1.5237839e-02 -2.5491204e-01  2.5491204e-01
+[Qyy]  7.5404561e-14  1.8409317e-17  2.2646312e-02 -1.8901570e-01  3.6805468e-01
+[Qyz]  7.7177158e-07  1.8842080e-10  1.5237839e-02 -2.5491204e-01  2.5491204e-01
+
+Free energies - timestep f v f/v f_bulk/v f_grad/v redshift
+[fe]           4000 -5.9533844104e-01  4.0960000000e+03 -1.4534629908e-04 -1.5889815334e-04  1.3551854253e-05  8.3000000000e-01
+
+Momentum - x y z
+[total   ]  5.4789506e-14  2.2586100e-14  4.8166332e-14
+[fluid   ]  5.4789506e-14  2.2586100e-14  4.8166332e-14
+
+Velocity - x y z
+[minimum ] -4.1750499e-06 -4.1750499e-06 -4.1750499e-06
+[maximum ]  4.1750496e-06  4.1750496e-06  4.1750496e-06
+
+Completed cycle 4000
+
+Scalars - total mean variance min max
+[rho]        4096.00  1.00000000000  2.1746640e-09  0.99993890489  1.00017368530
+[Qxx]  8.5920002e-14  2.0976563e-17  2.2706267e-02 -1.9007091e-01  3.6907450e-01
+[Qxy]  6.0578950e-07  1.4789783e-10  1.5612592e-02 -2.5564114e-01  2.5564114e-01
+[Qxz]  6.0578949e-07  1.4789783e-10  1.5612592e-02 -2.5564114e-01  2.5564114e-01
+[Qyy]  7.5670906e-14  1.8474342e-17  2.2706267e-02 -1.9007091e-01  3.6907450e-01
+[Qyz]  6.0578952e-07  1.4789783e-10  1.5612592e-02 -2.5564114e-01  2.5564114e-01
+
+Free energies - timestep f v f/v f_bulk/v f_grad/v redshift
+[fe]           5000 -5.9863397160e-01  4.0960000000e+03 -1.4615087197e-04 -1.5983992669e-04  1.3689054714e-05  8.3000000000e-01
+
+Momentum - x y z
+[total   ]  3.7858605e-14  1.6511098e-14  7.5797008e-14
+[fluid   ]  3.7858605e-14  1.6511098e-14  7.5797008e-14
+
+Velocity - x y z
+[minimum ] -2.9906821e-06 -2.9906821e-06 -2.9906821e-06
+[maximum ]  2.9906821e-06  2.9906821e-06  2.9906821e-06
+
+Completed cycle 5000
+
+Scalars - total mean variance min max
+[rho]        4096.00  1.00000000000  1.8537234e-09  0.99994649881  1.00014830023
+[Qxx]  9.2737627e-14  2.2641022e-17  2.2720266e-02 -1.9054998e-01  3.6958539e-01
+[Qxy]  4.7460893e-07  1.1587132e-10  1.5798741e-02 -2.5622743e-01  2.5622743e-01
+[Qxz]  4.7460892e-07  1.1587132e-10  1.5798741e-02 -2.5622743e-01  2.5622743e-01
+[Qyy]  6.4818037e-14  1.5824716e-17  2.2720266e-02 -1.9054998e-01  3.6958539e-01
+[Qyz]  4.7460895e-07  1.1587132e-10  1.5798741e-02 -2.5622743e-01  2.5622743e-01
+
+Free energies - timestep f v f/v f_bulk/v f_grad/v redshift
+[fe]           6000 -6.0007050180e-01  4.0960000000e+03 -1.4650158735e-04 -1.6024692701e-04  1.3745339659e-05  8.3000000000e-01
+
+Momentum - x y z
+[total   ]  4.6358750e-14  1.1338153e-14  5.3148458e-14
+[fluid   ]  4.6358750e-14  1.1338153e-14  5.3148458e-14
+
+Velocity - x y z
+[minimum ] -2.6098404e-06 -2.6098404e-06 -2.6098404e-06
+[maximum ]  2.6098402e-06  2.6098402e-06  2.6098402e-06
+
+Completed cycle 6000
+
+Scalars - total mean variance min max
+[rho]        4096.00  1.00000000000  1.7837614e-09  0.99995000295  1.00015513473
+[Qxx]  9.5390672e-14  2.3288738e-17  2.2710872e-02 -1.9076358e-01  3.6980903e-01
+[Qxy]  3.7209849e-07  9.0844357e-11  1.5894003e-02 -2.5664144e-01  2.5664144e-01
+[Qxz]  3.7209849e-07  9.0844358e-11  1.5894003e-02 -2.5664144e-01  2.5664144e-01
+[Qyy]  6.6819393e-14  1.6313328e-17  2.2710872e-02 -1.9076358e-01  3.6980903e-01
+[Qyz]  3.7209854e-07  9.0844369e-11  1.5894003e-02 -2.5664144e-01  2.5664144e-01
+
+Free energies - timestep f v f/v f_bulk/v f_grad/v redshift
+[fe]           7000 -6.0077482798e-01  4.0960000000e+03 -1.4667354199e-04 -1.6043136217e-04  1.3757820188e-05  8.3000000000e-01
+
+Momentum - x y z
+[total   ]  4.6736920e-14  4.3451354e-14  3.4430792e-14
+[fluid   ]  4.6736920e-14  4.3451354e-14  3.4430792e-14
+
+Velocity - x y z
+[minimum ] -2.5050081e-06 -2.5050081e-06 -2.5050081e-06
+[maximum ]  2.5050087e-06  2.5050087e-06  2.5050087e-06
+
+Completed cycle 7000
+
+Scalars - total mean variance min max
+[rho]        4096.00  1.00000000000  1.7696231e-09  0.99995178283  1.00015893040
+[Qxx]  1.3872854e-13  3.3869274e-17  2.2692791e-02 -1.9085658e-01  3.6988921e-01
+[Qxy]  2.9206192e-07  7.1304179e-11  1.5945498e-02 -2.5691889e-01  2.5691889e-01
+[Qxz]  2.9206191e-07  7.1304176e-11  1.5945498e-02 -2.5691889e-01  2.5691889e-01
+[Qyy]  8.0783256e-14  1.9722475e-17  2.2692791e-02 -1.9085658e-01  3.6988921e-01
+[Qyz]  2.9206194e-07  7.1304185e-11  1.5945498e-02 -2.5691889e-01  2.5691889e-01
+
+Free energies - timestep f v f/v f_bulk/v f_grad/v redshift
+[fe]           8000 -6.0114751217e-01  4.0960000000e+03 -1.4676452934e-04 -1.6051724498e-04  1.3752715643e-05  8.3000000000e-01
+
+Momentum - x y z
+[total   ]  9.2814645e-14  1.7565810e-14  5.3797244e-14
+[fluid   ]  9.2814645e-14  1.7565810e-14  5.3797244e-14
+
+Velocity - x y z
+[minimum ] -2.3978661e-06 -2.3978661e-06 -2.3978661e-06
+[maximum ]  2.3978668e-06  2.3978668e-06  2.3978668e-06
+
+Completed cycle 8000
+
+Scalars - total mean variance min max
+[rho]        4096.00  1.00000000000  1.7698110e-09  0.99995276741  1.00016129105
+[Qxx]  1.0697378e-13  2.6116645e-17  2.2673503e-02 -1.9089555e-01  3.6990432e-01
+[Qxy]  2.2940256e-07  5.6006485e-11  1.5975166e-02 -2.5710243e-01  2.5710243e-01
+[Qxz]  2.2940255e-07  5.6006482e-11  1.5975166e-02 -2.5710243e-01  2.5710243e-01
+[Qyy]  9.6797828e-14  2.3632282e-17  2.2673503e-02 -1.9089555e-01  3.6990432e-01
+[Qyz]  2.2940257e-07  5.6006487e-11  1.5975166e-02 -2.5710243e-01  2.5710243e-01
+
+Free energies - timestep f v f/v f_bulk/v f_grad/v redshift
+[fe]           9000 -6.0135629004e-01  4.0960000000e+03 -1.4681550050e-04 -1.6055792150e-04  1.3742420996e-05  8.3000000000e-01
+
+Momentum - x y z
+[total   ]  1.1061291e-13  1.5033114e-14  6.4958455e-14
+[fluid   ]  1.1061291e-13  1.5033114e-14  6.4958455e-14
+
+Velocity - x y z
+[minimum ] -2.2976943e-06 -2.2976943e-06 -2.2976943e-06
+[maximum ]  2.2976948e-06  2.2976948e-06  2.2976948e-06
+
+Completed cycle 9000
+
+Scalars - total mean variance min max
+[rho]        4096.00  1.00000000000  1.7738728e-09  0.99995335884  1.00016289211
+[Qxx]  9.9741040e-14  2.4350840e-17  2.2656195e-02 -1.9091069e-01  3.6989322e-01
+[Qxy]  1.8020178e-07  4.3994576e-11  1.5993350e-02 -2.5722498e-01  2.5722498e-01
+[Qxz]  1.8020177e-07  4.3994572e-11  1.5993350e-02 -2.5722498e-01  2.5722498e-01
+[Qyy]  1.1015051e-13  2.6892215e-17  2.2656195e-02 -1.9091069e-01  3.6989322e-01
+[Qyz]  1.8020180e-07  4.3994581e-11  1.5993350e-02 -2.5722498e-01  2.5722498e-01
+
+Free energies - timestep f v f/v f_bulk/v f_grad/v redshift
+[fe]          10000 -6.0147920369e-01  4.0960000000e+03 -1.4684550871e-04 -1.6057746167e-04  1.3731952956e-05  8.3000000000e-01
+
+Momentum - x y z
+[total   ]  9.5225910e-14  1.6577018e-14  3.3185260e-14
+[fluid   ]  9.5225910e-14  1.6577018e-14  3.3185260e-14
+
+Velocity - x y z
+[minimum ] -2.2137265e-06 -2.2137265e-06 -2.2137265e-06
+[maximum ]  2.2137269e-06  2.2137269e-06  2.2137269e-06
+
+Completed cycle 10000
+MPIIO wrote to dist-000010000.001-001
+-       dist aggregated   0.623 MB in   0.000 seconds
+-       dist wrote        0.623 MB in   0.006 seconds
+-       dist rate         0.105 GB per second
+Writing q file at step 10000!
+MPIIO wrote to q-000010000.001-001
+-          q aggregated   0.164 MB in   0.000 seconds
+-          q wrote        0.164 MB in   0.004 seconds
+-          q rate         0.040 GB per second
+Writing rho/velocity output at step 10000!
+MPIIO wrote to rho-000010000.001-001
+-        rho aggregated   0.033 MB in   0.000 seconds
+-        rho wrote        0.033 MB in   0.004 seconds
+-        rho rate         0.008 GB per second
+MPIIO wrote to vel-000010000.001-001
+-        vel aggregated   0.098 MB in   0.000 seconds
+-        vel wrote        0.098 MB in   0.004 seconds
+-        vel rate         0.023 GB per second
+
+Timer resolution: 1e-06 second
+
+Timer statistics
+             Section:       tmin       tmax      total
+               Total:     75.512     75.512     75.512  75.512480 (1 call)
+      Time step loop:      0.006      0.029     75.372   0.007537 (10000 calls)
+         Propagation:      0.000      0.003      4.998   0.000500 (10000 calls)
+    Propagtn (krnl) :      0.000      0.003      4.952   0.000495 (10000 calls)
+           Collision:      0.001      0.005     11.115   0.001111 (10000 calls)
+   Collision (krnl) :      0.001      0.005     11.034   0.001103 (10000 calls)
+       Lattice halos:      0.000      0.003      5.350   0.000535 (10000 calls)
+       phi gradients:      0.001      0.005     10.632   0.001063 (10000 calls)
+    phi grad (krnl) :      0.001      0.004      7.090   0.000709 (10000 calls)
+           phi halos:      0.000      0.002      3.486   0.000349 (10000 calls)
+                 BBL:      0.000      0.000      0.008   0.000001 (10000 calls)
+   Force calculation:      0.002      0.009     19.590   0.001959 (10000 calls)
+   Phi force (krnl) :      0.001      0.005      8.005   0.000800 (10000 calls)
+          phi update:      0.002      0.010     22.341   0.002234 (10000 calls)
+      Velocity Halo :      0.000      0.002      2.482   0.000248 (10000 calls)
+BE mol field (krnl) :      0.000      0.003      4.929   0.000493 (10000 calls)
+BP BE update (krnl) :      0.001      0.004      8.286   0.000829 (10000 calls)
+     Advectn (krnl) :      0.000      0.002      3.901   0.000390 (10000 calls)
+ Advectn BCS (krnl) :      0.000      0.001      1.859   0.000186 (10000 calls)
+               Free1:      0.000      0.021      0.103   0.000010 (10000 calls)
+End time: Mon Jan 23 15:14:01 2023
+Ludwig finished normally.

@@ -38,8 +38,6 @@ static int lb_f_read(FILE *, int index, void * self);
 static int lb_f_read_ascii(FILE *, int index, void * self);
 static int lb_f_write(FILE *, int index, void * self);
 static int lb_f_write_ascii(FILE *, int index, void * self);
-static int lb_rho_write(FILE *, int index, void * self);
-static int lb_rho_write_ascii(FILE *, int index, void * self);
 static int lb_model_param_init(lb_t * lb);
 static int lb_init(lb_t * lb);
 static int lb_data_touch(lb_t * lb);
@@ -133,6 +131,44 @@ int lb_data_create(pe_t * pe, cs_t * cs, const lb_data_options_t * options,
   lb_halo_create(obj, &obj->h, obj->haloscheme);
   lb_init(obj);
 
+  /* i/o metadata */
+  {
+    io_element_t ascii = {
+      .datatype = MPI_CHAR,
+      .datasize = sizeof(char),
+      .count    = obj->nvel*(1 + LB_RECORD_LENGTH_ASCII*obj->ndist),
+      .endian   = io_endianness()
+    };
+
+    io_element_t binary = {
+      .datatype = MPI_DOUBLE,
+      .datasize = sizeof(double),
+      .count    = obj->nvel*obj->ndist,
+      .endian   = io_endianness()
+    };
+
+    /* Record element information */
+    obj->ascii = ascii;
+    obj->binary = binary;
+
+    /* Establish metadata */
+    int ifail = 0;
+    io_element_t element = {0};
+
+    if (options->iodata.input.iorformat == IO_RECORD_ASCII)  element = ascii;
+    if (options->iodata.input.iorformat == IO_RECORD_BINARY) element = binary;
+    ifail = io_metadata_initialise(cs, &options->iodata.input, &element,
+				   &obj->input);
+    if (ifail != 0) pe_fatal(pe, "lb_data: bad i/o input decomposition\n");
+
+
+    if (options->iodata.output.iorformat == IO_RECORD_ASCII)  element = ascii;
+    if (options->iodata.output.iorformat == IO_RECORD_BINARY) element = binary;
+    ifail = io_metadata_initialise(cs, &options->iodata.output, &element,
+				   &obj->output);
+    if (ifail != 0) pe_fatal(pe, "lb_data: bad i/o output decomposition\n"); 
+  }
+
   *lb = obj;
 
   return 0;
@@ -164,6 +200,9 @@ __host__ int lb_free(lb_t * lb) {
     tdpFree(tmp);
     tdpFree(lb->target);
   }
+
+  io_metadata_finalise(&lb->input);
+  io_metadata_finalise(&lb->output);
 
   if (lb->halo) halo_swap_free(lb->halo);
   if (lb->io_info) io_info_free(lb->io_info);
@@ -401,34 +440,6 @@ static int lb_mpi_init(lb_t * lb) {
 
 /*****************************************************************************
  *
- *  lb_io_info_commit
- *
- *****************************************************************************/
-
-__host__ int lb_io_info_commit(lb_t * lb, io_info_args_t args) {
-
-  io_implementation_t impl = {0};
-
-  assert(lb);
-  assert(lb->io_info == NULL);
-
-  sprintf(impl.name, "%1d x Distribution: d%dq%d", lb->ndist, lb->ndim,
-	  lb->nvel);
-
-  impl.write_ascii     = lb_f_write_ascii;
-  impl.read_ascii      = lb_f_read_ascii;
-  impl.write_binary    = lb_f_write;
-  impl.read_binary     = lb_f_read;
-  impl.bytesize_ascii  = 0; /* HOW MANY BYTES! */
-  impl.bytesize_binary = sizeof(double)*lb->ndist*lb->nvel;
-
-  io_info_create_impl(lb->pe, lb->cs, args, &impl, &lb->io_info);
-
-  return 0;
-}
-
-/*****************************************************************************
- *
  *  lb_io_info_set
  *
  *****************************************************************************/
@@ -452,36 +463,6 @@ __host__ int lb_io_info_set(lb_t * lb, io_info_t * io_info, int form_in, int for
   io_info_read_set(lb->io_info, IO_FORMAT_ASCII, lb_f_read_ascii);
   io_info_write_set(lb->io_info, IO_FORMAT_ASCII, lb_f_write_ascii);
   io_info_format_set(lb->io_info, form_in, form_out);
-
-  return 0;
-}
-
-/*****************************************************************************
- *
- *  lb_io_rho_set
- *
- *  There is no input for rho, as it is never required.
- *
- *****************************************************************************/
-
-__host__ int lb_io_rho_set(lb_t * lb, io_info_t * io_rho, int form_in,
-                           int form_out) {
-
-  char string[FILENAME_MAX];
-
-  assert(lb);
-  assert(io_rho);
-
-  lb->io_rho = io_rho;
-
-  sprintf(string, "Fluid density (rho)");
-
-  io_info_set_name(lb->io_rho, string);
-  io_info_write_set(lb->io_rho, IO_FORMAT_BINARY, lb_rho_write);
-  io_info_set_bytesize(lb->io_rho, IO_FORMAT_BINARY, sizeof(double));
-  io_info_write_set(lb->io_rho, IO_FORMAT_ASCII, lb_rho_write_ascii);
-  io_info_set_bytesize(lb->io_rho, IO_FORMAT_ASCII, 23*sizeof(char));
-  io_info_format_set(lb->io_rho, form_in, form_out);
 
   return 0;
 }
@@ -764,53 +745,6 @@ static int lb_f_write_ascii(FILE * fp, int index, void * self) {
   return 0;
 }
 
-/******************************************************************************
- *
- *  lb_rho_write
- *
- *  Write density data to file (binary)
- *
- *****************************************************************************/
-
-static int lb_rho_write(FILE * fp, int index, void * self) {
-
-  size_t iw;
-  double rho;
-  lb_t * lb = (lb_t *) self;
-
-  assert(fp);
-  assert(lb);
-
-  lb_0th_moment(lb, index, LB_RHO, &rho);
-  iw = fwrite(&rho, sizeof(double), 1, fp);
-
-  if (iw != 1) pe_fatal(lb->pe, "lb_rho-write failed\n");
-
-  return 0;
-}
-
-/*****************************************************************************
- *
- *  lb_rho_write_ascii
- *
- *****************************************************************************/
-
-static int lb_rho_write_ascii(FILE * fp, int index, void * self) {
-
-  int nwrite;
-  double rho;
-  lb_t * lb = (lb_t *) self;
-
-  assert(fp);
-  assert(lb);
-
-  lb_0th_moment(lb, index, LB_RHO, &rho);
-  nwrite = fprintf(fp, "%22.15e\n", rho);
-  if (nwrite != 23) pe_fatal(lb->pe, "lb_rho_write_ascii failed\n");
-
-  return 0;
-}
-
 /*****************************************************************************
  *
  *  lb_ndist
@@ -1035,7 +969,6 @@ int lb_halo_size(cs_limits_t lim) {
 int lb_halo_enqueue_send(const lb_t * lb, lb_halo_t * h, int ireq) {
 
   assert(0 <= ireq && ireq < h->map.nvel);
-  assert(lb->ndist == 1);
 
   if (h->count[ireq] > 0) {
 
@@ -1061,17 +994,19 @@ int lb_halo_enqueue_send(const lb_t * lb, lb_halo_t * h, int ireq) {
       int kc = h->slim[ireq].kmin + (ih % stry)/strz;
       int ib = 0; /* Buffer index */
 
-      for (int p = 0; p < lb->nvel; p++) {
-	/* Recall, if full, we need p = 0 */
-	int8_t px = lb->model.cv[p][X];
-	int8_t py = lb->model.cv[p][Y];
-	int8_t pz = lb->model.cv[p][Z];
-	int dot = mx*px + my*py + mz*pz;
-	if (h->full || dot == mm) {
-	  int index = cs_index(lb->cs, ic, jc, kc);
-	  int laddr = LB_ADDR(lb->nsite, lb->ndist, lb->nvel, index, 0, p);
-	  h->send[ireq][ih*h->count[ireq] + ib] = lb->f[laddr];
-	  ib++;
+      for (int n = 0; n < lb->ndist; n++) {
+	for (int p = 0; p < lb->nvel; p++) {
+	  /* Recall, if full, we need p = 0 */
+	  int8_t px = lb->model.cv[p][X];
+	  int8_t py = lb->model.cv[p][Y];
+	  int8_t pz = lb->model.cv[p][Z];
+	  int dot = mx*px + my*py + mz*pz;
+	  if (h->full || dot == mm) {
+	    int index = cs_index(lb->cs, ic, jc, kc);
+	    int laddr = LB_ADDR(lb->nsite, lb->ndist, lb->nvel, index, n, p);
+	    h->send[ireq][ih*h->count[ireq] + ib] = lb->f[laddr];
+	    ib++;
+	  }
 	}
       }
       assert(ib == h->count[ireq]);
@@ -1094,7 +1029,6 @@ int lb_halo_dequeue_recv(lb_t * lb, const lb_halo_t * h, int ireq) {
   assert(lb);
   assert(h);
   assert(0 <= ireq && ireq < h->map.nvel);
-  assert(lb->ndist == 1);
 
   if (h->count[ireq] > 0) {
 
@@ -1131,18 +1065,20 @@ int lb_halo_dequeue_recv(lb_t * lb, const lb_halo_t * h, int ireq) {
       int kc = h->rlim[ireq].kmin + (ih % stry)/strz;
       int ib = 0; /* Buffer index */
 
-      for (int p = 0; p < lb->nvel; p++) {
-	/* For reduced swap, we must have -cv[p] here... */
-	int8_t px = lb->model.cv[lb->nvel-p][X];
-	int8_t py = lb->model.cv[lb->nvel-p][Y];
-	int8_t pz = lb->model.cv[lb->nvel-p][Z];
-	int dot = mx*px + my*py + mz*pz;
+      for (int n = 0; n < lb->ndist; n++) {
+	for (int p = 0; p < lb->nvel; p++) {
+	  /* For reduced swap, we must have -cv[p] here... */
+	  int8_t px = lb->model.cv[lb->nvel-p][X];
+	  int8_t py = lb->model.cv[lb->nvel-p][Y];
+	  int8_t pz = lb->model.cv[lb->nvel-p][Z];
+	  int dot = mx*px + my*py + mz*pz;
 
-	if (h->full || dot == mm) {
-	  int index = cs_index(lb->cs, ic, jc, kc);
-	  int laddr = LB_ADDR(lb->nsite, lb->ndist, lb->nvel, index, 0, p);
-	  lb->f[laddr] = recv[ih*h->count[ireq] + ib];
-	  ib++;
+	  if (h->full || dot == mm) {
+	    int index = cs_index(lb->cs, ic, jc, kc);
+	    int laddr = LB_ADDR(lb->nsite, lb->ndist, lb->nvel, index, n, p);
+	    lb->f[laddr] = recv[ih*h->count[ireq] + ib];
+	    ib++;
+	  }
 	}
       }
       assert(ib == h->count[ireq]);
@@ -1178,7 +1114,10 @@ int lb_halo_create(const lb_t * lb, lb_halo_t * h, lb_halo_enum_t scheme) {
   cs_cart_comm(lb->cs, &h->comm);
   h->tagbase = 211216;
 
-  if (scheme == LB_HALO_OPENMP_FULL) h->full = 1;
+  /* Default to full swap unless reduced is requested. */
+
+  h->full = 1;
+  if (scheme == LB_HALO_OPENMP_REDUCED) h->full = 0;
 
   /* Determine look-up table of ranks of neighbouring processes */
   {
@@ -1273,6 +1212,7 @@ int lb_halo_create(const lb_t * lb, lb_halo_t * h, lb_halo_enum_t scheme) {
       }
     }
 
+    count = lb->ndist*count;
     h->count[p] = count;
     /* Allocate send buffer for send region */
     if (count > 0) {
@@ -1427,6 +1367,280 @@ int lb_halo_free(lb_t * lb, lb_halo_t * h) {
   }
 
   lb_model_free(&h->map);
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  lb_write_buf
+ *
+ *  Write output buffer independent of in-memory order.
+ *
+ *****************************************************************************/
+
+int lb_write_buf(const lb_t * lb, int index, char * buf) {
+
+  double data[NVELMAX] = {0};
+
+  assert(lb);
+  assert(buf);
+
+  for (int n = 0; n < lb->ndist; n++) {
+    size_t sz = lb->model.nvel*sizeof(double);
+    for (int p = 0; p < lb->model.nvel; p++) {
+      int laddr = LB_ADDR(lb->nsite, lb->ndist, lb->model.nvel, index, n, p);
+      data[p] = lb->f[laddr];
+    }
+    memcpy(buf + n*sz, data, sz);
+  }
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  lb_read_buf
+ *
+ *****************************************************************************/
+
+int lb_read_buf(lb_t * lb, int index, const char * buf) {
+
+  double data[NVELMAX] = {0};
+
+  assert(lb);
+  assert(buf);
+
+  for (int n = 0; n < lb->ndist; n++) {
+    size_t sz = lb->model.nvel*sizeof(double);
+    memcpy(data, buf + n*sz, sz);
+    for (int p = 0; p < lb->model.nvel; p++) {
+      int laddr = LB_ADDR(lb->nsite, lb->ndist, lb->model.nvel, index, n, p);
+      lb->f[laddr] = data[p];
+    }
+  }
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  lb_write_buf_ascii
+ *
+ *  For ascii, we are going to put ndist distributions on a single line...
+ *  This is merely cosmetic, and for appearances.
+ *
+ *****************************************************************************/
+
+int lb_write_buf_ascii(const lb_t * lb, int index, char * buf) {
+
+  const int nbyte = LB_RECORD_LENGTH_ASCII;  /* bytes per " %22.15s" datum */
+  int ifail = 0;
+
+  assert(lb);
+  assert(buf);
+  assert((lb->ndist*nbyte + 1)*sizeof(char) < BUFSIZ);
+
+  for (int p = 0; p < lb->model.nvel; p++) {
+    char tmp[BUFSIZ] = {0};
+    int poffset = p*(lb->ndist*nbyte + 1); /* +1 for each newline */
+    for (int n = 0; n < lb->ndist; n++) {
+      int laddr = LB_ADDR(lb->nsite, lb->ndist, lb->model.nvel, index, n, p);
+      int np = snprintf(tmp, nbyte + 1, " %22.15e", lb->f[laddr]);
+      if (np != nbyte) ifail = 1;
+      memcpy(buf + poffset + n*nbyte, tmp, nbyte*sizeof(char));
+    }
+    /* Add newline */
+    if (1 != snprintf(tmp, 2, "\n")) ifail = 2;
+    memcpy(buf + poffset + lb->ndist*nbyte, tmp, sizeof(char));
+  }
+
+  return ifail;
+}
+
+/*****************************************************************************
+ *
+ *  lb_read_buf_ascii
+ *
+ *****************************************************************************/
+
+int lb_read_buf_ascii(lb_t * lb, int index, const char * buf) {
+
+  const int nbyte = LB_RECORD_LENGTH_ASCII;  /* bytes per " %22.15s" datum */
+  int ifail = 0;
+
+  assert(lb);
+  assert(buf);
+
+  for (int p = 0; p < lb->model.nvel; p++) {
+    int poffset = p*(lb->ndist*nbyte + 1); /* +1 for each newline */
+    for (int n = 0; n < lb->ndist; n++) {
+      int laddr = LB_ADDR(lb->nsite, lb->ndist, lb->model.nvel, index, n, p);
+      char tmp[BUFSIZ] = {0};              /* Make sure we have a \0 */
+      memcpy(tmp, buf + poffset + n*nbyte, nbyte*sizeof(char));
+      int nr = sscanf(tmp, "%le", lb->f + laddr);
+      if (nr != 1) ifail = 1;
+    }
+  }
+
+  return ifail;
+}
+
+/*****************************************************************************
+ *
+ *  lb_io_aggr_pack
+ *
+ *****************************************************************************/
+
+__host__ int lb_io_aggr_pack(const lb_t * lb, io_aggregator_t * aggr) {
+
+  assert(lb);
+  assert(aggr);
+  assert(aggr->buf);
+
+  #pragma omp parallel
+  {
+    int iasc = lb->opts.iodata.output.iorformat == IO_RECORD_ASCII;
+    int ibin = lb->opts.iodata.output.iorformat == IO_RECORD_BINARY;
+    assert(iasc ^ ibin); /* One or other */
+
+    #pragma omp for
+    for (int ib = 0; ib < cs_limits_size(aggr->lim); ib++) {
+      int ic = cs_limits_ic(aggr->lim, ib);
+      int jc = cs_limits_jc(aggr->lim, ib);
+      int kc = cs_limits_kc(aggr->lim, ib);
+
+      /* Write data (ic,jc,kc) */
+      int index = cs_index(lb->cs, ic, jc, kc);
+      int offset = ib*aggr->szelement;
+      if (iasc) lb_write_buf_ascii(lb, index, aggr->buf + offset);
+      if (ibin) lb_write_buf(lb, index, aggr->buf + offset);
+    }
+  }
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  lb_io_aggr_buf_unpack
+ *
+ *****************************************************************************/
+
+__host__ int lb_io_aggr_unpack(lb_t * lb, const io_aggregator_t * aggr) {
+
+  assert(lb);
+  assert(aggr);
+  assert(aggr->buf);
+
+  #pragma omp parallel
+  {
+    int iasc = lb->opts.iodata.input.iorformat == IO_RECORD_ASCII;
+    int ibin = lb->opts.iodata.input.iorformat == IO_RECORD_BINARY;
+    assert(iasc ^ ibin);
+
+    #pragma omp for
+    for (int ib = 0; ib < cs_limits_size(aggr->lim); ib++) {
+      int ic = cs_limits_ic(aggr->lim, ib);
+      int jc = cs_limits_jc(aggr->lim, ib);
+      int kc = cs_limits_kc(aggr->lim, ib);
+
+      /* Read data at (ic,jc,kc) */
+      int index = cs_index(lb->cs, ic, jc, kc);
+      int offset = ib*aggr->szelement;
+      if (iasc) lb_read_buf_ascii(lb, index, aggr->buf + offset);
+      if (ibin) lb_read_buf(lb, index, aggr->buf + offset);
+    }
+  }
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  lb_io_write
+ *
+ *****************************************************************************/
+
+int lb_io_write(lb_t * lb, int timestep, io_event_t * event) {
+
+  assert(lb);
+  assert(event);
+
+  const io_metadata_t * meta = &lb->output;
+
+  if (meta->iswriten == 0) {
+    /* No comments at the moment */
+    cJSON * comments = NULL;
+    int ifail = io_metadata_write(meta, "dist", comments);
+    if (ifail == 0) lb->output.iswriten = 1;
+  }
+
+  if (meta->options.mode != IO_MODE_MPIIO) {
+    /* Old-style */
+    char filename[BUFSIZ] = {0};
+    sprintf(filename, "dist-%8.8d", timestep);
+    io_write_data(lb->io_info, filename, lb);
+  }
+
+  if (meta->options.mode == IO_MODE_MPIIO) {
+
+    io_impl_t * io = NULL;
+    char filename[BUFSIZ] = {0};
+
+    io_subfile_name(&meta->subfile, "dist", timestep, filename, BUFSIZ);
+    io_impl_create(meta, &io);
+    assert(io);
+
+    io_event_record(event, IO_EVENT_AGGR);
+    lb_memcpy(lb, tdpMemcpyDeviceToHost);
+    lb_io_aggr_pack(lb, io->aggr);
+
+    io_event_record(event, IO_EVENT_WRITE);
+    io->impl->write(io, filename);
+
+    if (meta->options.report) {
+      pe_info(lb->pe, "MPIIO wrote to %s\n", filename);
+    }
+
+    io->impl->free(&io);
+    io_event_report(event, meta, "dist");
+  }
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  lb_io_read
+ *
+ *****************************************************************************/
+
+int lb_io_read(lb_t * lb, int timestep, io_event_t * event) {
+
+  assert(lb);
+  assert(event);
+
+  const io_metadata_t * meta = &lb->input;
+
+  if (meta->options.mode != IO_MODE_MPIIO) {
+    char filename[BUFSIZ] = {0};
+    sprintf(filename, "dist-%8.8d", timestep);
+    io_read_data(lb->io_info, filename, lb);
+  }
+
+  if (meta->options.mode == IO_MODE_MPIIO) {
+    io_impl_t * io = NULL;
+    char filename[BUFSIZ] = {0};
+
+    io_subfile_name(&meta->subfile, "dist", timestep, filename, BUFSIZ);
+    io_impl_create(meta, &io);
+    assert(io);
+
+    io->impl->read(io, filename);
+    lb_io_aggr_unpack(lb, io->aggr);
+    io->impl->free(&io);
+  }
 
   return 0;
 }

@@ -21,6 +21,7 @@
 #include <float.h>
 #include <math.h>
 #include <stdlib.h>
+#include <string.h>
 
 #include "pe.h"
 #include "coords.h"
@@ -34,6 +35,12 @@ int do_test_model_distributions(pe_t * pe, cs_t * cs);
 int do_test_model_halo_swap(pe_t * pe, cs_t * cs);
 int do_test_model_reduced_halo_swap(pe_t * pe, cs_t * cs);
 int do_test_lb_model_io(pe_t * pe, cs_t * cs);
+
+int test_lb_data_write(pe_t * pe, cs_t * cs);
+int test_lb_write_buf(pe_t * pe, cs_t * cs, const lb_data_options_t * opts);
+int test_lb_write_buf_ascii(pe_t * pe, cs_t * cs, const lb_data_options_t * opts);
+int test_lb_io_aggr_pack(pe_t * pe, cs_t * cs, const lb_data_options_t * opts);
+
 static  int test_model_is_domain(cs_t * cs, int ic, int jc, int kc);
 
 
@@ -46,12 +53,13 @@ static  int test_model_is_domain(cs_t * cs, int ic, int jc, int kc);
 
 #include <stdint.h>
 
-int64_t lb_data_index(lb_t * lb, int ic, int jc, int kc, int p) {
+int64_t lb_data_index(lb_t * lb, int ic, int jc, int kc, int n, int p) {
 
   int64_t index = INT64_MIN;
   int64_t nall[3] = {0};
   int64_t nstr[3] = {0};
   int64_t pstr    = 0;
+  int64_t dstr    = 0;
 
   int ntotal[3] = {0};
   int offset[3] = {0};
@@ -59,6 +67,8 @@ int64_t lb_data_index(lb_t * lb, int ic, int jc, int kc, int p) {
 
   assert(lb);
   assert(0 <= p && p < lb->model.nvel);
+  assert(lb->ndist == 1 || lb->ndist == 2);
+  assert(0 <= n && n < lb->ndist);
 
   cs_ntotal(lb->cs, ntotal);
   cs_nlocal_offset(lb->cs, offset);
@@ -71,6 +81,7 @@ int64_t lb_data_index(lb_t * lb, int ic, int jc, int kc, int p) {
   nstr[Y] = nstr[Z]*nall[Z];
   nstr[X] = nstr[Y]*nall[Y];
   pstr    = nstr[X]*nall[X];
+  dstr    = pstr*lb->model.nvel;
 
   {
     int igl = offset[X] + ic;
@@ -89,7 +100,7 @@ int64_t lb_data_index(lb_t * lb, int ic, int jc, int kc, int p) {
     assert(1 <= jgl && jgl <= ntotal[Y]);
     assert(1 <= kgl && kgl <= ntotal[Z]);
 
-    index = pstr*p + nstr[X]*igl + nstr[Y]*jgl + nstr[Z]*kgl;
+    index = dstr*n + pstr*p + nstr[X]*igl + nstr[Y]*jgl + nstr[Z]*kgl;
   }
 
   return index;
@@ -114,10 +125,12 @@ int util_lb_data_check_set(lb_t * lb) {
   for (int ic = 1; ic <= nlocal[X]; ic++) {
     for (int jc = 1; jc <= nlocal[Y]; jc++) {
       for (int kc = 1; kc <= nlocal[Z]; kc++) {
-	for (int p = 0 ; p < lb->model.nvel; p++) {
-	  int index = cs_index(lb->cs, ic, jc, kc);
-	  int laddr = LB_ADDR(lb->nsite, lb->ndist, lb->nvel, index, 0, p);
-	  lb->f[laddr] = 1.0*lb_data_index(lb, ic, jc, kc, p); 
+	for (int n = 0; n < lb->ndist; n++) {
+	  for (int p = 0 ; p < lb->model.nvel; p++) {
+	    int index = cs_index(lb->cs, ic, jc, kc);
+	    int laddr = LB_ADDR(lb->nsite, lb->ndist, lb->nvel, index, n, p);
+	    lb->f[laddr] = 1.0*lb_data_index(lb, ic, jc, kc, n, p);
+	  }
 	}
       }
     }
@@ -159,24 +172,69 @@ int util_lb_data_check(lb_t * lb, int full) {
 
 	int index = cs_index(lb->cs, ic, jc, kc);
 
-	for (int p = 0; p < lb->model.nvel; p++) {
+	for (int n = 0; n < lb->ndist; n++) {
+	  for (int p = 0; p < lb->model.nvel; p++) {
 
-	  /* Look for propagating distributions (into domain). */
-	  int icdt = ic + lb->model.cv[p][X];
-	  int jcdt = jc + lb->model.cv[p][Y];
-	  int kcdt = kc + lb->model.cv[p][Z];
+	    /* Look for propagating distributions (into domain). */
+	    int icdt = ic + lb->model.cv[p][X];
+	    int jcdt = jc + lb->model.cv[p][Y];
+	    int kcdt = kc + lb->model.cv[p][Z];
 
-	  is_halo = (icdt < 1 || jcdt < 1 || kcdt < 1 ||
+	    is_halo = (icdt < 1 || jcdt < 1 || kcdt < 1 ||
 		     icdt > nlocal[X] || jcdt > nlocal[Y] || kcdt > nlocal[Z]);
 
-	  if (full || is_halo == 0) {
+	    if (full || is_halo == 0) {
+	      /* Check */
+	      int laddr = LB_ADDR(lb->nsite, lb->ndist, lb->nvel, index, n, p);
+	      double fex = 1.0*lb_data_index(lb, ic, jc, kc, n, p);
+	      if (fabs(fex - lb->f[laddr]) > DBL_EPSILON) ifail += 1;
+	      assert(fabs(fex - lb->f[laddr]) < DBL_EPSILON);
+	    }
+	  }
+	}
+	/* Next (ic,jc,kc) */
+      }
+    }
+  }
+
+  return ifail;
+}
+
+/*****************************************************************************
+ *
+ *  util_lb_data_check_no_halo
+ *
+ *  Examine non-halo values.
+ *
+ *****************************************************************************/
+
+int util_lb_data_check_no_halo(lb_t * lb) {
+
+  int ifail = 0;
+  int nlocal[3] = {0};
+
+  assert(lb);
+
+  cs_nlocal(lb->cs, nlocal);
+
+  /* Fix for 2d, where there should be no halo regions in Z */
+
+  for (int ic = 1; ic <= nlocal[X]; ic++) {
+    for (int jc = 1; jc <= nlocal[Y]; jc++) {
+      for (int kc = 1; kc <= nlocal[Z]; kc++) {
+
+	int index = cs_index(lb->cs, ic, jc, kc);
+
+	for (int n = 0; n < lb->ndist; n++) {
+	  for (int p = 0; p < lb->model.nvel; p++) {
 	    /* Check */
-	    int laddr = LB_ADDR(lb->nsite, lb->ndist, lb->nvel, index, 0, p);
-	    double fex = 1.0*lb_data_index(lb, ic, jc, kc, p);
+	    int laddr = LB_ADDR(lb->nsite, lb->ndist, lb->nvel, index, n, p);
+	    double fex = 1.0*lb_data_index(lb, ic, jc, kc, n, p);
 	    if (fabs(fex - lb->f[laddr]) > DBL_EPSILON) ifail += 1;
 	    assert(fabs(fex - lb->f[laddr]) < DBL_EPSILON);
 	  }
 	}
+	/* Next (ic,jc,kc) */
       }
     }
   }
@@ -291,7 +349,8 @@ int test_model_suite(void) {
   do_test_model_distributions(pe, cs);
   do_test_model_halo_swap(pe, cs);
   do_test_model_reduced_halo_swap(pe, cs);
-  do_test_lb_model_io(pe, cs);
+
+  test_lb_data_write(pe, cs);
 
   pe_info(pe, "PASS     ./unit/test_model\n");
   cs_free(cs);
@@ -613,19 +672,249 @@ static int test_model_is_domain(cs_t * cs, int ic, int jc, int kc) {
 
 /*****************************************************************************
  *
- *  do_test_lb_model_io
+ *  test_lb_data_write
  *
  *****************************************************************************/
 
-int do_test_lb_model_io(pe_t * pe, cs_t * cs) {
+int test_lb_data_write(pe_t * pe, cs_t * cs) {
+
+  assert(NVELMAX == 27);
+
+  {
+    lb_data_options_t opts = lb_data_options_ndim_nvel_ndist(2, 9, 1);
+    test_lb_write_buf(pe, cs, &opts);
+    test_lb_write_buf_ascii(pe, cs, &opts);
+    test_lb_io_aggr_pack(pe, cs, &opts);
+  }
+
+  {
+    lb_data_options_t opts = lb_data_options_ndim_nvel_ndist(3, 15, 1);
+    test_lb_write_buf(pe, cs, &opts);
+    test_lb_write_buf_ascii(pe, cs, &opts);
+    test_lb_io_aggr_pack(pe, cs, &opts);
+  }
+
+  {
+    lb_data_options_t opts = lb_data_options_ndim_nvel_ndist(3, 19, 1);
+    test_lb_write_buf(pe, cs, &opts);
+    test_lb_write_buf_ascii(pe, cs, &opts);
+    test_lb_io_aggr_pack(pe, cs, &opts);
+  }
+
+  {
+    /* As D3Q19 is typically what was used for ndist = 2, here it is ... */
+    lb_data_options_t opts = lb_data_options_ndim_nvel_ndist(3, 19, 2);
+    test_lb_write_buf(pe, cs, &opts);
+    test_lb_write_buf_ascii(pe, cs, &opts);
+    test_lb_io_aggr_pack(pe, cs, &opts);
+  }
+
+  {
+    lb_data_options_t opts = lb_data_options_ndim_nvel_ndist(3, 27, 1);
+    test_lb_write_buf(pe, cs, &opts);
+    test_lb_write_buf_ascii(pe, cs, &opts);
+    test_lb_io_aggr_pack(pe, cs, &opts);
+  }
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  test_lb_write_buf
+ *
+ *  It is convenient to test lb_read_buf() at the same time.
+ *
+ *****************************************************************************/
+
+int test_lb_write_buf(pe_t * pe, cs_t * cs, const lb_data_options_t * opts) {
+
+  int ifail = 0;
+  lb_t * lb = NULL;
+  char buf[BUFSIZ] = {0};
 
   assert(pe);
   assert(cs);
+  assert(opts);
 
-  /* Write */
-  /* Read */
+  lb_data_create(pe, cs, opts, &lb);
 
-  /* Compare */
+  assert(lb->ndist*lb->model.nvel*sizeof(double) < sizeof(buf));
+
+  {
+    /* Set some data at position (2,3,4) */
+    int index = cs_index(cs, 2, 3, 4);
+
+    for (int n = 0; n < lb->ndist; n++) {
+      for (int p = 0; p < lb->model.nvel; p++) {
+	double f = 1.0*(1 + n*lb->model.nvel + p); /* Test data, avoid zero */
+	lb_f_set(lb, index, p, n, f);
+      }
+    }
+
+    lb_write_buf(lb, index, buf);
+  }
+
+  {
+    /* Read same buf in a different location */
+    int index = cs_index(cs, 3, 4, 5);
+    lb_read_buf(lb, index, buf);
+
+    /* Check the result in new position */
+    for (int n = 0; n < lb->ndist; n++) {
+      for (int p = 0; p < lb->model.nvel; p++) {
+	double fref = 1.0*(1 + n*lb->model.nvel + p);
+	double f = -1.0;
+	lb_f(lb, index, p, n, &f);
+	assert(fabs(f - fref) < DBL_EPSILON);
+	if (fabs(f - fref) >= DBL_EPSILON) ifail += 1;
+      }
+    }
+  }
+
+  lb_free(lb);
+
+  return ifail;
+}
+
+/*****************************************************************************
+ *
+ *  test_lb_write_buf_ascii
+ *
+ *****************************************************************************/
+
+int test_lb_write_buf_ascii(pe_t * pe, cs_t * cs,
+			    const lb_data_options_t * opts) {
+
+  int ifail = 0;
+  lb_t * lb = NULL;
+  char buf[BUFSIZ] = {0};
+
+  assert(pe);
+  assert(cs);
+  assert(opts);
+
+  /* Size of ascii record musst fir in buffer ... */
+  assert(opts->nvel*(opts->ndist*LB_RECORD_LENGTH_ASCII + 1) < BUFSIZ);
+
+  lb_data_create(pe, cs, opts, &lb);
+
+  /* Write some data */
+
+  {
+    /* Set some data at position (2,3,4) */
+    int index = cs_index(cs, 2, 3, 4);
+
+    for (int n = 0; n < lb->ndist; n++) {
+      for (int p = 0; p < lb->model.nvel; p++) {
+	double f = 1.0*(1 + n*lb->model.nvel + p); /* Test data, avoid zero */
+	lb_f_set(lb, index, p, n, f);
+      }
+    }
+
+    lb_write_buf_ascii(lb, index, buf);
+
+    {
+      /* Have we got the correct size? */
+      int count = lb->nvel*(lb->ndist*LB_RECORD_LENGTH_ASCII + 1);
+      size_t sz = count*sizeof(char);
+      if (sz != strnlen(buf, BUFSIZ)) ifail = -1;
+      assert(ifail == 0);
+    }
+  }
+
+  {
+    /* Read back in different memory position */
+    int index = cs_index(cs, 4, 5, 6);
+    lb_read_buf_ascii(lb, index, buf);
+
+    /* Check the result in new position */
+    for (int n = 0; n < lb->ndist; n++) {
+      for (int p = 0; p < lb->model.nvel; p++) {
+	double fref = 1.0*(1 + n*lb->model.nvel + p);
+	double f = -1.0;
+	lb_f(lb, index, p, n, &f);
+	if (fabs(f - fref) >= DBL_EPSILON) ifail = -1;
+	assert(ifail == 0);
+      }
+    }
+  }
+
+  lb_free(lb);
+
+  return ifail;
+}
+
+/*****************************************************************************
+ *
+ *  test_lb_io_aggr_pack
+ *
+ *  It is convenient to test lb_io_aggr_unpack() at the same time.
+ *
+ *****************************************************************************/
+
+int test_lb_io_aggr_pack(pe_t * pe, cs_t * cs, const lb_data_options_t *opts) {
+
+  lb_t * lb = NULL;
+  int nlocal[3] = {0};
+
+  assert(pe);
+  assert(cs);
+  assert(opts);
+
+  cs_nlocal(cs, nlocal);
+
+  lb_data_create(pe, cs, opts, &lb);
+
+  assert(lb->ascii.datatype == MPI_CHAR);
+  assert(lb->ascii.datasize == sizeof(char));
+  assert(lb->ascii.count    == lb->nvel*(1 + lb->ndist*LB_RECORD_LENGTH_ASCII));
+  assert(lb->binary.datatype == MPI_DOUBLE);
+  assert(lb->binary.datasize == sizeof(double));
+  assert(lb->binary.count    == lb->nvel*lb->ndist);
+
+  /* ASCII */
+  /* Aggregator */
+
+  {
+    /* We don't use the metadata quantities here */
+    cs_limits_t lim = {1, nlocal[X], 1, nlocal[Y], 1, nlocal[Z]};
+    io_aggregator_t aggr = {0};
+
+    io_aggregator_initialise(lb->ascii, lim, &aggr);
+    util_lb_data_check_set(lb);
+    lb_io_aggr_pack(lb, &aggr);
+
+    /* Clear the ditributions, unpack, and check */
+    memset(lb->f, 0, sizeof(double)*lb->nvel*lb->ndist*lb->nsite);
+
+    lb_io_aggr_unpack(lb, &aggr);
+    util_lb_data_check_no_halo(lb);
+
+    io_aggregator_finalise(&aggr);
+  }
+
+  /* BINARY */
+
+  {
+    /* We don't use the metadata quantities here */
+    cs_limits_t lim = {1, nlocal[X], 1, nlocal[Y], 1, nlocal[Z]};
+    io_aggregator_t aggr = {0};
+
+    io_aggregator_initialise(lb->binary, lim, &aggr);
+    util_lb_data_check_set(lb);
+    lb_io_aggr_pack(lb, &aggr);
+
+    /* Clear the ditributions, unpack, and check */
+    memset(lb->f, 0, sizeof(double)*lb->nvel*lb->ndist*lb->nsite);
+
+    lb_io_aggr_unpack(lb, &aggr);
+    util_lb_data_check_no_halo(lb);
+
+    io_aggregator_finalise(&aggr);
+  }
+
+  lb_free(lb);
 
   return 0;
 }

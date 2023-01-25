@@ -37,7 +37,7 @@ Amplitude             =  1.28418e+00
 
 Using Cahn-Hilliard solver:
 Mobility M            =  2.50000e-01
-Force caluclation:      divergence method
+Force calculation:      stress_divergence
 
 System properties
 ----------------

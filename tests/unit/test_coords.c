@@ -7,7 +7,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2009-2018 The University of Edinburgh
+ *  (c) 2009-2022 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -17,6 +17,7 @@
 #include <assert.h>
 #include <float.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <math.h>
 
 #include "pe.h"
@@ -32,6 +33,11 @@ static int test_coords_cart_info(cs_t * cs);
 static int test_coords_sub_communicator(cs_t * cs);
 static int test_coords_periodic_comm(cs_t * cs);
 static int neighbour_rank(cs_t * cs, int nx, int ny, int nz);
+
+int test_cs_options_to_json(void);
+int test_cs_options_from_json(void);
+int test_cs_to_json(pe_t * pe);
+int test_cs_from_json(pe_t * pe);
 
 __host__ int do_test_coords_device1(pe_t * pe);
 __global__ void do_test_coords_kernel1(cs_t * cs);
@@ -103,6 +109,11 @@ int test_coords_suite(void) {
   test_coords_sub_communicator(cs);
   test_coords_periodic_comm(cs);
   cs_free(cs);
+
+  test_cs_options_to_json();
+  test_cs_options_from_json();
+  test_cs_to_json(pe);
+  test_cs_from_json(pe);
 
   /* Device tests */
 
@@ -592,4 +603,150 @@ __global__ void do_test_coords_kernel1(cs_t * cs) {
   test_assert(fabs(ltot[Z] - ntotal[Z]) < DBL_EPSILON);
 
   return;
+}
+
+/*****************************************************************************
+ *
+ *  test_cs_options_to_json
+ *
+ *****************************************************************************/
+
+int test_cs_options_to_json(void) {
+
+  int ifail = 0;
+
+  {
+    cs_param_t opts = {.ntotal   = {2, 3, 4},
+		       .periodic = {1, 1, 1},
+		       .lmin     = {0.5, 0.5, 0.5}};
+    cJSON * json = NULL;
+
+    ifail = cs_options_to_json(&opts, &json);
+    assert(ifail == 0);
+
+    assert(json);
+    cJSON_Delete(json);
+  }
+
+  return ifail;
+}
+
+/*****************************************************************************
+ *
+ *  test_cs_options_from_json
+ *
+ *****************************************************************************/
+
+int test_cs_options_from_json(void) {
+
+  int ifail = 0;
+
+  {
+    /* Size only is ok. */
+    cJSON * json = cJSON_Parse("{\"System size (total)\": [2, 3, 4]}");
+    cs_param_t param = {0};
+
+    assert(json);
+    ifail = cs_options_from_json(json, &param);
+    assert(ifail == 0);
+    assert(param.ntotal[X] == 2);
+    assert(param.ntotal[Y] == 3);
+    assert(param.ntotal[Z] == 4);
+
+    cJSON_Delete(json);
+  }
+
+  {
+    /* All available options (with implausible test values) */
+    cJSON * json = cJSON_Parse("{"
+			       "\"System size (total)\": [2, 3, 4], "
+			       "\"Periodic boundaries\": [5, 6, 7], "
+			       "\"Left-end limit Lmin\": [0.1,0.2,0.3]"
+			       "}");
+    cs_param_t param = {0};
+
+    assert(json);
+    ifail = cs_options_from_json(json, &param);
+    assert(param.periodic[X] == 5);
+    assert(param.periodic[Y] == 6);
+    assert(param.periodic[Z] == 7);
+    assert(fabs(param.lmin[X] - 0.1) < DBL_EPSILON);
+    assert(fabs(param.lmin[Y] - 0.2) < DBL_EPSILON);
+    assert(fabs(param.lmin[Z] - 0.3) < DBL_EPSILON);
+
+    cJSON_Delete(json);
+  }
+
+  return ifail;
+}
+
+/*****************************************************************************
+ *
+ *  test_cs_to_json
+ *
+ *****************************************************************************/
+
+int test_cs_to_json(pe_t * pe) {
+
+  int ifail = 0;
+  cs_t * cs = NULL;
+
+  assert(pe);
+
+  {
+    /* A default cs_t: just make sure we have the right components */
+    cJSON * json = NULL;
+    cs_create(pe, &cs);
+    cs_init(cs);
+
+    ifail = cs_to_json(cs, &json);
+    assert(ifail == 0);
+    assert(cJSON_GetObjectItemCaseSensitive(json, "options"));
+    assert(cJSON_GetObjectItemCaseSensitive(json, "lees_edwards"));
+
+    cJSON_Delete(json);
+    cs_free(cs);
+  }
+
+  return ifail;
+}
+
+/*****************************************************************************
+ *
+ *  test_cs_from_json
+ *
+ *****************************************************************************/
+
+int test_cs_from_json(pe_t * pe) {
+
+  int ifail = 0;
+  cs_t * cs = NULL;
+
+  assert(pe);
+
+  {
+    /* Just about the bare minumum of information */
+
+    cJSON * json = cJSON_Parse("{"
+			       "\"options\": {"
+			         "\"System size (total)\": [8, 16, 32]"
+			       "},"
+			       "\"lees_edwards\": {"
+			         "\"Number of planes\": 0"
+			       "}"
+			       "}");
+    assert(json);
+
+    ifail = cs_from_json(pe, json, &cs);
+    assert(ifail == 0);
+    assert(cs->param->ntotal[X] ==  8);
+    assert(cs->param->ntotal[Y] == 16);
+    assert(cs->param->ntotal[Z] == 32);
+    assert(cs->leopts.nplanes   ==  0);
+
+    cs_free(cs);
+    cJSON_Delete(json);
+  }
+
+  return ifail;
 }

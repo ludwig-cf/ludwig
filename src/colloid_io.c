@@ -22,6 +22,7 @@
 #include "pe.h"
 #include "coords.h"
 #include "colloid_io.h"
+#include "util_fopen.h"
 
 struct colloid_io_s {
   int n_io;                      /* Number of parallel IO group */
@@ -320,7 +321,7 @@ int colloid_io_write(colloid_io_t * cio, const char * filename) {
 
   if (cio->rank == 0) {
 
-    fp_state = fopen(filename_io, "w");
+    fp_state = util_fopen(filename_io, "w");
     if (fp_state == NULL) {
       pe_fatal(cio->pe, "Failed to open %s\n", filename_io);
     }
@@ -450,7 +451,7 @@ int colloid_io_read(colloid_io_t * cio, const char * filename) {
 
   /* Open the file and read the information */
 
-  fp_state = fopen(filename_io, "r");
+  fp_state = util_fopen(filename_io, "r");
   if (fp_state == NULL) pe_fatal(cio->pe, "Failed to open %s\n", filename_io);
 
   cio->f_header_read(fp_state, &ngroup);

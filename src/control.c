@@ -8,7 +8,7 @@
  *  end Edinburgh Parallel Computing Centre
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
- *  (c) 2008-2019 The University of Edinburgh
+ *  (c) 2008-2023 The University of Edinburgh
  *
  *****************************************************************************/
 
@@ -34,6 +34,7 @@ static int freq_shear_meas = 100000000;
 static int freq_colloid_io = 100000000;
 static int rho_nfreq       = 100000000;
 static int config_at_end   = 1;
+static int nsteps_         = -1;
 
 /*****************************************************************************
  *
@@ -90,6 +91,9 @@ int init_control(pe_t * pe, rt_t * rt) {
   if (freq_shear_io   < 1) freq_shear_io   = t_start + t_steps + 1;
   if (freq_shear_meas < 1) freq_shear_meas = t_start + t_steps + 1;
 
+  /* This is a record of the last time step for "config_at_end" */
+  nsteps_ = t_start + t_steps;
+
   return 0;
 }
 
@@ -112,9 +116,14 @@ int is_measurement_step() {
 }
 
 int is_config_step() {
+  int t = -1;
+  int isconfigatendstep = 0;
   physics_t * phys = NULL;
   physics_ref(&phys);
-  return ((physics_control_timestep(phys) % freq_config) == 0);
+  t = physics_control_timestep(phys);
+  isconfigatendstep = (config_at_end && (t == nsteps_));
+
+  return ((t % freq_config) == 0 || isconfigatendstep);
 }
 
 int is_colloid_io_step() {

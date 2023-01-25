@@ -46,7 +46,7 @@
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *  Alan Gray (alang@epcc.ed.ac.uk) provided device implementations.
  *
- *  (c) 2010-2021 The University of Edinburgh
+ *  (c) 2010-2022 The University of Edinburgh
  *
  *****************************************************************************/
 
@@ -59,7 +59,7 @@
 #include "kernel.h"
 #include "wall.h"
 #include "colloids.h"
-#include "pth_s.h"
+#include "phi_force_stress.h"
 #include "phi_force_colloid.h"
 #include "timer.h"
 
@@ -95,7 +95,7 @@ __host__ int pth_force_colloid(pth_t * pth, fe_t * fe, colloids_info_t * cinfo,
 
   if (hydro == NULL && ncolloid == 0) return 0;
 
-  if (pth->method == PTH_METHOD_DIVERGENCE) {
+  if (pth->method == FE_FORCE_METHOD_STRESS_DIVERGENCE) {
     pth_stress_compute(pth, fe);
     pth_force_driver(pth, cinfo, hydro, map, wall, model);
   }
@@ -469,9 +469,9 @@ __global__ void pth_force_fluid_kernel_v(kernel_ctxt_t * ktx, pth_t * pth,
 
     /* Store the force on lattice */
 
-    for (ia = 0; ia < 3; ia++) { 
+    for (ia = 0; ia < 3; ia++) {
       for_simd_v(iv, NSIMDVL) { 
-	hydro->f[addr_rank1(hydro->nsite,NHDIM,index+iv,ia)]
+	hydro->force->data[addr_rank1(hydro->nsite, NHDIM, index+iv, ia)]
 	  += force[ia][iv]*maskv[iv];
       }
     }
@@ -649,11 +649,9 @@ __global__ void pth_force_map_kernel(kernel_ctxt_t * ktx, pth_t * pth,
 	}
       }
       
-      /* Store the force on lattice */
+      /* Accumulate the force on lattice */
 
-      for (ia = 0; ia < 3; ia++) {
-	hydro->f[addr_rank1(hydro->nsite, NHDIM, index, ia)] += force[ia];
-      }
+      hydro_f_local_add(hydro, index, force);
     }
     /* Next site */
   }

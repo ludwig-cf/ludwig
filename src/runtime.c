@@ -779,7 +779,7 @@ int rt_key_present(rt_t * rt, const char * key) {
 
   assert(rt);
 
-  for ( ; pair; pair = pair->next) {
+  for (pair = rt->keylist; pair; pair = pair->next) {
     if (strncmp(key, pair->key, NKEY_LENGTH) == 0) {
       present = 1;
       break;
@@ -875,30 +875,57 @@ int rt_key_required(rt_t * rt, const char * key, rt_enum_t level) {
 
 int rt_vinfo(rt_t * rt, rt_enum_t lv, const char * fmt, ...) {
 
-  int rank;
+  assert(rt);
+
+  if (lv >= RT_INFO) {
+
+    int rank = pe_mpi_rank(rt->pe);
+
+    if (rank == 0) {
+      va_list args;
+      va_start(args, fmt);
+      vprintf(fmt, args);
+      va_end(args);
+    }
+  }
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  rt_fatal
+ *
+ *  A convenience: only really fatal if level == RT_FATAL.
+ *  Allows non-fatal testing.
+ *
+ *****************************************************************************/
+
+int rt_fatal(rt_t * rt, rt_enum_t level, const char * format, ...) {
 
   assert(rt);
 
-  rank = pe_mpi_rank(rt->pe);
+  if (level >= RT_INFO) {
 
-  if (lv >= RT_INFO && rank == 0) {
+    int rank = pe_mpi_rank(rt->pe);
 
-    va_list args;
+    if (rank == 0) {
+      va_list args;
+      va_start(args, format);
+      vprintf(format, args);
+      va_end(args);
+    }
 
-    va_start(args, fmt);
-    vprintf(fmt, args);
-    va_end(args);
-
-    if (lv == RT_FATAL) {
+    if (level >= RT_FATAL) {
       MPI_Comm comm = MPI_COMM_NULL;
       pe_mpi_comm(rt->pe, &comm);
-      printf("Please check input and try again.\n");
       MPI_Abort(comm, 0);
     }
   }
 
   return 0;
 }
+
 
 /*****************************************************************************
  *

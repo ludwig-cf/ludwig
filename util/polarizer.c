@@ -43,6 +43,8 @@
 #include <stdlib.h>
 #include <stdio.h>
 
+#include "util_fopen.h"
+
 #define Pi 3.141592653589793
 #define NLAMBDA 3
 
@@ -146,7 +148,7 @@ int main(int argc, char* argv[]){
   /* take system dimensions from vtk-header */
 
   sprintf(filename, "lcd-%8.8d.vtk", sys.its);
-  dirinput = fopen(filename, "r");
+  dirinput = util_fopen(filename, "r");
 
   if (!dirinput) {
     printf("Cannot open director input file %s\n", argv[1]);
@@ -349,7 +351,7 @@ void read_data(int argc, char** argv, const options_t * opts,
     char * pl = NULL;
 
     sprintf(filename, "lcd-%8.8d.vtk", sys->its);
-    dirinput = fopen(filename, "r");
+    dirinput = util_fopen(filename, "r");
 
     if (!dirinput) {
       printf("Cannot open director input file %s\n", argv[1]);
@@ -360,7 +362,7 @@ void read_data(int argc, char** argv, const options_t * opts,
     /* skip vtk header lines */
     for (int skip = 0; skip < 9; skip++) {
       pl = fgets(line, BUFSIZ, dirinput);
-      assert(pl);
+      if (pl == NULL) printf("Error in header\n");
     }
 
     for (int k = 0; k < sys->Lz; k++) {
@@ -374,10 +376,15 @@ void read_data(int argc, char** argv, const options_t * opts,
 	  double diry = 0.0;
 	  double dirz = 0.0;
 
-	  sscanf(line, "%le %le %le", &dirx, &diry, &dirz);
-	  sys->dir[i][j][k][0] = dirx;
-	  sys->dir[i][j][k][1] = diry;
-	  sys->dir[i][j][k][2] = dirz;
+	  int ns = sscanf(line, "%le %le %le", &dirx, &diry, &dirz);
+	  if (ns == 3) {
+	    sys->dir[i][j][k][0] = dirx;
+	    sys->dir[i][j][k][1] = diry;
+	    sys->dir[i][j][k][2] = dirz;
+	  }
+	  else {
+	    printf("Incorrect dirx diry dirz\n");
+	  }
 	}
       }
     }
@@ -411,7 +418,7 @@ void read_data(int argc, char** argv, const options_t * opts,
     int Lzsop = -1;
 
     sprintf(filename, "lcs-%8.8d.vtk", sys->its);
-    sopinput = fopen(filename, "r");
+    sopinput = util_fopen(filename, "r");
 
     if (!sopinput) {
       printf("Cannot open scalar order parameter input file %s\n", argv[2]);
@@ -420,11 +427,15 @@ void read_data(int argc, char** argv, const options_t * opts,
     /* skip header vtk lines to size ... */
     for (int skip = 0; skip < 4; skip++) {
       pl = fgets(line, BUFSIZ, sopinput);
-      assert(pl);
+      if (pl == NULL) printf("Error in vtk header\n");
     }
     /* take system dimensions from vtk-header */
     nread = fscanf(sopinput,"%s %d %d %d", dummy, &Lxsop, &Lysop, &Lzsop);
     assert(nread == 4);
+    if (nread != 4) {
+      printf("Bad dimensions in header\n");
+      exit(-1);
+    }
 
     /* skip rest header lines */
     for (int skip = 5; skip < 11; skip++) {
@@ -700,7 +711,7 @@ void output(int argc, char ** argv, const options_t * opts, system_t * sys) {
   if (opts->raydir == 1) sprintf(outfile, "polar-y-%8.8d.vtk", sys->its);
   if (opts->raydir == 2) sprintf(outfile, "polar-z-%8.8d.vtk", sys->its);
 
-  polaroutput = fopen(outfile, "w");
+  polaroutput = util_fopen(outfile, "w");
   assert(polaroutput);
 
   if (opts->raydir == 0) {

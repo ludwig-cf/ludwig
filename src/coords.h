@@ -5,7 +5,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2010-2021 The University of Edinburgh
+ *  (c) 2010-2022 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -17,8 +17,50 @@
 
 #include "pe.h"
 #include "cartesian.h"
+#include "lees_edwards_options.h"
+#include "util_json.h"
+
+/* Note that there is a copy of the Lees Edwards options here to
+ * allow the relevant metadata to be constructed from coords_t alone.
+ * All the Lees Edwards operations are in leesedwards.c */
 
 typedef struct coords_s cs_t;
+typedef struct coords_param_s cs_param_t;
+
+struct coords_param_s {
+  int nhalo;                       /* Width of halo region */
+  int nsites;                      /* Total sites (incl. halo) */
+  int ntotal[3];                   /* System (physical) size */
+  int nlocal[3];                   /* Local system size */
+  int noffset[3];                  /* Local system offset */
+  int str[3];                      /* Memory strides */
+  int periodic[3];                 /* Periodic boundary (non-periodic = 0) */
+
+  int mpi_cartsz[3];               /* Cartesian size */
+  int mpi_cartcoords[3];           /* Cartesian coordinates lookup */
+
+  double lmin[3];                  /* System L_min */
+};
+
+struct coords_s {
+  pe_t * pe;                       /* Retain a reference to pe */
+  int nref;                        /* Reference count */
+
+  cs_param_t * param;              /* Constants */
+
+  /* Host data */
+  int mpi_cartrank;                /* MPI Cartesian rank */
+  int reorder;                     /* MPI reorder flag */
+  int mpi_cart_neighbours[2][3];   /* Ranks of Cartesian neighbours lookup */
+  int * listnlocal[3];             /* Rectilinear decomposition */
+  int * listnoffset[3];            /* Rectilinear offsets */
+  lees_edw_options_t leopts;       /* Copy of LE opts (no. of planes etc.) */
+
+  MPI_Comm commcart;               /* Cartesian communicator */
+  MPI_Comm commperiodic;           /* Cartesian periodic communicator */
+
+  cs_t * target;                   /* Host pointer to target memory */
+};
 
 #define NSYMM 6      /* Elements for general symmetric tensor */
 
@@ -69,5 +111,10 @@ __host__ __device__ int cs_nall(cs_t * cs, int nall[3]);
 /* A "class" function */
 
 __host__ int cs_cart_shift(MPI_Comm comm, int dim, int direction, int * rank);
+
+int cs_options_to_json(const cs_param_t * opts, cJSON ** json);
+int cs_options_from_json(const cJSON * json, cs_param_t * opts);
+int cs_to_json(const cs_t * cs, cJSON ** json);
+int cs_from_json(pe_t * pe, const cJSON * json, cs_t ** cs);
 
 #endif

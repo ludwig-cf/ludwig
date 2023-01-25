@@ -9,7 +9,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2010-2021 The University of Edinburgh
+ *  (c) 2010-2022 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -25,8 +25,6 @@
 #include "util.h"
 
 typedef struct lees_edw_param_s lees_edw_param_t;
-
-enum shear_type {LEES_EDW_LINEAR, LEES_EDW_OSCILLATORY};
 
 struct lees_edw_s {
   pe_t * pe;                /* Parallel environment */
@@ -68,7 +66,7 @@ struct lees_edw_param_s {
   double time0;             /* time offset */
 };
 
-static int lees_edw_init(lees_edw_t * le, lees_edw_info_t * info);
+static int lees_edw_init(lees_edw_t * le, const lees_edw_options_t * info);
 static int lees_edw_checks(lees_edw_t * le);
 static int lees_edw_init_tables(lees_edw_t * le);
 
@@ -84,9 +82,13 @@ __host__ __device__ int lees_edw_index_buffer_to_real(lees_edw_t * le, int ibuf)
  *
  *  lees_edw_create
  *
+ *  info may be NULL, in which case no planes.
+ *  This NULL possibility should probably be removed.
+ *
  *****************************************************************************/
 
-__host__ int lees_edw_create(pe_t * pe, cs_t * cs, lees_edw_info_t * info,
+__host__ int lees_edw_create(pe_t * pe, cs_t * cs,
+			     const lees_edw_options_t * info,
 			     lees_edw_t ** ple) {
 
   int ndevice;
@@ -106,6 +108,7 @@ __host__ int lees_edw_create(pe_t * pe, cs_t * cs, lees_edw_info_t * info,
   le->pe = pe;
   pe_retain(pe);
   le->cs = cs;
+  if (info) cs->leopts = *info; /* Copy of options for i/o metadata */
   cs_retain(cs);
 
   le->param->nplanetotal = 0;
@@ -254,7 +257,7 @@ int lees_edw_oscillatory_set(lees_edw_t * le, int period) {
 
   assert(le);
 
-  le->param->type = LEES_EDW_OSCILLATORY;
+  le->param->type = LE_SHEAR_TYPE_OSCILLATORY;
   le->param->period = period;
   le->param->omega = 2.0*4.0*atan(1.0)/le->param->period;
 
@@ -289,7 +292,7 @@ int lees_edw_toffset_set(lees_edw_t * le, int nt0) {
  *
  *****************************************************************************/
 
-static int lees_edw_init(lees_edw_t * le, lees_edw_info_t * info) {
+static int lees_edw_init(lees_edw_t * le, const lees_edw_options_t * info) {
 
   int ntotal[3];
 
@@ -409,7 +412,7 @@ __host__ int lees_edw_info(lees_edw_t * le) {
 	   (int)(le->param->dx_min + np*le->param->dx_sep), le->param->uy);
     }
 
-    if (le->param->type == LEES_EDW_LINEAR) {
+    if (le->param->type == LE_SHEAR_TYPE_STEADY) {
       pe_info(le->pe, "Overall shear rate = %f\n", gammadot);
     }
     else {
@@ -684,7 +687,7 @@ int lees_edw_steady_uy(lees_edw_t * le, int ic, double * uy) {
   double xglobal;
 
   assert(le);
-  assert(le->param->type == LEES_EDW_LINEAR);
+  assert(le->param->type == LE_SHEAR_TYPE_STEADY);
 
   cs_nlocal_offset(le->cs, offset);
   lees_edw_shear_rate(le, &gammadot);
@@ -725,7 +728,7 @@ int lees_edw_block_uy(lees_edw_t * le, int ic, double * uy) {
   double ltot[3];
 
   assert(le);
-  assert(le->param->type == LEES_EDW_LINEAR);
+  assert(le->param->type == LE_SHEAR_TYPE_STEADY);
 
   cs_lmin(le->cs, lmin);
   cs_ltot(le->cs, ltot);
@@ -766,7 +769,7 @@ int lees_edw_plane_uy_now(lees_edw_t * le, double t, double * uy) {
   assert(tle >= 0.0);
 
   *uy = le->param->uy;
-  if (le->param->type == LEES_EDW_OSCILLATORY) *uy *= cos(le->param->omega*tle);
+  if (le->param->type == LE_SHEAR_TYPE_OSCILLATORY) *uy *= cos(le->param->omega*tle);
 
   return 0;
 }
@@ -874,12 +877,12 @@ int lees_edw_buffer_displacement(lees_edw_t * le, int ib, double t, double * dy)
 
   *dy = 0.0;
 
-  if (le->param->type == LEES_EDW_LINEAR) {
+  if (le->param->type == LE_SHEAR_TYPE_STEADY) {
     *dy = tle*le->param->uy*le->buffer_duy[ib];
     assert(le->buffer_duy[ib] == lees_edw_buffer_duy(le, ib));
   }
 
-  if (le->param->type == LEES_EDW_OSCILLATORY) {
+  if (le->param->type == LE_SHEAR_TYPE_OSCILLATORY) {
     *dy = le->param->uy*sin(le->param->omega*tle)/le->param->omega;
   }
 
@@ -1201,7 +1204,7 @@ __host__ int lees_edw_buffer_du(lees_edw_t * le, int ib, double ule[3]) {
   assert(le);
   assert(ib >= 0 && ib < le->param->nxbuffer);
 
-  if (le->param->type == LEES_EDW_LINEAR) {
+  if (le->param->type == LE_SHEAR_TYPE_STEADY) {
     ule[X] = 0.0;
     ule[Y] = le->param->uy*le->buffer_duy[ib];
     assert(le->buffer_duy[ib] == lees_edw_buffer_duy(le, ib));

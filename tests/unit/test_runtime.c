@@ -25,6 +25,7 @@
 
 int test_rt_general(pe_t * pe);
 int test_rt_nvector(pe_t * pe);
+int test_rt_key_present(pe_t * pe);
 
 /*****************************************************************************
  *
@@ -40,6 +41,7 @@ int test_rt_suite(void) {
 
   test_rt_general(pe);
   test_rt_nvector(pe);
+  test_rt_key_present(pe);
 
   pe_info(pe, "PASS     ./unit/test_runtime\n");
   pe_free(pe);
@@ -275,4 +277,29 @@ int test_rt_nvector(pe_t * pe) {
   rt_free(rt);
 
   return key_ret;
+}
+
+/*****************************************************************************
+ *
+ *  test_rt_key_present
+ *
+ *****************************************************************************/
+
+int test_rt_key_present(pe_t * pe) {
+
+  int ifail = 0;
+  rt_t * rt = NULL;
+
+  rt_create(pe, &rt);
+  rt_add_key_value(rt, "present", "and_correct");
+
+  ifail = rt_key_present(rt, "present");
+  assert(ifail == 1);
+
+  ifail = rt_key_present(rt, "no_present");
+  assert(ifail == 0);
+
+  rt_free(rt);
+
+  return ifail;
 }

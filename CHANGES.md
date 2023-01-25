@@ -1,6 +1,34 @@
 
 ### Changes
 
+version 0.19.0
+
+- There has been a significant change to the way that i/o is undertaken.
+  See https://ludwig.epcc.ed.ac.uk/outputs/fluid.html
+  It is the intension to replace completely the 'old' I/O mechanism
+  by release v0.21.0.
+- The extract_colloids.c utility has been updated so that it takes
+  only one comand line argument for new I/O metadata.
+
+- Input associated with the choice of force arising from the free energy
+  sector has been made more general. Specifically, input keys
+  `fd_force_divergence` and `fe_use_stress_relaxation` are replaced.
+  - For scalar order parameters an extra version of the "phi_gradmu"
+    approach is avaialble" "phi_gradmu_correction".
+  - See https://ludwig.epcc.ed.ac.uk/inputs/force.html for details.
+- Order parameter statistics are now reported as "phi" for scalars
+  [Px,Py,Pz] for vectors, and [Qxx, Qxy, Qxz, Qyy, Qyz] for liquid
+  crystal. The computation of the total has been improved by using a
+  compensated sum, which is more robust to threads/MPI.
+- Added compiler option information and git commit information at run
+  time.
+- The LaTeX tutorials document has been replaced by html tutorials
+  at https://ludwig.epcc.ed.ac.uk/ to reflect new I/O and to add a
+  number of new topics.
+- LTGM.com analysis has been retired as the service has closed. The
+  two outstanding recommendations are covered by CodeQL notes.
+- Various minor updates.
+
 version 0.18.0
 
 - Added a lubrication correction offset to allow an option for keeping

@@ -13,8 +13,9 @@
 #
 #  We have to get rid of some stuff that will not match:
 #    - the run times
-#    - SVN version information
+#    - Version information
 #    - exact location of input file
+#    - compiler deatils
 #    - allow "Model R" tests to pass by looking for "d3q19 R" etc
 #
 #  Options:
@@ -25,7 +26,7 @@
 #
 #  Contributing Authors:
 #  Kevin Stratford (kevin@epcc.ed.ac.uk)
-#  (c) 2013-2019 The University of Edinburgh
+#  (c) 2013-2023 The University of Edinburgh
 #
 ###############################################################################
 
@@ -81,9 +82,11 @@ fi
 sed '/call)/d' $1 > test-diff-tmp.ref
 sed -i~ '/calls)/d' test-diff-tmp.ref
 sed -i~ '/Welcome/d' test-diff-tmp.ref
+sed -i~ '/Git commit:/d' test-diff-tmp.ref
 sed -i~ '/Compiler:/d' test-diff-tmp.ref
 sed -i~ '/..name:/d' test-diff-tmp.ref
 sed -i~ '/..version-string:/d' test-diff-tmp.ref
+sed -i~ '/..options:/d' test-diff-tmp.ref
 sed -i~ '/Target thread model:/d' test-diff-tmp.ref
 sed -i~ '/Default threads per block/d' test-diff-tmp.ref
 sed -i~ '/OpenMP/d' test-diff-tmp.ref
@@ -102,9 +105,11 @@ sed -i~ '/End time/d' test-diff-tmp.ref
 sed '/call)/d' $2 > test-diff-tmp.log
 sed -i~ '/calls)/d' test-diff-tmp.log
 sed -i~ '/Welcome/d' test-diff-tmp.log
+sed -i~ '/Git commit:/d' test-diff-tmp.log
 sed -i~ '/Compiler:/d' test-diff-tmp.log
 sed -i~ '/..name:/d' test-diff-tmp.log
 sed -i~ '/..version-string:/d' test-diff-tmp.log
+sed -i~ '/..options:/d' test-diff-tmp.log
 sed -i~ '/Target thread model:/d' test-diff-tmp.log
 sed -i~ '/Default threads per block/d' test-diff-tmp.log
 sed -i~ '/OpenMP/d' test-diff-tmp.log

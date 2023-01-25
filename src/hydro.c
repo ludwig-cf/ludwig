@@ -20,11 +20,8 @@
 #include <stdlib.h> 
 
 #include "kernel.h"
-#include "coords_field.h"
-#include "util.h"
 #include "hydro.h"
-
-#include "timer.h"
+#include "util.h"
 
 static int hydro_lees_edwards_parallel(hydro_t * obj);
 static int hydro_u_write(FILE * fp, int index, void * self);
@@ -59,8 +56,7 @@ __global__ void hydro_rho0_kernel(int nsite, double rho0, double * rho);
 __host__ int hydro_create(pe_t * pe, cs_t * cs, lees_edw_t * le,
 			  const hydro_options_t * opts,
 			  hydro_t ** pobj) {
-  int ndevice;
-  double * tmp;
+  int ndevice = 0;
   hydro_t * obj = (hydro_t *) NULL;
 
   assert(pe);
@@ -80,25 +76,16 @@ __host__ int hydro_create(pe_t * pe, cs_t * cs, lees_edw_t * le,
   cs_nsites(cs, &obj->nsite);
   if (le) lees_edw_nsites(le, &obj->nsite);
 
-  obj->rho = (double *) mem_aligned_calloc(MEM_PAGESIZE, obj->nsite,
-					   sizeof(double));
-  obj->u = (double *) mem_aligned_calloc(MEM_PAGESIZE, NHDIM*obj->nsite,
-					 sizeof(double));
-  if (obj->rho == NULL) pe_fatal(pe, "calloc(hydro-rho) failed\n");
-  if (obj->u == NULL) pe_fatal(pe, "calloc(hydro->u) failed\n");
+  /* Fields */
+  /* rho: scalar field with no halo swap (halo width zero). */
+  /* vel: vector velocity field */
+  /* force: vector body force dencity */
+  /* eta: scalar viscosity with no halo swap */
 
-  obj->f = (double *) mem_aligned_calloc(MEM_PAGESIZE, NHDIM*obj->nsite,
-					 sizeof(double));
-  if (obj->f == NULL) pe_fatal(pe, "calloc(hydro->f) failed\n");
-
-  obj->eta =
-    (double *) mem_aligned_calloc(MEM_PAGESIZE, obj->nsite, sizeof(double));
-  if (obj->eta == NULL) pe_fatal(pe, "calloc(hydro->eta) failed\n");
-
-  halo_swap_create_r1(pe, cs, opts->nhcomm, obj->nsite, NHDIM, &obj->halo);
-  assert(obj->halo);
-
-  halo_swap_handlers_set(obj->halo, halo_swap_pack_rank1, halo_swap_unpack_rank1);
+  field_create(pe, cs, le, "rho",   &opts->rho,   &obj->rho);
+  field_create(pe, cs, le, "vel",   &opts->u,     &obj->u);
+  field_create(pe, cs, le, "force", &opts->force, &obj->force);
+  field_create(pe, cs, le, "eta",   &opts->eta,   &obj->eta);
 
   /* Allocate target copy of structure (or alias) */
 
@@ -112,32 +99,19 @@ __host__ int hydro_create(pe_t * pe, cs_t * cs, lees_edw_t * le,
     tdpAssert(tdpMalloc((void **) &obj->target, sizeof(hydro_t)));
     tdpAssert(tdpMemset(obj->target, 0, sizeof(hydro_t)));
 
-    tdpAssert(tdpMalloc((void **) &tmp, obj->nsite*sizeof(double)));
-    tdpAssert(tdpMemset(tmp, 0, obj->nsite*sizeof(double)));
-    tdpAssert(tdpMemcpy(&obj->target->rho, &tmp, sizeof(double *),
-			tdpMemcpyHostToDevice));
-
-    tdpAssert(tdpMalloc((void **) &tmp, NHDIM*obj->nsite*sizeof(double)));
-    tdpAssert(tdpMemset(tmp, 0, NHDIM*obj->nsite*sizeof(double)));
-    tdpAssert(tdpMemcpy(&obj->target->u, &tmp, sizeof(double *),
-			tdpMemcpyHostToDevice)); 
-
-    tdpAssert(tdpMalloc((void **) &tmp, NHDIM*obj->nsite*sizeof(double)));
-    tdpAssert(tdpMemset(tmp, 0, NHDIM*obj->nsite*sizeof(double)));
-    tdpAssert(tdpMemcpy(&obj->target->f, &tmp, sizeof(double *),
-			tdpMemcpyHostToDevice)); 
-
-    tdpAssert(tdpMalloc((void **) &tmp, obj->nsite*sizeof(double)));
-    tdpAssert(tdpMemset(tmp, 0, obj->nsite*sizeof(double)));
-    tdpAssert(tdpMemcpy(&obj->target->eta, &tmp, sizeof(double *),
-			tdpMemcpyHostToDevice)); 
-
     tdpAssert(tdpMemcpy(&obj->target->nsite, &obj->nsite, sizeof(int),
 			tdpMemcpyHostToDevice));
-  }
 
-  hydro_halo_create(obj, &obj->h);
-  obj->opts = *opts;
+    /* Fields: target pointers should be copied ... */
+    tdpAssert(tdpMemcpy(&obj->target->rho, &obj->rho->target,
+			sizeof(field_t *), tdpMemcpyHostToDevice));
+    tdpAssert(tdpMemcpy(&obj->target->u, &obj->u->target,
+			sizeof(field_t *), tdpMemcpyHostToDevice));
+    tdpAssert(tdpMemcpy(&obj->target->force, &obj->force->target,
+			sizeof(field_t *), tdpMemcpyHostToDevice));
+    tdpAssert(tdpMemcpy(&obj->target->eta, &obj->eta->target,
+			sizeof(field_t *), tdpMemcpyHostToDevice));
+  }
 
   *pobj = obj;
 
@@ -153,37 +127,19 @@ __host__ int hydro_create(pe_t * pe, cs_t * cs, lees_edw_t * le,
 __host__ int hydro_free(hydro_t * obj) {
 
   int ndevice;
-  double * tmp;
 
   assert(obj);
 
   tdpGetDeviceCount(&ndevice);
 
-  if (ndevice > 0) {
-
-    tdpAssert(tdpMemcpy(&tmp, &obj->target->rho, sizeof(double *),
-			tdpMemcpyDeviceToHost));
-    tdpAssert(tdpFree(tmp));
-
-    tdpAssert(tdpMemcpy(&tmp, &obj->target->u, sizeof(double *),
-			tdpMemcpyDeviceToHost)); 
-    tdpAssert(tdpFree(tmp));
-    tdpAssert(tdpMemcpy(&tmp, &obj->target->f, sizeof(double *),
-			tdpMemcpyDeviceToHost)); 
-    tdpAssert(tdpFree(tmp));
-    tdpAssert(tdpMemcpy(&tmp, &obj->target->eta, sizeof(double *),
-			tdpMemcpyDeviceToHost)); 
-    tdpAssert(tdpFree(tmp));
-    tdpAssert(tdpFree(obj->target));
-  }
-
-  halo_swap_free(obj->halo);
-  hydro_halo_free(&obj->h);
+  if (ndevice > 0) tdpAssert(tdpFree(obj->target));
   if (obj->info) io_info_free(obj->info);
-  free(obj->eta);
-  free(obj->f);
-  free(obj->u);
-  free(obj->rho);
+
+  field_free(obj->eta);
+  field_free(obj->force);
+  field_free(obj->u);
+  field_free(obj->rho);
+
   free(obj);
 
   return 0;
@@ -198,9 +154,6 @@ __host__ int hydro_free(hydro_t * obj) {
 __host__ int hydro_memcpy(hydro_t * obj, tdpMemcpyKind flag) {
 
   int ndevice;
-  double * tmpu;
-  double * tmpf;
-  double * tmpeta;
 
   assert(obj);
 
@@ -211,34 +164,15 @@ __host__ int hydro_memcpy(hydro_t * obj, tdpMemcpyKind flag) {
     assert(obj->target == obj);
   }
   else {
-    double * tmprho = NULL;
 
-    tdpAssert(tdpMemcpy(&tmprho, &obj->target->rho, sizeof(double *),
-			tdpMemcpyDeviceToHost));
-    tdpAssert(tdpMemcpy(&tmpf, &obj->target->f, sizeof(double *),
-			tdpMemcpyDeviceToHost));
-    tdpAssert(tdpMemcpy(&tmpu, &obj->target->u, sizeof(double *),
-			tdpMemcpyDeviceToHost));
-    tdpAssert(tdpMemcpy(&tmpeta, &obj->target->eta, sizeof(double *),
-			tdpMemcpyDeviceToHost));
-
-    switch (flag) {
-    case tdpMemcpyHostToDevice:
-      tdpAssert(tdpMemcpy(tmprho, obj->rho, obj->nsite*sizeof(double), flag));
-      tdpAssert(tdpMemcpy(tmpu, obj->u, NHDIM*obj->nsite*sizeof(double), flag));
-      tdpAssert(tdpMemcpy(tmpf, obj->f, NHDIM*obj->nsite*sizeof(double), flag));
-      tdpAssert(tdpMemcpy(tmpeta, obj->eta, obj->nsite*sizeof(double), flag));
+    if (flag == tdpMemcpyHostToDevice) {
       tdpAssert(tdpMemcpy(&obj->target->nsite, &obj->nsite, sizeof(int), flag));
-      break;
-    case tdpMemcpyDeviceToHost:
-      tdpAssert(tdpMemcpy(obj->rho, tmprho, obj->nsite*sizeof(double), flag));
-      tdpAssert(tdpMemcpy(obj->f, tmpf, NHDIM*obj->nsite*sizeof(double), flag));
-      tdpAssert(tdpMemcpy(obj->u, tmpu, NHDIM*obj->nsite*sizeof(double), flag));
-      tdpAssert(tdpMemcpy(obj->eta, tmpeta, obj->nsite*sizeof(double), flag));
-      break;
-    default:
-      pe_fatal(obj->pe, "Bad flag in hydro_memcpy\n");
     }
+    /* Fields */
+    field_memcpy(obj->rho,   flag);
+    field_memcpy(obj->u,     flag);
+    field_memcpy(obj->force, flag);
+    field_memcpy(obj->eta,   flag);
   }
 
   return 0;
@@ -248,13 +182,16 @@ __host__ int hydro_memcpy(hydro_t * obj, tdpMemcpyKind flag) {
  *
  *  hydro_u_halo
  *
+ *  This means the velocity field only.
+ *  If other fields are requirted, use field_halo() explicitly.
+ *
  *****************************************************************************/
 
 __host__ int hydro_u_halo(hydro_t * obj) {
 
   assert(obj);
 
-  hydro_halo_swap(obj, obj->opts.haloscheme);
+  field_halo(obj->u);
 
   return 0;
 }
@@ -263,33 +200,15 @@ __host__ int hydro_u_halo(hydro_t * obj) {
  *
  *  hydro_halo_swap
  *
- *  There is no halo swap in the density at the moment, as it is never
- *  required.
+ *  Again, this means only the velocity field.
  *
  *****************************************************************************/
 
-__host__ int hydro_halo_swap(hydro_t * obj, hydro_halo_enum_t flag) {
-
-  double * data;
+__host__ int hydro_halo_swap(hydro_t * obj, field_halo_enum_t flag) {
 
   assert(obj);
 
-  switch (flag) {
-  case HYDRO_U_HALO_HOST:
-    halo_swap_host_rank1(obj->halo, obj->u, MPI_DOUBLE);
-    break;
-  case HYDRO_U_HALO_TARGET:
-    tdpAssert(tdpMemcpy(&data, &obj->target->u, sizeof(double *),
-			tdpMemcpyDeviceToHost));
-    halo_swap_packed(obj->halo, data);
-    break;
-  case HYDRO_U_HALO_OPENMP:
-    hydro_halo_post(obj);
-    hydro_halo_wait(obj);
-    break;
-  default:
-    assert(0);
-  }
+  field_halo_swap(obj->u, flag);
 
   return 0;
 }
@@ -353,139 +272,6 @@ __host__ int hydro_io_info(hydro_t * obj, io_info_t ** info) {
 
 /*****************************************************************************
  *
- *  hydro_f_local_set
- *
- *****************************************************************************/
-
-__host__ __device__
-int hydro_f_local_set(hydro_t * obj, int index, const double force[3]) {
-
-  int ia;
-
-  assert(obj);
-
-  for (ia = 0; ia < 3; ia++) {
-    obj->f[addr_rank1(obj->nsite, NHDIM, index, ia)] = force[ia];
-  }
-
-  return 0;
-}
-
-/*****************************************************************************
- *
- *  hydro_f_local
- *
- *****************************************************************************/
-
-__host__ __device__
-int hydro_f_local(hydro_t * obj, int index, double force[3]) {
-
-  int ia;
-
-  assert(obj);
-
-  for (ia = 0; ia < 3; ia++) {
-    force[ia] = obj->f[addr_rank1(obj->nsite, NHDIM, index, ia)];
-  }
-
-  return 0;
-}
-
-/*****************************************************************************
- *
- *  hydro_f_local_add
- *
- *  Accumulate (repeat, accumulate) the fluid force at site index.
- *
- *****************************************************************************/
-
-__host__ __device__
-int hydro_f_local_add(hydro_t * obj, int index, const double force[3]) {
-
-  int ia;
-
-  assert(obj);
-
-  for (ia = 0; ia < 3; ia++) {
-    obj->f[addr_rank1(obj->nsite, NHDIM, index, ia)] += force[ia]; 
-  }
-
-  return 0;
-}
-
-/*****************************************************************************
- *
- *  hydro_rho_set
- *
- *****************************************************************************/
-
-__host__ __device__ int hydro_rho_set(hydro_t * hydro, int index, double rho) {
-
-  assert(hydro);
-
-  hydro->rho[addr_rank0(hydro->nsite, index)] = rho;
-
-  return 0;
-}
-
-/*****************************************************************************
- *
- *  hydro_rho
- *
- *****************************************************************************/
-
-__host__ __device__ int hydro_rho(hydro_t * hydro, int index, double * rho) {
-
-  assert(hydro);
-  assert(rho);
-
-  *rho = hydro->rho[addr_rank0(hydro->nsite, index)];
-
-  return 0;
-}
-
-/*****************************************************************************
- *
- *  hydro_u_set
- *
- *****************************************************************************/
-
-__host__ __device__
-int hydro_u_set(hydro_t * obj, int index, const double u[3]) {
-
-  int ia;
-
-  assert(obj);
-
-  for (ia = 0; ia < 3; ia++) {
-    obj->u[addr_rank1(obj->nsite, NHDIM, index, ia)] = u[ia];
-  }
-
-  return 0;
-}
-
-/*****************************************************************************
- *
- *  hydro_u
- *
- *****************************************************************************/
-
-__host__ __device__
-int hydro_u(hydro_t * obj, int index, double u[3]) {
-
-  int ia;
-
-  assert(obj);
-
-  for (ia = 0; ia < 3; ia++) {
-    u[ia] = obj->u[addr_rank1(obj->nsite, NHDIM, index, ia)];
-  }
-
-  return 0;
-}
-
-/*****************************************************************************
- *
  *  hydro_u_zero
  *
  *****************************************************************************/
@@ -497,7 +283,7 @@ __host__ int hydro_u_zero(hydro_t * obj, const double uzero[NHDIM]) {
 
   assert(obj);
 
-  tdpAssert(tdpMemcpy(&u, &obj->target->u, sizeof(double *),
+  tdpAssert(tdpMemcpy(&u, &obj->u->target->data, sizeof(double *),
 		      tdpMemcpyDeviceToHost));
 
   kernel_launch_param(obj->nsite, &nblk, &ntpb);
@@ -525,7 +311,7 @@ __host__ int hydro_f_zero(hydro_t * obj, const double fzero[NHDIM]) {
   assert(obj);
   assert(obj->target);
 
-  tdpAssert(tdpMemcpy(&f, &obj->target->f, sizeof(double *),
+  tdpAssert(tdpMemcpy(&f, &obj->force->target->data, sizeof(double *),
 		      tdpMemcpyDeviceToHost));
 
   kernel_launch_param(obj->nsite, &nblk, &ntpb);
@@ -554,7 +340,7 @@ __host__ int hydro_rho0(hydro_t * obj, double rho0) {
   assert(obj);
   assert(obj->target);
 
-  tdpAssert(tdpMemcpy(&rho, &obj->target->rho, sizeof(double *),
+  tdpAssert(tdpMemcpy(&rho, &obj->rho->target->data, sizeof(double *),
 		      tdpMemcpyDeviceToHost));
 
   kernel_launch_param(obj->nsite, &nblk, &ntpb);
@@ -696,9 +482,9 @@ __host__ int hydro_lees_edwards(hydro_t * obj) {
 	  index1 = lees_edw_index(obj->le, ic, j1, kc);
 	  index2 = lees_edw_index(obj->le, ic, j2, kc);
 	  for (ia = 0; ia < 3; ia++) {
-	    obj->u[addr_rank1(obj->nsite, NHDIM, index0, ia)] = ule[ia] +
-	      obj->u[addr_rank1(obj->nsite, NHDIM, index1, ia)]*fr +
-	      obj->u[addr_rank1(obj->nsite, NHDIM, index2, ia)]*(1.0 - fr);
+	    obj->u->data[addr_rank1(obj->nsite, NHDIM, index0, ia)] = ule[ia] +
+	      obj->u->data[addr_rank1(obj->nsite, NHDIM, index1, ia)]*fr +
+	      obj->u->data[addr_rank1(obj->nsite, NHDIM, index2, ia)]*(1.0 - fr);
 	  }
 	}
       }
@@ -833,7 +619,7 @@ static int hydro_lees_edwards_parallel(hydro_t * obj) {
 	for (ia = 0; ia < NHDIM; ia++) {
 	  j1 = (jc - 1)*NHDIM*(nlocal[Z] + 2*nhalo) + NHDIM*(kc + nhalo - 1) + ia;
 	  assert(j1 >= 0 && j1 < nsend);
-	  sbuf[j1] = obj->u[addr_rank1(obj->nsite, NHDIM, index, ia)];
+	  sbuf[j1] = obj->u->data[addr_rank1(obj->nsite, NHDIM, index, ia)];
 	}
       }
     }
@@ -859,7 +645,7 @@ static int hydro_lees_edwards_parallel(hydro_t * obj) {
       for (kc = 1 - nhalo; kc <= nlocal[Z] + nhalo; kc++) {
 	index = lees_edw_index(obj->le, ib0 + ib, jc, kc);
 	for (ia = 0; ia < NHDIM; ia++) {
-	  obj->u[addr_rank1(obj->nsite, NHDIM, index, ia)] = ule[ia]
+	  obj->u->data[addr_rank1(obj->nsite, NHDIM, index, ia)] = ule[ia]
 	    + fr*rbuf[NHDIM*(j1 + kc + nhalo - 1) + ia]
 	    + (1.0 - fr)*rbuf[NHDIM*(j2 + kc + nhalo - 1) + ia];
 	}
@@ -994,32 +780,32 @@ __host__ int hydro_u_gradient_tensor(hydro_t * obj, int ic, int jc, int kc,
   ip1 = lees_edw_ic_to_buff(obj->le, ic, +1);
   ip1 = lees_edw_index(obj->le, ip1, jc, kc);
 
-  w[X][X] = 0.5*(obj->u[addr_rank1(obj->nsite, NHDIM, ip1, X)] -
-		 obj->u[addr_rank1(obj->nsite, NHDIM, im1, X)]);
-  w[Y][X] = 0.5*(obj->u[addr_rank1(obj->nsite, NHDIM, ip1, Y)] -
-		 obj->u[addr_rank1(obj->nsite, NHDIM, im1, Y)]);
-  w[Z][X] = 0.5*(obj->u[addr_rank1(obj->nsite, NHDIM, ip1, Z)] -
-		 obj->u[addr_rank1(obj->nsite, NHDIM, im1, Z)]);
+  w[X][X] = 0.5*(obj->u->data[addr_rank1(obj->nsite, NHDIM, ip1, X)] -
+		 obj->u->data[addr_rank1(obj->nsite, NHDIM, im1, X)]);
+  w[Y][X] = 0.5*(obj->u->data[addr_rank1(obj->nsite, NHDIM, ip1, Y)] -
+		 obj->u->data[addr_rank1(obj->nsite, NHDIM, im1, Y)]);
+  w[Z][X] = 0.5*(obj->u->data[addr_rank1(obj->nsite, NHDIM, ip1, Z)] -
+		 obj->u->data[addr_rank1(obj->nsite, NHDIM, im1, Z)]);
 
   im1 = lees_edw_index(obj->le, ic, jc - 1, kc);
   ip1 = lees_edw_index(obj->le, ic, jc + 1, kc);
 
-  w[X][Y] = 0.5*(obj->u[addr_rank1(obj->nsite, NHDIM, ip1, X)] -
-		 obj->u[addr_rank1(obj->nsite, NHDIM, im1, X)]);
-  w[Y][Y] = 0.5*(obj->u[addr_rank1(obj->nsite, NHDIM, ip1, Y)] -
-		 obj->u[addr_rank1(obj->nsite, NHDIM, im1, Y)]);
-  w[Z][Y] = 0.5*(obj->u[addr_rank1(obj->nsite, NHDIM, ip1, Z)] -
-		 obj->u[addr_rank1(obj->nsite, NHDIM, im1, Z)]);
+  w[X][Y] = 0.5*(obj->u->data[addr_rank1(obj->nsite, NHDIM, ip1, X)] -
+		 obj->u->data[addr_rank1(obj->nsite, NHDIM, im1, X)]);
+  w[Y][Y] = 0.5*(obj->u->data[addr_rank1(obj->nsite, NHDIM, ip1, Y)] -
+		 obj->u->data[addr_rank1(obj->nsite, NHDIM, im1, Y)]);
+  w[Z][Y] = 0.5*(obj->u->data[addr_rank1(obj->nsite, NHDIM, ip1, Z)] -
+		 obj->u->data[addr_rank1(obj->nsite, NHDIM, im1, Z)]);
 
   im1 = lees_edw_index(obj->le, ic, jc, kc - 1);
   ip1 = lees_edw_index(obj->le, ic, jc, kc + 1);
 
-  w[X][Z] = 0.5*(obj->u[addr_rank1(obj->nsite, NHDIM, ip1, X)] -
-		 obj->u[addr_rank1(obj->nsite, NHDIM, im1, X)]);
-  w[Y][Z] = 0.5*(obj->u[addr_rank1(obj->nsite, NHDIM, ip1, Y)] -
-		 obj->u[addr_rank1(obj->nsite, NHDIM, im1, Y)]);
-  w[Z][Z] = 0.5*(obj->u[addr_rank1(obj->nsite, NHDIM, ip1, Z)] -
-		 obj->u[addr_rank1(obj->nsite, NHDIM, im1, Z)]);
+  w[X][Z] = 0.5*(obj->u->data[addr_rank1(obj->nsite, NHDIM, ip1, X)] -
+		 obj->u->data[addr_rank1(obj->nsite, NHDIM, im1, X)]);
+  w[Y][Z] = 0.5*(obj->u->data[addr_rank1(obj->nsite, NHDIM, ip1, Y)] -
+		 obj->u->data[addr_rank1(obj->nsite, NHDIM, im1, Y)]);
+  w[Z][Z] = 0.5*(obj->u->data[addr_rank1(obj->nsite, NHDIM, ip1, Z)] -
+		 obj->u->data[addr_rank1(obj->nsite, NHDIM, im1, Z)]);
 
   /* Enforce tracelessness */
 
@@ -1213,7 +999,7 @@ __global__ void hydro_accumulate_kernel_v(kernel_ctxt_t * ktx, hydro_t * hydro,
     for (ia = 0; ia < 3; ia++) {
       double ftmp = 0.0;
       for_simd_v_reduction(iv, NSIMDVL, +: ftmp) {
-        ftmp += hydro->f[addr_rank1(hydro->nsite, NHDIM, index+iv, ia)]; 
+        ftmp += hydro->force->data[addr_rank1(hydro->nsite,NHDIM,index+iv,ia)]; 
       }
       f[ia] = ftmp;
     }
@@ -1290,9 +1076,6 @@ __global__ void hydro_correct_kernel_v(kernel_ctxt_t * ktx, hydro_t * hydro,
 
   int kindex;
   int kiterations;
-  int index;
-  int ia;
-  int iv;
 
   assert(ktx);
   assert(hydro);
@@ -1301,11 +1084,13 @@ __global__ void hydro_correct_kernel_v(kernel_ctxt_t * ktx, hydro_t * hydro,
 
   for_simt_parallel(kindex, kiterations, NSIMDVL) {
 
-    index = kernel_baseindex(ktx, kindex);
+    int index = kernel_baseindex(ktx, kindex);
 
-    for (ia = 0; ia < 3; ia++) {
+    for (int ia = 0; ia < 3; ia++) {
+      int iv = 0;
       for_simd_v(iv, NSIMDVL) {
-	hydro->f[addr_rank1(hydro->nsite, NHDIM, index+iv, ia)] += fnet[ia]; 
+	int haddr = addr_rank1(hydro->nsite, NHDIM, index + iv, ia);
+	hydro->force->data[haddr] += fnet[ia]; 
       }
     }
   }
@@ -1315,50 +1100,35 @@ __global__ void hydro_correct_kernel_v(kernel_ctxt_t * ktx, hydro_t * hydro,
 
 /*****************************************************************************
  *
- *  hydro_halo_size
+ *  hydro_io_write
+ *
+ *  This is intended for configuration output ("rho" and "vel"). If other
+ *  fields are wanted, may wish to use field_io_write() directly.
  *
  *****************************************************************************/
 
-int hydro_halo_size(cs_limits_t lim) {
+int hydro_io_write(hydro_t * hydro, int timestep, io_event_t * event) {
 
-  int szx = 1 + lim.imax - lim.imin;
-  int szy = 1 + lim.jmax - lim.jmin;
-  int szz = 1 + lim.kmax - lim.kmin;
+  /* For backwards compatibility, we currently allow old-style output */
+  /* Call to io_write_data() must be here, as only have hydro->info
+     for the old options (not u->info etc). This will go away with
+     a consistent impl. */
 
-  return szx*szy*szz;
-}
+  const io_metadata_t * rmeta = &hydro->rho->iometadata_out;
+  const io_metadata_t * umeta = &hydro->u->iometadata_out;
 
-/*****************************************************************************
- *
- *  hydro_halo_enqueue_send
- *
- *****************************************************************************/
+  if (rmeta->options.mode == IO_MODE_MPIIO) {
+    field_io_write(hydro->rho, timestep, event);
+  }
 
-int hydro_halo_enqueue_send(const hydro_t * hydro, hydro_halo_t * h, int ireq) {
-
-  assert(hydro);
-  assert(h);
-  assert(1 <= ireq && ireq < h->nvel);
-
-  int nx = 1 + h->slim[ireq].imax - h->slim[ireq].imin;
-  int ny = 1 + h->slim[ireq].jmax - h->slim[ireq].jmin;
-  int nz = 1 + h->slim[ireq].kmax - h->slim[ireq].kmin;
-
-  int strz = 1;
-  int stry = strz*nz;
-  int strx = stry*ny;
-
-  #pragma omp for nowait
-  for (int ih = 0; ih < nx*ny*nz; ih++) {
-    int ic = h->slim[ireq].imin + ih/strx;
-    int jc = h->slim[ireq].jmin + (ih % strx)/stry;
-    int kc = h->slim[ireq].kmin + (ih % stry)/strz;
-    int index = cs_index(hydro->cs, ic, jc, kc);
-
-    for (int ibf = 0; ibf < NHDIM; ibf++) {
-      int uaddr = addr_rank1(hydro->nsite, NHDIM, index, ibf);
-      h->send[ireq][ih*NHDIM + ibf] = hydro->u[uaddr];
-    }
+  if (umeta->options.mode == IO_MODE_MPIIO) {
+    field_io_write(hydro->u, timestep, event);
+  }
+  else {
+    /* Old style has "vel" only. */
+    char filename[BUFSIZ] = {0};
+    sprintf(filename, "%s-%8.8d", hydro->u->name, timestep);
+    io_write_data(hydro->info, filename, hydro);
   }
 
   return 0;
@@ -1366,284 +1136,30 @@ int hydro_halo_enqueue_send(const hydro_t * hydro, hydro_halo_t * h, int ireq) {
 
 /*****************************************************************************
  *
- *  hydro_halo_dequeue_recv
+ *  hydro_io_read
+ *
+ *  Configuration input is "rho" and "vel".
  *
  *****************************************************************************/
 
-int hydro_halo_dequeue_recv(hydro_t * hydro, const hydro_halo_t * h, int ireq) {
-  assert(hydro);
-  assert(h);
-  assert(1 <= ireq && ireq < h->nvel);
+int hydro_io_read(hydro_t * hydro, int timestep, io_event_t * event) {
 
-  int nx = 1 + h->rlim[ireq].imax - h->rlim[ireq].imin;
-  int ny = 1 + h->rlim[ireq].jmax - h->rlim[ireq].jmin;
-  int nz = 1 + h->rlim[ireq].kmax - h->rlim[ireq].kmin;
+  const io_metadata_t * rmeta = &hydro->rho->iometadata_in;
+  const io_metadata_t * umeta = &hydro->u->iometadata_in;
 
-  int strz = 1;
-  int stry = strz*nz;
-  int strx = stry*ny;
-
-  double * recv = h->recv[ireq];
-
-  /* Check if this a copy from our own send buffer */
-  {
-    int i = 1 + h->cv[h->nvel - ireq][X];
-    int j = 1 + h->cv[h->nvel - ireq][Y];
-    int k = 1 + h->cv[h->nvel - ireq][Z];
-
-    if (h->nbrrank[i][j][k] == h->nbrrank[1][1][1]) recv = h->send[ireq];
+  if (rmeta->options.mode == IO_MODE_MPIIO) {
+    field_io_read(hydro->rho, timestep, event);
   }
 
-  #pragma omp for nowait
-  for (int ih = 0; ih < nx*ny*nz; ih++) {
-    int ic = h->rlim[ireq].imin + ih/strx;
-    int jc = h->rlim[ireq].jmin + (ih % strx)/stry;
-    int kc = h->rlim[ireq].kmin + (ih % stry)/strz;
-    int index = cs_index(hydro->cs, ic, jc, kc);
-
-    for (int ibf = 0; ibf < NHDIM; ibf++) {
-      int uaddr = addr_rank1(hydro->nsite, NHDIM, index, ibf);
-      hydro->u[uaddr] = recv[ih*NHDIM + ibf];
-    }
+  if (umeta->options.mode == IO_MODE_MPIIO) {
+    field_io_read(hydro->u, timestep, event);
   }
-
-  return 0;
-}
-
-/*****************************************************************************
- *
- *  hydro_halo_create
- *
- *  It's convenient to borrow the velocity notation from the lb for
- *  the commnunication directions.
- *
- *****************************************************************************/
-
-#include "lb_d3q27.h"
-
-int hydro_halo_create(const hydro_t * hydro, hydro_halo_t * h) {
-
-  int nlocal[3] = {0};
-
-  assert(hydro);
-  assert(h);
-
-  *h = (hydro_halo_t) {0};
-
-  /* Communictation model */
-
-  cs_cart_comm(hydro->cs, &h->comm);
-
-  {
-    LB_CV_D3Q27(cv27);
-
-    h->nvel = 27;
-    for (int p = 0; p < h->nvel; p++) {
-      h->cv[p][X] = cv27[p][X];
-      h->cv[p][Y] = cv27[p][Y];
-      h->cv[p][Z] = cv27[p][Z];
-    }
+  else {
+    /* Old style has "vel" only. */
+    char filename[BUFSIZ] = {0};
+    sprintf(filename, "%s-%8.8d", hydro->u->name, timestep);
+    io_read_data(hydro->info, filename, hydro);
   }
-
-  /* Ranks of Cartesian neighbours */
-
-  {
-    int dims[3] = {0};
-    int periods[3] = {0};
-    int coords[3] = {0};
-
-    MPI_Cart_get(h->comm, 3, dims, periods, coords);
-
-    for (int p = 0; p < h->nvel; p++) {
-      int nbr[3] = {0};
-      int out[3] = {0};  /* Out-of-range is erroneous for non-perioidic dims */
-      int i = 1 + h->cv[p][X];
-      int j = 1 + h->cv[p][Y];
-      int k = 1 + h->cv[p][Z];
-
-      nbr[X] = coords[X] + h->cv[p][X];
-      nbr[Y] = coords[Y] + h->cv[p][Y];
-      nbr[Z] = coords[Z] + h->cv[p][Z];
-      out[X] = (!periods[X] && (nbr[X] < 0 || nbr[X] > dims[X] - 1));
-      out[Y] = (!periods[Y] && (nbr[Y] < 0 || nbr[Y] > dims[Y] - 1));
-      out[Z] = (!periods[Z] && (nbr[Z] < 0 || nbr[Z] > dims[Z] - 1));
-
-      if (out[X] || out[Y] || out[Z]) {
-	h->nbrrank[i][j][k] = MPI_PROC_NULL;
-      }
-      else {
-	MPI_Cart_rank(h->comm, nbr, &h->nbrrank[i][j][k]);
-      }
-    }
-    /* I must be in the middle */
-    assert(h->nbrrank[1][1][1] == cs_cart_rank(hydro->cs));
-  }
-
-  /* Set out limits for send and recv regions. */
-
-  cs_nlocal(hydro->cs, nlocal);
-
-  for (int p = 1; p < h->nvel; p++) {
-
-    int8_t cx = h->cv[p][X];
-    int8_t cy = h->cv[p][Y];
-    int8_t cz = h->cv[p][Z];
-    int nhalo = hydro->nhcomm;
-
-    cs_limits_t send = {1, nlocal[X], 1, nlocal[Y], 1, nlocal[Z]};
-    cs_limits_t recv = {1, nlocal[X], 1, nlocal[Y], 1, nlocal[Z]};
-
-    if (cx == -1) send.imax = nhalo;
-    if (cx == +1) send.imin = send.imax - (nhalo - 1);
-    if (cy == -1) send.jmax = nhalo;
-    if (cy == +1) send.jmin = send.jmax - (nhalo - 1);
-    if (cz == -1) send.kmax = nhalo;
-    if (cz == +1) send.kmin = send.kmax - (nhalo - 1);
-
-    /* For recv, direction is reversed cf. send */
-    if (cx == +1) { recv.imin = 1 - nhalo;     recv.imax = 0;}
-    if (cx == -1) { recv.imin = recv.imax + 1; recv.imax = recv.imax + nhalo;}
-    if (cy == +1) { recv.jmin = 1 - nhalo;     recv.jmax = 0;}
-    if (cy == -1) { recv.jmin = recv.jmax + 1; recv.jmax = recv.jmax + nhalo;}
-    if (cz == +1) { recv.kmin = 1 - nhalo;     recv.kmax = 0;}
-    if (cz == -1) { recv.kmin = recv.kmax + 1; recv.kmax = recv.kmax + nhalo;}
-
-    h->slim[p] = send;
-    h->rlim[p] = recv;
-  }
-
-  /* Message count and buffers (NHDIM is always 3 for u) */
-
-  for (int p = 1; p < h->nvel; p++) {
-
-    int scount = NHDIM*hydro_halo_size(h->slim[p]);
-    int rcount = NHDIM*hydro_halo_size(h->rlim[p]);
-
-    h->send[p] = (double *) calloc(scount, sizeof(double));
-    h->recv[p] = (double *) calloc(rcount, sizeof(double));
-    assert(h->send[p]);
-    assert(h->recv[p]);
-  }
-
-  for (int ireq = 0; ireq < 2*27; ireq++) {
-    h->request[ireq] = MPI_REQUEST_NULL;
-  }
-
-  return 0;
-}
-
-/*****************************************************************************
- *
- *  hydro_halo_post
- *
- *****************************************************************************/
-
-int hydro_halo_post(hydro_t * hydro) {
-
-  assert(hydro);
-
-  const int tagbase = 2022;
-  hydro_halo_t * h = &hydro->h;
-
-  /* Post recvs */
-
-  TIMER_start(TIMER_HYDRO_HALO_IRECV);
-
-  for (int ireq = 1; ireq < h->nvel; ireq++) {
-
-    int i = 1 + h->cv[h->nvel - ireq][X];
-    int j = 1 + h->cv[h->nvel - ireq][Y];
-    int k = 1 + h->cv[h->nvel - ireq][Z];
-    int mcount = NHDIM*hydro_halo_size(h->rlim[ireq]);
-
-    if (h->nbrrank[i][j][k] == h->nbrrank[1][1][1]) mcount = 0;
-
-    MPI_Irecv(h->recv[ireq], mcount, MPI_DOUBLE, h->nbrrank[i][j][k],
-	      tagbase + ireq, h->comm, h->request + ireq);
-  }
-
-  TIMER_stop(TIMER_HYDRO_HALO_IRECV);
-
-  /* Load send buffers; post sends */
-
-  TIMER_start(TIMER_HYDRO_HALO_PACK);
-
-  #pragma omp parallel
-  {
-    for (int ireq = 1; ireq < h->nvel; ireq++) {
-      hydro_halo_enqueue_send(hydro, h, ireq);
-    }
-  }
-
-  TIMER_stop(TIMER_HYDRO_HALO_PACK);
-
-  TIMER_start(TIMER_HYDRO_HALO_ISEND);
-
-  for (int ireq = 1; ireq < h->nvel; ireq++) {
-    int i = 1 + h->cv[ireq][X];
-    int j = 1 + h->cv[ireq][Y];
-    int k = 1 + h->cv[ireq][Z];
-    int mcount = NHDIM*hydro_halo_size(h->slim[ireq]);
-
-    if (h->nbrrank[i][j][k] == h->nbrrank[1][1][1]) mcount = 0;
-
-    MPI_Isend(h->send[ireq], mcount, MPI_DOUBLE, h->nbrrank[i][j][k],
-	      tagbase + ireq, h->comm, h->request + 27 + ireq);
-  }
-
-  TIMER_stop(TIMER_HYDRO_HALO_ISEND);
-
-  return 0;
-}
-
-/*****************************************************************************
- *
- *  hydro_halo_wait
- *
- *****************************************************************************/
-
-int hydro_halo_wait(hydro_t * hydro) {
-
-  assert(hydro);
-
-  hydro_halo_t * h = &hydro->h;
-
-  TIMER_start(TIMER_HYDRO_HALO_WAITALL);
-
-  MPI_Waitall(2*h->nvel, h->request, MPI_STATUSES_IGNORE);
-
-  TIMER_stop(TIMER_HYDRO_HALO_WAITALL);
-
-  TIMER_start(TIMER_HYDRO_HALO_UNPACK);
-
-  #pragma omp parallel
-  {
-    for (int ireq = 1; ireq < h->nvel; ireq++) {
-      hydro_halo_dequeue_recv(hydro, h, ireq);
-    }
-  }
-
-  TIMER_stop(TIMER_HYDRO_HALO_UNPACK);
-
-  return 0;
-}
-
-/*****************************************************************************
- *
- *  hydro_halo_free
- *
- *****************************************************************************/
-
-int hydro_halo_free(hydro_halo_t * h) {
-
-  assert(h);
-
-  for (int p = 1; p < h->nvel; p++) {
-    free(h->send[p]);
-    free(h->recv[p]);
-  }
-
-  *h = (hydro_halo_t) {0};
 
   return 0;
 }

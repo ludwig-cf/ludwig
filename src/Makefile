@@ -11,7 +11,7 @@
 # Edinburgh Parallel Computing Centre
 #
 # Kevin Stratford (kevin@epcc.ed.ac.uk)
-# (c) 2010-2019 The University of Edinburgh
+# (c) 2010-2023 The University of Edinburgh
 #
 ###############################################################################
 
@@ -83,6 +83,13 @@ lib:	$(LIBOBJECTS)
 
 .c.o :
 	$(CC) $(MODEL) $(OPTS) $(CFLAGS) $(INCL) -c $?
+
+# Special case for compile-time information
+
+GIT_REVISION = $(shell git rev-parse HEAD)
+
+compiler.o:	compiler.c
+	$(CC) $(CFLAGS) -DGIT_HASH=$(GIT_REVISION) -DCFLAGS="$(CFLAGS)" -c $<
 
 # Special case for no optimaisation
 

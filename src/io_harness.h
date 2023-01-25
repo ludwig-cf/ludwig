@@ -8,7 +8,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2007-2020 The University of Edinburgh
+ *  (c) 2007-2022 The University of Edinburgh
  *
  *  Contributin authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -32,21 +32,10 @@ typedef enum io_format_enum {IO_FORMAT_NULL,
 			     IO_FORMAT_BINARY_SERIAL,
 			     IO_FORMAT_DEFAULT} io_format_enum_t;
 
-typedef struct io_implementation_s io_implementation_t;
 typedef struct io_info_s io_info_t;
 
 /* Callback signature for lattice site I/O */
 typedef int (*io_rw_cb_ft)(FILE * fp, int index, void * self);
-
-struct io_implementation_s {
-  char         name[BUFSIZ];      /* Descriptive name */
-  io_rw_cb_ft  write_ascii;       /* Callback function for ascii write */
-  io_rw_cb_ft  write_binary;      /* Callback function for binary write */
-  io_rw_cb_ft  read_ascii;        /* Callback function for ascii read */
-  io_rw_cb_ft  read_binary;       /* Callback function for binary read */
-  size_t       bytesize_ascii;    /* Bytes per ascii read */
-  size_t       bytesize_binary;   /* Bytes per binary read */
-};
 
 typedef struct io_decomposition_s io_decomposition_t;
 
@@ -68,7 +57,6 @@ struct io_info_s {
   cs_t * cs;
 
   io_info_args_t args;
-  io_implementation_t impl;
   io_decomposition_t * comm;
 
   io_decomposition_t * io_comm;
@@ -94,11 +82,6 @@ struct io_info_s {
 __host__ int io_info_create(pe_t * pe, cs_t * cs, io_info_args_t * arg,
 			    io_info_t ** pinfo);
 __host__ int io_info_free(io_info_t *);
-
-__host__ int io_info_create_impl(pe_t * pe, cs_t * cs, io_info_args_t arg,
-				 const io_implementation_t * impl,
-				 io_info_t ** info);
-
 __host__ int io_info_input_bytesize(io_info_t * info, size_t * bs);
 __host__ int io_info_output_bytesize(io_info_t * info, size_t * bs);
 

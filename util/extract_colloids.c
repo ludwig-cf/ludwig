@@ -15,33 +15,33 @@
  *
  *  $ make extract_colloids
  *
- *  $ ./a.out <colloid file name stub> <nfile> <csv file name>
+ *  $ ./extract_colloids <colloid file name>
  *
- *  where the
- *    
- *  1st argument is the file name stub (in front of the last dot),
- *  2nd argument is the number of parallel files (as set with XXX_io_grid),
- *  3rd argyment is the (single) ouput file name.
+ *  The file name must be of the form "config.cds00020000.002-001";
+ *  if there are more than one file (from parallel i/o), any
+ *  individual file will do, e.g., the first one.
  *
- *  If you have a set of files, try (eg. here with 4 parallel output files),
+ *  The corresponding output will be a single file with combined information:
+ *  colloids-00020000.csv for the example above.
  *
- *  $ for f in config.cds*004-001; do g=`echo $f | sed s/.004-001//`; \
- *  echo $g; ~/ludwig/trunk/util/extract_colloids $g 4 $g.csv; done
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
+ *  (c) 2012-2022 The University of Edinburgh
+ *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
- *  (c) 2012-2019 The University of Edinburgh
  *
  *****************************************************************************/
 
 #include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <math.h>
 
 #include "colloid.h"
+#include "util_fopen.h"
 
 #define NX 32
 #define NY 32
@@ -60,6 +60,8 @@ static const char * formate4end_ = "%14.6e, %14.6e, %14.6e, %14.6e\n";
 void colloids_to_csv_header(FILE * fp);
 void colloids_to_csv_header_with_m(FILE * fp);
 void colloids_to_csv_header_with_v(FILE * fp);
+int file_name_to_ntime(const char * filename);
+int file_name_to_nfile(const char * filename);
 
 int main(int argc, char ** argv) {
 
@@ -67,6 +69,7 @@ int main(int argc, char ** argv) {
   int nf, nfile;
   int ncolloid;
   int nread;
+  int ntime = 0;
   int ncount = 0;
   
   double normv;
@@ -76,21 +79,27 @@ int main(int argc, char ** argv) {
 
   FILE * fp_colloids = NULL;
   FILE * fp_csv = NULL;
-  char filename[FILENAME_MAX];
+  char csv_filename[BUFSIZ] = {0};
 
-  if (argc < 3) {
-    printf("Usage: %s <colloid_datafile_stub> <no_of_files> <csv_filename>\n",
-	   argv[0]);
+  if (argc < 2) {
+    printf("Usage: %s <colloid_datafile>\n", argv[0]);
     exit(0);
   }
 
-  nfile = atoi(argv[2]);
+  /* Check the file name. */
+  ntime = file_name_to_ntime(argv[1]);
+  nfile = file_name_to_nfile(argv[1]);
+  printf("Time step:       %d\n", ntime);
   printf("Number of files: %d\n", nfile);
 
-  /* Open csv file */
-  fp_csv = fopen(argv[3], "w");
+  /* Open csv file (output) */
+
+  sprintf(csv_filename, "colloids-%8.8d.csv", ntime);
+  fp_csv = util_fopen(csv_filename, "w");
+
+
   if (fp_csv == NULL) {
-    printf("fopen(%s) failed\n", argv[2]);
+    printf("fopen(%s) failed\n", argv[3]);
     exit(0);
   }
 
@@ -99,17 +108,19 @@ int main(int argc, char ** argv) {
 
   for (nf = 1; nf <= nfile; nf++) {
 
+    char filename[BUFSIZ] = {0};
+
     /* We expect extensions 00n-001 00n-002 ... 00n-00n */ 
 
-    snprintf(filename, sizeof(filename), "%s.%3.3d-%3.3d", argv[1], nfile, nf);
+    sprintf(filename, "config.cds%8.8d.%3.3d-%3.3d", ntime, nfile, nf);
     printf("Filename: %s\n", filename);
 
-    fp_colloids = fopen(filename, "r");
+    fp_colloids = util_fopen(filename, "r");
 
 
     if (fp_colloids == NULL) {
-        printf("fopen(%s) failed\n", filename);
-        exit(0);
+      printf("fopen(%s) failed\n", filename);
+      exit(0);
     }
 
     if (iread_ascii) {
@@ -156,11 +167,11 @@ int main(int argc, char ** argv) {
   /* Finish colloid coordinate output */
   fclose(fp_csv);
   if (include_ref) {
-    printf("Wrote %d actual colloids + 3 reference colloids in header\n",
-	   ncount);
+    printf("Wrote %d actual colloids + 3 reference colloids in header to %s\n",
+	   ncount, csv_filename);
   }
   else {
-    printf("Wrote %d colloids\n", ncount);
+    printf("Wrote %d colloids to %s\n", ncount, csv_filename);
   }
 
   /* Finish */
@@ -303,4 +314,53 @@ void colloids_to_csv_header_with_v(FILE * fp) {
   }
 
   return;
+}
+
+/*****************************************************************************
+ *
+ *  file_name_to_nfile
+ *
+ *  The file name must be of the form "config.cds00020000.004-001".
+ *
+ *****************************************************************************/
+
+int file_name_to_nfile(const char * filename) {
+
+  int nfile = 0;
+  const char * ext = strrchr(filename, '.'); /* last dot */
+
+  if (ext != NULL) {
+    char buf[BUFSIZ] = {0};
+    strncpy(buf, ext + 1, 3);
+    nfile = atoi(buf);
+  }
+
+  return nfile;
+}
+
+/*****************************************************************************
+ *
+ * file_name_to_ntime
+ *
+ *  The file name must be of the form "config.cds00020000.004-001".
+ *
+ *****************************************************************************/
+
+int file_name_to_ntime(const char * filename) {
+
+  int ntime = -1;
+  const char * tmp = strchr(filename, 's'); /* Must be "config.cds" */
+
+  if (tmp) {
+    char buf[BUFSIZ] = {0};
+    strncpy(buf, tmp + 1, 8);
+    ntime = atoi(buf);
+  }
+
+  if (0 > ntime || ntime >= 1000*1000*1000) {
+    printf("Could not parse a time step from file name %s\n", filename);
+    exit(-1);
+  }
+
+  return ntime;
 }

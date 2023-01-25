@@ -33,7 +33,7 @@ Lattice Boltzmann distributions
 Model:            d3q19  
 SIMD vector len:  1
 Number of sets:   1
-Halo type:        full
+Halo type:        lb_halo_target (full halo)
 Input format:     binary
 Output format:    binary
 I/O grid:         1 1 1
@@ -89,8 +89,8 @@ Scalars - total mean variance min max
 [rho]      135767.00  1.00000000000  2.2204460e-16  1.00000000000  1.00000000000
 
 Momentum - x y z
-[total   ]  1.8820934e-12 -5.7722924e-16  1.4857907e-15
-[fluid   ]  1.8841456e-12  0.0000000e+00  0.0000000e+00
+[total   ] -2.0521779e-15 -5.7722924e-16  1.4857907e-15
+[fluid   ]  0.0000000e+00  0.0000000e+00  0.0000000e+00
 [colloids] -2.0521779e-15 -5.7722924e-16  1.4857907e-15
 
 Starting time step loop.

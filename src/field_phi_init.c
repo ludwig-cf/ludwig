@@ -8,7 +8,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group
  *  and Edinburgh Parallel Computing Centre
  *
- *  (c) 2010-2021 The University of Edinburgh
+ *  (c) 2010-2023 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -29,16 +29,21 @@
  *  Droplet based on a profile phi(r) = phistar tanh (r-r0)/xi
  *  with r0 the centre of the system.
  *
+ *  NB. The original version of this had a centre which did not include
+ *      Lmin. There is therefore a switch which allows the (incorrect)
+ *      older version to be retained to avoid upsetting older tests.
+ *
  *****************************************************************************/
 
 int field_phi_init_drop(field_t * phi, double xi, double radius,
-			double phistar) {
+			double phistar, int is_centred) {
 
   int nlocal[3];
   int noffset[3];
   int index, ic, jc, kc;
 
   double ltot[3];
+  double lmin[3];
   double position[3];
   double centre[3];
   double phival, r, rxi0;
@@ -48,12 +53,13 @@ int field_phi_init_drop(field_t * phi, double xi, double radius,
   cs_nlocal(phi->cs, nlocal);
   cs_nlocal_offset(phi->cs, noffset);
   cs_ltot(phi->cs, ltot);
+  cs_lmin(phi->cs, lmin);
 
   rxi0 = 1.0/xi;
 
-  centre[X] = 0.5*ltot[X];
-  centre[Y] = 0.5*ltot[Y];
-  centre[Z] = 0.5*ltot[Z];
+  centre[X] = is_centred*lmin[X] + 0.5*ltot[X];
+  centre[Y] = is_centred*lmin[Y] + 0.5*ltot[Y];
+  centre[Z] = is_centred*lmin[Z] + 0.5*ltot[Z];
 
   for (ic = 1; ic <= nlocal[X]; ic++) {
     for (jc = 1; jc <= nlocal[Y]; jc++) {
@@ -536,7 +542,6 @@ int field_phi_init_spinodal_patches(field_t * phi, int seed, int patch,
   int ip, jp, kp;
   int nlocal[3];
   int ipatch, jpatch, kpatch;
-  int count = 0;
 
   double phi1;
   double ran_uniform;
@@ -571,7 +576,6 @@ int field_phi_init_spinodal_patches(field_t * phi, int seed, int patch,
 
 	      index = cs_index(phi->cs, ip, jp, kp);
 	      field_scalar_set(phi, index, phi1);
-	      count += 1;
 	    }
 	  }
 	}
@@ -582,8 +586,6 @@ int field_phi_init_spinodal_patches(field_t * phi, int seed, int patch,
   }
 
   noise_free(rng);
-
-  assert(count == nlocal[X]*nlocal[Y]*nlocal[Z]);
 
   return 0;
 }

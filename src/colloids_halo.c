@@ -20,7 +20,7 @@
 #include <float.h>
 
 #include "pe.h"
-#include "coords_s.h"
+#include "coords.h"
 #include "colloids.h"
 #include "colloids_halo.h"
 #include "util.h"

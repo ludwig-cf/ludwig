@@ -14,7 +14,7 @@
  *  Edinburgh Soft Matter and Statistcal Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2008-2022 The University of Edinburgh
+ *  (c) 2008-2023 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -29,6 +29,7 @@
 #include "map_init.h"
 #include "symmetric.h"
 #include "fe_ternary.h"
+#include "util_fopen.h"
 
 /* SYSTEM SIZE */
 /* Set the system size as desired. Clearly, this must match the system
@@ -545,7 +546,7 @@ int capillary_write_ascii_serial(pe_t * pe, cs_t * cs, map_t * map) {
 
   cs_nlocal(cs, nlocal);
 
-  fp = fopen(filename, "w");
+  fp = util_fopen(filename, "w");
   if (fp == NULL) return -1;
 
   /* Header comment */
