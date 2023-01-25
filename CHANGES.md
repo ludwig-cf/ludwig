@@ -3,10 +3,13 @@
 
 version 0.19.0
 
+- There has been a significant change to the way that i/o is undertaken.
+  See https://ludwig.epcc.ed.ac.uk/outputs/fluid.html
+  It is the intension to replace completely the 'old' I/O mechanism
+  by release v0.21.0.
 - The extract_colloids.c utility has been updated so that it takes
   only one comand line argument for new I/O metadata.
-- LTGM.com analysis has been retired as the service is closing. The
-  two outstanding recommendations are covered by CodeQL notes.
+
 - Input associated with the choice of force arising from the free energy
   sector has been made more general. Specifically, input keys
   `fd_force_divergence` and `fe_use_stress_relaxation` are replaced.
@@ -22,6 +25,9 @@ version 0.19.0
 - The LaTeX tutorials document has been replaced by html tutorials
   at https://ludwig.epcc.ed.ac.uk/ to reflect new I/O and to add a
   number of new topics.
+- LTGM.com analysis has been retired as the service has closed. The
+  two outstanding recommendations are covered by CodeQL notes.
+- Various minor updates.
 
 version 0.18.0
 

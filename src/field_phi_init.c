@@ -542,7 +542,6 @@ int field_phi_init_spinodal_patches(field_t * phi, int seed, int patch,
   int ip, jp, kp;
   int nlocal[3];
   int ipatch, jpatch, kpatch;
-  int count = 0;
 
   double phi1;
   double ran_uniform;
@@ -577,7 +576,6 @@ int field_phi_init_spinodal_patches(field_t * phi, int seed, int patch,
 
 	      index = cs_index(phi->cs, ip, jp, kp);
 	      field_scalar_set(phi, index, phi1);
-	      count += 1;
 	    }
 	  }
 	}
@@ -588,8 +586,6 @@ int field_phi_init_spinodal_patches(field_t * phi, int seed, int patch,
   }
 
   noise_free(rng);
-
-  assert(count == nlocal[X]*nlocal[Y]*nlocal[Z]);
 
   return 0;
 }

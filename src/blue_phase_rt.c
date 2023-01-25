@@ -341,8 +341,6 @@ __host__ int blue_phase_init_rt(pe_t * pe, rt_t *rt,
       if (strcmp(type_wall, "fixed")  == 0) w2_wall = 0.0;
     }
 
-    w1_wall = w1_wall;
-    w2_wall = w2_wall;
     fe_lc_amplitude_compute(&fe_param, &amp0);
 
     pe_info(pe, "Anchoring type (walls):          = %14s\n",   type_wall);

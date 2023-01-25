@@ -28,7 +28,6 @@ grid 2_2_2
 ##############################################################################
 
 viscosity 0.83333
-ghost_modes off
 
 ##############################################################################
 #
@@ -36,16 +35,15 @@ ghost_modes off
 #
 ###############################################################################
 
-free_energy symmetric
+free_energy          symmetric
 
-A -0.00625
-B 0.00625
-K 0.004
-C 0.0
+symmetric_a         -0.00625
+symmetric_b          0.00625
+symmetric_kappa      0.004
 
-phi0 0.0
-phi_initialisation    spinodal
-mobility 1.25
+phi0                 0.0
+phi_initialisation   spinodal
+mobility             1.25
 
 fd_gradient_calculation 3d_27pt_fluid
 fd_advection_scheme_order 1
@@ -64,7 +62,6 @@ colloid_init        no_colloids
 #
 ###############################################################################
 
-boundary_walls_on no
 periodicity 1_1_1
 
 ###############################################################################
@@ -73,13 +70,15 @@ periodicity 1_1_1
 #
 ###############################################################################
 
-freq_statistics 100
-freq_phi    1000
-freq_vel    1000
-phi_format    BINARY
-vel_format    BINARY
+default_io_mode     mpiio
+default_io_format   binary
+default_io_report   no
 
-config_at_end yes
+freq_statistics     500
+freq_phi            1000
+freq_vel            1000
+
+config_at_end       yes
 
 ###############################################################################
 #

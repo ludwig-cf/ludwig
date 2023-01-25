@@ -11,7 +11,8 @@
  *  floating point sum.
  *
  *  There is also a version which adds a correction for BBL
- *  (specifically for the case of binary fluid).
+ *  (specifically for the case of binary fluid). This might
+ *  be updated and relocated.
  *
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and

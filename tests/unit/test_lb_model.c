@@ -8,7 +8,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2021-2022 The University of Edinburgh
+ *  (c) 2021-2023 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -169,6 +169,8 @@ int test_lb_model_wv(const lb_model_t * model) {
     assert(fabs(sumcv[X] - 0.0) <= DBL_EPSILON);
     assert(fabs(sumcv[Y] - 0.0) <= DBL_EPSILON);
     assert(fabs(sumcv[Z] - 0.0) <= DBL_EPSILON);
+
+    if (fabs(sumwv - 1.0) > DBL_EPSILON) ierr += 1;
   }
 
   /* Quadratic terms \sum_p wv[p] c_pi c_pj = cs2 d_ij */
@@ -181,6 +183,7 @@ int test_lb_model_wv(const lb_model_t * model) {
 	  sum += model->wv[p]*model->cv[p][ia]*model->cv[p][ib];
 	}
 	assert(fabs(sum - d_[ia][ib]*model->cs2) < DBL_EPSILON);
+	if (fabs(sum - d_[ia][ib]*model->cs2) >= DBL_EPSILON) ierr += 1;
       }
     }
   }
@@ -197,6 +200,7 @@ int test_lb_model_wv(const lb_model_t * model) {
 	    sum += model->wv[p]*cv[p][ia]*cv[p][ib]*cv[p][ig];
 	  }
 	  assert(fabs(sum - 0.0) < DBL_EPSILON);
+	  if (fabs(sum) >= DBL_EPSILON) ierr += 1;
 	}
       }
     }
