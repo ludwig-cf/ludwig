@@ -7,7 +7,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2011-2022 The University of Edinburgh
+ *  (c) 2011-2023 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -904,6 +904,7 @@ void ludwig_run(const char * inputfile) {
     if (is_config_step()) {
       io_event_t event = {0};
       pe_info(ludwig->pe, "Writing distribution output at step %d!\n", step);
+      lb_memcpy(ludwig->lb, tdpMemcpyDeviceToHost);
       lb_io_write(ludwig->lb, step, &event);
     }
 
@@ -923,18 +924,21 @@ void ludwig_run(const char * inputfile) {
       if (ludwig->phi) {
 	io_event_t event = {0};
 	pe_info(ludwig->pe, "Writing phi file at step %d!\n", step);
+	field_memcpy(ludwig->phi, tdpMemcpyDeviceToHost);
 	field_io_write(ludwig->phi, step, &event);
       }
 
       if (ludwig->p) {
 	io_event_t event = {0};
 	pe_info(ludwig->pe, "Writing p file at step %d!\n", step);
+	field_memcpy(ludwig->p, tdpMemcpyDeviceToHost);
 	field_io_write(ludwig->p, step, &event);
       }
 
       if (ludwig->q) {
 	io_event_t event = {0};
 	pe_info(ludwig->pe, "Writing q file at step %d!\n", step);
+	field_memcpy(ludwig->q, tdpMemcpyDeviceToHost);
 	io_replace_values(ludwig->q, ludwig->map, MAP_COLLOID, 0.00001);
 	field_io_write(ludwig->q, step, &event);
       }
@@ -968,9 +972,10 @@ void ludwig_run(const char * inputfile) {
       stats_rheology_stress_profile_zero(ludwig->stat_rheo);
     }
 
-    if (is_vel_output_step() || is_config_step()) {
+    if (ludwig->hydro && (is_vel_output_step() || is_config_step())) {
       io_event_t event = {0};
       pe_info(ludwig->pe, "Writing rho/velocity output at step %d!\n", step);
+      hydro_memcpy(ludwig->hydro, tdpMemcpyDeviceToHost);
       hydro_io_write(ludwig->hydro, step, &event);
     }
 
