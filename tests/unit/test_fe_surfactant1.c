@@ -7,7 +7,7 @@
  *  Edinburgh Soft Matter and Statistical Phsyics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2019-2022 The University of Edinburgh
+ *  (c) 2019-2023 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -179,6 +179,7 @@ __host__ int test_fe_surf_xi_etc(pe_t * pe, cs_t * cs, field_t * phi) {
 
 __host__ int test_fe_surf_fed(pe_t * pe, cs_t * cs, field_t * phi) {
 
+  int ifail = 0;
   int index = 0;
   double psi, phisq, phipsi[2];
   double fed, fedref;
@@ -204,6 +205,7 @@ __host__ int test_fe_surf_fed(pe_t * pe, cs_t * cs, field_t * phi) {
   fe_surf_fed(fe, index, &fed);
   fedref = pref.kt*(psi*log(psi) + (1.0-psi)*log(1.0-psi));
   assert(fabs(fed - fedref) < TEST_DOUBLE_TOLERANCE);
+  if (fabs(fed - fedref) >= TEST_DOUBLE_TOLERANCE) ifail = -1;
 
   /* No gradients, phi = 0.8 */
   psi = 0.4;
@@ -230,7 +232,7 @@ __host__ int test_fe_surf_fed(pe_t * pe, cs_t * cs, field_t * phi) {
   fe_surf_free(fe);
   field_grad_free(dphi);
 
-  return 0;
+  return ifail;
 }
 
 /*****************************************************************************
