@@ -28,8 +28,8 @@ reduced_halo no
 
 fluid_rho0 1 
 viscosity XXXviscosityXXX
-isothermal_fluctuations off
-temperature 1e-6
+isothermal_fluctuations XXXisothermal_fluctuationsXXX
+temperature XXXtemperatureXXX
 
 ##############################################################################
 #

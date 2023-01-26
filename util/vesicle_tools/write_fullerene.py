@@ -20,15 +20,15 @@ xyz = utils.rescale(xyz, 1./mean)
 NVESICLES = 1
 NATOMS = 61
 
-RADIUS = 7.0
+RADIUS = 4.0
 
 sphere_l = 0.41
 
 nbonds= 7
 
-XSHIFT = 21
-YSHIFT = 21
-ZSHIFT = 21
+XSHIFT = 8
+YSHIFT = 8
+ZSHIFT = 8
 
 mx = -1
 my = 0

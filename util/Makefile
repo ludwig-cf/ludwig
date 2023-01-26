@@ -39,6 +39,7 @@ build:
 	$(MAKE) trisphere_init
 	$(MAKE) hexasphere_init
 	$(MAKE) fullerene_init
+	$(MAKE) icosphere_init
 
 colloid_init: colloid_init.o
 	$(CC) $(LDFLAGS) -o $@ $^ $(LIBS)
@@ -70,13 +71,15 @@ hexasphere_init: hexasphere_init.o
 fullerene_init: fullerene_init.o
 	$(CC) $(LDFLAGS) -o $@ $^ $(LIBS)
 
+icosphere_init: icosphere_init.o
+	$(CC) $(LDFLAGS) -o $@ $^ $(LIBS)
 
 # Default rules
 
 .PHONY : clean
 clean:
 	rm -f *.o colloid_init extract_colloids capillary extract \
-	coll_squ_subgrid_init multi_poly_init trisphere_init hexasphere_init fullerene_init
+	coll_squ_subgrid_init multi_poly_init trisphere_init hexasphere_init fullerene_init icosphere_init
 
 .SUFFIXES:
 .SUFFIXES: .c .o

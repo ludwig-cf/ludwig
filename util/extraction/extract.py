@@ -60,7 +60,7 @@ squ_poly_cds = False     # Squirmer, polymer co-ordinate
 squ_poly_cdsvel = False  # Squirmer, polymer co-ordinate; velocity 
 
 try:
-  opts, args = getopt.getopt(sys.argv[1:], "pmvc", ["nstart =", "nend =", "nint =",])
+  opts, args = getopt.getopt(sys.argv[1:], "pmvcs", ["nstart =", "nend =", "nint =",])
 except:
   print("Error")
 

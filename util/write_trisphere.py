@@ -9,19 +9,19 @@ NATOMS = 643
 sphere_l = 0.17
 
 # or choose vesicle radius
-RADIUS = XXXvesicle_radiusXXX
+RADIUS = 10.0
 
 #print(str(BOND_LENGTH) + "\n" + str(BOND_LENGTH*sphere_l) + "\n" + str(BOND_LENGTH*RADIUS0))
 
 nbonds= 7
 
-XSHIFT = XXXXSHIFTXXX
-YSHIFT = XXXYSHIFTXXX
-ZSHIFT = XXXZSHIFTXXX
+XSHIFT = 20
+YSHIFT = 20
+ZSHIFT = 20
 
-mx=XXXmxXXX
-my=XXXmyXXX
-mz=XXXmzXXX
+mx=-1
+my=0
+mz=0
 
 #nx=XXXnxXXX
 #ny=XXXnyXXX

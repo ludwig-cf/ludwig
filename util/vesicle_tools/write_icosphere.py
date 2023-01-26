@@ -3,8 +3,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 import utils
 
-# Coordinates
-xyz = utils.file_to_array("rawfiles/hexasphere.xyz")
+
+xyz = utils.file_to_array("rawfiles/icosphere.xyz")
 
 if 1:
   dists = []
@@ -15,26 +15,31 @@ if 1:
 
   mean = np.mean(dists)
 
-print(mean)
-xyz = utils.rescale(xyz, 1./mean)
+# This one does not need rescaling
+# xyz = utils.rescale(xyz, 1./mean)
 
+if 1:
+  dists = []
+  coord1 = xyz[:,1]
+  for coord in xyz.T:
+    dist = np.sqrt(np.sum((coord1 - coord)**2 ))
+    dists.append(dist)
 
+  mean = np.mean(dists)
+#print(np.array(dists)[np.array(dists) < 0.6])
 
 NVESICLES = 1
-NATOMS = 241
+NATOMS = 43
 
-RADIUS = 5.0
+RADIUS = 4.0
 
-icosphere_small_l = 0.1821
-icosphere_large_l = 0.2060
-
-sphere_l = icosphere_large_l + 0.01
+sphere_l = 0.6
 
 nbonds= 7
 
-XSHIFT = 12
-YSHIFT = 12
-ZSHIFT = 12
+XSHIFT = 8
+YSHIFT = 8
+ZSHIFT = 8
 
 mx = -1
 my = 0
@@ -57,6 +62,7 @@ rawfile_radius = np.mean(dists)
 xyz = utils.rescale(xyz, 1./rawfile_radius)
 
 
+
 # Additional attributes 
 indices = np.arange(1,NATOMS+1,1,dtype=int)
 
@@ -67,7 +73,6 @@ Connecdist = np.zeros((NATOMS, nbonds), dtype = float)
 iscentre = np.zeros((NATOMS*NVESICLES), dtype = int)
 ishole = np.zeros((NATOMS*NVESICLES), dtype = int)
 indexcentre = np.ones((NATOMS*NVESICLES), dtype = int)
-
 
 # Connectivities
 for i in range(NATOMS):
@@ -92,22 +97,24 @@ for i in range(NATOMS):
 
 Connec = np.array(Connec)
 
-
 #Other attributes
 iscentre[0] = 1 #0, NATOMS, etc...
 ishole[NATOMS - 1] = 1 #0, NATOMS, etc...
 
-
-#Rotate
 xyzt = xyz.T
+#for i, vec in enumerate(xyzt):
+#  newvec = np.dot(R164.T, vec)
+#  xyz[0][i] = newvec[0]
+#  xyz[1][i] = newvec[1]
+#  xyz[2][i] = newvec[2]
 
-COL241 = xyz[:,240]
-COL241 /= np.sqrt(np.sum(COL241**2))
+COL43 = xyz[:,42]
+COL43 /= np.sqrt(np.sum(COL43**2))
 
-R241 = utils.rotate(COL241, M)
+R43 = utils.rotate(COL43, M)
 
 for i, vec in enumerate(xyzt):
-  newvec = np.dot(R241.T, vec)
+  newvec = np.dot(R43.T, vec)
   xyz[0][i] = newvec[0]
   xyz[1][i] = newvec[1]
   xyz[2][i] = newvec[2]
@@ -132,12 +139,10 @@ for i in range(NATOMS):
         Connecdist[i][bondmade] = dr
         bondmade += 1
 
-
-
 xyz[0, :] += XSHIFT
 xyz[1, :] += YSHIFT
 xyz[2, :] += ZSHIFT
 
-table = np.column_stack((indices, xyz.T, nConnec, Connec, Connecdist, iscentre.T, ishole.T, indexcentre.T))
-np.savetxt("latticeHexasphere.txt", table, fmt = '%3d     %3f %3f %3f      %3d %3d %3d %3d %3d %3d %3d %3d   %3f %3f %3f %3f %3f %3f %3f    %3d %3d %3d')
 
+table = np.column_stack((indices, xyz.T, nConnec, Connec, Connecdist, iscentre.T, ishole.T, indexcentre.T))
+np.savetxt("latticeIcosphere.txt", table, fmt = '%3d     %3f %3f %3f      %3d %3d %3d %3d %3d %3d %3d %3d   %3f %3f %3f %3f %3f %3f %3f    %3d %3d %3d')

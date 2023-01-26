@@ -3,36 +3,38 @@
 #set -x
 #trap read debug
 
-module purge
-module load gcc mvapich2 python
+#module purge
+#module load intel intel-mkl intel-mpi python
+#module load gcc mvapich2 python 
 
 # META PARAMETERS
 SWEEP_DIR=$PWD
-LUDWIG_DIR="/home/jbertran/ludwig4"
+#LUDWIG_DIR="/home/jbertran/ludwig_tangential_fullerene"
+LUDWIG_DIR="/scratch/jbertran/ludwig"
 UTIL_DIR=$LUDWIG_DIR"/util"
 
 
 # SIMULATION PARAMETERS 
 N_start=0
-N_cycles=100000
+N_cycles=500000
 grid=3_3_3
 ntasks=27
-memory=64000
-time=1
+memory=128000
+time=2
 
 
 # EXTRACTION PARAMETERS
-freq=5000
-freq_write=5000
+freq=10000
+freq_write=10000
 nstart=$freq
 nend=$N_cycles
 nint=$freq
 
 
 # SYSTEM PARAMETERS
-size=60_60_60
-boundary_walls=0_0_0
-periodicity=1_1_1
+size=69_69_69
+boundary_walls=0_1_0
+periodicity=1_0_1
 colloid_init="from_file"
 
 ## PHYSICAL PARAMETERS
@@ -62,25 +64,29 @@ cahn_hilliard_options_conserve=0
 # VESICLE 
 isfixedr=0
 isfixedr_centre=0
-XSHIFT=30
-YSHIFT=30
-ZSHIFT=30
+XSHIFT=34.5
+YSHIFT=34.5
+ZSHIFT=34.5
 
 mx=-1
 my=0
 mz=0
 
-phi_subgrid_switch=1
-u0=1e-4
-delta=8
-cutoff=4.0
-
-vesicle_radius=8.0
+vesicle_template="fullerene"
+vesicle_radius=11.0
 mesh_harmonic_k=1e-2
 
+phi_subgrid_switch=1
+u0=1e-3
+delta=$(echo 0.2318*$vesicle_radius | bc )
+cutoff=$(echo 2*$delta | bc )
+
+echo $vesicle_radius
+echo $delta
+echo $cutoff
 
 # MASK / PERMEABILITY
-mask_phi_switch=1
+mask_phi_switch=0
 mask_psi_switch=0
 
 mask_phi_permeability=0.0
@@ -105,7 +111,7 @@ kappam1=1e-1
 
 # EXTERNAL FIELDS
 grad_mu_phi=0.0_0.0_0.0
-grad_mu_psi=0.0_1e-4_0.0
+grad_mu_psi=0.0_1e-3_0.0
 
 add_tangential_force=0
 tangential_force_magnitude=1e-3
@@ -113,10 +119,10 @@ tangential_force_magnitude=1e-3
 # SWEEPING PARAMETER
 # Choose parameter to sweep over:
 sweepingParam="vesicle_template"
-sweepingRange=("fullerene" "trisphere")
+sweepingRange=(icosphere)
 
-sweepingParam2="add_tangential_force"
-sweepingRange2=(0 1)
+sweepingParam2="u0"
+sweepingRange2=(1e-3)
 
 prefix=$sweepingParam
 prefix2=$sweepingParam2
@@ -159,7 +165,7 @@ for param in ${sweepingRange[@]}; do
     sed -i "s/XXXmzXXX/$mz/g" $writescript
 
     cp init/rawfiles/$vesicle_template.xyz .
-    python3 $writescript > /dev/null
+    python $writescript > /dev/null
     
 
     ### CREATE  "config.cds.init001-001" with "trisphere_init.c" ###

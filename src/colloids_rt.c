@@ -666,12 +666,12 @@ int colloids_rt_cell_list_checks(rt_t * rt, pe_t * pe, cs_t * cs,
 
   if (nc == 1) {
     rt_int_parameter(rt, "phi_subgrid_switch", &onsubgrid);
-  if (onsubgrid) colloids_info_cutoffmax(*pinfo, &cutoffmax); 
-    rmax_phi = cutoffmax + 2;
+    if (onsubgrid) colloids_info_cutoffmax(*pinfo, &cutoffmax); 
+    rmax_phi = cutoffmax + 1;
     nbest[X] = (int) floor(1.0*nlocal[X] / rmax_phi);
     nbest[Y] = (int) floor(1.0*nlocal[Y] / rmax_phi);
     nbest[Z] = (int) floor(1.0*nlocal[Z] / rmax_phi);
-    pe_info(pe, "Subgrid <-> PHI interaction + 2: %14.7e\n", rmax_phi);
+    pe_info(pe, "Subgrid <-> PHI interaction + 1: %14.7e\n", rmax_phi);
   }
 
   if (nc > 1) {
@@ -689,7 +689,7 @@ int colloids_rt_cell_list_checks(rt_t * rt, pe_t * pe, cs_t * cs,
     rt_int_parameter(rt, "phi_subgrid_switch", &onsubgrid);
     if (onsubgrid) {
       colloids_info_cutoffmax(*pinfo, &cutoffmax); 
-      rmax = dmax(rmax, cutoffmax + 2);
+      rmax = dmax(rmax, cutoffmax + 1);
     }
 
     rt_int_parameter(rt, "vesicle_switch", &onvesicle);
@@ -698,7 +698,8 @@ int colloids_rt_cell_list_checks(rt_t * rt, pe_t * pe, cs_t * cs,
       physics_rvesicle_set(phys, radius_vesicle);
 
       // 0.5 allows the structure to deform a little without causing issues with communication
-      rmax = dmax(rmax, radius_vesicle + 0.5 );
+      rmax = dmax(rmax, radius_vesicle+0.5);
+      //printf("rmax = %f\n", rmax);
     }
 
     rmax = dmax(rmax, 1.5); /* subgrid particles again */
@@ -706,11 +707,12 @@ int colloids_rt_cell_list_checks(rt_t * rt, pe_t * pe, cs_t * cs,
     nbest[Y] = (int) floor(1.0*nlocal[Y] / rmax);
     nbest[Z] = (int) floor(1.0*nlocal[Z] / rmax);
 
+    //printf("nbestx = %d %d %d\n", nbest[X], nbest[Y], nbest[Z]);
     
     pe_info(pe, "Hydrodynamic radius maximum: %14.7e\n", ahmax);
     pe_info(pe, "Surface-surface interaction: %14.7e\n", hcmax);
     pe_info(pe, "Centre-centre interaction:   %14.7e\n", rcmax);
-    if (onsubgrid) pe_info(pe, "Max range of subgrid<->PHI interaction+2: %14.7e\n", cutoffmax+2);
+    if (onsubgrid) pe_info(pe, "Max range of subgrid<->PHI interaction+1: %14.7e\n", cutoffmax+1);
     if (onvesicle) pe_info(pe, "Approximate radius of vesicle: %14.7e\n", radius_vesicle);
   }
 
@@ -729,7 +731,8 @@ int colloids_rt_cell_list_checks(rt_t * rt, pe_t * pe, cs_t * cs,
   }
   if (onvesicle) {
     for (int ia = 0; ia < 3; ia++) {
-      if (wcell[ia] < radius_vesicle) pe_fatal(pe, "The radius of the vesicle is larger than the minimum cell width possible along %d\n", ia);
+      //printf("wcell %d = %f, rmax = %f\n", ia, wcell[ia], rmax);
+      if (wcell[ia] < radius_vesicle + 0.5) pe_fatal(pe, "The radius of the vesicle + 0.5 is larger than the minimum cell width possible along %d\n", ia);
     }
   }
 

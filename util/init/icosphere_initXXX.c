@@ -76,7 +76,7 @@ int main(int argc, char ** argv) {
   double a0 = 0.2;    /* Input radius */
   double ah = 0.2;      /* Hydrodynamic radius */ 
   double al = 1.25;     /* Offset parameter for subgrid particle */
-  double dh = 0.50;     /* "grace' distance */
+  double dh = 0.50;     /* grace distance */
   double q0 = 0.0;      /* positive charge */ 
   double q1 = 0.0;      /* negative charge */
   double b1 = 0.00;
@@ -118,7 +118,7 @@ int main(int argc, char ** argv) {
 
   if (from_file) {
     /* Must know number of colloids in advance */
-    nrequest = 643;
+    nrequest = 43;
   }
   else {
     nrequest=Npoly*Lpoly;
@@ -127,7 +127,7 @@ int main(int argc, char ** argv) {
   assert(state != NULL);
   for (int n = 0; n < nrequest; n++) {
 
-    state[n].isfixedr = 0;
+    state[n].isfixedr = XXXisfixedrXXX;
     state[n].isfixedv = 0;
 
     state[n].index = 1 + n;
@@ -150,9 +150,9 @@ int main(int argc, char ** argv) {
     if (type == COLLOID_TYPE_SUBGRID) {
       state[n].al= al;
       /* Needs a_L */
-      state[n].u0 = 1e-3;
-      state[n].delta = 2.5;
-      state[n].cutoff = 5.0;
+      state[n].u0 = XXXu0XXX;
+      state[n].delta = XXXdeltaXXX;
+      state[n].cutoff = XXXcutoffXXX;
     }
     state[n].rng = 1 + n;
     //CHANGE1
@@ -170,10 +170,10 @@ int main(int argc, char ** argv) {
     int iscentre, ishole, indexcentre;
 
     FILE* file;
-    file = fopen("latticeTrisphere.txt", "r");
+    file = fopen("latticeIcosphere.txt", "r");
 
-    state[0].nbonds_mesh = 642;
-    for (int ind = 0; ind < 642; ind++) {
+    state[0].nbonds_mesh = 42;
+    for (int ind = 0; ind < 42; ind++) {
       state[0].bond_mesh[ind] = ind + 2;
     }
 
@@ -233,7 +233,7 @@ int main(int argc, char ** argv) {
         state[numcol].bond_mesh[5] = mi[5];
         state[numcol].bond_mesh[6] = mi[6];
 
-        for (int numbond = 7; numbond < 642; numbond++) {
+        for (int numbond = 7; numbond < 42; numbond++) {
           state[numcol].bond_mesh[numbond] = 0;
         }  
       }
