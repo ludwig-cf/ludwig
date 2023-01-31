@@ -5,7 +5,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2018-2022 The University of Edinburgh
+ *  (c) 2018-2023 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -102,6 +102,16 @@ static int hydro_do_init(pe_t * pe, rt_t * rt, cs_t * cs, lees_edw_t * le,
       pe_fatal(pe, "hydro_halo_scheme is present but not recongnised\n");
     }
     opts = hydro_options_haloscheme(haloscheme);
+  }
+
+  /* First touch option (all or nothing) */
+
+  if (rt_switch(rt, "hydro_data_use_first_touch")) {
+    opts.rho.usefirsttouch   = 1;
+    opts.u.usefirsttouch     = 1;
+    opts.force.usefirsttouch = 1;
+    opts.eta.usefirsttouch   = 1;
+    pe_info(pe, "Hydro data:    first touch\n");
   }
 
   /* User i/o options */
