@@ -118,7 +118,7 @@ int main(int argc, char ** argv) {
 
   if (from_file) {
     /* Must know number of colloids in advance */
-    nrequest = 43;
+    nrequest = 43*2;
   }
   else {
     nrequest=Npoly*Lpoly;
@@ -168,14 +168,21 @@ int main(int argc, char ** argv) {
     char data[256];
     char line[256];
     int iscentre, ishole, indexcentre;
+    int num_vesicle = 2;
 
     FILE* file;
     file = fopen("latticeIcosphere.txt", "r");
 
     state[0].nbonds_mesh = 42;
+    state[42].nbonds_mesh = 42;
+
     for (int ind = 0; ind < 42; ind++) {
       state[0].bond_mesh[ind] = ind + 2;
     }
+    for (int ind = 42; ind < 84; ind++) {
+      state[42].bond_mesh[ind] = ind + 2;
+    }
+
 
     while (fgets(line, sizeof(line), file)) {
       strcpy(data,line);
@@ -206,7 +213,7 @@ int main(int argc, char ** argv) {
       state[numcol].bond3[1] = 0;
       state[numcol].bond3[2] = 0;
 
-      if (numcol >= 1) {
+      if (numcol != 0 || numcol != 42) {
 
         state[numcol].tuple.indices[0] = mi[0];
         state[numcol].tuple.indices[1] = mi[1];

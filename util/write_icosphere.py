@@ -28,7 +28,7 @@ if 1:
   mean = np.mean(dists)
 #print(np.array(dists)[np.array(dists) < 0.6])
 
-NVESICLES = 1
+NVESICLES = 2
 NATOMS = 43
 
 RADIUS = 10.0
@@ -37,9 +37,9 @@ sphere_l = 0.7
 
 nbonds= 7
 
-XSHIFT = 10
-YSHIFT = 10
-ZSHIFT = 10
+XSHIFT = [15,15]
+YSHIFT = [15,30]
+ZSHIFT = [15,15]
 
 mx = -1
 my = 0
@@ -61,12 +61,10 @@ if 1:
 rawfile_radius = np.mean(dists)
 xyz = utils.rescale(xyz, 1./rawfile_radius)
 
-
-
 # Additional attributes 
-indices = np.arange(1,NATOMS+1,1,dtype=int)
+indices = np.arange(1,NVESICLES*NATOMS+1,1,dtype=int) # goes from 1 to NATOMS if 1 vesicle; goes from 1 to 2*NATOMS if 2 vesicles etc...
 
-nConnec = np.zeros((NATOMS*NVESICLES), dtype = int)
+nConnec = np.zeros((NATOMS), dtype = int) 
 Connec = np.zeros((NATOMS, nbonds), dtype = int)
 Connecdist = np.zeros((NATOMS, nbonds), dtype = float)
 
@@ -96,10 +94,24 @@ for i in range(NATOMS):
       bondmade += 1
 
 Connec = np.array(Connec)
+Connec = np.tile(Connec, (NVESICLES,1))
+nConnec = np.tile(nConnec, NVESICLES)
+
+for i in range(NATOMS, NATOMS*NVESICLES):
+    for j in range(nbonds):
+        if Connec[i][j] == 0:
+            pass
+        else:
+            vesicle_num = i // NATOMS
+            Connec[i][j] += NATOMS*vesicle_num
 
 #Other attributes
-iscentre[0] = 1 #0, NATOMS, etc...
-ishole[NATOMS - 1] = 1 #0, NATOMS, etc...
+for i in range(NVESICLES):
+    iscentre[i*NATOMS] = 1 #0, NATOMS, etc...
+    ishole[NATOMS*(i+1) - 1] = 1 #0, NATOMS, etc...
+for i in range(NATOMS*NVESICLES):
+    indexcentre[i] = (i // NATOMS)*NATOMS + 1
+print(indexcentre)
 
 xyzt = xyz.T
 #for i, vec in enumerate(xyzt):
@@ -122,6 +134,7 @@ for i, vec in enumerate(xyzt):
 xyz = utils.rescale(xyz, RADIUS)
 
 # Distances
+
 for i in range(NATOMS):
   bondmade = 0
   for j in range(NATOMS):
@@ -139,10 +152,14 @@ for i in range(NATOMS):
         Connecdist[i][bondmade] = dr
         bondmade += 1
 
-xyz[0, :] += XSHIFT
-xyz[1, :] += YSHIFT
-xyz[2, :] += ZSHIFT
+xyz = np.tile(xyz, (1, NVESICLES))
+Connecdist = np.tile(Connecdist, (NVESICLES, 1))
 
+for i in range(NVESICLES):
+    xyz[0, i*NATOMS:((i+1)*NATOMS)] += XSHIFT[i]
+    xyz[1, i*NATOMS:((i+1)*NATOMS)] += YSHIFT[i]
+    xyz[2, i*NATOMS:((i+1)*NATOMS)] += ZSHIFT[i]
+    
 
 table = np.column_stack((indices, xyz.T, nConnec, Connec, Connecdist, iscentre.T, ishole.T, indexcentre.T))
 np.savetxt("latticeIcosphere.txt", table, fmt = '%3d     %3f %3f %3f      %3d %3d %3d %3d %3d %3d %3d %3d   %3f %3f %3f %3f %3f %3f %3f    %3d %3d %3d')
