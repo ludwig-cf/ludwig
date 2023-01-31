@@ -726,7 +726,7 @@ int colloids_rt_cell_list_checks(rt_t * rt, pe_t * pe, cs_t * cs,
 
   if (onsubgrid) {
     for (int ia = 0; ia < 3; ia++) {
-      if (wcell[ia] < cutoffmax + 2) pe_fatal(pe, "The cutoff range of the PHI<-> subgrid interaction + 2 (needed for discrete difference) is larger than the minimum cell width possible along %d\n", ia);
+      if (wcell[ia] < cutoffmax + 1) pe_fatal(pe, "The cutoff range of the PHI<-> subgrid interaction + 1 (needed for discrete difference) is larger than the minimum cell width possible along %d\n", ia);
     }
   }
   if (onvesicle) {

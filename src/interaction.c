@@ -698,7 +698,7 @@ int colloids_update_forces_fluid_driven(colloids_info_t * cinfo,
  *  colloids_update_discrete_forces_phi
  * 
  *  Here I go over the nodes within the interaction range of each subgrid particles 
- *  (+ 2 nodes for the centered difference of the gradient) to calculate the total force
+ *  (+ 1 nodes for the centered difference of the gradient) to calculate the total force
  *  PHI exerts on it. 
  *
  *  I then sum up all the interaction potentials between node and

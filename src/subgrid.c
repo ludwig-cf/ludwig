@@ -760,6 +760,7 @@ int subgrid_flux_mask(pe_t * pe, colloids_info_t * cinfo, field_t * flux_mask, f
 
   MPI_Barrier(comm);
 
+/* If you found it, send it. Else, receive it */
   if (centrefound == 1) {
     for (int id = 0; id < totnum_ids; id++) {
       if (my_id == id) continue;
@@ -782,11 +783,11 @@ int subgrid_flux_mask(pe_t * pe, colloids_info_t * cinfo, field_t * flux_mask, f
   MPI_Barrier(comm);
   if (holefound != 1) {
     MPI_Recv(rhole, 3, MPI_DOUBLE, MPI_ANY_SOURCE, 0, comm, MPI_STATUS_IGNORE);
-    //pe_verbose(cinfo->pe, "receiving rhole = %f %f %f\n", rhole[0], rhole[1], rhole[2]);
   }
 
 
   MPI_Barrier(comm);
+
 /*
   if (orthofound == 1) {
     for (int id = 0; id < totnum_ids; id++) {

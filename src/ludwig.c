@@ -745,7 +745,7 @@ void ludwig_run(const char * inputfile) {
 	ch_solver(ludwig->ch, ludwig->fe, ludwig->phi, ludwig->hydro,
 		  ludwig->map, ludwig->subgrid_potential, ludwig->flux_mask, ludwig->rt);
       }
-       
+      
       if (ludwig->pch) {
 	phi_cahn_hilliard(ludwig->pch, ludwig->fe, ludwig->phi,
 			  ludwig->hydro, 
@@ -1298,11 +1298,11 @@ int free_energy_init_rt(ludwig_t * ludwig) {
     field_create(pe, cs, nf, "phi", &ludwig->phi);
     field_init(ludwig->phi, nhalo, le);
 
-    field_create(pe, cs, nf, "subgrid_potential", &ludwig->subgrid_potential);
-    field_init(ludwig->subgrid_potential, nhalo, le);
+    field_create(pe, cs, 1, "subgrid_potential", &ludwig->subgrid_potential);
+    field_init(ludwig->subgrid_potential, 1, le);
 
     field_create(pe, cs, nf, "flux_mask", &ludwig->flux_mask);
-    field_init(ludwig->flux_mask, nhalo, le);
+    field_init(ludwig->flux_mask, 1, le);
 
     field_grad_create(pe, ludwig->phi, ngrad, &ludwig->phi_grad);
 
@@ -1521,13 +1521,13 @@ int free_energy_init_rt(ludwig_t * ludwig) {
     field_init(ludwig->phi, nhalo, NULL);
 
     field_create(pe, cs, 1, "subgrid_potential", &ludwig->subgrid_potential);
-    field_init(ludwig->subgrid_potential, nhalo, le);
+    field_init(ludwig->subgrid_potential, 1, le);
 
     field_create(pe, cs, nf, "flux_mask", &ludwig->flux_mask);
-    field_init(ludwig->flux_mask, nhalo, le);
+    field_init(ludwig->flux_mask, 1, le);
 
     field_create(pe, cs, 1, "u_mask", &ludwig->u_mask);
-    field_init(ludwig->u_mask, nhalo, le);
+    field_init(ludwig->u_mask, 1, le);
 
     n = rt_double_parameter_vector(rt, "grad_mu_phi", options.grad_mu_phi);
     if (n != 0) physics_grad_mu_phi_set(ludwig->phys, options.grad_mu_phi);
