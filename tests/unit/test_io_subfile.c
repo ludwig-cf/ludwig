@@ -24,7 +24,7 @@
 #include "io_subfile.h"
 
 int test_io_subfile_default(pe_t * pe);
-int test_io_subfile_create(pe_t * pe, int ntotal[3], int iogrid[3]);
+int test_io_subfile_create(pe_t * pe, int ntotal[3], int iogrid[3], int pd[3]);
 int test_io_subfile_to_json(void);
 int test_io_subfile_from_json(void);
 int test_io_subfile_name(pe_t * pe, int iogrid[3]);
@@ -55,7 +55,8 @@ int test_io_subfile_suite(void) {
   {
     int ntotal[3] = {11, 13, 15};
     int iosize[3] = {1, 1, 1};
-    test_io_subfile_create(pe, ntotal, iosize);
+    int decomp[3] = {1, 1, 1};
+    test_io_subfile_create(pe, ntotal, iosize, decomp);
     test_io_subfile_name(pe, iosize);
   }
 
@@ -65,13 +66,15 @@ int test_io_subfile_suite(void) {
     {
       int ntotal[3] = {8, 8, 8};
       int iogrid[3] = {2, 1, 1};
-      test_io_subfile_create(pe, ntotal, iogrid);
+      int decomp[3] = {0, 0, 0};
+      test_io_subfile_create(pe, ntotal, iogrid, decomp);
       test_io_subfile_name(pe, iogrid);
     }
     {
       int ntotal[3] = {15, 8, 8};
       int iosize[3] = { 2, 1, 1};
-      test_io_subfile_create(pe, ntotal, iosize);
+      int decomp[3] = { 0, 0, 0};
+      test_io_subfile_create(pe, ntotal, iosize, decomp);
     }
   }
 
@@ -79,7 +82,8 @@ int test_io_subfile_suite(void) {
     {
       int ntotal[3] = {8, 8, 8};
       int iogrid[3] = {2, 2, 1};
-      test_io_subfile_create(pe, ntotal, iogrid);
+      int decomp[3] = {0, 0, 0};
+      test_io_subfile_create(pe, ntotal, iogrid, decomp);
     }
   }
 
@@ -89,12 +93,20 @@ int test_io_subfile_suite(void) {
     {
       int ntotal[3] = {8, 8, 8};
       int iogrid[3] = {2, 2, 2};
-      test_io_subfile_create(pe, ntotal, iogrid);
+      int decomp[3] = {0, 0, 0};
+      test_io_subfile_create(pe, ntotal, iogrid, decomp);
     }
     {
       int ntotal[3] = {32, 16, 8};
       int iogrid[3] = {4, 2, 1};
-      test_io_subfile_create(pe, ntotal, iogrid);
+      int decomp[3] = {4, 2, 1};
+      test_io_subfile_create(pe, ntotal, iogrid, decomp);
+    }
+    {
+      int ntotal[3] = {128, 4, 4};
+      int iogrid[3] = {2, 1, 1};
+      int decomp[3] = {8, 1, 1};
+      test_io_subfile_create(pe, ntotal, iogrid, decomp);
     }
   }
 
@@ -159,25 +171,28 @@ int test_io_subfile_default(pe_t * pe) {
  *
  *****************************************************************************/
 
-int test_io_subfile_create(pe_t * pe, int ntotal[3], int iogrid[3]) {
+int test_io_subfile_create(pe_t * pe, int ntotal[3], int iogrid[3],
+			   int procdecomp[3]) {
 
+  int ifail = 0;
   cs_t * cs = NULL;
 
   cs_create(pe, &cs);
   cs_ntotal_set(cs, ntotal);
-  cs_decomposition_set(cs, iogrid); /* Try 1 rank per file */
+  cs_decomposition_set(cs, procdecomp);
   cs_init(cs);
 
   {
     io_subfile_t subfile = {0};
 
-    io_subfile_create(cs, iogrid, &subfile);
+    ifail = io_subfile_create(cs, iogrid, &subfile);
+    assert(ifail == 0);
     test_io_subfile(cs, iogrid, &subfile);
   }
 
   cs_free(cs);
 
-  return 0;
+  return ifail;
 }
 
 

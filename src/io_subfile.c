@@ -8,7 +8,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2022 The University of Edinburgh
+ *  (c) 2022-2023 The University of Edinburgh
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *
@@ -72,7 +72,7 @@ int io_subfile_create(cs_t * cs, const int iogrid[3], io_subfile_t * subfile) {
 
     subfile->iosize[i] = iogrid[i];
     subfile->coords[i] = iogrid[i]*icoord/isz;
-    subfile->offset[i] = cs->listnoffset[i][ioffset];
+    subfile->offset[i] = cs->listnoffset[i][ioffset*(isz/iogrid[i])];
 
     /* sizes must be accumulated allowing for non-uniform decomposition */
     subfile->sizes[i] = 0;
