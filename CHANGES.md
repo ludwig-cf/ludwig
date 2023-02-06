@@ -1,6 +1,12 @@
 
 ### Changes
 
+version 0.20.0
+
+- An extra "first touch" option has been added. For details, see
+  https://ludwig.epcc.ed.ac.uk/inputs/parallel.html
+
+
 version 0.19.1
 - Fix bug in io_subfile to prevent failure at iogrid > 1.
 
