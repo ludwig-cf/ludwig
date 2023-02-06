@@ -1,6 +1,9 @@
 
 ### Changes
 
+version 0.19.1
+- Fix bug in io_subfile to prevent failure at iogrid > 1.
+
 version 0.19.0
 
 - There has been a significant change to the way that i/o is undertaken.
