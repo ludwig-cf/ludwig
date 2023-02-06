@@ -872,6 +872,7 @@ int lees_edw_buffer_displacement(lees_edw_t * le, int ib, double t, double * dy)
   assert(le);
   assert(ib >= 0 && ib < le->param->nxbuffer);
 
+  if (t < 0.0) t = 0.0;
   tle = t - le->param->time0;
   assert(tle >= 0.0);
 
