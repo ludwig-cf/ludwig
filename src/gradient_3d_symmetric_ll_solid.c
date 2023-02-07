@@ -270,6 +270,7 @@ __global__ void grad_symmetric_ll_solid_kernel(kernel_ctxt_t * ktx,
 	      h1 = wet[0];
 	      h2 = wet[1];
 	    }
+	    gradt[p] = 0.0;
 	  }
 	}
 
