@@ -548,7 +548,9 @@ void ludwig_run(const char * inputfile) {
     if (ludwig->hydro) {
       hydro_f_zero(ludwig->hydro, fzero);
 /* Calculate flux mask for later use in interact_compute, phi_force/phi_grad_mu.c and ch_solver LIGHTHOUSE but should work */
+      TIMER_start(TIMER_SUBGRID_FLUX_MASK);
       subgrid_flux_mask(ludwig->pe, ludwig->collinfo, ludwig->flux_mask, ludwig->u_mask, ludwig->rt, ludwig->phi);
+      TIMER_stop(TIMER_SUBGRID_FLUX_MASK);
     }
 
     colloids_info_ntotal(ludwig->collinfo, &ncolloid);
@@ -574,10 +576,19 @@ void ludwig_run(const char * inputfile) {
       
       TIMER_start(TIMER_PHI_HALO);
       field_halo(ludwig->phi);
-      field_halo(ludwig->subgrid_potential);
-      field_halo(ludwig->flux_mask);
-      field_halo(ludwig->u_mask);
       TIMER_stop(TIMER_PHI_HALO);
+
+      TIMER_start(TIMER_SUBGRID_POTENTIAL_HALO);
+      field_halo(ludwig->subgrid_potential);
+      TIMER_stop(TIMER_SUBGRID_POTENTIAL_HALO);
+
+      TIMER_start(TIMER_FLUX_MASK_HALO);
+      //field_halo(ludwig->flux_mask);
+      TIMER_stop(TIMER_FLUX_MASK_HALO);
+
+      TIMER_start(TIMER_U_MASK_HALO);
+      field_halo(ludwig->u_mask);
+      TIMER_stop(TIMER_U_MASK_HALO);
 
       field_grad_compute(ludwig->phi_grad);
     }
@@ -2099,15 +2110,15 @@ int ludwig_colloids_update(ludwig_t * ludwig) {
   assert(ludwig);
 
   colloids_info_ntotal(ludwig->collinfo, &ncolloid);
+
   if (ncolloid == 0) return 0;
-
   tdpGetDeviceCount(&ndevice);
-
-  /* __NVCC__ TODO: remove */
   lb_memcpy(ludwig->lb, tdpMemcpyDeviceToHost);
 
+/*
   lb_ndist(ludwig->lb, &ndist);
   iconserve = (ludwig->psi || (ludwig->phi && ndist == 1));
+*/
 
   TIMER_start(TIMER_PARTICLE_HALO);
 
@@ -2120,16 +2131,15 @@ int ludwig_colloids_update(ludwig_t * ludwig) {
 
   /* Removal or replacement of fluid requires a lattice halo update */
 
+//
   TIMER_start(TIMER_HALO_LATTICE);
 
-  /* __NVCC__ */
   if (ndevice == 0) {
     lb_halo(ludwig->lb);
   }
   else {
     lb_halo_swap(ludwig->lb, LB_HALO_HOST);
   }
-
   TIMER_stop(TIMER_HALO_LATTICE);
 
   TIMER_start(TIMER_FREE1);
@@ -2141,7 +2151,6 @@ int ludwig_colloids_update(ludwig_t * ludwig) {
   TIMER_stop(TIMER_FREE1);
 
   TIMER_start(TIMER_REBUILD);
-
   build_update_map(ludwig->cs, ludwig->collinfo, ludwig->map);
   build_remove_replace(ludwig->fe, ludwig->collinfo, ludwig->lb, ludwig->phi,
 		       ludwig->p, ludwig->q, ludwig->psi, ludwig->map);
@@ -2154,7 +2163,9 @@ int ludwig_colloids_update(ludwig_t * ludwig) {
     colloid_sums_halo(ludwig->collinfo, COLLOID_SUM_CONSERVATION);
     build_conservation(ludwig->collinfo, ludwig->phi, ludwig->psi);
   }
+
   TIMER_stop(TIMER_FREE1);
+//
 
   TIMER_start(TIMER_FORCES);
 
@@ -2170,6 +2181,7 @@ int ludwig_colloids_update(ludwig_t * ludwig) {
   /* __NVCC__ TODO: remove */
 
   colloids_memcpy(ludwig->collinfo, tdpMemcpyHostToDevice);
+
   map_memcpy(ludwig->map, tdpMemcpyHostToDevice);
   lb_memcpy(ludwig->lb, tdpMemcpyHostToDevice);
 
