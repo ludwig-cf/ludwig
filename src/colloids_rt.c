@@ -618,16 +618,19 @@ int colloids_rt_cell_list_checks(rt_t * rt, pe_t * pe, cs_t * cs,
 				 colloids_info_t ** pinfo,
 				 interact_t * interact) {
   int nc;
+  int n;
   int nlocal[3];
   int nbest[3];
   int nhalo;
-  int onsubgrid, onvesicle;
+  int onsubgrid, vesicle_num;
 
   double a0max, ahmax;  /* maximum radii */
   double rcmax, hcmax, cutoffmax;  /* Interaction ranges */
   double rmax, rmax_phi, radius_vesicle;          /* Maximum interaction range */
   double r0 = 0.0; /*harmonic bond lentgh (to compute radius_vesicle) */
   double wcell[3];      /* Final cell widths */
+
+  char template[BUFSIZ];
 
   physics_t * phys = NULL;
   physics_ref(&phys);
@@ -692,14 +695,27 @@ int colloids_rt_cell_list_checks(rt_t * rt, pe_t * pe, cs_t * cs,
       rmax = dmax(rmax, cutoffmax + 1);
     }
 
-    rt_int_parameter(rt, "vesicle_switch", &onvesicle);
-    if (onvesicle) {
+    rt_int_parameter(rt, "vesicle_number", &vesicle_num);
+    if (vesicle_num != 0) {
       rt_double_parameter(rt, "vesicle_radius", &radius_vesicle);
       physics_rvesicle_set(phys, radius_vesicle);
 
       // 0.5 allows the structure to deform a little without causing issues with communication
       rmax = dmax(rmax, radius_vesicle+0.5);
-      //printf("rmax = %f\n", rmax);
+    }
+
+    n = rt_string_parameter(rt, "vesicle_template", template, BUFSIZ);
+    if (strcmp(template, "icosphere") == 0) {
+      pe_info(pe, "Creating %d icosphere\n", vesicle_num);
+    }
+    if (strcmp(template, "fullerene") == 0) {
+      pe_info(pe, "Creating %d fullerene\n", vesicle_num);
+    }
+    if (strcmp(template, "hexasphere") == 0) {
+      pe_info(pe, "Creating %d hexasphere\n", vesicle_num);
+    }
+    if (strcmp(template, "trisphere") == 0) {
+      pe_info(pe, "Creating %d trisphere\n", vesicle_num);
     }
 
     rmax = dmax(rmax, 1.5); /* subgrid particles again */
@@ -707,13 +723,11 @@ int colloids_rt_cell_list_checks(rt_t * rt, pe_t * pe, cs_t * cs,
     nbest[Y] = (int) floor(1.0*nlocal[Y] / rmax);
     nbest[Z] = (int) floor(1.0*nlocal[Z] / rmax);
 
-    //printf("nbestx = %d %d %d\n", nbest[X], nbest[Y], nbest[Z]);
-    
     pe_info(pe, "Hydrodynamic radius maximum: %14.7e\n", ahmax);
     pe_info(pe, "Surface-surface interaction: %14.7e\n", hcmax);
     pe_info(pe, "Centre-centre interaction:   %14.7e\n", rcmax);
     if (onsubgrid) pe_info(pe, "Max range of subgrid<->PHI interaction+1: %14.7e\n", cutoffmax+1);
-    if (onvesicle) pe_info(pe, "Approximate radius of vesicle: %14.7e\n", radius_vesicle);
+    if (vesicle_num) pe_info(pe, "Approximate radius of vesicle: %14.7e\n", radius_vesicle);
   }
 
   /* Transfer colloids to new cell list if required */
@@ -729,9 +743,8 @@ int colloids_rt_cell_list_checks(rt_t * rt, pe_t * pe, cs_t * cs,
       if (wcell[ia] < cutoffmax + 1) pe_fatal(pe, "The cutoff range of the PHI<-> subgrid interaction + 1 (needed for discrete difference) is larger than the minimum cell width possible along %d\n", ia);
     }
   }
-  if (onvesicle) {
+  if (vesicle_num) {
     for (int ia = 0; ia < 3; ia++) {
-      //printf("wcell %d = %f, rmax = %f\n", ia, wcell[ia], rmax);
       if (wcell[ia] < radius_vesicle + 0.5) pe_fatal(pe, "The radius of the vesicle + 0.5 is larger than the minimum cell width possible along %d\n", ia);
     }
   }

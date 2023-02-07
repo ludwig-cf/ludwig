@@ -619,11 +619,11 @@ static double d_peskin(double r) {
 
 int subgrid_flux_mask(pe_t * pe, colloids_info_t * cinfo, field_t * flux_mask, field_t * u_mask, rt_t * rt, field_t * phi) {
 
-  int ia, i, j, k, index, p;
+  int ia, i, j, k, index, p, template_on, beads_per_vesicle;
   int nlocal[3], offset[3];
   int my_id, id, totnum_ids, hole_id = -1, ortho_id = -1, centre_id = -1;
   int centrefound = 0, holefound = 0, orthofound = 0;
-  int mask_phi_switch, mask_psi_switch, vesicle_switch, reaction_switch, interaction_mask;
+  int mask_phi_switch, mask_psi_switch, vesicle_number, reaction_switch, interaction_mask;
   int timestep, writefreq;
 
   double m[3] = {0., 0., 0.}, n[3] = {0., 0., 0.}, ijk[3];
@@ -633,11 +633,19 @@ int subgrid_flux_mask(pe_t * pe, colloids_info_t * cinfo, field_t * flux_mask, f
   double radius, gaussr;  
   double permeability[2];
   double kappa, kappa1, kappam1;
-  double totphi_vesicle_local = 0.0, totphi_box_local = 0.0, totphi_vesicle, totphi_box;
+  double phicopy;
+  double totphi_local = 0.0, totpsi_local = 0.0, totphi, totpsi;
 
   char reaction_model[BUFSIZ];
+  char template[BUFSIZ];
 
   FILE * fp;
+
+  typedef struct {
+    int vesicle_index[2];
+    double rcentre[3*2];
+    double rhole[3*2];
+  } vTuple; 
 
   colloid_t * pc;
   physics_t * phys = NULL;
@@ -675,16 +683,32 @@ int subgrid_flux_mask(pe_t * pe, colloids_info_t * cinfo, field_t * flux_mask, f
   }
 
   rt_int_parameter(rt, "freq_write", &writefreq);
-  vesicle_switch = rt_switch(rt, "vesicle_switch");
+  rt_int_parameter(rt, "vesicle_number", &vesicle_number);
+  template_on = rt_string_parameter(rt, "vesicle_template", template, BUFSIZ);
+
+  if (template_on == 0) pe_fatal(pe,"You have to specify vesicle_template\n");
+  if (strcmp(template, "icosphere") == 0) {
+    beads_per_vesicle = 43;
+  }
+  if (strcmp(template, "fullerene") == 0) {
+    beads_per_vesicle = 61;
+  }
+  if (strcmp(template, "hexasphere") == 0) {
+    beads_per_vesicle = 241;
+  }
+  if (strcmp(template, "trisphere") == 0) {
+    beads_per_vesicle = 643;
+  }
+  
   interaction_mask = rt_switch(rt, "phi_interaction_mask");  
 
-  if (vesicle_switch) {
+  if (vesicle_number != 0) {
 
     mask_phi_switch = rt_switch(rt, "mask_phi_switch");
     mask_psi_switch = rt_switch(rt, "mask_psi_switch");
     reaction_switch = rt_switch(rt, "chemical_reaction_switch");
 
-    /* Go in anyway to get the txt files */ 
+    /* Go in anyway to get the txt files ??? LIGHTHOUSE */ 
     /*if (!mask_phi_switch && !mask_psi_switch && !reaction_switch && !interaction_mask) return 0; */
 
     if (interaction_mask || mask_phi_switch) { 
@@ -711,6 +735,7 @@ int subgrid_flux_mask(pe_t * pe, colloids_info_t * cinfo, field_t * flux_mask, f
         if (strcmp(reaction_model, "uniform") == 0) {
 	  p = rt_double_parameter(rt, "kappa", &kappa);
 	  if (p != 1) pe_fatal(pe, "If you choose chemical_reaction_model uniform, please specify kappa\n");
+	  else pe_info(pe, "Chemical reaction model: uniform with kappa = %d\n", kappa);
 	}
 	else if (strcmp(reaction_model, "psi<->phi") == 0) {	
 	  p = rt_double_parameter(rt, "kappa1", &kappa1);
@@ -719,7 +744,6 @@ int subgrid_flux_mask(pe_t * pe, colloids_info_t * cinfo, field_t * flux_mask, f
 	  if (p != 1) pe_fatal(pe, "If you choose chemical_reaction_model psi<->phi, please specify kappam1\n");
         } 
 	else pe_fatal(pe, "Key chemical_reaction_model can only take one of the following values: uniform, psi<->phi\n");
-        
       } 
     }
   }
@@ -854,17 +878,21 @@ int subgrid_flux_mask(pe_t * pe, colloids_info_t * cinfo, field_t * flux_mask, f
 	    }
 	    else if (strcmp(reaction_model, "psi<->phi") == 0) 
 	    {
+	      phicopy = phi->data[addr_rank1(phi->nsites, 2, index, 0)];
 	      phi->data[addr_rank1(phi->nsites, 2, index, 0)] += kappa1*phi->data[addr_rank1(phi->nsites, 2, index, 1)] - kappam1*phi->data[addr_rank1(phi->nsites, 2, index, 0)];
-	      phi->data[addr_rank1(phi->nsites, 2, index, 1)] += -kappa1*phi->data[addr_rank1(phi->nsites, 2, index, 1)] + kappam1*phi->data[addr_rank1(phi->nsites, 2, index, 0)];
+	      phi->data[addr_rank1(phi->nsites, 2, index, 1)] += -kappa1*phi->data[addr_rank1(phi->nsites, 2, index, 1)] + kappam1*phicopy;
+
+	      //printf("phi + psi = %14.7e\n", phi->data[addr_rank1(phi->nsites, 2, index, 0)] + phi->data[addr_rank1(phi->nsites, 2, index, 1)]);
+	      /*printf("phi += %f and ", kappa1*phi->data[addr_rank1(phi->nsites, 2, index, 1)] - kappam1*phi->data[addr_rank1(phi->nsites, 2, index, 0)]);
+	      printf("psi += %f\n", -kappa1*phi->data[addr_rank1(phi->nsites, 2, index, 1)] + kappam1*phi->data[addr_rank1(phi->nsites, 2, index, 0)]);
+	      */
 	    }
 	  }
 	}
 
 	if (timestep % writefreq == 0) {
-	  totphi_box_local += phi->data[addr_rank1(phi->nsites, 2, index, 0)];
-	  if (rnorm < radius - std_width - 2) {
-	    totphi_vesicle_local += phi->data[addr_rank1(phi->nsites, 2, index, 0)];
-	  }
+	  totphi_local += phi->data[addr_rank1(phi->nsites, 2, index, 0)];
+	  totpsi_local += phi->data[addr_rank1(phi->nsites, 2, index, 1)];
 	}
 
 	// ASSIGN MASK VALUE
@@ -936,17 +964,15 @@ int subgrid_flux_mask(pe_t * pe, colloids_info_t * cinfo, field_t * flux_mask, f
   }
 
   // COMMUNICATE TOTPHI
-/*
   if (timestep % writefreq == 0) {
-    MPI_Reduce(&totphi_vesicle_local, &totphi_vesicle, 1, MPI_DOUBLE, MPI_SUM, 0, comm);
-    MPI_Reduce(&totphi_box_local, &totphi_box, 1, MPI_DOUBLE, MPI_SUM, 0, comm);
+    MPI_Reduce(&totphi_local, &totphi, 1, MPI_DOUBLE, MPI_SUM, 0, comm);
+    MPI_Reduce(&totpsi_local, &totpsi, 1, MPI_DOUBLE, MPI_SUM, 0, comm);
     if (my_id == 0) {
       fp = fopen("totphi.txt", "a");
-      fprintf(fp, "%14.7e,       %14.7e\n", totphi_vesicle, totphi_box);
+      fprintf(fp, "%14.7e,       %14.7e\n", totphi, totpsi);
       fclose(fp);
     }
   }
-*/
   return 0;
 }
 
