@@ -124,6 +124,9 @@ Scalars - total mean variance min max
 [Qyy] -3.2768000e+03 -1.0000000e-01  6.8330758e-15 -1.0000000e-01 -1.0000000e-01
 [Qyz]  0.0000000e+00  0.0000000e+00  0.0000000e+00  0.0000000e+00  0.0000000e+00
 
+Free energy density - timestep total fluid
+[fed]              0 -1.4296432148e-02 -1.4296432148e-02
+
 Momentum - x y z
 [total   ]  4.5474735e-13  0.0000000e+00  0.0000000e+00
 [fluid   ]  4.5474735e-13  0.0000000e+00  0.0000000e+00

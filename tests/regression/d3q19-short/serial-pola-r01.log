@@ -88,6 +88,9 @@ Scalars - total mean variance min max
 [Py ]  3.2504065e+03  1.2399317e-02 3.3318213e-01 -1.0000000e+00 1.0000000e+00
 [Pz ]  3.2494065e+03  1.2395502e-02 3.3317841e-01 -1.0000000e+00 1.0000000e+00
 
+Free energy density - timestep total fluid
+[fed]              0 -2.4688264984e-02 -2.4688264984e-02
+
 Momentum - x y z
 [total   ]  0.0000000e+00  0.0000000e+00  0.0000000e+00
 [fluid   ]  0.0000000e+00  0.0000000e+00  0.0000000e+00

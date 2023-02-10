@@ -182,6 +182,7 @@ struct ludwig_s {
 
 static int ludwig_rt(ludwig_t * ludwig);
 static int ludwig_report_momentum(ludwig_t * ludwig);
+static int ludwig_report_statistics(ludwig_t * ludwig, int itimestep);
 static int ludwig_colloids_update(ludwig_t * ludwig);
 static int ludwig_colloids_update_low_freq(ludwig_t * ludwig);
 
@@ -520,29 +521,7 @@ void ludwig_run(const char * inputfile) {
   pe_info(ludwig->pe, "Initial conditions.\n");
   wall_is_pm(ludwig->wall, &is_porous_media);
 
-  stats_distribution_print(ludwig->lb, ludwig->map);
-
-  lb_ndist(ludwig->lb, &im);
-
-  if (im == 2) {
-    phi_lb_to_field(ludwig->phi, ludwig->lb);
-    stats_field_info_bbl(ludwig->phi, ludwig->map, ludwig->bbl);
-  }
-  else {
-    if (ludwig->phi) {
-	if (ludwig->pch) {
-	  cahn_hilliard_stats(ludwig->pch, ludwig->phi, ludwig->map);
-	}
-	else {
-	  stats_field_info(ludwig->phi, ludwig->map);
-	}
-    }
-  }
-  if (ludwig->p)   stats_field_info(ludwig->p, ludwig->map);
-  if (ludwig->q)   stats_field_info(ludwig->q, ludwig->map);
-  if (ludwig->psi) {
-    psi_stats_info(ludwig->psi);
-  }
+  ludwig_report_statistics(ludwig, 0);
   ludwig_report_momentum(ludwig);
 
   /* Main time stepping loop */
@@ -895,9 +874,7 @@ void ludwig_run(const char * inputfile) {
       TIMER_stop(TIMER_PROPAGATE);
     }
 
-    TIMER_stop(TIMER_STEPS);
-
-    TIMER_start(TIMER_FREE1); /* Time diagnostics */
+    TIMER_start(TIMER_DIAGNOSTIC_OUTPUT); /* Time diagnostics and i/o */
 
     /* Configuration dump */
 
@@ -985,69 +962,7 @@ void ludwig_run(const char * inputfile) {
 
     if (is_statistics_step()) {
 
-      lb_memcpy(ludwig->lb, tdpMemcpyDeviceToHost);
-      stats_distribution_print(ludwig->lb, ludwig->map);
-      lb_ndist(ludwig->lb, &im);
-
-      if (ludwig->phi) {
-	field_memcpy(ludwig->phi, tdpMemcpyDeviceToHost);
-	field_grad_memcpy(ludwig->phi_grad, tdpMemcpyDeviceToHost);
-	if (im == 2) {
-	  /* Recompute phi (kernel) and copy back if required */
-	  phi_lb_to_field(ludwig->phi, ludwig->lb);
-	  field_memcpy(ludwig->phi, tdpMemcpyDeviceToHost);
-	  stats_field_info_bbl(ludwig->phi, ludwig->map, ludwig->bbl);
-	}
-	else {
-	  if (ludwig->pch) {
-	    cahn_hilliard_stats(ludwig->pch, ludwig->phi, ludwig->map);
-	  }
-	  else {
-	    field_memcpy(ludwig->phi, tdpMemcpyDeviceToHost);
-	    stats_field_info(ludwig->phi, ludwig->map);
-	  }
-	}
-      }
-
-      if (ludwig->p) {
-	/* Get the gradients as well for the free energy below */
-	field_memcpy(ludwig->p, tdpMemcpyDeviceToHost);
-	field_grad_memcpy(ludwig->p_grad, tdpMemcpyDeviceToHost);
-	stats_field_info(ludwig->p, ludwig->map);
-      }
-
-      if (ludwig->q) {
-	field_memcpy(ludwig->q, tdpMemcpyDeviceToHost);
-	field_grad_memcpy(ludwig->q_grad, tdpMemcpyDeviceToHost);
-	stats_field_info(ludwig->q, ludwig->map);
-	stats_colloid_force_split_output(ludwig->collinfo, step);
-      }
-
-      if (ludwig->psi) {
-	double psi_zeta;
-	psi_colloid_rho_set(ludwig->psi, ludwig->collinfo);
-	psi_stats_info(ludwig->psi);
-	/* Zeta potential for one colloid only to follow psi_stats()*/
-	psi_colloid_zetapotential(ludwig->psi, ludwig->collinfo, &psi_zeta);
-	if (ncolloid == 1) pe_info(ludwig->pe, "[psi_zeta] %14.7e\n",  psi_zeta);
-      }
-
-      if (ludwig->fe) {
-	switch (ludwig->fe->id) {
-	case FE_LC:
-	  fe_lc_stats_info(ludwig->pe, ludwig->cs, ludwig->fe_lc,
-			   ludwig->wall, ludwig->map, ludwig->collinfo, step);
-	  break;
-	case FE_TERNARY:
-	  fe_ternary_stats_info(ludwig->fe_ternary, ludwig->wall,
-				ludwig->map, step);
-	  break;
-	default:
-	  stats_free_energy_density(ludwig->pe, ludwig->cs, ludwig->wall,
-				    ludwig->fe, ludwig->map,
-				    ludwig->collinfo);
-	}
-      }
+      ludwig_report_statistics(ludwig, step);
       ludwig_report_momentum(ludwig);
 
       if (ludwig->hydro) {
@@ -1063,7 +978,8 @@ void ludwig_run(const char * inputfile) {
 
     stats_ahydro_accumulate(ludwig->stat_ah, step);
 
-    TIMER_stop(TIMER_FREE1);
+    TIMER_stop(TIMER_DIAGNOSTIC_OUTPUT);
+    TIMER_stop(TIMER_STEPS); /* inclusive of diagnostic/io */
 
     /* Next time step */
   }
@@ -2194,10 +2110,8 @@ int ludwig_colloids_update(ludwig_t * ludwig) {
 
   TIMER_stop(TIMER_HALO_LATTICE);
 
-  TIMER_start(TIMER_FREE1);
   if (iconserve && ludwig->phi) field_halo(ludwig->phi);
   if (iconserve && ludwig->psi) psi_halo_rho(ludwig->psi);
-  TIMER_stop(TIMER_FREE1);
 
   TIMER_start(TIMER_REBUILD);
 
@@ -2209,13 +2123,11 @@ int ludwig_colloids_update(ludwig_t * ludwig) {
 
   TIMER_stop(TIMER_REBUILD);
 
-  TIMER_start(TIMER_FREE1);
   if (iconserve) {
     colloid_sums_halo(ludwig->collinfo, COLLOID_SUM_CONSERVATION);
     build_conservation(ludwig->collinfo, ludwig->phi, ludwig->psi,
 		       &ludwig->lb->model);
   }
-  TIMER_stop(TIMER_FREE1);
 
   TIMER_start(TIMER_FORCES);
 
@@ -2370,6 +2282,104 @@ __host__ int ludwig_timekeeper_init(ludwig_t * ludwig) {
     }
 
     timekeeper_create(pe, &opts, &ludwig->tk);
+  }
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  ludwig_report_statistics
+ *
+ *  If t = 0, we need to compute any relevant order parameter gradients
+ *  for the fist time.
+ *  If t > 0 we use the computation coming from the time step loop.
+ *
+ *****************************************************************************/
+
+int ludwig_report_statistics(ludwig_t * ludwig, int itimestep) {
+
+  assert(ludwig);
+
+  if (itimestep == 0) {
+    if (ludwig->phi) {
+      field_halo(ludwig->phi);
+      field_grad_compute(ludwig->phi_grad);
+    }
+    if (ludwig->p) {
+      field_halo(ludwig->p);
+      field_grad_compute(ludwig->p_grad);
+    }
+    if (ludwig->q) {
+      field_halo(ludwig->q);
+      field_grad_compute(ludwig->q_grad);
+    }
+  }
+
+  lb_memcpy(ludwig->lb, tdpMemcpyDeviceToHost);
+  stats_distribution_print(ludwig->lb, ludwig->map);
+
+  if (ludwig->phi) {
+    field_memcpy(ludwig->phi, tdpMemcpyDeviceToHost);
+    field_grad_memcpy(ludwig->phi_grad, tdpMemcpyDeviceToHost);
+    if (ludwig->lb->ndist == 2) {
+      /* Recompute phi (kernel) and copy back if required */
+      phi_lb_to_field(ludwig->phi, ludwig->lb);
+      field_memcpy(ludwig->phi, tdpMemcpyDeviceToHost);
+      stats_field_info_bbl(ludwig->phi, ludwig->map, ludwig->bbl);
+    }
+    else {
+      if (ludwig->pch) {
+	cahn_hilliard_stats(ludwig->pch, ludwig->phi, ludwig->map);
+      }
+      else {
+	field_memcpy(ludwig->phi, tdpMemcpyDeviceToHost);
+	stats_field_info(ludwig->phi, ludwig->map);
+      }
+    }
+  }
+
+  if (ludwig->p) {
+    /* Get the gradients as well for the free energy below */
+    field_memcpy(ludwig->p, tdpMemcpyDeviceToHost);
+    field_grad_memcpy(ludwig->p_grad, tdpMemcpyDeviceToHost);
+    stats_field_info(ludwig->p, ludwig->map);
+  }
+
+  if (ludwig->q) {
+    field_memcpy(ludwig->q, tdpMemcpyDeviceToHost);
+    field_grad_memcpy(ludwig->q_grad, tdpMemcpyDeviceToHost);
+    stats_field_info(ludwig->q, ludwig->map);
+    stats_colloid_force_split_output(ludwig->collinfo, itimestep);
+  }
+
+  if (ludwig->psi) {
+    int ncolloid = 0;
+    double psi_zeta = 0.0;
+    psi_colloid_rho_set(ludwig->psi, ludwig->collinfo);
+    psi_stats_info(ludwig->psi);
+    /* Zeta potential for one colloid only to follow psi_stats() */
+    /* There should be an explicit option. */
+    colloids_info_ntotal(ludwig->collinfo, &ncolloid);
+    psi_colloid_zetapotential(ludwig->psi, ludwig->collinfo, &psi_zeta);
+    if (ncolloid == 1) pe_info(ludwig->pe, "[psi_zeta] %14.7e\n",  psi_zeta);
+  }
+
+  if (ludwig->fe) {
+    switch (ludwig->fe->id) {
+    case FE_LC:
+      fe_lc_stats_info(ludwig->pe, ludwig->cs, ludwig->fe_lc,
+		       ludwig->wall, ludwig->map, ludwig->collinfo, itimestep);
+      break;
+    case FE_TERNARY:
+      fe_ternary_stats_info(ludwig->fe_ternary, ludwig->wall,
+			    ludwig->map, itimestep);
+      break;
+    default:
+      stats_free_energy_density(ludwig->pe, ludwig->cs, ludwig->wall,
+				ludwig->fe, ludwig->map,
+				ludwig->collinfo);
+    }
   }
 
   return 0;
