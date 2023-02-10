@@ -3,6 +3,7 @@
 
 version 0.20.0
 
+- Added coverage via https://about.codecov.io/
 - The free energy is now reported at t = 0 for the initial state.
 - An extra "first touch" option has been added. For details, see
   https://ludwig.epcc.ed.ac.uk/inputs/parallel.html
