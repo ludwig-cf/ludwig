@@ -2358,7 +2358,9 @@ int ludwig_report_statistics(ludwig_t * ludwig, int itimestep) {
     double psi_zeta = 0.0;
     psi_colloid_rho_set(ludwig->psi, ludwig->collinfo);
     psi_stats_info(ludwig->psi);
-    /* Zeta potential for one colloid only to follow psi_stats()*/
+    /* Zeta potential for one colloid only to follow psi_stats() */
+    /* There should be an explicit option. */
+    colloids_info_ntotal(ludwig->collinfo, &ncolloid);
     psi_colloid_zetapotential(ludwig->psi, ludwig->collinfo, &psi_zeta);
     if (ncolloid == 1) pe_info(ludwig->pe, "[psi_zeta] %14.7e\n",  psi_zeta);
   }
