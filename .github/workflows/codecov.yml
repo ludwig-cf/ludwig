@@ -1,0 +1,21 @@
+name: Codecov
+on: [push, pull_request]
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+      - name: Test
+        run: |
+          cp config/coverage-gcc.mk config.mk
+          make serial
+	  make
+	  cd tests/unit
+	  make test
+          gcov -abcfu tests.c
+      - name: Upload
+        uses: codecov/codecov-action@v3
+        with:
+          gcov: true
+          gcov_include: tests/unit/tests.c

@@ -13,7 +13,7 @@
 #  Edinburgh Soft Matter and Statistical Physics Group and
 #  Edinburgh Parallel Computing Centre
 #
-#  (c) 2018-2019 The University of Edinburgh
+#  (c) 2018-2023 The University of Edinburgh
 #
 #  Contributing authors:
 #  Alan Gray (alang@epcc.ed.ac.uk)
@@ -62,3 +62,4 @@ testmpi:
 
 clean:
 	rm -f *.o *.a a.out
+	rm -f *gcno *gcda
