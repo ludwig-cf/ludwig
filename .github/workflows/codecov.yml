@@ -8,12 +8,12 @@ jobs:
         uses: actions/checkout@v3
       - name: Test
         run: |
-          cp config/coverage-gcc.mk config.mk
+	  cp config/coverage-gcc.mk config.mk
           make serial
-	  make
+          make
 	  cd tests/unit
 	  make test
-          gcov -abcfu tests.c
+	  gcov -abcfu tests.c
       - name: Upload
         uses: codecov/codecov-action@v3
         with:
