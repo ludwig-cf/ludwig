@@ -12,6 +12,8 @@ jobs:
           make serial
           make
           make unit
+          cd src
+          gcov -abcfu *.c
       - name: Upload results
         run: |
           curl -Os https://uploader.codecov.io/latest/linux/codecov
