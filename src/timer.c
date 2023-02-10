@@ -10,7 +10,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2010-2022 The University of Edinburgh
+ *  (c) 2010-2023 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -90,7 +90,7 @@ static const char * timer_name[] = {"Total",
 				    "Poisson equation",
 				    "Nernst Planck",
 				    "Lap timer (no report)",
-				    "Free1",
+				    "Diagnostics / output ",
 				    "Free2",
                                     "Free3", "Free4", "Free5", "Free6"
 };

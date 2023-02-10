@@ -874,9 +874,7 @@ void ludwig_run(const char * inputfile) {
       TIMER_stop(TIMER_PROPAGATE);
     }
 
-    TIMER_stop(TIMER_STEPS);
-
-    TIMER_start(TIMER_FREE1); /* Time diagnostics */
+    TIMER_start(TIMER_DIAGNOSTIC_OUTPUT); /* Time diagnostics and i/o */
 
     /* Configuration dump */
 
@@ -980,7 +978,8 @@ void ludwig_run(const char * inputfile) {
 
     stats_ahydro_accumulate(ludwig->stat_ah, step);
 
-    TIMER_stop(TIMER_FREE1);
+    TIMER_stop(TIMER_DIAGNOSTIC_OUTPUT);
+    TIMER_stop(TIMER_STEPS); /* inclusive of diagnostic/io */
 
     /* Next time step */
   }
@@ -2111,10 +2110,8 @@ int ludwig_colloids_update(ludwig_t * ludwig) {
 
   TIMER_stop(TIMER_HALO_LATTICE);
 
-  TIMER_start(TIMER_FREE1);
   if (iconserve && ludwig->phi) field_halo(ludwig->phi);
   if (iconserve && ludwig->psi) psi_halo_rho(ludwig->psi);
-  TIMER_stop(TIMER_FREE1);
 
   TIMER_start(TIMER_REBUILD);
 
@@ -2126,13 +2123,11 @@ int ludwig_colloids_update(ludwig_t * ludwig) {
 
   TIMER_stop(TIMER_REBUILD);
 
-  TIMER_start(TIMER_FREE1);
   if (iconserve) {
     colloid_sums_halo(ludwig->collinfo, COLLOID_SUM_CONSERVATION);
     build_conservation(ludwig->collinfo, ludwig->phi, ludwig->psi,
 		       &ludwig->lb->model);
   }
-  TIMER_stop(TIMER_FREE1);
 
   TIMER_start(TIMER_FORCES);
 
