@@ -356,7 +356,6 @@ __host__ int util_jacobi(double a[3][3], double vals[3], double vecs[3][3]) {
 	else if (fabs(a[ia][ib]) > tresh) {
 	  h = vals[ib] - vals[ia];
 	  if (((fabs(h) + g) - fabs(h)) == 0.0) {
-	    assert(0);
 	    t = (a[ia][ib])/h;
 	  }
 	  else {
