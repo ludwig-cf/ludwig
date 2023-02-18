@@ -349,13 +349,14 @@ __host__ int util_jacobi(double a[3][3], double vals[3], double vecs[3][3]) {
 
 	g = 100.0*fabs(a[ia][ib]);
 
-	if (iterate > 4 && (fabs(vals[ia]) + g) == fabs(vals[ia]) &&
-	    (fabs(vals[ib]) + g) == fabs(vals[ib])) {
+	if (iterate > 4 && (((fabs(vals[ia]) + g) - fabs(vals[ia])) == 0.0) &&
+	    (((fabs(vals[ib]) + g) - fabs(vals[ib])) == 0.0)) {
 	  a[ia][ib] = 0.0;
 	}
 	else if (fabs(a[ia][ib]) > tresh) {
 	  h = vals[ib] - vals[ia];
-	  if ((fabs(h) + g) == fabs(h)) {
+	  if (((fabs(h) + g) - fabs(h)) == 0.0) {
+	    assert(0);
 	    t = (a[ia][ib])/h;
 	  }
 	  else {
@@ -596,41 +597,6 @@ int util_gauss_jordan(const int n, double * a, double * b) {
 
 /*****************************************************************************
  *
- *  util_vector_create
- *
- *****************************************************************************/
-
-__host__
-int util_vector_create(int n, double ** p) {
-
-  int ifail = 0;
-  double * v = NULL;
-
-  v = (double*) calloc(n, sizeof(double));
-  if (v == NULL) ifail = 1;
-
-  *p = v;
-
-  return ifail;
-}
-
-/*****************************************************************************
- *
- *  util_vector_free
- *
- *****************************************************************************/
-
-__host__
-int util_vector_free(double ** p) {
-
-  free(*p);
-  *p = NULL;
-
-  return 0;
-}
-
-/*****************************************************************************
- *
  *  util_matrix_create
  *
  *****************************************************************************/
@@ -815,8 +781,7 @@ __host__ int util_matrix_invert(int n, double ** a) {
  *
  *****************************************************************************/
 
-__host__ __device__
-int util_dpythag(double a, double b, double * p) {
+__host__ int util_dpythag(double a, double b, double * p) {
 
   double absa, absb, tmp;
 
