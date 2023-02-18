@@ -18,7 +18,7 @@
 #  Edinburgh Soft Matter and Statisical Physics Group and
 #  Edinburgh Parallel Computing Centre
 #
-#  (c) 2014-2020 The University of Edinburgh
+#  (c) 2014-2023 The University of Edinburgh
 #
 #  Contributing authors:
 #  Kevin Stratford (kevin@epcce.ed.ac.uk)
@@ -49,7 +49,8 @@ function main() {
 
   stub=`echo $input | sed 's/.inp//'`
   echo
-  ${launch_mpi} ${executable} $input > $stub.new
+  ln -s -f ${input} input
+  ${launch_mpi} ${executable} > $stub.new
 
   # Get difference via the difference script
   ${launch_serial} ${test_diff} $stub.new $stub.log
@@ -62,6 +63,8 @@ function main() {
   else
       echo "PASS     ./$input"
   fi
+
+  rm -f input
 
   return
 }

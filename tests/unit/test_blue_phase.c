@@ -44,7 +44,7 @@ int test_fe_lc_dimensionless_field_strength(pe_t * pe);
 
 
 __host__ int do_test_fe_lc_device1(pe_t * pe, cs_t * cs, fe_lc_t * fe);
-__global__ void do_test_fe_lc_kernel1(fe_lc_t * fe, fe_lc_param_t ref);
+__global__ void do_test_fe_lc_kernel1(fe_lc_t * fe, const fe_lc_param_t * ref);
 
 
 /*****************************************************************************
@@ -959,8 +959,15 @@ __host__ int do_test_fe_lc_device1(pe_t * pe, cs_t * cs, fe_lc_t * fe) {
   kernel_launch_param(1, &nblk, &ntpb);
   ntpb.x = 1;
 
-  tdpLaunchKernel(do_test_fe_lc_kernel1, nblk, ntpb, 0, 0, fetarget, param);
-  tdpDeviceSynchronize();
+  {
+    fe_lc_param_t * p = NULL;
+    tdpAssert(tdpMalloc((void **) &p, sizeof(fe_lc_param_t)));
+    tdpAssert(tdpMemcpy(p, &param, sizeof(fe_lc_param_t),
+			tdpMemcpyHostToDevice));
+    tdpLaunchKernel(do_test_fe_lc_kernel1, nblk, ntpb, 0, 0, fetarget, p);
+    tdpDeviceSynchronize();
+    tdpAssert(tdpFree(p));
+  }
 
   physics_free(phys);
 
@@ -973,7 +980,8 @@ __host__ int do_test_fe_lc_device1(pe_t * pe, cs_t * cs, fe_lc_t * fe) {
  *
  *****************************************************************************/
 
-__global__ void do_test_fe_lc_kernel1(fe_lc_t * fe, fe_lc_param_t ref) {
+__global__ void do_test_fe_lc_kernel1(fe_lc_t * fe,
+				      const fe_lc_param_t * pref) {
 
   fe_lc_param_t p;
   PI_DOUBLE(pi);
@@ -984,11 +992,11 @@ __global__ void do_test_fe_lc_kernel1(fe_lc_t * fe, fe_lc_param_t ref) {
 
   /* epsilon is sclaed by a factor of 12pi within fe_lc */
 
-  test_assert(fabs(p.a0 - ref.a0) < DBL_EPSILON);
-  test_assert(fabs(p.gamma - ref.gamma) < DBL_EPSILON);
-  test_assert(fabs(p.kappa0 - ref.kappa0) < DBL_EPSILON);
-  test_assert(fabs(12.0*pi*p.epsilon - ref.epsilon) < FLT_EPSILON);
-  test_assert(fabs(p.redshift - ref.redshift) < DBL_EPSILON);
+  test_assert(fabs(p.a0 - pref->a0) < DBL_EPSILON);
+  test_assert(fabs(p.gamma - pref->gamma) < DBL_EPSILON);
+  test_assert(fabs(p.kappa0 - pref->kappa0) < DBL_EPSILON);
+  test_assert(fabs(12.0*pi*p.epsilon - pref->epsilon) < FLT_EPSILON);
+  test_assert(fabs(p.redshift - pref->redshift) < DBL_EPSILON);
 
   return;
 }
