@@ -28,6 +28,7 @@
 #define STAT_TOLERANCE 0.001
 
 int util_random_unit_vector_check(void);
+int util_jacobi_check(void);
 int util_str_tolower_check(void);
 int util_rectangle_conductance_check(void);
 
@@ -45,6 +46,7 @@ int test_util_suite(void) {
 
   util_random_unit_vector_check();
 
+  util_jacobi_check();
   util_str_tolower_check();
   util_rectangle_conductance_check();
 
@@ -103,6 +105,35 @@ int util_random_unit_vector_check(void) {
   test_assert(fabs(rmean[0]) < STAT_TOLERANCE);
   test_assert(fabs(rmean[1]) < STAT_TOLERANCE);
   test_assert(fabs(rmean[2]) < STAT_TOLERANCE);
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  util_jacobi_check
+ *
+ *****************************************************************************/
+
+int util_jacobi_check(void) {
+
+  int ifail = 0;
+
+  {
+    double a[3][3] = {0};
+    double evals[3] = {0};
+    double evecs[3][3] = {0};
+
+    ifail = util_jacobi(a, evals, evecs);
+    assert(ifail == 0);
+    if (evals[0] != 0.0)    ifail = -1;
+    if (evals[1] != 0.0)    ifail = -2;
+    if (evals[2] != 0.0)    ifail = -3;
+    if (evecs[0][0] != 1.0) ifail = -4;
+    if (evecs[1][1] != 1.0) ifail = -5;
+    if (evecs[2][2] != 1.0) ifail = -6;
+    assert(ifail == 0);
+  }
 
   return 0;
 }
