@@ -11,7 +11,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2010-2022 The University of Edinburgh
+ *  (c) 2010-2023 The University of Edinburgh
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *
@@ -32,13 +32,15 @@ typedef struct gm_util_s {
   int8_t cv[27][3];
 } gm_util_t;
 
+static __constant__ gm_util_t util_;
+
 __host__ int stats_distribution_momentum_serial(lb_t * lb, map_t * map,
 						double g[3]);
 __host__ int distribution_stats_momentum(lb_t * lb, map_t * map, int root,
 					 MPI_Comm comm, double gm[3]);
 
 __global__ void distribution_gm_kernel(kernel_ctxt_t * ktxt, lb_t * lb,
-				       map_t * map, gm_util_t u, kahan_t * gm);
+				       map_t * map, kahan_t * gm);
 
 
 /*****************************************************************************
@@ -221,6 +223,8 @@ __host__ int distribution_stats_momentum(lb_t * lb, map_t * map, int root,
     util.cv[p][Y] = lb->model.cv[p][Y];
     util.cv[p][Z] = lb->model.cv[p][Z];
   }
+  tdpMemcpyToSymbol(tdpSymbol(util_), &util, sizeof(gm_util_t), 0,
+		    tdpMemcpyHostToDevice);
 
   /* Local kernel */
 
@@ -233,7 +237,7 @@ __host__ int distribution_stats_momentum(lb_t * lb, map_t * map, int root,
   kernel_ctxt_launch_param(ctxt, &nblk, &ntpb);
 
   tdpLaunchKernel(distribution_gm_kernel, nblk, ntpb, 0, 0,
-		  ctxt->target, lb->target, map->target, util, sum_d);
+		  ctxt->target, lb->target, map->target, sum_d);
   tdpAssert(tdpPeekAtLastError());
   tdpAssert(tdpDeviceSynchronize());
 
@@ -275,8 +279,7 @@ __host__ int distribution_stats_momentum(lb_t * lb, map_t * map, int root,
  *****************************************************************************/
 
 __global__ void distribution_gm_kernel(kernel_ctxt_t * ktx, lb_t * lb,
-				       map_t * map, gm_util_t util,
-				       kahan_t * gm) {
+				       map_t * map, kahan_t * gm) {
 
   assert(ktx);
   assert(lb);
@@ -317,9 +320,9 @@ __global__ void distribution_gm_kernel(kernel_ctxt_t * ktx, lb_t * lb,
     if (status == MAP_FLUID) {
       for (int p = 1; p < lb->nvel; p++) {
 	double f = lb->f[LB_ADDR(lb->nsite,lb->ndist,lb->nvel,index,LB_RHO,p)];
-	double gxf = f*util.cv[p][X];
-	double gyf = f*util.cv[p][Y];
-	double gzf = f*util.cv[p][Z];
+	double gxf = f*util_.cv[p][X];
+	double gyf = f*util_.cv[p][Y];
+	double gzf = f*util_.cv[p][Z];
 	kahan_add_double(&gx[tid], gxf);
 	kahan_add_double(&gy[tid], gyf);
 	kahan_add_double(&gz[tid], gzf);
