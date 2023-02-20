@@ -8,7 +8,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2013-2020 The University of Edinburgh
+ *  (c) 2013-2023 The University of Edinburgh
  *
  *  Contributing authors:
  *  Oliver Henrich (ohenrich@epcc.ed.ac.uk)
@@ -21,7 +21,6 @@
 #include <stdlib.h>
 
 #include "pe.h"
-#include "psi_s.h"
 #include "util.h"
 #include "coords.h"
 #include "psi_colloid.h"

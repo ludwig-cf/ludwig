@@ -7,7 +7,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2012-2022 The University of Edinburgh
+ *  (c) 2012-2023 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -26,7 +26,6 @@
 #include "control.h"
 #include "map.h"
 #include "psi.h"
-#include "psi_s.h"
 #include "psi_sor.h"
 #include "psi_stats.h"
 #include "fe_electro.h"
@@ -90,8 +89,8 @@ int test_nernst_planck_suite(void) {
 
 static int test_nernst_planck_driver(pe_t * pe) {
 
+  int nhalo = 1;
   int ntotal[3] = {64, 4, 4};  /* Quasi-one-dimensional system */
-  int nk = 2;                  /* Number of species */
 
   int nlocal[3];
   int noffst[3];
@@ -103,12 +102,6 @@ static int test_nernst_planck_driver(pe_t * pe) {
   double rho_i;               /* Interior charge density */
   double rho_b, rho_b_local;  /* background ionic strength */
 
-  int valency[2] = {+1, -1};
-  double diffusivity[2] = {1.e-2, 1.e-2};
-
-  double eunit = 1.;           /* Unit charge, ... */
-  double epsilon = 3.3e3;      /* ... epsilon, and ... */
-  double beta = 3.0e4;         /* ... the Boltzmann factor i.e., t ~ 10^5 */
   double rho_el = 1.0e-3;      /* charge density */
   double ltot[3];
 
@@ -119,12 +112,17 @@ static int test_nernst_planck_driver(pe_t * pe) {
   physics_t * phys = NULL;
   fe_electro_t * fe = NULL;
 
+  double epsilon = 3.3e3;      /* ... epsilon, and ... */
+  double beta = 3.0e4;         /* ... the Boltzmann factor i.e., t ~ 10^5 */
+
+  psi_options_t opts = psi_options_default(nhalo);
+
   assert(pe);
 
   physics_create(pe, &phys);
 
   cs_create(pe, &cs);
-  cs_nhalo_set(cs, 1);
+  cs_nhalo_set(cs, nhalo);
   cs_ntotal_set(cs, ntotal);
 
   {
@@ -144,19 +142,12 @@ static int test_nernst_planck_driver(pe_t * pe) {
   map_create(pe, cs, 0, &map);
   assert(map);
 
-  psi_create(pe, cs, nk, &psi);
-  assert(psi);
-
-  psi_valency_set(psi, 0, valency[0]);
-  psi_valency_set(psi, 1, valency[1]);
-  psi_diffusivity_set(psi, 0, diffusivity[0]);
-  psi_diffusivity_set(psi, 1, diffusivity[1]);
-  psi_unit_charge_set(psi, eunit);
-  psi_epsilon_set(psi, epsilon);
-  psi_beta_set(psi, beta);
+  opts.beta     = beta;
+  opts.epsilon1 = epsilon;
+  opts.epsilon2 = epsilon;
+  psi_create(pe, cs, &opts, &psi);
 
   /* Care. the free energy gets the temperatue from global physics_t. */
-  physics_kt_set(phys, 1.0/beta);
   fe_electro_create(pe, psi, &fe);
 
   /* wall charge density */
@@ -253,8 +244,8 @@ static int test_nernst_planck_driver(pe_t * pe) {
     double ldebye = 0.0;            /* Debye length */
     double yd = 0.0;                /* Dimensionless surface potential */
 
-    psi_bjerrum_length(psi, &lb);
-    psi_debye_length(psi, rho_b, &ldebye);
+    psi_bjerrum_length1(&opts, &lb);
+    psi_debye_length1(&opts, rho_b, &ldebye);
     psi_surface_potential(psi, rho_w, rho_b, &yd);
 
     /* Only the surface potential has really changed compared with the
@@ -267,7 +258,7 @@ static int test_nernst_planck_driver(pe_t * pe) {
 
   map_free(map);
   fe_electro_free(fe);
-  psi_free(psi);
+  psi_free(&psi);
   cs_free(cs);
   physics_free(phys);
 

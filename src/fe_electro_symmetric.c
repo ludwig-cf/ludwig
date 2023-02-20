@@ -95,6 +95,8 @@ static  __constant__ fe_vt_t fe_es_dvt = {
   (fe_htensor_v_ft) NULL
 };
 
+__host__ int fe_es_epsilon_set(fe_es_t * fe, double e1, double e2);
+
 /*****************************************************************************
  *
  *  fe_es_create
@@ -134,6 +136,7 @@ __host__ int fe_es_create(pe_t * pe, cs_t * cs, fe_symm_t * symm,
   fe->super.id = FE_ELECTRO_SYMMETRIC;
 
   psi_nk(psi, &fe->param->nk);
+  fe_es_epsilon_set(fe, psi->epsilon, psi->epsilon2);
 
   tdpGetDeviceCount(&ndevice);
 

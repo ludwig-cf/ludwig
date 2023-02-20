@@ -96,6 +96,7 @@ int test_phi_bc_inflow_opts_suite(void);
 int test_phi_bc_inflow_fixed_suite(void);
 int test_phi_bc_outflow_opts_suite(void);
 int test_phi_bc_outflow_free_suite(void);
+int test_psi_options_suite(void);
 int test_psi_suite(void);
 int test_psi_sor_suite(void);
 int test_random_suite(void);

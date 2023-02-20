@@ -211,7 +211,6 @@ static int ludwig_rt(ludwig_t * ludwig) {
   pe_t * pe = NULL;
   cs_t * cs = NULL;
   rt_t * rt = NULL;
-  io_info_t * iohandler = NULL;
 
   assert(ludwig);
 
@@ -362,10 +361,11 @@ static int ludwig_rt(ludwig_t * ludwig) {
     }
 
     if (ludwig->psi) {
-      psi_io_info(ludwig->psi, &iohandler);
-      sprintf(filename,"%spsi-%8.8d", subdirectory, ntstep);
-      pe_info(pe, "electrokinetics files(s) %s\n", filename);
-      io_read_data(iohandler, filename, ludwig->psi);
+      io_event_t event1 = {0};
+      io_event_t event2 = {0};
+      pe_info(pe, "Reading electrokinetics files for step %d\n", ntstep);
+      field_io_read(ludwig->psi->psi, ntstep, &event1);
+      field_io_read(ludwig->psi->rho, ntstep, &event2);
     }
   }
 
@@ -454,7 +454,6 @@ void ludwig_run(const char * inputfile) {
   int     im, multisteps;
   int	  flag;
 
-  io_info_t * iohandler = NULL;
   ludwig_t * ludwig = NULL;
   MPI_Comm comm;
 
@@ -617,15 +616,13 @@ void ludwig_run(const char * inputfile) {
 
       /* Poisson solve */
 
-      if (step % psi_skipsteps(ludwig->psi) == 0){
-	TIMER_start(TIMER_ELECTRO_POISSON);
+      TIMER_start(TIMER_ELECTRO_POISSON);
 #ifdef PETSC
-	psi_petsc_solve(ludwig->psi, ludwig->fe, ludwig->epsilon);
+      psi_petsc_solve(ludwig->psi, ludwig->fe, ludwig->epsilon);
 #else
-	psi_sor_solve(ludwig->psi, ludwig->fe, ludwig->epsilon, step);
+      psi_sor_solve(ludwig->psi, ludwig->fe, ludwig->epsilon, step);
 #endif
-	TIMER_stop(TIMER_ELECTRO_POISSON);
-      }
+      TIMER_stop(TIMER_ELECTRO_POISSON);
 
       if (ludwig->hydro) {
 	TIMER_start(TIMER_HALO_LATTICE);
@@ -923,10 +920,11 @@ void ludwig_run(const char * inputfile) {
 
     if (ludwig->psi) {
       if (is_psi_output_step() || is_config_step()) {
-	psi_io_info(ludwig->psi, &iohandler);
+	io_event_t event1 = {0};
+	io_event_t event2 = {0};
 	pe_info(ludwig->pe, "Writing psi file at step %d!\n", step);
-	sprintf(filename,"%spsi-%8.8d", subdirectory, step);
-	io_write_data(iohandler, filename, ludwig->psi);
+	field_io_write(ludwig->psi->psi, step, &event1);
+	field_io_write(ludwig->psi->rho, step, &event2);
       }
     }
 
@@ -992,7 +990,7 @@ void ludwig_run(const char * inputfile) {
 #ifdef PETSC
   if (ludwig->psi) psi_petsc_finish();
 #endif
-  if (ludwig->psi) psi_free(ludwig->psi);
+  if (ludwig->psi) psi_free(&ludwig->psi);
 
   if (ludwig->stat_rheo) stats_rheology_free(ludwig->stat_rheo);
   if (ludwig->stat_turb) stats_turbulent_free(ludwig->stat_turb);
@@ -1808,9 +1806,13 @@ int free_energy_init_rt(ludwig_t * ludwig) {
     pe_info(pe, "\n");
     pe_info(pe, "Parameters:\n");
 
-    psi_create(pe, cs, nk, &ludwig->psi);
-    psi_rt_init_param(pe, rt, ludwig->psi);
-    psi_force_method_set(ludwig->psi, psi_method);
+    {
+      psi_options_t opts = psi_options_default(nhalo);
+      psi_options_rt(pe, cs, rt, &opts);
+      psi_create(pe, cs, &opts, &ludwig->psi);
+      psi_force_method_set(ludwig->psi, psi_method);
+      psi_info(pe, ludwig->psi);
+    }
 
     pe_info(pe, "Force calculation:      %s\n",
 	    fe_force_method_to_string(method));
@@ -1878,9 +1880,13 @@ int free_energy_init_rt(ludwig_t * ludwig) {
 
     pe_info(pe, "Parameters:\n");
 
-    psi_create(pe, cs, nk, &ludwig->psi);
-    psi_rt_init_param(pe, rt, ludwig->psi);
-
+    {
+      psi_options_t opts = psi_options_default(nhalo);
+      psi_options_rt(pe, cs, rt, &opts);
+      psi_create(pe, cs, &opts, &ludwig->psi);
+      psi_info(pe, ludwig->psi);
+      psi_bjerrum_length2(&opts, &lbjerrum2);
+    }
     fe_electro_create(pe, ludwig->psi, &fe_elec);
 
     /* Coupling part */
@@ -1898,12 +1904,6 @@ int free_energy_init_rt(ludwig_t * ludwig) {
     psi_epsilon(ludwig->psi, &e1);
     psi_epsilon2(ludwig->psi, &e2);
 
-    /* Read the second permittivity */
-    n = rt_double_parameter(rt, "electrosymmetric_epsilon2", &e2);
-    if (n == 1) psi_epsilon2_set(ludwig->psi, e2);
-
-    fe_es_epsilon_set(fes, e1, e2);
-
     /* Solvation free energy difference: nk = 2 */
 
     mu[0] = 0.0;
@@ -1913,8 +1913,6 @@ int free_energy_init_rt(ludwig_t * ludwig) {
     rt_double_parameter(rt, "electrosymmetric_delta_mu1", mu + 1);
 
     fe_es_deltamu_set(fes, nk, mu);
-
-    psi_bjerrum_length2(ludwig->psi, &lbjerrum2);
 
     pe_info(pe, "Second permittivity:      %15.7e\n", e2);
     pe_info(pe, "Dielectric average:       %15.7e\n", 0.5*(e1 + e2));

@@ -63,9 +63,12 @@ config_at_end no
 default_io_grid 1_1_1
 colloid_io_freq 1000
 
+psi_io_mode      mpiio
+psi_io_report    no
+
 ###############################################################################
 #
-#  Electrokinetics ALWAYS 2 SPECIES FOR NOW
+#  Electrokinetics
 #
 ###############################################################################
 

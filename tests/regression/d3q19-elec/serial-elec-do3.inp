@@ -1,6 +1,6 @@
 ##############################################################################
 #
-#  Donnan potential with dielectric contrast cf do1. 
+#  Donnan potential with solvation contrast cf do1. 
 #
 ##############################################################################
 
@@ -98,9 +98,12 @@ freq_measure 100000
 freq_config 100000
 config_at_end no
 
+psi_io_mode      mpiio
+psi_io_report    no
+
 ###############################################################################
 #
-#  Electrokinetics ALWAYS 2 SPECIES FOR NOW
+#  Electrokinetics
 #
 ###############################################################################
 
@@ -109,7 +112,8 @@ electrokinetics_z1      -1
 electrokinetics_d0      0.1
 electrokinetics_d1      0.1
 electrokinetics_eunit   1.0
-electrokinetics_epsilon 300.0
+electrokinetics_epsilon1   300.0
+electrokinetics_epsilon2   300.0
 electrokinetics_init    uniform
 electrokinetics_init_rho_el 0.00047
 
@@ -120,7 +124,6 @@ electrokinetics_diffacc  0.5
 
 electrokinetics_multisteps  1
 
-electrosymmetric_epsilon2   300.0
 electrosymmetric_delta_mu0  +5.0
 electrosymmetric_delta_mu1  -3.0
 

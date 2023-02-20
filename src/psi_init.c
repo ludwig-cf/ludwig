@@ -4,12 +4,10 @@
  *
  *  Various initial states for electrokinetics.
  *
- *  $Id$
- *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2012-16 The University of Edinburgh
+ *  (c) 2012-2023 The University of Edinburgh
  *
  *  Contributing authors:
  *  Oliver Henrich (ohenrich@epcc.ed.ac.uk)
@@ -23,7 +21,6 @@
 #include "pe.h"
 #include "coords.h"
 #include "psi_init.h"
-#include "psi_s.h"
 
 /*****************************************************************************
  *

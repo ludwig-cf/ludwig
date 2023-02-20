@@ -49,7 +49,7 @@ __host__ int tests_create() {
   test_pe_suite();
   test_coords_suite();
   test_cs_limits_suite();
-
+  
   test_kernel_suite();
   test_gradient_d3q27_suite();
   test_angle_cosine_suite();
@@ -112,6 +112,8 @@ __host__ int tests_create() {
   test_phi_bc_outflow_free_suite();
   test_phi_ch_suite();
   test_polar_active_suite();
+
+  test_psi_options_suite();
   test_psi_suite();
   test_psi_sor_suite();
   test_nernst_planck_suite();

@@ -7,7 +7,7 @@
  *  Edinburgh Soft Matter and Statisitical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2013-2016 The University of Edinburgh
+ *  (c) 2013-2023 The University of Edinburgh
  *
  *  Contributing authors:
  *    Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -22,7 +22,6 @@
 #include "pe.h"
 #include "coords.h"
 #include "physics.h"
-#include "psi_s.h"
 #include "fe_electro.h"
 #include "fe_electro_symmetric.h"
 #include "psi_force.h"

@@ -30,14 +30,11 @@ Valency species 0:          1
 Diffusivity species 0:      1.0000000e-02
 Valency species 1:         -1
 Diffusivity species 1:      1.0000000e-02
-Number of multisteps:       1
-Number of skipsteps:        1
-Diffusive accuracy in NPE:  0.0000000e+00
 Relative tolerance:         1.1920929e-07
 Absolute tolerance:         1.1920929e-09
 Max. no. of iterations:             10000
-I/O decomposition:          1 1 1
-I/O format:                 BINARY
+Number of multisteps:       1
+Diffusive accuracy in NPE:  0.0000000e+00
 Force calculation:          phi_gradmu_correction
 
 System properties
@@ -63,6 +60,7 @@ I/O grid:         1 1 1
 
 Lattice Boltzmann collision
 ---------------------------
+Relaxation time scheme:   M10
 Hydrodynamic modes:       on
 Ghost modes:              on
 Isothermal fluctuations:  off
@@ -111,14 +109,14 @@ Starting time step loop.
 1 multisteps
 
 Scalars - total mean variance min max
-[rho]         992.00  1.00000000000  3.8857806e-15  0.99999987748  1.00000032642
-[psi] -6.3948846e-14 -1.2074611e+00  2.4452182e+00
-[rho]  1.9920000e+00  4.5245968e-04  3.1250000e-02
-[rho]  1.9920000e+00  0.0000000e+00  3.8175240e-03
-[elc] -7.7715612e-16 -3.3650643e-03  3.1250000e-02
+[rho]         992.00  1.00000000000  1.5210055e-14  0.99999998294  1.00000011145
+[psi]  1.1990409e-14 -1.5210888e+00  2.9128003e+00
+[rho]  1.9920000e+00  8.2093661e-04  3.1250000e-02
+[rho]  1.9920000e+00  0.0000000e+00  2.4098347e-03
+[elc] -1.4988011e-14 -1.5888981e-03  3.1250000e-02
 
 Free energy density - timestep total fluid
-[fed]           1000 -2.4980173368e-02 -2.2516704343e-02
+[fed]            100 -2.4613216884e-02 -2.2373587017e-02
 
 Momentum - x y z
 [total   ]  5.9174887e-14 -6.6613381e-16  0.0000000e+00
@@ -126,11 +124,11 @@ Momentum - x y z
 [walls   ]  4.1333603e-13  0.0000000e+00  0.0000000e+00
 
 Velocity - x y z
-[minimum ] -3.4523433e-08 -6.9388947e-18  0.0000000e+00
-[maximum ]  3.4523432e-08  6.9388945e-18  1.1754944e-38
-[vol flux] -3.5393913e-13 -8.3266727e-16  0.0000000e+00
+[minimum ] -4.7355583e-08 -6.9388940e-18  0.0000000e+00
+[maximum ]  4.7355582e-08  6.9388940e-18  1.1754944e-38
+[vol flux] -1.4543921e-13 -2.2204458e-16  0.0000000e+00
 
-Completed cycle 1000
+Completed cycle 100
 
 Timer resolution: 1e-06 second
 

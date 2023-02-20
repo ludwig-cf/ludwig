@@ -15,7 +15,7 @@
 ###############################################################################
 
 N_start  0
-N_cycles 1000
+N_cycles 100
 
 ##############################################################################
 #
@@ -75,7 +75,7 @@ boundary_walls 0_0_0
 #
 ###############################################################################
 
-freq_statistics 1000
+freq_statistics 100
 freq_psi_resid  10000
 config_at_end no
 
@@ -85,18 +85,7 @@ stats_vel_print_vol_flux    yes
 
 ###############################################################################
 #
-#  Electrokinetics ALWAYS 2 SPECIES FOR NOW
-#
-#  electrokinetics_z0         valency species 0  default +1
-#  electrokinetics_z1         valency species 1  default -1
-#  electrokinetics_d0         diffusivity 0      default 0.0
-#  electrokinetics_d1         diffusivity 1      default 0.0
-#  electrokinetics_eunit      unit charge        default +1.0
-#  electrokinetics_epsilon    permeativity (ref) default 0.0
-#
-#  Also important
-#
-#  temperature                sets Boltzmann factor beta
+#  Electrokinetics
 #
 ###############################################################################
 
@@ -109,6 +98,9 @@ electrokinetics_epsilon 3.3e3
 electrokinetics_init    gouy_chapman
 electrokinetics_init_rho_el 0.001
 electrokinetics_init_sigma 0.03125
+
+psi_io_mode             mpiio
+psi_io_report           no
 
 ###############################################################################
 #

@@ -57,7 +57,7 @@
  *  Edinbrugh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2012-2022 The University of Edinburgh
+ *  (c) 2012-2023 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -71,7 +71,6 @@
 
 #include "pe.h"
 #include "coords.h"
-#include "psi_s.h"
 #include "advection.h"
 #include "advection_bcs.h"
 #include "nernst_planck.h"
@@ -188,18 +187,18 @@ static int nernst_planck_fluxes(psi_t * psi, fe_t * fel, double * fx,
 
 	  fel->func->mu_solv(fel, index, n, &mu_s0);
 	  mu0 = reunit*mu_s0
-	    + psi->valency[n]*psi->psi[addr_rank0(nsites, index)];
-	  rho0 = psi->rho[addr_rank1(nsites, nk, index, n)];
+	    + psi->valency[n]*psi->psi->data[addr_rank0(nsites, index)];
+	  rho0 = psi->rho->data[addr_rank1(nsites, nk, index, n)];
 
 	  /* x-direction (between ic and ic+1) */
 
 	  fel->func->mu_solv(fel, index + xs, n, &mu_s1);
 	  mu1 = reunit*mu_s1
-	    + psi->valency[n]*psi->psi[addr_rank0(nsites, index + xs)];
+	    + psi->valency[n]*psi->psi->data[addr_rank0(nsites, index + xs)];
 
 	  b0 = exp(mu1 - mu0);
 	  b1 = exp(mu1 - mu0);
-	  rho1 = psi->rho[addr_rank1(nsites, nk, (index + xs), n)]*b1;
+	  rho1 = psi->rho->data[addr_rank1(nsites, nk, (index + xs), n)]*b1;
 
 	  fx[addr_rank1(nsites, nk, index, n)]
 	    = -psi->diffusivity[n]*0.5*(1.0 + b0)*(rho1 - rho0);
@@ -208,11 +207,11 @@ static int nernst_planck_fluxes(psi_t * psi, fe_t * fel, double * fx,
 
 	  fel->func->mu_solv(fel, index + ys, n, &mu_s1);
 	  mu1 = reunit*mu_s1
-	    + psi->valency[n]*psi->psi[addr_rank0(nsites, index + ys)];
+	    + psi->valency[n]*psi->psi->data[addr_rank0(nsites, index + ys)];
 
 	  b0 = exp(mu1 - mu0);
 	  b1 = exp(mu1 - mu0);
-	  rho1 = psi->rho[addr_rank1(nsites, nk, (index + ys), n)]*b1;
+	  rho1 = psi->rho->data[addr_rank1(nsites, nk, (index + ys), n)]*b1;
 
 	  fy[nk*index + n] = -psi->diffusivity[n]*0.5*(1.0 + b0)*(rho1 - rho0);
 
@@ -220,11 +219,11 @@ static int nernst_planck_fluxes(psi_t * psi, fe_t * fel, double * fx,
 
 	  fel->func->mu_solv(fel, index + zs, n, &mu_s1);
 	  mu1 = reunit*mu_s1
-	    + psi->valency[n]*psi->psi[addr_rank0(nsites, index + zs)];
+	    + psi->valency[n]*psi->psi->data[addr_rank0(nsites, index + zs)];
 
 	  b0 = exp(mu1 - mu0);
 	  b1 = exp(mu1 - mu0);
-	  rho1 = psi->rho[addr_rank1(nsites, nk, (index + zs), n)]*b1;
+	  rho1 = psi->rho->data[addr_rank1(nsites, nk, (index + zs), n)]*b1;
 
 	  fz[addr_rank1(nsites, nk, index, n)]
 	    = -psi->diffusivity[n]*0.5*(1.0 + b0)*(rho1 - rho0);
@@ -317,7 +316,7 @@ static int nernst_planck_update(psi_t * psi, double * fx, double * fy,
 	index = cs_index(psi->cs, ic, jc, kc);
 
 	for (n = 0; n < nk; n++) {
-	  psi->rho[addr_rank1(psi->nsites, nk, index, n)]
+	  psi->rho->data[addr_rank1(psi->nsites, nk, index, n)]
 	    -= (+ fx[addr_rank1(psi->nsites, nk, index, n)]
 		- fx[addr_rank1(psi->nsites, nk, (index-xs), n)]
 		+ fy[addr_rank1(psi->nsites, nk, index, n)]
@@ -366,7 +365,7 @@ int nernst_planck_driver_d3qx(psi_t * psi, fe_t * fe, hydro_t * hydro,
   }
 
   /* Add advective fluxes */
-  if (hydro) advective_fluxes_d3qx(hydro, nk, psi->rho, flx);
+  if (hydro) advective_fluxes_d3qx(hydro, nk, psi->rho->data, flx);
 
   /* Add diffusive fluxes */
   nernst_planck_fluxes_d3qx(psi, fe, hydro, map, cinfo, flx);
@@ -420,6 +419,9 @@ static int nernst_planck_fluxes_d3qx(psi_t * psi, fe_t * fe, hydro_t * hydro,
 
   colloid_t * pc = NULL;
 
+  double * __restrict__ psidata = psi->psi->data;
+  double * __restrict__ rhodata = psi->rho->data;
+
   assert(psi);
   assert(fe);
   assert(fe->func->mu_solv);
@@ -457,15 +459,15 @@ static int nernst_planck_fluxes_d3qx(psi_t * psi, fe_t * fe, hydro_t * hydro,
 
 		fe->func->mu_solv(fe, index0, n, &mu_s0);
 		mu0 = reunit*mu_s0
-		  + psi->valency[n]*psi->psi[addr_rank0(psi->nsites, index0)];
-		rho0 = psi->rho[addr_rank1(psi->nsites, nk, index0, n)];
+		  + psi->valency[n]*psidata[addr_rank0(psi->nsites, index0)];
+		rho0 = rhodata[addr_rank1(psi->nsites, nk, index0, n)];
 
 		fe->func->mu_solv(fe, index1, n, &mu_s1);
 		mu1 = reunit*mu_s1
-		  + psi->valency[n]* psi->psi[addr_rank0(psi->nsites, index1)];
+		  + psi->valency[n]* psidata[addr_rank0(psi->nsites, index1)];
 		b0 = exp(mu0 - mu1);
 		b1 = exp(mu1 - mu0);
-		rho1 = psi->rho[addr_rank1(psi->nsites, nk, index1, n)]*b1;
+		rho1 = rhodata[addr_rank1(psi->nsites, nk, index1, n)]*b1;
 
 		flx[addr_rank1(psi->nsites, nk, index0, n)][c - 1]
 		  -= psi->diffusivity[n]*0.5*(1.0 + b0)*(rho1 - rho0)*psi_gr_rnorm[c];
@@ -523,6 +525,9 @@ int nernst_planck_fluxes_force_d3qx(psi_t * psi, fe_t * fe, hydro_t * hydro,
   MPI_Comm comm;
   colloid_t * pc = NULL;
 
+  double * __restrict__ psidata = psi->psi->data;
+  double * __restrict__ rhodata = psi->rho->data;
+
   assert(psi);
   assert(flx);
 
@@ -577,21 +582,21 @@ int nernst_planck_fluxes_force_d3qx(psi_t * psi, fe_t * fe, hydro_t * hydro,
 	      for (n = 0; n < nk; n++) {
 		fe->func->mu_solv(fe, index0, n, &mu_s0);
 		mu0 = mu_s0
-		  + psi->valency[n]*eunit*psi->psi[addr_rank0(nsites, index0)];
-		rho0 = psi->rho[addr_rank1(nsites, nk, index0, n)];
+		  + psi->valency[n]*eunit*psidata[addr_rank0(nsites, index0)];
+		rho0 = rhodata[addr_rank1(nsites, nk, index0, n)];
 
 		fe->func->mu_solv(fe, index1, n, &mu_s1);
 		mu1 = mu_s1
-		  + psi->valency[n]*eunit*psi->psi[addr_rank0(nsites, index1)];
+		  + psi->valency[n]*eunit*psidata[addr_rank0(nsites, index1)];
 		b0 = exp(-beta*(mu1 - mu0));
 		b1 = exp(+beta*(mu1 - mu0));
-		rho1 = psi->rho[addr_rank1(nsites, nk, index1, n)]*b1;
+		rho1 = rhodata[addr_rank1(nsites, nk, index1, n)]*b1;
 
 		/* Auxiliary terms */
 		/* Adding flxtmp[1] to flxtmp[0] below subtracts the ideal gas part */
 		flxtmp[0] = - 0.5*(1.0 + b0)*(rho1 - rho0) * psi_gr_rnorm[c];
-		flxtmp[1] = (psi->rho[addr_rank1(nsites, nk, index1, n)]
-			     - psi->rho[addr_rank1(nsites, nk, index0, n)])
+		flxtmp[1] = (rhodata[addr_rank1(nsites, nk, index1, n)]
+			   - rhodata[addr_rank1(nsites, nk, index0, n)])
 		  * psi_gr_rnorm[c];
 
 		/* Link flux */
@@ -707,12 +712,12 @@ static int nernst_planck_update_d3qx(psi_t * psi, map_t * map, double ** flx) {
 
 	    acc = 0.0;
 	    for (c = 1; c < PSI_NGRAD; c++) {
-	      psi->rho[addr_rank1(nsites, nk, index, n)]
+	      psi->rho->data[addr_rank1(nsites, nk, index, n)]
 		-= flx[addr_rank1(nsites, nk, index, n)][c - 1] * dt;
 	      acc += fabs(flx[addr_rank1(nsites, nk, index, n)][c - 1] * dt);
 	    }
 
-	    acc /= fabs(psi->rho[addr_rank1(nsites, nk, index, n)]);
+	    acc /= fabs(psi->rho->data[addr_rank1(nsites, nk, index, n)]);
 	    if (maxacc < acc) maxacc = acc; 
 	  }
 	}
@@ -784,7 +789,7 @@ int nernst_planck_adjust_multistep(psi_t * psi) {
   if (* maxacc > diffacc && diffacc > 0.0) {
     psi_multisteps(psi, &multisteps);
     multisteps *= 2;
-    psi_multisteps_set(psi, multisteps);
+    psi->multisteps = multisteps;
     pe_info(psi->pe, "\nMaxacc > diffacc: changing no. of multisteps to %d\n",
 	    multisteps);
   }    
@@ -800,11 +805,11 @@ int nernst_planck_adjust_multistep(psi_t * psi) {
 	psi_diffusivity(psi, n, &diff);
 	if (diff > diffmax) diffmax = diff;
     }
-    
+
     /* Only reduce if sanity criteria fulfilled */  
     if (multisteps > 1 && diffmax/multisteps < 0.05) { 
       multisteps *= 0.5; 
-      psi_multisteps_set(psi, multisteps);
+      psi->multisteps = multisteps;
       pe_info(psi->pe, "\nMaxacc << diffacc: changing no. of multisteps to %d\n", multisteps);
     }    
 

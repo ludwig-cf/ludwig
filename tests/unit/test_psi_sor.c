@@ -7,7 +7,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2012-2022 The University of Edinburgh
+ *  (c) 2012-2023 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -23,7 +23,6 @@
 #include "pe.h"
 #include "coords.h"
 #include "control.h"
-#include "psi_s.h"
 #include "psi_sor.h"
 
 #include "util.h"
@@ -90,6 +89,7 @@ int test_psi_sor_poisson(pe_t * pe) {
   cs_t * cs = NULL;
   psi_t * psi = NULL;
   int ntotal[3] = {4, 4, 64};
+  int nhalo = 1;
 
   assert(pe);
 
@@ -100,19 +100,19 @@ int test_psi_sor_poisson(pe_t * pe) {
     int dims[3] = {0,0,1};
 
     MPI_Dims_create(pe_mpi_size(pe), ndims, dims);
-    cs_nhalo_set(cs, 1);
+    cs_nhalo_set(cs, nhalo);
     cs_ntotal_set(cs, ntotal);
     cs_decomposition_set(cs, dims);
   }
   cs_init(cs);
 
-  psi_create(pe, cs, 2, &psi);
-  assert(psi);
-
-  psi_valency_set(psi, 0, +1);
-  psi_valency_set(psi, 1, -1);
-  psi_beta_set(psi, 1.0);
-  psi_epsilon_set(psi, REF_PERMEATIVITY);
+  {
+    psi_options_t opts = psi_options_default(nhalo);
+    opts.nk = 2;
+    opts.beta = 1.0;
+    opts.epsilon1 = REF_PERMEATIVITY;
+    psi_create(pe, cs, &opts, &psi);
+  }
 
   test_charge1_set(psi);
 
@@ -125,7 +125,7 @@ int test_psi_sor_poisson(pe_t * pe) {
 
   test_charge1_exact(psi, fepsilon_constant);
 
-  psi_free(psi);
+  psi_free(&psi);
   cs_free(cs);
 
   return 0;
@@ -148,22 +148,23 @@ int test_psi_sor_vare_poisson(pe_t * pe) {
   cs_t * cs = NULL;
   psi_t * psi = NULL;
   int ntotal[3] = {4, 4, 64};
+  int nhalo = 1;
 
   assert(pe);
 
   cs_create(pe, &cs);
-  cs_nhalo_set(cs, 1);
+  cs_nhalo_set(cs, nhalo);
   cs_ntotal_set(cs, ntotal);
   cs_init(cs);
 
-  psi_create(pe, cs, 2, &psi);
-  assert(psi);
-
-  psi_valency_set(psi, 0, +1);
-  psi_valency_set(psi, 1, -1);
-  psi_beta_set(psi, 1.0);
-  psi_reltol_set(psi, 0.01*FLT_EPSILON);
-  psi_epsilon_set(psi, REF_PERMEATIVITY);
+  {
+    psi_options_t opts = psi_options_default(nhalo);
+    opts.nk = 2;
+    opts.beta = 1.0;
+    opts.epsilon1 = REF_PERMEATIVITY;
+    opts.reltol   = 0.01*FLT_EPSILON; /* Not the default */
+    psi_create(pe, cs, &opts, &psi);
+  }
 
   test_charge1_set(psi);
 
@@ -175,7 +176,7 @@ int test_psi_sor_vare_poisson(pe_t * pe) {
 
   test_charge1_exact(psi, fepsilon_constant);
 
-  psi_free(psi);
+  psi_free(&psi);
   cs_free(cs);
 
   return 0;
@@ -465,15 +466,3 @@ static int fepsilon_constant(fe_fake_t * fe, int index, double * epsilon) {
 
   return 0;
 }
-
-/*****************************************************************************
- *
- *  fepsilon_sinz
- *
- *  Permeativity is a function of z only:
- *
- *    e = e0 sin(pi z / Lz)
- *
- *  The - 0.5 is to make it symmetric about the centre line.
- *
- *****************************************************************************/

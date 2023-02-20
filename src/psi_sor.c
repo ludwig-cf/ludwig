@@ -16,7 +16,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2013-2022 The University of Edinburgh
+ *  (c) 2013-2023 The University of Edinburgh
  *
  *  Contributing Authors:
  *    Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -31,7 +31,6 @@
 
 #include "pe.h"
 #include "coords.h"
-#include "psi_s.h"
 #include "psi_sor.h"
 #include "util.h"
 
@@ -118,6 +117,8 @@ int psi_sor_poisson(psi_t * obj, int its) {
 
   MPI_Comm comm;               /* Cartesian communicator */
 
+  double * __restrict__ psidata = obj->psi->data;
+
   cs_ltot(obj->cs, ltot);
   cs_nhalo(obj->cs, &nhalo);
   cs_nsites(obj->cs, &nsites);
@@ -159,13 +160,13 @@ int psi_sor_poisson(psi_t * obj, int its) {
         /* 6-point stencil of Laplacian */
 
 	dpsi
-	  = obj->psi[addr_rank0(nsites, index + xs)]
-	  + obj->psi[addr_rank0(nsites, index - xs)]
-	  + obj->psi[addr_rank0(nsites, index + ys)]
-	  + obj->psi[addr_rank0(nsites, index - ys)]
-	  + obj->psi[addr_rank0(nsites, index + zs)]
-	  + obj->psi[addr_rank0(nsites, index - zs)]
-	  - 6.0*obj->psi[addr_rank0(nsites, index)];
+	  = psidata[addr_rank0(nsites, index + xs)]
+	  + psidata[addr_rank0(nsites, index - xs)]
+	  + psidata[addr_rank0(nsites, index + ys)]
+	  + psidata[addr_rank0(nsites, index - ys)]
+	  + psidata[addr_rank0(nsites, index + zs)]
+	  + psidata[addr_rank0(nsites, index - zs)]
+	  - 6.0*psidata[addr_rank0(nsites, index)];
 
 	/* Non-dimensional potential in Poisson eqn requires e/kT */
 	rnorm_local[0] += fabs(epsilon*dpsi + eunit*beta*rho_elec);
@@ -197,17 +198,17 @@ int psi_sor_poisson(psi_t * obj, int its) {
 	    /* 6-point stencil of Laplacian */
 
 	    dpsi
-	      = obj->psi[addr_rank0(nsites, index + xs)]
-	      + obj->psi[addr_rank0(nsites, index - xs)]
-	      + obj->psi[addr_rank0(nsites, index + ys)]
-	      + obj->psi[addr_rank0(nsites, index - ys)]
-	      + obj->psi[addr_rank0(nsites, index + zs)]
-	      + obj->psi[addr_rank0(nsites, index - zs)]
-	      - 6.0*obj->psi[addr_rank0(nsites, index)];
+	      = psidata[addr_rank0(nsites, index + xs)]
+	      + psidata[addr_rank0(nsites, index - xs)]
+	      + psidata[addr_rank0(nsites, index + ys)]
+	      + psidata[addr_rank0(nsites, index - ys)]
+	      + psidata[addr_rank0(nsites, index + zs)]
+	      + psidata[addr_rank0(nsites, index - zs)]
+	      - 6.0*psidata[addr_rank0(nsites, index)];
 
 	    /* Non-dimensional potential in Poisson eqn requires e/kT */
 	    residual = epsilon*dpsi + eunit*beta*rho_elec;
-	    obj->psi[addr_rank0(nsites, index)]
+	    psidata[addr_rank0(nsites, index)]
 	      -= omega*residual / (-6.0*epsilon);
 	    rnorm_local[1] += fabs(residual);
 	  }
@@ -261,7 +262,8 @@ int psi_sor_poisson(psi_t * obj, int its) {
     if (n == niteration-1) {
       pe_info(obj->pe, "\n");
       pe_info(obj->pe, "SOR solver exceeded %d iterations\n", n+1);
-      pe_info(obj->pe, "SOR residual %le (initial) %le (final)\n\n", rnorm[0], rnorm[1]);
+      pe_info(obj->pe, "SOR residual %le (initial) %le (final)\n\n",
+	      rnorm[0], rnorm[1]);
     }
   }
 
@@ -313,6 +315,9 @@ int psi_sor_vare_poisson(psi_t * obj, fe_es_t * fe, f_vare_t fepsilon, int its) 
 
   MPI_Comm comm;               /* Cartesian communicator */
 
+  double * __restrict__ psidata = obj->psi->data;
+
+
   assert(obj);
   assert(fepsilon);
 
@@ -354,39 +359,39 @@ int psi_sor_vare_poisson(psi_t * obj, fe_es_t * fe, f_vare_t fepsilon, int its) 
 
 	/* Laplacian part of operator */
 
-        depsi += eps0*(-6.0*obj->psi[addr_rank0(nsites, index)]
-		       + obj->psi[addr_rank0(nsites, index + xs)]
-		       + obj->psi[addr_rank0(nsites, index - xs)]
-		       + obj->psi[addr_rank0(nsites, index + ys)]
-		       + obj->psi[addr_rank0(nsites, index - ys)]
-		       + obj->psi[addr_rank0(nsites, index + zs)]
-		       + obj->psi[addr_rank0(nsites, index - zs)]);
+        depsi += eps0*(-6.0*psidata[addr_rank0(nsites, index)]
+		       + psidata[addr_rank0(nsites, index + xs)]
+		       + psidata[addr_rank0(nsites, index - xs)]
+		       + psidata[addr_rank0(nsites, index + ys)]
+		       + psidata[addr_rank0(nsites, index - ys)]
+		       + psidata[addr_rank0(nsites, index + zs)]
+		       + psidata[addr_rank0(nsites, index - zs)]);
 
 	/* Additional terms in generalised Poisson equation */
 
 	fepsilon(fe, index + xs, &eps1);
-	depsi += 0.25*eps1*(obj->psi[addr_rank0(nsites, index + xs)]
-			    - obj->psi[addr_rank0(nsites, index - xs)]);
+	depsi += 0.25*eps1*(psidata[addr_rank0(nsites, index + xs)]
+			  - psidata[addr_rank0(nsites, index - xs)]);
 
 	fepsilon(fe, index - xs, &eps1);
-	depsi -= 0.25*eps1*(obj->psi[addr_rank0(nsites, index + xs)]
-			    - obj->psi[addr_rank0(nsites, index - xs)]);
+	depsi -= 0.25*eps1*(psidata[addr_rank0(nsites, index + xs)]
+			  - psidata[addr_rank0(nsites, index - xs)]);
 
 	fepsilon(fe, index + ys, &eps1);
-	depsi += 0.25*eps1*(obj->psi[addr_rank0(nsites, index + ys)]
-			    - obj->psi[addr_rank0(nsites, index - ys)]);
+	depsi += 0.25*eps1*(psidata[addr_rank0(nsites, index + ys)]
+			  - psidata[addr_rank0(nsites, index - ys)]);
 
 	fepsilon(fe, index - ys, &eps1);
-	depsi -= 0.25*eps1*(obj->psi[addr_rank0(nsites, index + ys)]
-			    - obj->psi[addr_rank0(nsites, index - ys)]);
+	depsi -= 0.25*eps1*(psidata[addr_rank0(nsites, index + ys)]
+			  - psidata[addr_rank0(nsites, index - ys)]);
 
 	fepsilon(fe, index + zs, &eps1);
-	depsi += 0.25*eps1*(obj->psi[addr_rank0(nsites, index + zs)]
-			    - obj->psi[addr_rank0(nsites, index - zs)]);
+	depsi += 0.25*eps1*(psidata[addr_rank0(nsites, index + zs)]
+			  - psidata[addr_rank0(nsites, index - zs)]);
 
 	fepsilon(fe, index - zs, &eps1);
-	depsi -= 0.25*eps1*(obj->psi[addr_rank0(nsites, index + zs)]
-			    - obj->psi[addr_rank0(nsites, index - zs)]);
+	depsi -= 0.25*eps1*(psidata[addr_rank0(nsites, index + zs)]
+			  - psidata[addr_rank0(nsites, index - zs)]);
 
 	/* Non-dimensional potential in Poisson eqn requires e/kT */
 	rnorm_local[0] += fabs(depsi + eunit*beta*rho_elec);
@@ -420,43 +425,43 @@ int psi_sor_vare_poisson(psi_t * obj, fe_es_t * fe, f_vare_t fepsilon, int its) 
 
 	    /* Laplacian part of operator */
 
-	    depsi += eps0*(-6.0*obj->psi[addr_rank0(nsites, index)]
-			   + obj->psi[addr_rank0(nsites, index + xs)]
-			   + obj->psi[addr_rank0(nsites, index - xs)]
-			   + obj->psi[addr_rank0(nsites, index + ys)]
-			   + obj->psi[addr_rank0(nsites, index - ys)]
-			   + obj->psi[addr_rank0(nsites, index + zs)]
-			   + obj->psi[addr_rank0(nsites, index - zs)]);
+	    depsi += eps0*(-6.0*psidata[addr_rank0(nsites, index)]
+			   + psidata[addr_rank0(nsites, index + xs)]
+			   + psidata[addr_rank0(nsites, index - xs)]
+			   + psidata[addr_rank0(nsites, index + ys)]
+			   + psidata[addr_rank0(nsites, index - ys)]
+			   + psidata[addr_rank0(nsites, index + zs)]
+			   + psidata[addr_rank0(nsites, index - zs)]);
 
 	    /* Additional terms in generalised Poisson equation */
 
 	    fepsilon(fe, index + xs, &eps1);
-	    depsi += 0.25*eps1*(obj->psi[addr_rank0(nsites, index + xs)]
-				- obj->psi[addr_rank0(nsites, index - xs)]);
+	    depsi += 0.25*eps1*(psidata[addr_rank0(nsites, index + xs)]
+			      - psidata[addr_rank0(nsites, index - xs)]);
 
 	    fepsilon(fe, index - xs, &eps1);
-	    depsi -= 0.25*eps1*(obj->psi[addr_rank0(nsites, index + xs)]
-				- obj->psi[addr_rank0(nsites, index - xs)]);
+	    depsi -= 0.25*eps1*(psidata[addr_rank0(nsites, index + xs)]
+			      - psidata[addr_rank0(nsites, index - xs)]);
 
 	    fepsilon(fe, index + ys, &eps1);
-	    depsi += 0.25*eps1*(obj->psi[addr_rank0(nsites, index + ys)]
-				- obj->psi[addr_rank0(nsites, index - ys)]);
+	    depsi += 0.25*eps1*(psidata[addr_rank0(nsites, index + ys)]
+			      - psidata[addr_rank0(nsites, index - ys)]);
 
 	    fepsilon(fe, index - ys, &eps1);
-	    depsi -= 0.25*eps1*(obj->psi[addr_rank0(nsites, index + ys)]
-				- obj->psi[addr_rank0(nsites, index - ys)]);
+	    depsi -= 0.25*eps1*(psidata[addr_rank0(nsites, index + ys)]
+			      - psidata[addr_rank0(nsites, index - ys)]);
 
 	    fepsilon(fe, index + zs, &eps1);
-	    depsi += 0.25*eps1*(obj->psi[addr_rank0(nsites, index + zs)]
-				- obj->psi[addr_rank0(nsites, index - zs)]);
+	    depsi += 0.25*eps1*(psidata[addr_rank0(nsites, index + zs)]
+			      - psidata[addr_rank0(nsites, index - zs)]);
 
 	    fepsilon(fe, index - zs, &eps1);
-	    depsi -= 0.25*eps1*(obj->psi[addr_rank0(nsites, index + zs)]
-				- obj->psi[addr_rank0(nsites, index - zs)]);
+	    depsi -= 0.25*eps1*(psidata[addr_rank0(nsites, index + zs)]
+			      - psidata[addr_rank0(nsites, index - zs)]);
 
 	    /* Non-dimensional potential in Poisson eqn requires e/kT */
 	    residual = depsi + eunit*beta*rho_elec;
-	    obj->psi[addr_rank0(nsites,index)] -= omega*residual / (-6.0*eps0);
+	    psidata[addr_rank0(nsites,index)] -= omega*residual / (-6.0*eps0);
 	    rnorm_local[1] += fabs(residual);
 	  }
 	}

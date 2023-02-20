@@ -27,7 +27,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2013-2018 The University of Edinburgh
+ *  (c) 2013-2023 The University of Edinburgh
  *
  *  Contributing authors:
  *  Oliver Henrich  (ohenrich@epcc.ed.ac.uk)
@@ -43,7 +43,6 @@
 #include "pe.h"
 #include "physics.h"
 #include "util.h"
-#include "psi_s.h"
 #include "psi_gradients.h"
 #include "fe_electro.h"
 

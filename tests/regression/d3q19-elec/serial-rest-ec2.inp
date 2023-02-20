@@ -63,6 +63,9 @@ electrokinetics_epsilon 3.3e3
 electrokinetics_init    uniform
 electrokinetics_init_rho_el 0.001
 
+psi_io_mode             mpiio
+psi_io_report           no
+
 ###############################################################################
 #
 #  Miscellaneous

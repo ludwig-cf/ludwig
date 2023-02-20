@@ -80,9 +80,8 @@ freq_statistics 100
 freq_measure 10000000
 config_at_end no
 
-default_io_grid 1_1_1
-
-distribution_io_grid 1_1_1
+psi_io_mode      mpiio
+psi_io_report    no
 
 stats_vel_print_vol_flux      yes
 

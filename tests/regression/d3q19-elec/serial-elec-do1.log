@@ -46,14 +46,11 @@ Valency species 0:          1
 Diffusivity species 0:      1.0000000e-01
 Valency species 1:         -1
 Diffusivity species 1:      1.0000000e-01
-Number of multisteps:       1
-Number of skipsteps:        1
-Diffusive accuracy in NPE:  5.0000000e-01
 Relative tolerance:         1.0000000e-06
 Absolute tolerance:         1.0000000e-07
 Max. no. of iterations:             10000
-I/O decomposition:          1 1 1
-I/O format:                 BINARY
+Number of multisteps:       1
+Diffusive accuracy in NPE:  5.0000000e-01
 
 Coupling part
 -------------

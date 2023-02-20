@@ -7,7 +7,7 @@
  *  Edinburgh Soft Matter and Statistical Phsyics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2014-2017 The University of Edinburgh
+ *  (c) 2014-2023 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -79,11 +79,9 @@ int test_fe_electro_suite(void) {
 
 static int do_test1(pe_t * pe, cs_t * cs, physics_t * phys) {
 
-  int nk = 2;
-  double valency[2] = {1, 2};
-  double kt = 2.0;
-  double eunit = 3.0;
   psi_t * psi = NULL;
+  double kt = 2.0;
+  int valency[2] = {1, 2};
 
   int index = 1;
   double rho0, rho1;     /* Test charge densities */
@@ -96,8 +94,18 @@ static int do_test1(pe_t * pe, cs_t * cs, physics_t * phys) {
   assert(cs);
   assert(phys);
 
-  psi_create(pe, cs, nk, &psi);
-  psi_unit_charge_set(psi, eunit);
+  {
+    int nhalo = 0;
+    cs_nhalo(cs, &nhalo);
+    {
+      psi_options_t opts = psi_options_default(nhalo);
+      opts.e = 3.0;
+      opts.beta = 1.0/kt;
+      opts.valency[0] = valency[0];
+      opts.valency[1] = valency[1];
+      psi_create(pe, cs, &opts, &psi);
+    }
+  }
 
   physics_kt_set(phys, kt);
 
@@ -139,13 +147,11 @@ static int do_test1(pe_t * pe, cs_t * cs, physics_t * phys) {
   fed1 += rho1*0.5*valency[1]*psi0;
 
   psi_psi_set(psi, index, psi0);
-  psi_valency_set(psi, 0, valency[0]);
-  psi_valency_set(psi, 1, valency[1]);
   fe_electro_fed(fe, index, &fed);
   test_assert(fabs(fed - (fed0 + fed1)) < DBL_EPSILON);
 
   fe_electro_free(fe);
-  psi_free(psi);
+  psi_free(&psi);
 
   return 0;
 }
@@ -160,12 +166,10 @@ static int do_test1(pe_t * pe, cs_t * cs, physics_t * phys) {
 
 int do_test2(pe_t * pe, cs_t * cs, physics_t * phys) {
 
-  int n;
-  int nk = 3;
-  double kt = 0.1;
-  double eunit = 1.0;
-  double valency[3] = {3, 2, 1};
   psi_t * psi = NULL;
+  double eunit = 1.0;
+  double kt = 0.1;
+  int valency[3] = {3, 2, 1};
 
   int index = 1;
   double rho0;    /* Test charge density */
@@ -179,18 +183,30 @@ int do_test2(pe_t * pe, cs_t * cs, physics_t * phys) {
   assert(cs);
   assert(phys);
 
-  psi_create(pe, cs, nk, &psi);
-  psi_unit_charge_set(psi, eunit);
+  {
+    int nhalo = 0;
+    cs_nhalo(cs, &nhalo);
+    {
+      psi_options_t opts = psi_options_default(nhalo);
+      opts.nk = 3;
+      opts.e  = eunit;
+      opts.beta = 1.0/kt;
+      opts.valency[0] = valency[0];
+      opts.valency[1] = valency[1];
+      opts.valency[2] = valency[2];
+      psi_create(pe, cs, &opts, &psi);
+    }
+  }
+
   physics_kt_set(phys, kt);
 
   fe_electro_create(pe, psi, &fe);
   assert(fe);
 
-  for (n = 0; n < 3; n++) {
+  for (int n = 0; n < 3; n++) {
     rho0 = 1.0 + 1.0*n;
     psi_rho_set(psi, index, n, rho0);
-    psi_valency_set(psi, n, valency[n]);
-    
+
     /* For psi = 0, have mu_a = kT log(rho_a) */
     psi0 = 0.0;
     psi_psi_set(psi, index, psi0);
@@ -207,7 +223,7 @@ int do_test2(pe_t * pe, cs_t * cs, physics_t * phys) {
   }
 
   fe_electro_free(fe);
-  psi_free(psi);
+  psi_free(&psi);
 
   return 0;
 }
@@ -223,7 +239,6 @@ int do_test2(pe_t * pe, cs_t * cs, physics_t * phys) {
 
 static int do_test3(pe_t * pe, cs_t * cs, physics_t * phys) {
 
-  int nk = 2;
   int index;
   int ia, ib;
   psi_t * psi = NULL;
@@ -245,9 +260,19 @@ static int do_test3(pe_t * pe, cs_t * cs, physics_t * phys) {
   assert(cs);
   assert(phys);
 
-  psi_create(pe, cs, nk, &psi);
-  psi_epsilon_set(psi, epsilon);
-  psi_unit_charge_set(psi, eunit);
+  {
+    int nhalo = 0;
+    cs_nhalo(cs, &nhalo);
+    {
+      psi_options_t opts = psi_options_default(nhalo);
+      opts.e = eunit;
+      opts.beta = 1.0/kt;
+      opts.epsilon1 = epsilon;
+      opts.epsilon2 = epsilon;
+      psi_create(pe, cs, &opts, &psi);
+    }
+  }
+
   fe_electro_create(pe, psi, &fe);
   assert(fe);
 
@@ -298,7 +323,7 @@ static int do_test3(pe_t * pe, cs_t * cs, physics_t * phys) {
   }
 
   fe_electro_free(fe);
-  psi_free(psi);
+  psi_free(&psi);
 
   return 0;
 }

@@ -9,13 +9,13 @@
  *  Edinburgh Parallel Computing Centre
  *
  *  Oliver Henrich (ohenrich@epcc.ed.ac.uk)
- *  (c) 2014-2018 The University of Edinburgh
+ *
+ *  (c) 2014-2023 The University of Edinburgh
  *
  ****************************************************************************/
 
 #include <assert.h>
 #include "coords.h"
-#include "psi_s.h"
 #include "psi_gradients.h"
 #include "fe_electro_symmetric.h"
 
@@ -142,9 +142,12 @@ int psi_electric_field(psi_t * psi, int index, double e[3]) {
   cs_nsites(psi->cs, &nsites);
   cs_strides(psi->cs, &xs, &ys, &zs);
 
-  e[X] = -0.5*(psi->psi[addr_rank0(nsites, index + xs)] - psi->psi[addr_rank0(nsites, index - xs)]);
-  e[Y] = -0.5*(psi->psi[addr_rank0(nsites, index + ys)] - psi->psi[addr_rank0(nsites, index - ys)]);
-  e[Z] = -0.5*(psi->psi[addr_rank0(nsites, index + zs)] - psi->psi[addr_rank0(nsites, index - zs)]);
+  e[X] = -0.5*(psi->psi->data[addr_rank0(nsites, index + xs)]
+	     - psi->psi->data[addr_rank0(nsites, index - xs)]);
+  e[Y] = -0.5*(psi->psi->data[addr_rank0(nsites, index + ys)]
+	     - psi->psi->data[addr_rank0(nsites, index - ys)]);
+  e[Z] = -0.5*(psi->psi->data[addr_rank0(nsites, index + zs)]
+	     - psi->psi->data[addr_rank0(nsites, index - zs)]);
 
   return 0;
 }
@@ -183,7 +186,7 @@ int psi_electric_field_d3qx(psi_t * psi, int index, double e[3]) {
     coords_nbr[Z] = coords[Z] + psi_gr_cv[p][Z];
 
     index_nbr = cs_index(psi->cs, coords_nbr[X], coords_nbr[Y], coords_nbr[Z]);
-    aux = psi_gr_wv[p]* psi_gr_rcs2 * psi->psi[addr_rank0(nsites, index_nbr)];
+    aux = psi_gr_wv[p]* psi_gr_rcs2 * psi->psi->data[addr_rank0(nsites, index_nbr)];
 
     e[X] -= aux * psi_gr_cv[p][X]; 
     e[Y] -= aux * psi_gr_cv[p][Y];  
@@ -224,6 +227,8 @@ int psi_grad_rho(psi_t * psi,  map_t * map, int index, int n, double grad_rho[3]
   int index0, index1;
   int status0, status1;
 
+  double * rhodata = psi->rho->data;
+
   assert(psi);
   assert(n < psi->nk);
   assert(grad_rho);
@@ -243,18 +248,18 @@ int psi_grad_rho(psi_t * psi,  map_t * map, int index, int n, double grad_rho[3]
   map_status(map, index1, &status1);
 
   if (status0 == MAP_FLUID && status1 == MAP_FLUID){
-    grad_rho[X] = 0.5*(psi->rho[addr_rank1(nsites, psi->nk, (index + xs), n)]
-		     - psi->rho[addr_rank1(nsites, psi->nk, (index - xs), n)]);
+    grad_rho[X] = 0.5*(rhodata[addr_rank1(nsites, psi->nk, (index + xs), n)]
+		     - rhodata[addr_rank1(nsites, psi->nk, (index - xs), n)]);
   } 
   if (status0 != MAP_FLUID && status1 == MAP_FLUID){
-    grad_rho[X] = - 1.5*psi->rho[addr_rank1(nsites, psi->nk, index, n)] 
-      + 2.0*psi->rho[addr_rank1(nsites, psi->nk, (index + xs), n)]
-      - 0.5*psi->rho[addr_rank1(nsites, psi->nk, (index + 2*xs), n)]; 
+    grad_rho[X] = - 1.5*rhodata[addr_rank1(nsites, psi->nk, index, n)]
+      + 2.0*rhodata[addr_rank1(nsites, psi->nk, (index + xs), n)]
+      - 0.5*rhodata[addr_rank1(nsites, psi->nk, (index + 2*xs), n)];
   }
   if (status0 == MAP_FLUID && status1 != MAP_FLUID){
-    grad_rho[X] = + 1.5*psi->rho[addr_rank1(nsites, psi->nk, index, n)]
-      - 2.0*psi->rho[addr_rank1(nsites, psi->nk, (index - xs), n)]
-      + 0.5*psi->rho[addr_rank1(nsites, psi->nk, (index - 2*xs), n)];
+    grad_rho[X] = + 1.5*rhodata[addr_rank1(nsites, psi->nk, index, n)]
+      - 2.0*rhodata[addr_rank1(nsites, psi->nk, (index - xs), n)]
+      + 0.5*rhodata[addr_rank1(nsites, psi->nk, (index - 2*xs), n)];
   }
 
   /* y-direction */
@@ -265,19 +270,19 @@ int psi_grad_rho(psi_t * psi,  map_t * map, int index, int n, double grad_rho[3]
 
   if (status0 == MAP_FLUID && status1 == MAP_FLUID) {
     grad_rho[Y]
-      = 0.5*(+ psi->rho[addr_rank1(nsites, psi->nk, (index+ys), n)]
-	     - psi->rho[addr_rank1(nsites, psi->nk, (index-ys), n)]);
+      = 0.5*(+ rhodata[addr_rank1(nsites, psi->nk, (index+ys), n)]
+	     - rhodata[addr_rank1(nsites, psi->nk, (index-ys), n)]);
   }
   if (status0 != MAP_FLUID && status1 == MAP_FLUID) {
     grad_rho[Y]
-      = - 1.5*psi->rho[addr_rank1(nsites, psi->nk, index, n)] 
-      + 2.0*psi->rho[addr_rank1(nsites, psi->nk, (index + ys), n)]
-      - 0.5*psi->rho[addr_rank1(nsites, psi->nk, (index + 2*ys), n)]; 
+      = - 1.5*rhodata[addr_rank1(nsites, psi->nk, index, n)]
+      + 2.0*rhodata[addr_rank1(nsites, psi->nk, (index + ys), n)]
+      - 0.5*rhodata[addr_rank1(nsites, psi->nk, (index + 2*ys), n)];
   }
   if (status0 == MAP_FLUID && status1 != MAP_FLUID) {
-    grad_rho[Y] = + 1.5*psi->rho[addr_rank1(nsites, psi->nk, index, n)]
-      - 2.0*psi->rho[addr_rank1(nsites, psi->nk, (index - ys), n)]
-      + 0.5*psi->rho[addr_rank1(nsites, psi->nk, (index - 2*ys), n)];
+    grad_rho[Y] = + 1.5*rhodata[addr_rank1(nsites, psi->nk, index, n)]
+      - 2.0*rhodata[addr_rank1(nsites, psi->nk, (index - ys), n)]
+      + 0.5*rhodata[addr_rank1(nsites, psi->nk, (index - 2*ys), n)];
   }
 
   /* z-direction */
@@ -287,18 +292,18 @@ int psi_grad_rho(psi_t * psi,  map_t * map, int index, int n, double grad_rho[3]
   map_status(map, index1, &status1);
 
   if (status0 == MAP_FLUID && status1 == MAP_FLUID) {
-    grad_rho[Z] = 0.5*(psi->rho[addr_rank1(nsites, psi->nk, (index+zs), n)] - 
-		       psi->rho[addr_rank1(nsites, psi->nk, (index-zs), n)]);
+    grad_rho[Z] = 0.5*(rhodata[addr_rank1(nsites, psi->nk, (index+zs), n)] -
+		       rhodata[addr_rank1(nsites, psi->nk, (index-zs), n)]);
   }
   if (status0 != MAP_FLUID && status1 == MAP_FLUID) {
-    grad_rho[Z] = - 1.5*psi->rho[addr_rank1(nsites, psi->nk, index, n)] 
-      + 2.0*psi->rho[addr_rank1(nsites, psi->nk, (index + zs), n)]
-      - 0.5*psi->rho[addr_rank1(nsites, psi->nk, (index + 2*zs), n)]; 
+    grad_rho[Z] = - 1.5*rhodata[addr_rank1(nsites, psi->nk, index, n)]
+      + 2.0*rhodata[addr_rank1(nsites, psi->nk, (index + zs), n)]
+      - 0.5*rhodata[addr_rank1(nsites, psi->nk, (index + 2*zs), n)];
   }
   if (status0 == MAP_FLUID && status1 != MAP_FLUID) {
-    grad_rho[Z] = + 1.5*psi->rho[addr_rank1(nsites, psi->nk, index, n)]
-      - 2.0*psi->rho[addr_rank1(nsites, psi->nk, (index - zs), n)]
-      + 0.5*psi->rho[addr_rank1(nsites, psi->nk, (index - 2*zs), n)];
+    grad_rho[Z] = + 1.5*rhodata[addr_rank1(nsites, psi->nk, index, n)]
+      - 2.0*rhodata[addr_rank1(nsites, psi->nk, (index - zs), n)]
+      + 0.5*rhodata[addr_rank1(nsites, psi->nk, (index - 2*zs), n)];
   }
 
   return 0;
@@ -338,6 +343,8 @@ int psi_grad_rho_d3qx(psi_t * psi,  map_t * map, int index, int n, double grad_r
   int status, status1, status2;
   double aux;
 
+  double * rho = psi->rho->data;
+
   assert(psi);
   assert(n < psi->nk);
   assert(grad_rho);
@@ -362,7 +369,7 @@ int psi_grad_rho_d3qx(psi_t * psi,  map_t * map, int index, int n, double grad_r
 
     if(status == MAP_FLUID && status1 == MAP_FLUID) { 
 
-      aux = psi_gr_wv[p]* psi_gr_rcs2 * psi->rho[psi->nk*index1 + n];
+      aux = psi_gr_wv[p]* psi_gr_rcs2 * rho[psi->nk*index1 + n];
 
       grad_rho[X] += aux * psi_gr_cv[p][X]; 
       grad_rho[Y] += aux * psi_gr_cv[p][Y];  
@@ -389,29 +396,29 @@ int psi_grad_rho_d3qx(psi_t * psi,  map_t * map, int index, int n, double grad_r
         /* Subtract the above 'fluid' half of the incomplete two-point formula. */
         /* Note: subtracting means adding here because of inverse lattice vectors. */
 
-	aux = psi_gr_wv[p]* psi_gr_rcs2 * psi->rho[addr_rank1(nsites, psi->nk, index1, n)];
+	aux = psi_gr_wv[p]*psi_gr_rcs2*rho[addr_rank1(nsites,psi->nk,index1,n)];
 
 	grad_rho[X] += aux * psi_gr_cv[p][X]; 
 	grad_rho[Y] += aux * psi_gr_cv[p][Y];  
 	grad_rho[Z] += aux * psi_gr_cv[p][Z];  
 
         /* Use one-sided derivative instead */
-	grad_rho[X] += psi_gr_wv[p] * psi_gr_rcs2 * 
-	  (3.0*psi->rho[addr_rank1(nsites, psi->nk, index, n)] 
-	   - 4.0*psi->rho[addr_rank1(nsites, psi->nk, index1, n)] 
-	   + 1.0*psi->rho[addr_rank1(nsites, psi->nk, index2, n)]) 
+	grad_rho[X] += psi_gr_wv[p] * psi_gr_rcs2 *
+	  (3.0*rho[addr_rank1(nsites, psi->nk, index, n)]
+	   - 4.0*rho[addr_rank1(nsites, psi->nk, index1, n)]
+	   + 1.0*rho[addr_rank1(nsites, psi->nk, index2, n)])
 	  * psi_gr_rnorm[p]* psi_gr_cv[p][X];
 
-	grad_rho[Y] += psi_gr_wv[p] * psi_gr_rcs2 * 
-	  (3.0*psi->rho[addr_rank1(nsites, psi->nk, index, n)] 
-	   - 4.0*psi->rho[addr_rank1(nsites, psi->nk, index1, n)] 
-	   + 1.0*psi->rho[addr_rank1(nsites, psi->nk, index2, n)]) 
+	grad_rho[Y] += psi_gr_wv[p] * psi_gr_rcs2 *
+	  (3.0*rho[addr_rank1(nsites, psi->nk, index, n)]
+	   - 4.0*rho[addr_rank1(nsites, psi->nk, index1, n)]
+	   + 1.0*rho[addr_rank1(nsites, psi->nk, index2, n)])
 	  * psi_gr_rnorm[p] * psi_gr_cv[p][Y];
 
-	grad_rho[Z] += psi_gr_wv[p] * psi_gr_rcs2 * 
-	  (3.0*psi->rho[addr_rank1(nsites, psi->nk, index, n)] 
-	   - 4.0*psi->rho[addr_rank1(nsites, psi->nk, index1, n)] 
-	   + 1.0*psi->rho[addr_rank1(nsites, psi->nk, index2, n)]) 
+	grad_rho[Z] += psi_gr_wv[p] * psi_gr_rcs2 *
+	  (3.0*rho[addr_rank1(nsites, psi->nk, index, n)]
+	   - 4.0*rho[addr_rank1(nsites, psi->nk, index1, n)]
+	   + 1.0*rho[addr_rank1(nsites, psi->nk, index2, n)])
 	  * psi_gr_rnorm[p] * psi_gr_cv[p][Z];
       }
     }
