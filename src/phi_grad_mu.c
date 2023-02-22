@@ -290,6 +290,7 @@ __global__ void phi_grad_mu_fluid_kernel(kernel_ctxt_t * ktx, field_t * phi,
   double globalforce[3];
   double localforce[3] = {0,0,0};
   int writefreq = 1000000;
+  int rank;
 
   physics_t * phys;
   FILE * fp;
@@ -297,6 +298,7 @@ __global__ void phi_grad_mu_fluid_kernel(kernel_ctxt_t * ktx, field_t * phi,
   physics_ref(&phys);
   int timestep = physics_control_timestep(phys);
   MPI_Comm comm;
+  MPI_Comm_rank(comm, &rank); 
   cs_cart_comm(hydro->cs, &comm);
 /* <----- */
 
@@ -372,11 +374,12 @@ __global__ void phi_grad_mu_fluid_kernel(kernel_ctxt_t * ktx, field_t * phi,
   }
 
   if (timestep % writefreq == 0) {
-    MPI_Allreduce(localforce, globalforce, 3, MPI_DOUBLE, MPI_SUM, comm);
-    fp = fopen("TOT_INTERACT_FORCE_FLUID.txt","a");
-    fprintf(fp, "%14.7e, %14.7e, %14.7e\n", globalforce[X], globalforce[Y], 
-					globalforce[Z]);
-    fclose(fp);
+    MPI_Reduce(localforce, globalforce, 3, MPI_DOUBLE, MPI_SUM, 0, comm);
+    if (rank == 0) {
+      fp = fopen("TOT_INTERACT_FORCE_FLUID.txt","a");
+      fprintf(fp, "%14.7e, %14.7e, %14.7e\n", globalforce[X], globalforce[Y], globalforce[Z]);
+      fclose(fp);
+    }
   }
 
   return;
@@ -418,6 +421,7 @@ __global__ void phi_grad_mu_solid_kernel(kernel_ctxt_t * ktx, field_t * field,
   double globalforce[3];
   double localforce[3] = {0,0,0};
   int writefreq = 100000;
+  int rank;
 
   physics_t * phys;
   FILE * fp;
@@ -425,6 +429,7 @@ __global__ void phi_grad_mu_solid_kernel(kernel_ctxt_t * ktx, field_t * field,
   physics_ref(&phys);
   int timestep = physics_control_timestep(phys);
   MPI_Comm comm;
+  MPI_Comm_rank(comm, &rank); 
   cs_cart_comm(hydro->cs, &comm);
 /* <----- */
 
@@ -571,11 +576,12 @@ __global__ void phi_grad_mu_solid_kernel(kernel_ctxt_t * ktx, field_t * field,
   }
 
   if (timestep % writefreq == 0) {
-    MPI_Allreduce(localforce, globalforce, 3, MPI_DOUBLE, MPI_SUM, comm);
-    fp = fopen("TOT_INTERACT_FORCE_FLUID.txt","a");
-    fprintf(fp, "%14.7e, %14.7e, %14.7e\n", globalforce[X], globalforce[Y], 
-					globalforce[Z]);
-    fclose(fp);
+    MPI_Reduce(localforce, globalforce, 3, MPI_DOUBLE, MPI_SUM, 0, comm);
+    if (rank == 0) {
+      fp = fopen("TOT_INTERACT_FORCE_FLUID.txt","a");
+      fprintf(fp, "%14.7e, %14.7e, %14.7e\n", globalforce[X], globalforce[Y], globalforce[Z]);
+      fclose(fp);
+    }
   }
 
   return;
