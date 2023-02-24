@@ -298,8 +298,8 @@ __global__ void phi_grad_mu_fluid_kernel(kernel_ctxt_t * ktx, field_t * phi,
   physics_ref(&phys);
   int timestep = physics_control_timestep(phys);
   MPI_Comm comm;
-  MPI_Comm_rank(comm, &rank); 
   cs_cart_comm(hydro->cs, &comm);
+  MPI_Comm_rank(comm, &rank); 
 /* <----- */
 
   kiterations = kernel_iterations(ktx);
@@ -428,9 +428,10 @@ __global__ void phi_grad_mu_solid_kernel(kernel_ctxt_t * ktx, field_t * field,
 
   physics_ref(&phys);
   int timestep = physics_control_timestep(phys);
+
   MPI_Comm comm;
-  MPI_Comm_rank(comm, &rank); 
   cs_cart_comm(hydro->cs, &comm);
+  MPI_Comm_rank(comm, &rank); 
 /* <----- */
 
   kiterations = kernel_iterations(ktx);
