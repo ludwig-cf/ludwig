@@ -29,7 +29,7 @@ __global__ void phi_grad_mu_fluid_kernel(kernel_ctxt_t * ktx, field_t * phi,
 					field_t * subgrid_potential);
 __global__ void phi_grad_mu_solid_kernel(kernel_ctxt_t * ktx, field_t * phi,
 					 fe_t * fe, hydro_t * hydro,
-					 map_t * map, field_t * subgrid_potential);
+					 map_t * map, field_t * subgrid_potential, rt_t * rt);
 __global__ void phi_grad_mu_external_kernel(kernel_ctxt_t * ktx, field_t * phi,
 					    double3 grad_mu, hydro_t * hydro);
 __global__ void phi_grad_mu_external_ll_kernel(kernel_ctxt_t * ktx, field_t * phi,
@@ -93,7 +93,7 @@ __host__ int phi_grad_mu_fluid(cs_t * cs, field_t * phi, fe_t * fe,
 
 __host__ int phi_grad_mu_solid(cs_t * cs, field_t * phi, fe_t * fe,
 			       hydro_t * hydro, map_t * map, 
-				field_t * subgrid_potential) {
+				field_t * subgrid_potential, rt_t * rt) {
   int nlocal[3];
   dim3 nblk, ntpb;
 
@@ -120,7 +120,7 @@ __host__ int phi_grad_mu_solid(cs_t * cs, field_t * phi, fe_t * fe,
 
   tdpLaunchKernel(phi_grad_mu_solid_kernel, nblk, ntpb, 0, 0,
 		  ctxt->target, phi->target, fe_target, hydro->target,
-		  map->target, sf_target);
+		  map->target, sf_target, rt);
 
   tdpAssert(tdpPeekAtLastError());
   tdpAssert(tdpDeviceSynchronize());
@@ -409,7 +409,7 @@ __global__ void phi_grad_mu_fluid_kernel(kernel_ctxt_t * ktx, field_t * phi,
 
 __global__ void phi_grad_mu_solid_kernel(kernel_ctxt_t * ktx, field_t * field,
 					 fe_t * fe, hydro_t * hydro,
-					 map_t * map, field_t * subgrid_potential) {
+					 map_t * map, field_t * subgrid_potential, rt_t * rt) {
   int kiterations;
   int kindex;
   assert(ktx);
@@ -434,6 +434,7 @@ __global__ void phi_grad_mu_solid_kernel(kernel_ctxt_t * ktx, field_t * field,
   MPI_Comm_rank(comm, &rank); 
 /* <----- */
 
+  rt_int_parameter(rt, "freq_write", &writefreq);
   kiterations = kernel_iterations(ktx);
 
   for_simt_parallel(kindex, kiterations, 1) {

@@ -549,9 +549,15 @@ void ludwig_run(const char * inputfile) {
       hydro_f_zero(ludwig->hydro, fzero);
 /* Calculate flux mask for later use in interact_compute, phi_force/phi_grad_mu.c and ch_solver LIGHTHOUSE but should work */
       TIMER_start(TIMER_SUBGRID_FLUX_MASK);
-      subgrid_flux_mask(ludwig->pe, ludwig->collinfo, ludwig->flux_mask, ludwig->u_mask, ludwig->rt, ludwig->phi);
+      subgrid_flux_mask(ludwig->pe, ludwig->collinfo, ludwig->flux_mask, ludwig->u_mask, ludwig->rt, ludwig->phi, ludwig->map, ludwig->hydro);
       TIMER_stop(TIMER_SUBGRID_FLUX_MASK);
     }
+    else {
+      TIMER_start(TIMER_SUBGRID_FLUX_MASK);
+      subgrid_flux_mask(ludwig->pe, ludwig->collinfo, ludwig->flux_mask, ludwig->u_mask, ludwig->rt, ludwig->phi, ludwig->map, ludwig->hydro);
+      TIMER_stop(TIMER_SUBGRID_FLUX_MASK);
+    } 
+
 
     colloids_info_ntotal(ludwig->collinfo, &ncolloid);
     if ((step % ludwig->collinfo->rebuild_freq) == 0) {
@@ -731,7 +737,7 @@ void ludwig_run(const char * inputfile) {
 				ludwig->wall,
                                 ludwig->pth, ludwig->fe, ludwig->map,
                                 ludwig->phi, ludwig->hydro,
-				ludwig->subgrid_potential);
+				ludwig->subgrid_potential, ludwig->rt);
 
 	  /* Ternary free energy gradmu requires of momentum correction
 	     after force calculation */
@@ -843,6 +849,9 @@ void ludwig_run(const char * inputfile) {
        * external forces. */
 
       bbl_update_colloids(ludwig->bbl, ludwig->wall, ludwig->collinfo);
+      // NOHYDRO
+      int noise_flag = ludwig->noise_rho->on[NOISE_RHO];
+      subgrid_update(ludwig->collinfo, ludwig->hydro, noise_flag);
     }
 
 
@@ -2131,7 +2140,7 @@ int ludwig_colloids_update(ludwig_t * ludwig) {
 
   /* Removal or replacement of fluid requires a lattice halo update */
 
-//
+/*
   TIMER_start(TIMER_HALO_LATTICE);
 
   if (ndevice == 0) {
@@ -2165,7 +2174,7 @@ int ludwig_colloids_update(ludwig_t * ludwig) {
   }
 
   TIMER_stop(TIMER_FREE1);
-//
+*/
 
   TIMER_start(TIMER_FORCES);
 

@@ -55,6 +55,17 @@ int subgrid_force_from_particles(colloids_info_t * cinfo, hydro_t * hydro,
   int nlocal[3], offset[3];
   int ncell[3];
 
+  /* This is to get the correct expression of total_force */
+  double drag, reta;
+  double eta;
+
+  PI_DOUBLE(pi);
+  physics_t * phys = NULL;
+  physics_ref(&phys);
+  physics_eta_shear(phys, &eta);
+  reta = 1.0/(6.0*pi*eta);
+  /* ------------ */
+
   double r[3], r0[3], force[3], dcentre[3];
   double dr;
   colloid_t * p_colloid = NULL;  /* Subgrid colloid */
@@ -88,6 +99,8 @@ int subgrid_force_from_particles(colloids_info_t * cinfo, hydro_t * hydro,
 
 	 
           if (p_colloid->s.type != COLLOID_TYPE_SUBGRID) continue;
+
+  	  drag = reta*(1.0/p_colloid->s.ah - 1.0/p_colloid->s.al);
 
 	  p_colloid->s.total_force[X] = p_colloid->fex[X];
 	  p_colloid->s.total_force[Y] = p_colloid->fex[Y];
@@ -216,8 +229,8 @@ int subgrid_update(colloids_info_t * cinfo, hydro_t * hydro, int noise_flag) {
   /* Loop through all cells (including the halo cells) */
 
   physics_ref(&phys);
-  physics_eta_shear(phys, &eta);
   physics_kt(phys, &kt);
+  physics_eta_shear(phys, &eta);
   reta = 1.0/(6.0*pi*eta);
 
   /* Loop through all edge subgrid particles */ 
@@ -617,7 +630,7 @@ static double d_peskin(double r) {
  *
  *****************************************************************************/
 
-int subgrid_flux_mask(pe_t * pe, colloids_info_t * cinfo, field_t * flux_mask, field_t * u_mask, rt_t * rt, field_t * phi) {
+int subgrid_flux_mask(pe_t * pe, colloids_info_t * cinfo, field_t * flux_mask, field_t * u_mask, rt_t * rt, field_t * phi, map_t * map, hydro_t * hydro) {
 
   int ia, i, j, k, index, p, template_on, beads_per_vesicle;
   int nlocal[3], offset[3];
@@ -625,6 +638,7 @@ int subgrid_flux_mask(pe_t * pe, colloids_info_t * cinfo, field_t * flux_mask, f
   int centrefound = 0, holefound = 0, orthofound = 0;
   int mask_phi_switch, mask_psi_switch, vesicle_number, reaction_switch, interaction_mask;
   int timestep, writefreq;
+  int correction = 0;
 
   double m[3] = {0., 0., 0.}, n[3] = {0., 0., 0.}, ijk[3];
   double r[3], rcentre[3], rhole[3], rortho[3], rcentre_local[3], rsq;
@@ -735,14 +749,14 @@ int subgrid_flux_mask(pe_t * pe, colloids_info_t * cinfo, field_t * flux_mask, f
         if (strcmp(reaction_model, "uniform") == 0) {
 	  p = rt_double_parameter(rt, "kappa", &kappa);
 	  if (p != 1) pe_fatal(pe, "If you choose chemical_reaction_model uniform, please specify kappa\n");
-	  else pe_info(pe, "Chemical reaction model: uniform with kappa = %d\n", kappa);
 	}
-	else if (strcmp(reaction_model, "psi<->phi") == 0) {	
+	else if (strcmp(reaction_model, "psi<->phi") == 0) {
 	  p = rt_double_parameter(rt, "kappa1", &kappa1);
 	  if (p != 1) pe_fatal(pe, "If you choose chemical_reaction_model psi<->phi, please specify kappa1\n");
 	  p = rt_double_parameter(rt, "kappam1", &kappam1);
 	  if (p != 1) pe_fatal(pe, "If you choose chemical_reaction_model psi<->phi, please specify kappam1\n");
         } 
+
 	else pe_fatal(pe, "Key chemical_reaction_model can only take one of the following values: uniform, psi<->phi\n");
       } 
     }
@@ -876,24 +890,17 @@ int subgrid_flux_mask(pe_t * pe, colloids_info_t * cinfo, field_t * flux_mask, f
 	    {
 	      phi->data[addr_rank1(phi->nsites, 2, index, 0)] += kappa;
 	    }
-	    else if (strcmp(reaction_model, "psi<->phi") == 0) 
+	    else if (strcmp(reaction_model, "psi<->phi") == 0)
 	    {
 	      phicopy = phi->data[addr_rank1(phi->nsites, 2, index, 0)];
 	      phi->data[addr_rank1(phi->nsites, 2, index, 0)] += kappa1*phi->data[addr_rank1(phi->nsites, 2, index, 1)] - kappam1*phi->data[addr_rank1(phi->nsites, 2, index, 0)];
 	      phi->data[addr_rank1(phi->nsites, 2, index, 1)] += -kappa1*phi->data[addr_rank1(phi->nsites, 2, index, 1)] + kappam1*phicopy;
-
-	      //printf("phi + psi = %14.7e\n", phi->data[addr_rank1(phi->nsites, 2, index, 0)] + phi->data[addr_rank1(phi->nsites, 2, index, 1)]);
-	      /*printf("phi += %f and ", kappa1*phi->data[addr_rank1(phi->nsites, 2, index, 1)] - kappam1*phi->data[addr_rank1(phi->nsites, 2, index, 0)]);
-	      printf("psi += %f\n", -kappa1*phi->data[addr_rank1(phi->nsites, 2, index, 1)] + kappam1*phi->data[addr_rank1(phi->nsites, 2, index, 0)]);
-	      */
 	    }
 	  }
 	}
 
-	if (timestep % writefreq == 0) {
-	  totphi_local += phi->data[addr_rank1(phi->nsites, 2, index, 0)];
-	  totpsi_local += phi->data[addr_rank1(phi->nsites, 2, index, 1)];
-	}
+	totphi_local += phi->data[addr_rank1(phi->nsites, 2, index, 0)];
+	totpsi_local += phi->data[addr_rank1(phi->nsites, 2, index, 1)];
 
 	// ASSIGN MASK VALUE
 
@@ -963,7 +970,48 @@ int subgrid_flux_mask(pe_t * pe, colloids_info_t * cinfo, field_t * flux_mask, f
     }
   }
 
-  // COMMUNICATE TOTPHI
+  // These subroutines require communication of total quantities of phi and/or psi
+  rt_int_parameter(rt, "psi_grad_mu_correction", &correction);
+  if ((strcmp(reaction_model, "psi<->phi") == 0) && correction) {
+    MPI_Allreduce(&totpsi_local, &totpsi, 1, MPI_DOUBLE, MPI_SUM, comm);
+    //pe_verbose(cinfo->pe, "totpsi = %f\n", totpsi);
+    int is_grad_mu_psi = 0; 
+    int nsfluid;
+    double rvolume;
+    double f[3];
+    double mu_psi[3] = {};
+    double3 grad_mu_psi = {};
+
+    {
+      physics_grad_mu_psi(phys, mu_psi);
+
+      grad_mu_psi.x = mu_psi[X];
+      grad_mu_psi.y = mu_psi[Y];
+      grad_mu_psi.z = mu_psi[Z];
+ 
+      is_grad_mu_psi = (mu_psi[X] != 0.0 || mu_psi[Y] != 0.0 || mu_psi[Z] != 0.0);
+    }
+
+    if (is_grad_mu_psi) {
+      assert(map);
+      map_volume_allreduce(map, MAP_FLUID, &nsfluid);
+      rvolume = 1.0/nsfluid;
+      for (ia = 0; ia < 3; ia++) {
+	// Force on fluid is - psi grad_mu_ext
+	f[ia] = rvolume*totpsi*mu_psi[ia];
+      }
+    }
+
+    for (i = 1; i <= nlocal[X] + 0; i++) {
+      for (j = 1; j <= nlocal[Y] + 0; j++) {
+        for (k = 1; k <= nlocal[Z] + 0; k++) {
+          index = cs_index(cinfo->cs, i, j, k); 
+	  hydro_f_local_add(hydro, index, f);
+	}
+      }
+    }
+  }
+
   if (timestep % writefreq == 0) {
     MPI_Reduce(&totphi_local, &totphi, 1, MPI_DOUBLE, MPI_SUM, 0, comm);
     MPI_Reduce(&totpsi_local, &totpsi, 1, MPI_DOUBLE, MPI_SUM, 0, comm);

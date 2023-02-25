@@ -25,6 +25,6 @@ __host__ int phi_force_calculation(pe_t * , cs_t * cs, lees_edw_t * le,
                                    wall_t * wall,
 				   pth_t * pth, fe_t * fe, map_t * map,
 				   field_t * phi, hydro_t * hydro,
-					field_t * subgrid_potential);
+					field_t * subgrid_potential, rt_t * rt);
 
 #endif
