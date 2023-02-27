@@ -72,7 +72,8 @@ int subgrid_force_from_particles(colloids_info_t * cinfo, hydro_t * hydro,
   colloid_t * presolved = NULL;  /* Resolved colloid occupuing node */
 
   assert(cinfo);
-  assert(hydro);
+  if (hydro) { assert(hydro); }
+
   assert(wall);
 
   if (cinfo->nsubgrid == 0) return 0;
@@ -102,9 +103,9 @@ int subgrid_force_from_particles(colloids_info_t * cinfo, hydro_t * hydro,
 
   	  drag = reta*(1.0/p_colloid->s.ah - 1.0/p_colloid->s.al);
 
-	  p_colloid->s.total_force[X] = p_colloid->fex[X];
-	  p_colloid->s.total_force[Y] = p_colloid->fex[Y];
-	  p_colloid->s.total_force[Z] = p_colloid->fex[Z];
+	  p_colloid->s.total_force[X] = drag*p_colloid->fex[X];
+	  p_colloid->s.total_force[Y] = drag*p_colloid->fex[Y];
+	  p_colloid->s.total_force[Z] = drag*p_colloid->fex[Z];
 	  
 	  /* Extract centre of the vesicle */
 	  cs_minimum_distance(cinfo->cs, p_colloid->centerofmass, p_colloid->s.r, dcentre);
@@ -159,7 +160,9 @@ int subgrid_force_from_particles(colloids_info_t * cinfo, hydro_t * hydro,
 		colloids_info_map(cinfo, index, &presolved);
 
 		if (presolved == NULL) {
-		  hydro_f_local_add(hydro, index, force);
+		  if (hydro) {
+		    hydro_f_local_add(hydro, index, force);
+		  }
 		}
 		else {
 		  double rd[3] = {};
@@ -217,13 +220,14 @@ int subgrid_update(colloids_info_t * cinfo, hydro_t * hydro, int noise_flag) {
   double kt;        /* Temperature */
 
   assert(cinfo);
-  assert(hydro);
+  if (hydro) assert(hydro);
 
   if (cinfo->nsubgrid == 0) return 0;
 
   colloids_info_ncell(cinfo, ncell);
 
-  subgrid_interpolation(cinfo, hydro);
+  if (hydro) subgrid_interpolation(cinfo, hydro);
+
   colloid_sums_halo(cinfo, COLLOID_SUM_SUBGRID);
 
   /* Loop through all cells (including the halo cells) */
@@ -270,9 +274,13 @@ int subgrid_update(colloids_info_t * cinfo, hydro_t * hydro, int noise_flag) {
           }
   
           for (ia = 0; ia < 3; ia++) {
+	    if (hydro) {
+	      p_colloid->s.v[ia] = p_colloid->fsub[ia] + drag*p_colloid->fex[ia] + frand[ia];
+	    }
+	    else {
+	      p_colloid->s.v[ia] = drag*p_colloid->fex[ia] + frand[ia];
+	    }
 
-	    p_colloid->s.v[ia] = p_colloid->fsub[ia] + drag*p_colloid->fex[ia]
-                                   + frand[ia];
   	    p_colloid->s.dr[ia] = p_colloid->s.v[ia];
   	  }
 	}
@@ -283,7 +291,6 @@ int subgrid_update(colloids_info_t * cinfo, hydro_t * hydro, int noise_flag) {
 }
 
 
-/* -----> CHEMOVESICLE V2 */
 /*****************************************************************************
  *
 *  subgrid_centre_update  ! MUST BE CALLED AFTER SUBGRID_UPDATE !
