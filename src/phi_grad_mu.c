@@ -35,7 +35,9 @@ __global__ void phi_grad_mu_external_kernel(kernel_ctxt_t * ktx, field_t * phi,
 __global__ void phi_grad_mu_external_ll_kernel(kernel_ctxt_t * ktx, field_t * phi,
 					    double3 grad_mu_phi, double3 grad_mu_psi,
 						 hydro_t * hydro);
-
+__global__ void phi_grad_mu_external_ll_outside_vesicle_only_kernel(kernel_ctxt_t * ktx, field_t * phi,
+					    double3 grad_mu_phi, double3 grad_mu_psi,
+						 hydro_t * hydro, field_t * vesicle_map);
 
 /*****************************************************************************
  *
@@ -201,11 +203,13 @@ __host__ int phi_grad_mu_external(cs_t * cs, field_t * phi, hydro_t * hydro) {
  *
  *****************************************************************************/
 
-__host__ int phi_grad_mu_external_ll(cs_t * cs, field_t * phi, hydro_t * hydro) {
+__host__ int phi_grad_mu_external_ll(cs_t * cs, field_t * phi, hydro_t * hydro, field_t * vesicle_map, rt_t * rt) {
 
   int nlocal[3];
   int is_grad_mu_phi = 0;     /* Short circuit the kernel if not required. */
   int is_grad_mu_psi = 0;     /* Short circuit the kernel if not required. */
+  int grad_mu_psi_outside_vesicle_only;
+
   dim3 nblk, ntpb;
   double3 grad_mu_phi = {};
   double3 grad_mu_psi = {};
@@ -218,7 +222,6 @@ __host__ int phi_grad_mu_external_ll(cs_t * cs, field_t * phi, hydro_t * hydro) 
   assert(hydro);
 
   cs_nlocal(cs, nlocal);
-
   {
     physics_t * phys = NULL;
     double mu_phi[3] = {};
@@ -245,20 +248,42 @@ __host__ int phi_grad_mu_external_ll(cs_t * cs, field_t * phi, hydro_t * hydro) 
 
   if ((is_grad_mu_phi || is_grad_mu_psi) && phi->nf == 2) {
 
-    limits.imin = 1; limits.imax = nlocal[X];
-    limits.jmin = 1; limits.jmax = nlocal[Y];
-    limits.kmin = 1; limits.kmax = nlocal[Z];
+    rt_int_parameter(rt, "grad_mu_psi_outside_vesicle_only", &grad_mu_psi_outside_vesicle_only);
+    if (grad_mu_psi_outside_vesicle_only) {
+      
+      limits.imin = 1; limits.imax = nlocal[X];
+      limits.jmin = 1; limits.jmax = nlocal[Y];
+      limits.kmin = 1; limits.kmax = nlocal[Z];
 
-    kernel_ctxt_create(cs, 1, limits, &ctxt);
-    kernel_ctxt_launch_param(ctxt, &nblk, &ntpb);
+      kernel_ctxt_create(cs, 1, limits, &ctxt);
+      kernel_ctxt_launch_param(ctxt, &nblk, &ntpb);
 
-    tdpLaunchKernel(phi_grad_mu_external_ll_kernel, nblk, ntpb, 0, 0,
+      tdpLaunchKernel(phi_grad_mu_external_ll_outside_vesicle_only_kernel, nblk, ntpb, 0, 0,
+		    ctxt->target, phi->target, grad_mu_phi, grad_mu_psi, hydro->target, vesicle_map->target);
+
+      tdpAssert(tdpPeekAtLastError());
+      tdpAssert(tdpDeviceSynchronize());
+
+      kernel_ctxt_free(ctxt);
+
+    }
+    else {
+
+      limits.imin = 1; limits.imax = nlocal[X];
+      limits.jmin = 1; limits.jmax = nlocal[Y];
+      limits.kmin = 1; limits.kmax = nlocal[Z];
+
+      kernel_ctxt_create(cs, 1, limits, &ctxt);
+      kernel_ctxt_launch_param(ctxt, &nblk, &ntpb);
+
+      tdpLaunchKernel(phi_grad_mu_external_ll_kernel, nblk, ntpb, 0, 0,
 		    ctxt->target, phi->target, grad_mu_phi, grad_mu_psi, hydro->target);
 
-    tdpAssert(tdpPeekAtLastError());
-    tdpAssert(tdpDeviceSynchronize());
+      tdpAssert(tdpPeekAtLastError());
+      tdpAssert(tdpDeviceSynchronize());
 
-    kernel_ctxt_free(ctxt);
+      kernel_ctxt_free(ctxt);
+    }
   }
 
   return 0;
@@ -668,6 +693,52 @@ __global__ void phi_grad_mu_external_ll_kernel(kernel_ctxt_t * ktx, field_t * ph
     force[Z] = -phi0*grad_mu_phi.z - psi0*grad_mu_psi.z;
 
     hydro_f_local_add(hydro, index, force);
+  }
+
+  return;
+}
+
+/*****************************************************************************
+ *
+ *  phi_grad_mu_external_ll_outside_vesicle_only_kernel
+ *
+ *  Accumulate local force resulting from constant external chemical
+ *  potential gradient.
+ *
+ *****************************************************************************/
+
+__global__ void phi_grad_mu_external_ll_outside_vesicle_only_kernel(kernel_ctxt_t * ktx, field_t * phi,
+					    double3 grad_mu_phi, double3 grad_mu_psi, 
+						hydro_t * hydro, field_t * vesicle_map) {
+  int kiterations;
+  int kindex;
+
+  assert(ktx);
+  assert(phi);
+  assert(hydro);
+
+  kiterations = kernel_iterations(ktx);
+
+  for_simt_parallel(kindex, kiterations, 1) {
+
+    int ic    = kernel_coords_ic(ktx, kindex);
+    int jc    = kernel_coords_jc(ktx, kindex);
+    int kc    = kernel_coords_kc(ktx, kindex);
+    int index = kernel_coords_index(ktx, ic, jc, kc);
+
+    /* Find the nodes which are inside the vesicle */
+    if ((int) vesicle_map->data[addr_rank1(vesicle_map->nsites, 1, index, 0)] == 1) {
+      double force[3] = {};
+      double phi0 = phi->data[addr_rank1(phi->nsites, 2, index, 0)];
+      double psi0 = phi->data[addr_rank1(phi->nsites, 2, index, 1)];
+
+      force[X] = -phi0*grad_mu_phi.x - psi0*grad_mu_psi.x;
+      force[Y] = -phi0*grad_mu_phi.y - psi0*grad_mu_psi.y;
+      force[Z] = -phi0*grad_mu_phi.z - psi0*grad_mu_psi.z;
+
+      hydro_f_local_add(hydro, index, force);
+    }
+
   }
 
   return;

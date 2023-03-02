@@ -186,7 +186,7 @@ int interact_statistic_add(interact_t * obj, interact_enum_t it, void * pot,
 
 int interact_compute(interact_t * interact, colloids_info_t * cinfo,
 		     map_t * map, psi_t * psi, ewald_t * ewald, field_t * phi,
-			field_t * subgrid_potential, rt_t * rt, field_t * u_mask) {
+			field_t * subgrid_potential, rt_t * rt, field_t * u_mask, field_t * vesicle_map) {
 
   int nc;
   int on;
@@ -202,7 +202,7 @@ int interact_compute(interact_t * interact, colloids_info_t * cinfo,
     colloids_update_forces_fluid_driven(cinfo, map);
     interact_wall(interact, cinfo);
 
-    colloids_update_discrete_forces_phi(cinfo, phi, subgrid_potential, u_mask, rt); 
+    colloids_update_discrete_forces_phi(cinfo, phi, subgrid_potential, u_mask, rt, vesicle_map); 
 
     rt_int_parameter(rt, "add_tangential_force", &on);
     if (on) colloids_add_tangential_force(cinfo, rt); 
@@ -709,7 +709,7 @@ int colloids_update_forces_fluid_driven(colloids_info_t * cinfo,
  * 
  *****************************************************************************/
 
-int colloids_update_discrete_forces_phi(colloids_info_t * cinfo, field_t * phi, field_t * subgrid_potential, field_t * u_mask, rt_t * rt) {
+int colloids_update_discrete_forces_phi(colloids_info_t * cinfo, field_t * phi, field_t * subgrid_potential, field_t * u_mask, rt_t * rt, field_t * vesicle_map) {
 
   int nlocal[3], offset[3], ncell[3];
   int i, j, k, ic, jc, kc;
@@ -719,8 +719,8 @@ int colloids_update_discrete_forces_phi(colloids_info_t * cinfo, field_t * phi, 
 
   double phi_, u, um1, up1, u0, delta, cutoff;
   double rnorm, rsq, rsqm1, rsqp1;
-  double scal_prod_m1, scal_prod_p1, scalar_product;
-  double r0[3], r[3], grad_u[3], dcentre[3];
+  double r0[3], r[3], grad_u[3], dcentre[3], centerofmass[3] = {0.0, 0.0, 0.0}, centre_to_r[3];
+  double vesicle_radius, distance_from_vesicle;
 
   colloid_t * pc = NULL;
   physics_t * phys = NULL;
@@ -750,12 +750,53 @@ int colloids_update_discrete_forces_phi(colloids_info_t * cinfo, field_t * phi, 
   assert(phi);
   assert(phi->nf == 2);
   assert(subgrid_potential);
+  assert(vesicle_map);
+  assert(vesicle_map->nf == 1);
 
   rt_int_parameter(rt, "phi_subgrid_switch", &subgrid_switch_on);
   rt_int_parameter(rt, "phi_interaction_mask", &interaction_mask_on);
   rt_int_parameter(rt, "phi_interaction_external_only", &external_only_on);
+  rt_double_parameter(rt, "vesicle_radius", &vesicle_radius);
   rt_int_parameter(rt, "freq_write", &writefreq);
 
+  /* Get centerofmass from any particle */
+  colloids_info_all_head(cinfo, &pc);
+  for ( ; pc; pc = pc->nextall) {
+    if (pc != NULL) {
+      centerofmass[X] = pc->centerofmass[X];
+      centerofmass[Y] = pc->centerofmass[Y];
+      centerofmass[Z] = pc->centerofmass[Z];
+      MPI_Bcast(centerofmass, 3, MPI_DOUBLE, rank, comm);
+    }
+  }
+  
+
+  /* Initialize subgrid_potential and vesicle_map */
+  for (i = 1; i <= nlocal[X]; i++) {
+    for (j = 1; j <= nlocal[Y]; j++) {
+      for (k = 1; k <= nlocal[Z]; k++) {
+        index = cs_index(cinfo->cs, i, j, k);
+	
+	r[X] = i;
+	r[Y] = j;
+	r[Z] = k;
+
+        r0[X] = centerofmass[X] - 1.0*offset[X];
+        r0[Y] = centerofmass[Y] - 1.0*offset[Y];
+        r0[Z] = centerofmass[Z] - 1.0*offset[Z];
+
+        cs_minimum_distance(cinfo->cs, r0, r, centre_to_r);
+
+	distance_from_vesicle = centre_to_r[X]*centre_to_r[X] + centre_to_r[Y]*centre_to_r[Y] + centre_to_r[Z]*centre_to_r[Z];
+
+	if (distance_from_vesicle <= vesicle_radius*vesicle_radius) field_scalar_set(vesicle_map, index, 1); // This node is inside the vesicle
+	else field_scalar_set(vesicle_map, index, 0); // This one outside
+        field_scalar_set(subgrid_potential, index, 0);
+
+      }
+    }
+  }
+ 
   if (!subgrid_switch_on) { 
     if (timestep % writefreq == 0) {
       if (rank == 0) {
@@ -771,16 +812,6 @@ int colloids_update_discrete_forces_phi(colloids_info_t * cinfo, field_t * phi, 
       }
     }
     return 0;
-  }
-
-  /* Initialize subgrid potential to 0 */
-  for (i = 1; i <= nlocal[X]; i++) {
-    for (j = 1; j <= nlocal[Y]; j++) {
-      for (k = 1; k <= nlocal[Z]; k++) {
-        index = cs_index(cinfo->cs, i, j, k);
-        field_scalar_set(subgrid_potential, index, 0);
-      }
-    }
   }
   
   /* Go over cell lists */
@@ -848,26 +879,29 @@ int colloids_update_discrete_forces_phi(colloids_info_t * cinfo, field_t * phi, 
 
                   r[X] = - r0[X] + 1.0*(i-1);
 		  rsqm1 = r[X]*r[X] + r[Y]*r[Y] + r[Z]*r[Z];
-		  scal_prod_m1 = r[X]*dcentre[X] + r[Y]*dcentre[Y] + r[Z]*dcentre[Z];
 
                   r[X] = - r0[X] + 1.0*(i+1);
 		  rsqp1 = r[X]*r[X] + r[Y]*r[Y] + r[Z]*r[Z];
-		  scal_prod_p1 = r[X]*dcentre[X] + r[Y]*dcentre[Y] + r[Z]*dcentre[Z];
 
 
                   indexp1 = cs_index(cinfo->cs, i + 1, j, k);
                   indexm1 = cs_index(cinfo->cs, i - 1, j, k);
 	
 		  if (external_only_on) {
-		    if (rsqm1 > cutoff*cutoff || scal_prod_m1 < 0.0) um1 = 0.0;
- 		    else um1 = u0/(sqrt(2*M_PI*delta))*exp(-0.5*(rsqm1/delta)*(rsqm1/delta))*(1 - interaction_mask_on*u_mask->data[addr_rank1(u_mask->nsites, 1, indexm1, 0)]);
-		    if (rsqp1 > cutoff*cutoff || scal_prod_p1 < 0.0) up1 = 0.0;
-		    else up1 = u0/(sqrt(2*M_PI*delta))*exp(-0.5*(rsqp1/delta)*(rsqp1/delta))*(1 - interaction_mask_on*u_mask->data[addr_rank1(u_mask->nsites, 1, indexp1, 0)]);
+		    // Outside vesicle
+		    if ( rsqm1 > cutoff*cutoff || (int) vesicle_map->data[addr_rank1(vesicle_map->nsites, 1, indexm1, 0)] == 1)  um1 = 0.0;
+		    // Inside vesicle
+ 		    else um1 = u0/(sqrt(2*M_PI*delta))*exp(-0.5*(rsqm1/delta)*(rsqm1/delta))*(1 - interaction_mask_on*u_mask->data[addr_rank1(u_mask->nsites, 1, indexm1, 0)]); 
+
+		    // Outside vesicle
+		    if ( rsqp1 > cutoff*cutoff || (int) vesicle_map->data[addr_rank1(vesicle_map->nsites, 1, indexp1, 0)] == 1) up1 = 0.0;
+		    // Inside vesicle
+		    else up1 = u0/(sqrt(2*M_PI*delta))*exp(-0.5*(rsqp1/delta)*(rsqp1/delta))*(1 - interaction_mask_on*u_mask->data[addr_rank1(u_mask->nsites, 1, indexp1, 0)]); 
 		  }
 		  else {
-		    if (rsqm1 > cutoff*cutoff) um1 = 0.0;
+		    if (rsqm1 > cutoff*cutoff) um1 = 0.0; // Outside the interaction range
  		    else um1 = u0/(sqrt(2*M_PI*delta))*exp(-0.5*(rsqm1/delta)*(rsqm1/delta))*(1 - interaction_mask_on*u_mask->data[addr_rank1(u_mask->nsites, 1, indexm1, 0)]);
-		    if (rsqp1 > cutoff*cutoff) up1 = 0.0;
+		    if (rsqp1 > cutoff*cutoff) up1 = 0.0; // Outside the interaction range
 		    else up1 = u0/(sqrt(2*M_PI*delta))*exp(-0.5*(rsqp1/delta)*(rsqp1/delta))*(1 - interaction_mask_on*u_mask->data[addr_rank1(u_mask->nsites, 1, indexp1, 0)]);
 		  }
 
@@ -881,20 +915,18 @@ int colloids_update_discrete_forces_phi(colloids_info_t * cinfo, field_t * phi, 
 
                   r[Y] = - r0[Y] + 1.0*(j-1);
 		  rsqm1 = r[X]*r[X] + r[Y]*r[Y] + r[Z]*r[Z];
-		  scal_prod_m1 = r[X]*dcentre[X] + r[Y]*dcentre[Y] + r[Z]*dcentre[Z];
 
                   r[Y] = - r0[Y] + 1.0*(j+1);
 		  rsqp1 = r[X]*r[X] + r[Y]*r[Y] + r[Z]*r[Z];
-		  scal_prod_p1 = r[X]*dcentre[X] + r[Y]*dcentre[Y] + r[Z]*dcentre[Z];
 
 
                   indexp1 = cs_index(cinfo->cs, i, j + 1, k);
                   indexm1 = cs_index(cinfo->cs, i, j - 1, k);
 
 		  if (external_only_on) {
-		    if (rsqm1 > cutoff*cutoff || scal_prod_m1 < 0.0) um1 = 0.0;
+		    if ( rsqm1 > cutoff*cutoff || (int) vesicle_map->data[addr_rank1(vesicle_map->nsites, 1, indexm1, 0)] == 1) um1 = 0.0;
  		    else um1 = u0/(sqrt(2*M_PI*delta))*exp(-0.5*(rsqm1/delta)*(rsqm1/delta))*(1 - interaction_mask_on*u_mask->data[addr_rank1(u_mask->nsites, 1, indexm1, 0)]);
-		    if (rsqp1 > cutoff*cutoff || scal_prod_p1 < 0.0) up1 = 0.0;
+		    if ( rsqp1 > cutoff*cutoff || (int) vesicle_map->data[addr_rank1(vesicle_map->nsites, 1, indexp1, 0)] == 1) up1 = 0.0;
 		    else up1 = u0/(sqrt(2*M_PI*delta))*exp(-0.5*(rsqp1/delta)*(rsqp1/delta))*(1 - interaction_mask_on*u_mask->data[addr_rank1(u_mask->nsites, 1, indexp1, 0)]);
 		  }
 		  else {
@@ -914,20 +946,17 @@ int colloids_update_discrete_forces_phi(colloids_info_t * cinfo, field_t * phi, 
 
                   r[Z] = - r0[Z] + 1.0*(k-1);
 		  rsqm1 = r[X]*r[X] + r[Y]*r[Y] + r[Z]*r[Z];
-		  scal_prod_m1 = r[X]*dcentre[X] + r[Y]*dcentre[Y] + r[Z]*dcentre[Z];
 
                   r[Z] = - r0[Z] + 1.0*(k+1);
 		  rsqp1 = r[X]*r[X] + r[Y]*r[Y] + r[Z]*r[Z];
-		  scal_prod_p1 = r[X]*dcentre[X] + r[Y]*dcentre[Y] + r[Z]*dcentre[Z];
-
 
                   indexp1 = cs_index(cinfo->cs, i, j, k + 1);
                   indexm1 = cs_index(cinfo->cs, i, j, k - 1);
 
 		  if (external_only_on) {
-		    if (rsqm1 > cutoff*cutoff || scal_prod_m1 < 0.0) um1 = 0.0;
+		    if ( rsqm1 > cutoff*cutoff || (int) vesicle_map->data[addr_rank1(vesicle_map->nsites, 1, indexm1, 0)] == 1) um1 = 0.0;
  		    else um1 = u0/(sqrt(2*M_PI*delta))*exp(-0.5*(rsqm1/delta)*(rsqm1/delta))*(1 - interaction_mask_on*u_mask->data[addr_rank1(u_mask->nsites, 1, indexm1, 0)]);
-		    if (rsqp1 > cutoff*cutoff || scal_prod_p1 < 0.0) up1 = 0.0;
+		    if ( rsqp1 > cutoff*cutoff || (int) vesicle_map->data[addr_rank1(vesicle_map->nsites, 1, indexp1, 0)] == 1) up1 = 0.0;
 		    else up1 = u0/(sqrt(2*M_PI*delta))*exp(-0.5*(rsqp1/delta)*(rsqp1/delta))*(1 - interaction_mask_on*u_mask->data[addr_rank1(u_mask->nsites, 1, indexp1, 0)]);
 		  }
 		  else {
@@ -969,13 +998,12 @@ int colloids_update_discrete_forces_phi(colloids_info_t * cinfo, field_t * phi, 
                 r[Z] = - r0[Z] + 1.0*k;
 
                 rsq = r[X]*r[X] + r[Y]*r[Y] + r[Z]*r[Z];
-		scalar_product = r[X]*dcentre[X] + r[Y]*dcentre[Y] + r[Z]*dcentre[Z];
 
 		if (external_only_on) {
-		  if (rsq > cutoff*cutoff || scalar_product < 0.0) continue;
+		  if (rsq > cutoff*cutoff || (int) vesicle_map->data[addr_rank1(vesicle_map->nsites, 1, index, 0)] == 1) continue; // Inside or not in interaction range
 		}
 		else {
-		  if (rsq > cutoff*cutoff) continue;
+		  if (rsq > cutoff*cutoff) continue; // Not in interaction range
 		}
 
                 u = u0/(sqrt(2*M_PI*delta))*exp(-0.5*(rsq/delta)*(rsq/delta))*(1 - interaction_mask_on*u_mask->data[addr_rank1(u_mask->nsites, 1, index, 0)]);
@@ -994,6 +1022,8 @@ int colloids_update_discrete_forces_phi(colloids_info_t * cinfo, field_t * phi, 
       }
     }
   }
+
+
 
 /* Output sum of force exerted on the subgrid particles */
   if (timestep % writefreq == 0) {

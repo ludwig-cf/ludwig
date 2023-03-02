@@ -68,7 +68,7 @@ int interact_range_check(interact_t * obj, colloids_info_t * cinfo);
 int interact_compute(interact_t * interact, colloids_info_t * cinfo,
 		     map_t * map, psi_t * psi, ewald_t * ewald,
 			field_t * phi,
-			field_t * subgrid_potential, rt_t * rt, field_t * u_mask);
+			field_t * subgrid_potential, rt_t * rt, field_t * u_mask, field_t * vesicle_map);
 /* <----- */
 
 int interact_pairwise(interact_t * interact, colloids_info_t * cinfo);
@@ -83,7 +83,7 @@ int interact_angles(interact_t * obj, colloids_info_t * cinfo);
 int interact_angles_harmonic(interact_t * obj, colloids_info_t * cinfo);
 int interact_angles_dihedral(interact_t * obj, colloids_info_t * cinfo);
 
-int colloids_update_discrete_forces_phi(colloids_info_t * cinfo, field_t * phi, field_t * subgrid_potential, field_t * u_mask, rt_t * t);
+int colloids_update_discrete_forces_phi(colloids_info_t * cinfo, field_t * phi, field_t * subgrid_potential, field_t * u_mask, rt_t * t, field_t * vesicle_map);
 int colloids_add_tangential_force(colloids_info_t * cinfo, rt_t * rt);
 int colloids_update_analytic_forces_phi(colloids_info_t * cinfo, field_t * phi, field_t * subgrid_potential);
 

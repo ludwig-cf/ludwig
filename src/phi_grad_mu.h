@@ -20,6 +20,7 @@
 #include "free_energy.h"
 #include "hydro.h"
 #include "map.h"
+#include "colloids.h"
 
 __host__ int phi_grad_mu_fluid(cs_t * cs, field_t * phi, fe_t * fe,
 			       hydro_t * hydro, field_t * subgrid_potential);
@@ -28,6 +29,6 @@ __host__ int phi_grad_mu_solid(cs_t * cs, field_t * phi, fe_t * fe,
 				field_t * subgrid_potential, rt_t * rt);
 __host__ int phi_grad_mu_external(cs_t * cs, field_t * phi, hydro_t * hydro);
 
-__host__ int phi_grad_mu_external_ll(cs_t * cs, field_t * phi, hydro_t * hydro);
+__host__ int phi_grad_mu_external_ll(cs_t * cs, field_t * phi, hydro_t * hydro, field_t * vesicle_map, rt_t * rt);
 
 #endif

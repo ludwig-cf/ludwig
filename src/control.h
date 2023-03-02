@@ -26,6 +26,7 @@ int is_colloid_io_step(void);
 
 int is_phi_output_step(void);
 int is_mask_output_step(void);
+int is_vesicle_map_output_step(void);
 int is_subgrid_potential_output_step(void);
 int is_vel_output_step(void);
 int is_psi_output_step(void);
