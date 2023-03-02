@@ -589,7 +589,7 @@ void ludwig_run(const char * inputfile) {
       TIMER_stop(TIMER_SUBGRID_POTENTIAL_HALO);
 
       TIMER_start(TIMER_FLUX_MASK_HALO);
-      //field_halo(ludwig->flux_mask);
+      field_halo(ludwig->flux_mask);
       TIMER_stop(TIMER_FLUX_MASK_HALO);
 
       TIMER_start(TIMER_U_MASK_HALO);
@@ -963,11 +963,13 @@ void ludwig_run(const char * inputfile) {
       stats_rheology_stress_profile_zero(ludwig->stat_rheo);
     }
 
-    if (is_vel_output_step() || is_config_step()) {
-      hydro_io_info(ludwig->hydro, &iohandler);
-      pe_info(ludwig->pe, "Writing velocity output at step %d!\n", step);
-      sprintf(filename, "%svel-%8.8d", subdirectory, step);
-      io_write_data(iohandler, filename, ludwig->hydro);
+    if (ludwig->hydro) {
+      if (is_vel_output_step() || is_config_step()) {
+        hydro_io_info(ludwig->hydro, &iohandler);
+        pe_info(ludwig->pe, "Writing velocity output at step %d!\n", step);
+        sprintf(filename, "%svel-%8.8d", subdirectory, step);
+        io_write_data(iohandler, filename, ludwig->hydro);
+      }
     }
 
     /* Print progress report */
