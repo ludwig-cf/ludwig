@@ -162,7 +162,7 @@ int test_psi_sor_vare_poisson(pe_t * pe) {
     opts.nk = 2;
     opts.beta = 1.0;
     opts.epsilon1 = REF_PERMEATIVITY;
-    opts.reltol   = 0.01*FLT_EPSILON; /* Not the default */
+    opts.solver.reltol = 0.01*FLT_EPSILON; /* Not the default */
     psi_create(pe, cs, &opts, &psi);
   }
 
@@ -402,7 +402,7 @@ static int test_charge1_exact(psi_t * obj, f_vare_t fepsilon) {
 
   /* Check the Gauss Jordan answer b[] against the answer from psi_t */
 
-  psi_abstol(obj, &tolerance);
+  tolerance = FLT_EPSILON;
   rhotot = 0.0;
   psi0 = 0.0;
 
