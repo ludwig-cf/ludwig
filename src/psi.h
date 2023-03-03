@@ -52,15 +52,17 @@ struct psi_s {
   double epsilon;           /* first and reference permittivity */
   double epsilon2;          /* second permittivity */
   double beta;              /* Boltzmann factor (1 / k_B T) */
-  double reltol;            /* Relative tolerance for Poisson solver */
-  double abstol;            /* Absolute tolerance for Poisson solver */
+
   int method;               /* Force computation method */
-  int maxits;               /* Maximum number of iterations */
   int multisteps;           /* Number of substeps in charge dynamics */
   int nfreq_io;             /* Field output */
-  int nfreq;                /* Residual statisics output */
+
   double diffacc;           /* Number of substeps in charge dynamics */
   double e0[3];             /* External electric field */
+
+  /* Solver options */
+  psi_solver_options_t solver;
+
 };
 
 
@@ -98,7 +100,6 @@ int psi_surface_potential(psi_t * obj, double sigma, double rho_b,
 int psi_reltol(psi_t * obj, double * reltol);
 int psi_abstol(psi_t * obj, double * abstol);
 int psi_maxits(psi_t * obj, int * maxits);
-int psi_nfreq_set(psi_t * psi, int nfreq);
 int psi_output_step(psi_t * psi, int its);
 
 int psi_multisteps(psi_t * obj, int * multisteps);

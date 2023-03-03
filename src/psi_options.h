@@ -17,15 +17,9 @@
 #define LUDWIG_PSI_OPTIONS_H
 
 #include "field_options.h"
+#include "psi_solver_options.h"
 
 #define PSI_NKMAX 4
-
-/* Poisson solver method */
-typedef enum psi_poisson_solver_enum_s {
-  PSI_POISSON_SOLVER_INVALID = 0,
-  PSI_POISSON_SOLVER_SOR = 1,
-  PSI_POISSON_SOLVER_PETSC = 2
-} psi_poisson_solver_enum_t;
 
 /* Force computation method */
 
@@ -54,12 +48,8 @@ struct psi_options_s {
   double diffusivity[PSI_NKMAX];  /* Per species diffusivity */
   int    valency[PSI_NKMAX];      /* Per species charge valency */
 
-  /* Poisson solver (iterative) */
-  int psolver;                    /* Poisson solver id */
-  int maxits;                     /* Maximum iterations in solver */
-  int nfreq;                      /* Frequency of information (iterations) */
-  double reltol;                  /* Relative tolerance */
-  double abstol;                  /* Absolute tolerance */
+  /* Solver options */
+  psi_solver_options_t solver;
 
   /* Time stepping for Nernst Planck */
   int nsolver;                    /* Nernst Planck method */

@@ -114,11 +114,8 @@ int psi_initialise(pe_t * pe, cs_t * cs, const psi_options_t * opts,
     psi->valency[n]     = opts->valency[n];
   }
 
-  /* Poisson solver */
-  psi->maxits = opts->maxits;
-  psi->nfreq  = opts->nfreq;
-  psi->reltol = opts->reltol;
-  psi->abstol = opts->abstol;
+  /* Solver options */
+  psi->solver = opts->solver;
 
   /* Nernst-Planck */
   psi->multisteps = opts->nsmallstep;
@@ -456,7 +453,7 @@ int psi_reltol(psi_t * obj, double * reltol) {
   assert(obj);
   assert(reltol);
 
-  *reltol = obj->reltol;
+  *reltol = obj->solver.reltol;
 
   return 0;
 }
@@ -474,7 +471,7 @@ int psi_abstol(psi_t * obj, double * abstol) {
   assert(obj);
   assert(abstol);
 
-  *abstol = obj->abstol;
+  *abstol = obj->solver.abstol;
 
   return 0;
 }
@@ -521,7 +518,7 @@ int psi_maxits(psi_t * obj, int * maxits) {
   assert(obj);
   assert(maxits);
 
-  *maxits = obj->maxits;
+  *maxits = obj->solver.maxits;
 
   return 0;
 }
@@ -833,21 +830,6 @@ int psi_force_method_set(psi_t * psi, int flag) {
   assert(flag >= 0 && flag < PSI_FORCE_NTYPES);
 
   psi->method = flag;
-
-  return 0;
-}
-
-/*****************************************************************************
- *
- *  psi_nfreq_set
- *
- *****************************************************************************/
-
-int psi_nfreq_set(psi_t * psi, int nfreq) {
-
-  assert(psi);
-
-  psi->nfreq = nfreq;
 
   return 0;
 }
