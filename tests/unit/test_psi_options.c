@@ -37,7 +37,8 @@ int test_psi_options_suite(void) {
 
   /* A change in components requires a test update... */
 
-  assert(sizeof(psi_options_t) == 384);
+  printf("sizeof(psi_options_t): %ld\n", sizeof(psi_options_t));
+  assert(sizeof(psi_options_t) == 392);
   assert(PSI_NKMAX >= 2);
 
   test_psi_options_default();
@@ -63,10 +64,9 @@ int test_psi_options_default(void) {
   psi_options_t opts = psi_options_default(0);
 
   assert(opts.nk == 2);
-  if (ifail != 2) ifail = -1;
+  if (opts.nk != 2) ifail = -1;
 
   /* Physics */
-  /* Check to nk = 2 */
   assert(fabs(opts.e              - 1.0)     < DBL_EPSILON);
   assert(fabs(opts.beta           - 1.0)     < DBL_EPSILON);
   assert(fabs(opts.epsilon1       - 10000.0) < DBL_EPSILON);
@@ -76,15 +76,12 @@ int test_psi_options_default(void) {
   assert(fabs(opts.e0[2]          - 0.0)     < DBL_EPSILON);
   assert(fabs(opts.diffusivity[0] - 0.01)    < DBL_EPSILON);
   assert(fabs(opts.diffusivity[1] - 0.01)    < DBL_EPSILON);
-  assert(fabs(opts.valency[0]     -   1)     < DBL_EPSILON);
-  assert(fabs(opts.valency[1]     -  -1)     < DBL_EPSILON);
+
+  assert(opts.valency[0] == +1);
+  assert(opts.valency[1] == -1);
 
   /* Solver */
-  assert(opts.psolver == PSI_POISSON_SOLVER_SOR);
-  assert(opts.maxits  == 10000);
-  assert(opts.nfreq   == INT_MAX);
-  assert(fabs(opts.reltol - FLT_EPSILON) < DBL_EPSILON);
-  assert(fabs(opts.abstol - 0.01*FLT_EPSILON) < DBL_EPSILON);
+  assert(opts.solver.psolver == PSI_POISSON_SOLVER_SOR);
 
   /* Nernst Planck */
   assert(opts.nsolver    == -1);

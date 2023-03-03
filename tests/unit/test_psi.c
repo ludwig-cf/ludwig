@@ -109,11 +109,9 @@ int test_psi_initialise(pe_t * pe) {
     assert(fabs(psi.e0[Y] - opts.e0[Y]) < DBL_EPSILON);
     assert(fabs(psi.e0[Z] - opts.e0[Z]) < DBL_EPSILON);
 
-    /* Poission */
-    assert(psi.nfreq  == opts.nfreq);
-    assert(psi.maxits == opts.maxits);
-    assert(fabs(psi.reltol - opts.reltol) < DBL_EPSILON);
-    assert(fabs(psi.abstol - opts.abstol) < DBL_EPSILON);
+    /* Solver options */
+    /* Assume correctly covered in solver options tests ... */
+    assert(psi.solver.psolver == PSI_POISSON_SOLVER_SOR);
 
     /* Nernst Planck */
     assert(psi.multisteps == opts.nsmallstep);
