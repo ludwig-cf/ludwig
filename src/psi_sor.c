@@ -157,22 +157,16 @@ int psi_sor_poisson(psi_t * obj, int its) {
 
 	psi_rho_elec(obj, index, &rho_elec);
 
-        /* 6-point stencil of Laplacian */
-
-	dpsi
-	  = psidata[addr_rank0(nsites, index + xs)]
-	  + psidata[addr_rank0(nsites, index - xs)]
-	  + psidata[addr_rank0(nsites, index + ys)]
-	  + psidata[addr_rank0(nsites, index - ys)]
-	  + psidata[addr_rank0(nsites, index + zs)]
-	  + psidata[addr_rank0(nsites, index - zs)]
-	  - 6.0*psidata[addr_rank0(nsites, index)];
-
 	/* Non-dimensional potential in Poisson eqn requires e/kT */
-	rnorm_local[0] += fabs(epsilon*dpsi + eunit*beta*rho_elec);
+	/* This is just the L2 norm of the right hand side. */
+
+	residual = eunit*beta*rho_elec;
+	rnorm_local[0] += residual*residual;
       }
     }
   }
+
+  rnorm_local[0] = sqrt(rnorm_local[0]);
 
   /* Iterate to solution */
 
@@ -207,10 +201,11 @@ int psi_sor_poisson(psi_t * obj, int its) {
 	      - 6.0*psidata[addr_rank0(nsites, index)];
 
 	    /* Non-dimensional potential in Poisson eqn requires e/kT */
+
 	    residual = epsilon*dpsi + eunit*beta*rho_elec;
 	    psidata[addr_rank0(nsites, index)]
 	      -= omega*residual / (-6.0*epsilon);
-	    rnorm_local[1] += fabs(residual);
+	    rnorm_local[1] += residual*residual;
 	  }
 	}
       }
@@ -232,28 +227,31 @@ int psi_sor_poisson(psi_t * obj, int its) {
     }
 
     if ((n % ncheck) == 0) {
+
       /* Compare residual and exit if small enough */
+
+      rnorm_local[1] = sqrt(rnorm_local[1]);
 
       MPI_Allreduce(rnorm_local, rnorm, 2, MPI_DOUBLE, MPI_SUM, comm);
 
       if (rnorm[1] < tol_abs) {
 
-	if (its % obj->nfreq == 0) {
+	if (its % obj->solver.nfreq == 0) {
 	  pe_info(obj->pe, "\n");
 	  pe_info(obj->pe, "SOR solver converged to absolute tolerance\n");
-	  pe_info(obj->pe, "SOR residual per site %14.7e at %d iterations\n",
-		  rnorm[1]/(ltot[X]*ltot[Y]*ltot[Z]), n);
+	  pe_info(obj->pe, "SOR residual %14.7e at %d iterations\n", rnorm[1],
+		  n);
 	}
 	break;
       }
 
-      if (rnorm[1] < tol_abs || rnorm[1] < tol_rel*rnorm[0]) {
+      if (rnorm[1] < tol_rel*rnorm[0]) {
 
-	if (its % obj->nfreq == 0) {
+	if (its % obj->solver.nfreq == 0) {
 	  pe_info(obj->pe, "\n");
 	  pe_info(obj->pe, "SOR solver converged to relative tolerance\n");
-	  pe_info(obj->pe, "SOR residual per site %14.7e at %d iterations\n",
-		  rnorm[1]/(ltot[X]*ltot[Y]*ltot[Z]), n);
+	  pe_info(obj->pe, "SOR residual %14.7e at %d iterations\n", rnorm[1],
+		  n);
 	}
 	break;
       }
@@ -344,60 +342,25 @@ int psi_sor_vare_poisson(psi_t * obj, fe_es_t * fe, f_vare_t fepsilon, int its) 
   psi_beta(obj, &beta);
   psi_unit_charge(obj, &eunit);
 
+
+  /* Compute the initial norm of the right hand side. */
+
   rnorm_local[0] = 0.0;
 
   for (ic = 1; ic <= nlocal[X]; ic++) {
     for (jc = 1; jc <= nlocal[Y]; jc++) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 
-	depsi = 0.0;
-
 	index = cs_index(obj->cs, ic, jc, kc);
-
 	psi_rho_elec(obj, index, &rho_elec);
-	fepsilon(fe, index, &eps0);
 
-	/* Laplacian part of operator */
-
-        depsi += eps0*(-6.0*psidata[addr_rank0(nsites, index)]
-		       + psidata[addr_rank0(nsites, index + xs)]
-		       + psidata[addr_rank0(nsites, index - xs)]
-		       + psidata[addr_rank0(nsites, index + ys)]
-		       + psidata[addr_rank0(nsites, index - ys)]
-		       + psidata[addr_rank0(nsites, index + zs)]
-		       + psidata[addr_rank0(nsites, index - zs)]);
-
-	/* Additional terms in generalised Poisson equation */
-
-	fepsilon(fe, index + xs, &eps1);
-	depsi += 0.25*eps1*(psidata[addr_rank0(nsites, index + xs)]
-			  - psidata[addr_rank0(nsites, index - xs)]);
-
-	fepsilon(fe, index - xs, &eps1);
-	depsi -= 0.25*eps1*(psidata[addr_rank0(nsites, index + xs)]
-			  - psidata[addr_rank0(nsites, index - xs)]);
-
-	fepsilon(fe, index + ys, &eps1);
-	depsi += 0.25*eps1*(psidata[addr_rank0(nsites, index + ys)]
-			  - psidata[addr_rank0(nsites, index - ys)]);
-
-	fepsilon(fe, index - ys, &eps1);
-	depsi -= 0.25*eps1*(psidata[addr_rank0(nsites, index + ys)]
-			  - psidata[addr_rank0(nsites, index - ys)]);
-
-	fepsilon(fe, index + zs, &eps1);
-	depsi += 0.25*eps1*(psidata[addr_rank0(nsites, index + zs)]
-			  - psidata[addr_rank0(nsites, index - zs)]);
-
-	fepsilon(fe, index - zs, &eps1);
-	depsi -= 0.25*eps1*(psidata[addr_rank0(nsites, index + zs)]
-			  - psidata[addr_rank0(nsites, index - zs)]);
-
-	/* Non-dimensional potential in Poisson eqn requires e/kT */
-	rnorm_local[0] += fabs(depsi + eunit*beta*rho_elec);
+	residual = eunit*beta*rho_elec;
+	rnorm_local[0] += residual*residual;
       }
     }
   }
+
+  rnorm_local[0] = sqrt(rnorm_local[0]);
 
   /* Iterate to solution */
 
@@ -462,7 +425,7 @@ int psi_sor_vare_poisson(psi_t * obj, fe_es_t * fe, f_vare_t fepsilon, int its) 
 	    /* Non-dimensional potential in Poisson eqn requires e/kT */
 	    residual = depsi + eunit*beta*rho_elec;
 	    psidata[addr_rank0(nsites,index)] -= omega*residual / (-6.0*eps0);
-	    rnorm_local[1] += fabs(residual);
+	    rnorm_local[1] += residual*residual;
 	  }
 	}
       }
@@ -480,34 +443,39 @@ int psi_sor_vare_poisson(psi_t * obj, fe_es_t * fe, f_vare_t fepsilon, int its) 
 
       /* Compare residual and exit if small enough */
 
+      rnorm_local[1] = sqrt(rnorm_local[1]);
       MPI_Allreduce(rnorm_local, rnorm, 2, MPI_DOUBLE, MPI_SUM, comm);
 
       if (rnorm[1] < tol_abs) {
 
-	if (its % obj->nfreq == 0) {
+	if (its % obj->solver.nfreq == 0) {
 	  pe_info(obj->pe, "\n");
-	  pe_info(obj->pe, "SOR (heterogeneous) solver converged to absolute tolerance\n");
-	  pe_info(obj->pe, "SOR residual per site %14.7e at %d iterations\n",
-		  rnorm[1]/(ltot[X]*ltot[Y]*ltot[Z]), n);
+	  pe_info(obj->pe, "SOR (heterogeneous) solver converged to "
+		  "absolute tolerance\n");
+	  pe_info(obj->pe, "SOR residual %14.7e at %d iterations\n",
+		  rnorm[1], n);
 	}
 	break;
       }
 
       if (rnorm[1] < tol_rel*rnorm[0]) {
 
-	if (its % obj->nfreq == 0) {
+	if (its % obj->solver.nfreq == 0) {
 	  pe_info(obj->pe, "\n");
-	  pe_info(obj->pe, "SOR (heterogeneous) solver converged to relative tolerance\n");
-	  pe_info(obj->pe, "SOR residual per site %14.7e at %d iterations\n",
-		  rnorm[1]/(ltot[X]*ltot[Y]*ltot[Z]), n);
+	  pe_info(obj->pe, "SOR (heterogeneous) solver converged to "
+		  "relative tolerance\n");
+	  pe_info(obj->pe, "SOR residual %14.7e at %d iterations\n",
+		  rnorm[1], n);
 	}
 	break;
       }
 
       if (n == niteration-1) {
 	pe_info(obj->pe, "\n");
-	pe_info(obj->pe, "SOR solver (heterogeneous) exceeded %d iterations\n", n+1);
-	pe_info(obj->pe, "SOR residual %le (initial) %le (final)\n\n", rnorm[0], rnorm[1]);
+	pe_info(obj->pe, "SOR solver (heterogeneous) exceeded %d iterations\n",
+		n+1);
+	pe_info(obj->pe, "SOR residual %le (initial) %le (final)\n\n",
+		rnorm[0], rnorm[1]);
       }
     }
   }
