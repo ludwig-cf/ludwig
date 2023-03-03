@@ -70,19 +70,30 @@ int psi_rt_init_rho(pe_t * pe, rt_t * rt, psi_t * obj, map_t * map) {
   rt_string_parameter(rt, "electrokinetics_init", value, BUFSIZ);
 
   if (strcmp(value, "gouy_chapman") == 0) {
+    double ld_actual = 0.0;
     pe_info(pe, "Initial conditions:         %s\n", "Gouy Chapman");
 
     n = rt_double_parameter(rt, "electrokinetics_init_rho_el", &rho_el);
     if (n == 0) pe_fatal(pe, "... please set electrokinetics_init_rho_el\n");
-    pe_info(pe, "Initial condition rho_el:  %14.7e\n", rho_el);
-    psi_debye_length1(&opts, rho_el, &ld);
-    pe_info(pe, "Debye length:              %14.7e\n", ld);
 
     n = rt_double_parameter(rt, "electrokinetics_init_sigma", &sigma);
     if (n == 0) pe_fatal(pe, "... please set electrokinetics_init_sigma\n");
-    pe_info(pe, "Initial condition sigma:   %14.7e\n", sigma);
 
+    psi_debye_length1(&opts, rho_el, &ld);
     psi_init_gouy_chapman(obj, map, rho_el, sigma);
+
+    {
+      /* We want a real Debye length from the actual charge/countercharge
+	 densities that have been initialisated in the fluid. */
+      int index = cs_index(obj->cs, 2, 1, 1);
+      double rho_actual = 0.0;
+      psi_ionic_strength(obj, index, &rho_actual);
+      psi_debye_length1(&opts, rho_actual, &ld_actual);
+    }
+    pe_info(pe, "Initial condition rho_el:  %14.7e\n", rho_el);
+    pe_info(pe, "Debye length:              %14.7e\n", ld);
+    pe_info(pe, "Debye length (actual):     %14.7e\n", ld_actual);
+    pe_info(pe, "Initial condition sigma:   %14.7e\n", sigma);
   }
 
   if (strcmp(value, "liquid_junction") == 0) {
@@ -207,12 +218,12 @@ int psi_options_rt(pe_t * pe, cs_t * cs, rt_t * rt, psi_options_t * popts) {
   /* Poisson solver */
   /* There are two possible sources of nfreq */
 
-  rt_int_parameter(rt, "electrokinetics_maxits",  &opts.maxits);
-  rt_int_parameter(rt, "freq_statistics", &opts.nfreq);
-  rt_int_parameter(rt, "freq_psi_resid",  &opts.nfreq);
+  rt_int_parameter(rt, "electrokinetics_maxits",  &opts.solver.maxits);
+  rt_int_parameter(rt, "freq_statistics", &opts.solver.nfreq);
+  rt_int_parameter(rt, "freq_psi_resid",  &opts.solver.nfreq);
 
-  rt_double_parameter(rt, "electrokinetics_rel_tol", &opts.reltol);
-  rt_double_parameter(rt, "electrokinetics_abs_tol", &opts.abstol);
+  rt_double_parameter(rt, "electrokinetics_rel_tol", &opts.solver.reltol);
+  rt_double_parameter(rt, "electrokinetics_abs_tol", &opts.solver.abstol);
 
   /* NPE time splitting and criteria */
 
@@ -276,9 +287,10 @@ int psi_info(pe_t * pe, const psi_t * psi) {
     pe_info(pe, "Diffusivity species %d:     %14.7e\n", n, psi->diffusivity[n]);
   }
 
-  pe_info(pe, "Relative tolerance:  %20.7e\n", psi->reltol);
-  pe_info(pe, "Absolute tolerance:  %20.7e\n", psi->abstol);
-  pe_info(pe, "Max. no. of iterations:  %16d\n", psi->maxits);
+  /* Add full information ... */
+  pe_info(pe, "Relative tolerance:  %20.7e\n", psi->solver.reltol);
+  pe_info(pe, "Absolute tolerance:  %20.7e\n", psi->solver.abstol);
+  pe_info(pe, "Max. no. of iterations:  %16d\n", psi->solver.maxits);
 
   pe_info(pe, "Number of multisteps:       %d\n", psi->multisteps);
   pe_info(pe, "Diffusive accuracy in NPE: %14.7e\n", psi->diffacc);
