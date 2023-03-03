@@ -36,13 +36,8 @@
 #include "pe.h"
 #include "coords.h"
 #include "control.h"
-#include "physics.h"
-#include "psi_s.h"
 #include "psi.h"
-#include "psi_sor.h"
 #include "psi_gradients.h"
-#include "map.h"
-#include "util.h"
 #include "psi_petsc.h"
 #include "petscksp.h"
 #include "petscdmda.h"
@@ -108,11 +103,15 @@ int psi_petsc_init(psi_t * obj, fe_t * fe, f_vare_t fepsilon){
   /* Create 3D distributed array */ 
   cs_nhalo(obj->cs, &nhalo);
 
-  DMDACreate3d(PETSC_COMM_WORLD, \
-	DM_BOUNDARY_PERIODIC, DM_BOUNDARY_PERIODIC, DM_BOUNDARY_PERIODIC,	\
-	DMDA_STENCIL_BOX, ntotal[X], ntotal[Y], ntotal[Z], \
-	mpi_cartsz[X], mpi_cartsz[Y], mpi_cartsz[Z], 1, nhalo, \
+  DMDACreate3d(PETSC_COMM_WORLD,
+	DM_BOUNDARY_PERIODIC, DM_BOUNDARY_PERIODIC, DM_BOUNDARY_PERIODIC,
+	DMDA_STENCIL_BOX, ntotal[X], ntotal[Y], ntotal[Z],
+	mpi_cartsz[X], mpi_cartsz[Y], mpi_cartsz[Z], 1, nhalo,
 	NULL, NULL, NULL, &da);
+
+  PetscCall(DMSetVecType(da, VECSTANDARD));
+  PetscCall(DMSetMatType(da, MATMPIAIJ));
+  PetscCall(DMSetUp(da));
 
   /* Create global vectors on DM */
   DMCreateGlobalVector(da,&x);
@@ -120,8 +119,6 @@ int psi_petsc_init(psi_t * obj, fe_t * fe, f_vare_t fepsilon){
 
   /* Create matrix on DM pre-allocated according to distributed array structure */
   DMCreateMatrix(da,&A);
-  DMSetMatType(da,MATMPIAIJ); 
-  DMSetMatrixPreallocateOnly(da,PETSC_TRUE);
 
   /* Initialise solver context and preconditioner */
 
@@ -613,7 +610,7 @@ int psi_petsc_copy_psi_to_da(psi_t * obj) {
 	ic = i - noffset[X] + 1;
 
 	index = cs_index(obj->cs, ic,jc,kc);
-	psi_3d[k][j][i] = obj->psi[index];
+	psi_3d[k][j][i] = obj->psi->data[index];
 
       }
     }
@@ -670,7 +667,7 @@ int psi_petsc_copy_da_to_psi(psi_t * obj) {
 	ic = i - noffset[X] + 1;
 
 	index = cs_index(obj->cs, ic,jc,kc);
-	obj->psi[index] = psi_3d[k][j][i];
+	obj->psi->data[index] = psi_3d[k][j][i];
 
       }
     }
@@ -706,8 +703,6 @@ int psi_petsc_set_rhs(psi_t * obj) {
    double eunit, beta;
    double epsilon, e0[3];
 
-   physics_t * phys = NULL;
- 
    assert(obj);
 
    cs_cartsz(obj->cs, mpi_cartsz);
@@ -741,10 +736,11 @@ int psi_petsc_set_rhs(psi_t * obj) {
      }
    }
 
-  /* Modify right hand side for external electric field */
-  physics_ref(&phys);
-  physics_e0(phys, e0);
+   /* Modify right hand side for external electric field */
 
+   e0[X] = obj->e0[X];
+   e0[Y] = obj->e0[Y];
+   e0[Z] = obj->e0[Z];
   if (e0[X] || e0[Y] || e0[Z]) {
 
     cs_ntotal(obj->cs, ntotal);
@@ -855,8 +851,6 @@ int psi_petsc_set_rhs_vare(psi_t * obj, fe_es_t * fe, f_vare_t fepsilon) {
    double eunit, beta;
    double eps, e0[3];
 
-   physics_t * phys = NULL;
- 
    assert(obj);
    assert(fe);
    assert(fepsilon);
@@ -893,8 +887,10 @@ int psi_petsc_set_rhs_vare(psi_t * obj, fe_es_t * fe, f_vare_t fepsilon) {
    }
 
   /* Modify right hand side for external electric field */
-  physics_ref(&phys);
-  physics_e0(phys, e0);
+
+   e0[X] = obj->e0[X];
+   e0[Y] = obj->e0[Y];
+   e0[Z] = obj->e0[Z];
 
   if (e0[X] || e0[Y] || e0[Z]) {
 
