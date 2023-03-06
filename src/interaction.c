@@ -736,10 +736,11 @@ int colloids_update_discrete_forces_phi(colloids_info_t * cinfo, field_t * phi, 
   timestep = physics_control_timestep(phys);
 
 // global communication stuff
-  int rank;
+  int my_id, centre_id, centrefound = 0, totnum_ids;
   MPI_Comm comm;
   cs_cart_comm(cinfo->cs, &comm);
-  MPI_Comm_rank(comm, &rank); 
+  MPI_Comm_rank(comm, &my_id); 
+  MPI_Comm_size(comm, &totnum_ids);
 /* <------------------------------------------------------------------------- */
 
   cs_nlocal(cinfo->cs, nlocal);
@@ -759,17 +760,31 @@ int colloids_update_discrete_forces_phi(colloids_info_t * cinfo, field_t * phi, 
   rt_double_parameter(rt, "vesicle_radius", &vesicle_radius);
   rt_int_parameter(rt, "freq_write", &writefreq);
 
-  /* Get centerofmass from any particle */
-  colloids_info_all_head(cinfo, &pc);
-  for ( ; pc; pc = pc->nextall) {
-    if (pc != NULL) {
-      centerofmass[X] = pc->centerofmass[X];
-      centerofmass[Y] = pc->centerofmass[Y];
-      centerofmass[Z] = pc->centerofmass[Z];
-      MPI_Bcast(centerofmass, 3, MPI_DOUBLE, rank, comm);
+/* Get centerofmass from central particle (bc we know there's only 1) */
+  colloids_info_local_head(cinfo, &pc);
+  for ( ; pc; pc = pc->nextlocal) {
+    if (pc->s.iscentre == 1) {
+      centrefound = 1;
+      centerofmass[X] = pc->s.r[X];
+      centerofmass[Y] = pc->s.r[Y];
+      centerofmass[Z] = pc->s.r[Z];
+      MPI_Comm_rank(comm, &centre_id);
     }
   }
-  
+  MPI_Barrier(comm);
+
+// If you found it, send it. Else, receive it 
+  if (centrefound == 1) {
+    for (int id = 0; id < totnum_ids; id++) {
+      if (my_id == id) continue;
+      MPI_Send(centerofmass, 3, MPI_DOUBLE, id, 0, comm);
+    }
+  }
+  MPI_Barrier(comm);
+  if (centrefound != 1) {
+    MPI_Recv(centerofmass, 3, MPI_DOUBLE, MPI_ANY_SOURCE, 0, comm, MPI_STATUS_IGNORE);
+  }
+  MPI_Barrier(comm);
 
   /* Initialize subgrid_potential and vesicle_map */
   for (i = 1; i <= nlocal[X]; i++) {
@@ -799,13 +814,13 @@ int colloids_update_discrete_forces_phi(colloids_info_t * cinfo, field_t * phi, 
  
   if (!subgrid_switch_on) { 
     if (timestep % writefreq == 0) {
-      if (rank == 0) {
+      if (my_id == 0) {
         fp = fopen("TOT_INTERACT_FORCE_SUBGRID.txt", "a");
         fprintf(fp, "%14.7e,%14.7e,%14.7e\n", globalforce[X], globalforce[Y], globalforce[Z]);
         fclose(fp);
       }
 
-      if (rank == 0) {
+      if (my_id == 0) {
         fp = fopen("TOT_INTERACT_TORQUE_SUBGRID.txt", "a");
         fprintf(fp, "%14.7e,%14.7e,%14.7e\n", globaltorque[X], globaltorque[Y], globaltorque[Z]);
         fclose(fp);
@@ -1030,13 +1045,13 @@ int colloids_update_discrete_forces_phi(colloids_info_t * cinfo, field_t * phi, 
     MPI_Reduce(localforce, globalforce, 3, MPI_DOUBLE, MPI_SUM, 0, comm);
     MPI_Reduce(localtorque, globaltorque, 3, MPI_DOUBLE, MPI_SUM, 0, comm);
 
-    if (rank == 0) {
+    if (my_id == 0) {
       fp = fopen("TOT_INTERACT_FORCE_SUBGRID.txt", "a");
       fprintf(fp, "%14.7e,%14.7e,%14.7e\n", globalforce[X], globalforce[Y], globalforce[Z]);
       fclose(fp);
     }
 
-    if (rank == 0) {
+    if (my_id == 0) {
       fp = fopen("TOT_INTERACT_TORQUE_SUBGRID.txt", "a");
       fprintf(fp, "%14.7e,%14.7e,%14.7e\n", globaltorque[X], globaltorque[Y], globaltorque[Z]);
       fclose(fp);
