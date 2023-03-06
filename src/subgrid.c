@@ -964,7 +964,7 @@ int subgrid_flux_mask(pe_t * pe, colloids_info_t * cinfo, field_t * flux_mask, f
 	    flux_mask->data[addr_rank1(flux_mask->nsites, 2, index, 1)] = 1. - (1. - permeability[0])*gaussr*(1 - gaussalpha);
 	  }
 	*/
-	  flux_mask->data[addr_rank1(flux_mask->nsites, 2, index, 1)] = 1. - (1. - permeability[0])*gaussr*(1 - gaussalpha);
+	  flux_mask->data[addr_rank1(flux_mask->nsites, 2, index, 1)] = 1. - (1. - permeability[1])*gaussr*(1 - gaussalpha);
 	  u_mask->data[addr_rank1(u_mask->nsites, 1, index, 0)] = gaussalpha;
         }
 
