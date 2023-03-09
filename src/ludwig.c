@@ -717,7 +717,7 @@ void ludwig_run(const char * inputfile) {
 	/* Force in electrokinetic models is computed above */
       }
       else {
-	if (ncolloid != 0) {/* I want to go in gradmu method with particles*/ 
+	if (1) {/* I want to go in gradmu method with particles*/ 
 
 	  /* LC-droplet requires partial body force input and momentum
            * correction. This correction, via hydro_correct_momentum(),
