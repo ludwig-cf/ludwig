@@ -135,6 +135,8 @@ struct ludwig_s {
   field_t * q;              /* Tensor order parameter */
   field_t * subgrid_potential;   /* Phi-subgrid particles interaction field */
   field_t * vesicle_map;   /* 1 Inside the vesicle, 0 outside */
+  field_t * phi_gradmu;   /* 1 Inside the vesicle, 0 outside */
+  field_t * psi_gradmu;   /* 1 Inside the vesicle, 0 outside */
   field_t * flux_mask;   /* Phi-subgrid particles interaction field */
   field_t * u_mask;   /*  Phi-subgrid particles interaction field */
   field_grad_t * phi_grad;  /* Gradients for phi */
@@ -267,6 +269,8 @@ static int ludwig_rt(ludwig_t * ludwig) {
   if (ludwig->u_mask) field_init_io_info(ludwig->u_mask, io_grid, form, form);
   if (ludwig->subgrid_potential) field_init_io_info(ludwig->subgrid_potential, io_grid, form, form);
   if (ludwig->vesicle_map) field_init_io_info(ludwig->vesicle_map, io_grid, form, form);
+  if (ludwig->phi_gradmu) field_init_io_info(ludwig->phi_gradmu, io_grid, form, form);
+  if (ludwig->psi_gradmu) field_init_io_info(ludwig->psi_gradmu, io_grid, form, form);
   if (ludwig->p) field_init_io_info(ludwig->p, io_grid, form, form);
   if (ludwig->q) field_init_io_info(ludwig->q, io_grid, form, form);
 
@@ -502,6 +506,8 @@ void ludwig_run(const char * inputfile) {
   if (ludwig->subgrid_potential) field_memcpy(ludwig->subgrid_potential, tdpMemcpyHostToDevice);
   if (ludwig->flux_mask) field_memcpy(ludwig->flux_mask, tdpMemcpyHostToDevice);
   if (ludwig->vesicle_map) field_memcpy(ludwig->vesicle_map, tdpMemcpyHostToDevice);
+  if (ludwig->phi_gradmu) field_memcpy(ludwig->phi_gradmu, tdpMemcpyHostToDevice);
+  if (ludwig->psi_gradmu) field_memcpy(ludwig->psi_gradmu, tdpMemcpyHostToDevice);
   if (ludwig->u_mask) field_memcpy(ludwig->u_mask, tdpMemcpyHostToDevice);
   if (ludwig->p)   field_memcpy(ludwig->p, tdpMemcpyHostToDevice);
   if (ludwig->q)   field_memcpy(ludwig->q, tdpMemcpyHostToDevice);
@@ -744,7 +750,7 @@ void ludwig_run(const char * inputfile) {
 				ludwig->wall,
                                 ludwig->pth, ludwig->fe, ludwig->map,
                                 ludwig->phi, ludwig->hydro,
-				ludwig->subgrid_potential, ludwig->rt, ludwig->vesicle_map);
+				ludwig->subgrid_potential, ludwig->rt, ludwig->vesicle_map, ludwig->phi_gradmu, ludwig->psi_gradmu);
 
 	  /* Ternary free energy gradmu requires of momentum correction
 	     after force calculation */
@@ -935,6 +941,28 @@ void ludwig_run(const char * inputfile) {
       }
     } 
 
+    if (is_phi_gradmu_output_step() || is_config_step()) {
+
+      if (ludwig->phi_gradmu) {
+	field_io_info(ludwig->phi_gradmu, &iohandler);
+	pe_info(ludwig->pe, "Writing phi_gradmu file at step %d!\n", step);
+	sprintf(filename,"%sphi_gradmu-%8.8d", subdirectory, step);
+	io_write_data(iohandler, filename, ludwig->phi_gradmu);
+      }
+    } 
+
+    if (is_psi_gradmu_output_step() || is_config_step()) {
+
+      if (ludwig->psi_gradmu) {
+	field_io_info(ludwig->psi_gradmu, &iohandler);
+	pe_info(ludwig->pe, "Writing psi_gradmu file at step %d!\n", step);
+	sprintf(filename,"%spsi_gradmu-%8.8d", subdirectory, step);
+	io_write_data(iohandler, filename, ludwig->psi_gradmu);
+      }
+    } 
+
+
+
     if (is_phi_output_step() || is_config_step()) {
 
       if (ludwig->phi) {
@@ -1108,6 +1136,19 @@ void ludwig_run(const char * inputfile) {
       pe_info(ludwig->pe, "Writing vesicle_map file at step %d!\n", step);
       sprintf(filename, "%svesicle_map-%8.8d", subdirectory, step);
       io_write_data(iohandler, filename, ludwig->vesicle_map);
+    }
+    if (ludwig->phi_gradmu) {
+      field_io_info(ludwig->phi_gradmu, &iohandler);
+      pe_info(ludwig->pe, "Writing phi_gradmu file at step %d!\n", step);
+      sprintf(filename, "%sphi_gradmu-%8.8d", subdirectory, step);
+      io_write_data(iohandler, filename, ludwig->phi_gradmu);
+    }
+
+    if (ludwig->psi_gradmu) {
+      field_io_info(ludwig->psi_gradmu, &iohandler);
+      pe_info(ludwig->pe, "Writing psi_gradmu file at step %d!\n", step);
+      sprintf(filename, "%spsi_gradmu-%8.8d", subdirectory, step);
+      io_write_data(iohandler, filename, ludwig->psi_gradmu);
     }
 
     if (ludwig->subgrid_potential) {
@@ -1578,6 +1619,12 @@ int free_energy_init_rt(ludwig_t * ludwig) {
 
     field_create(pe, cs, 1, "vesicle_map", &ludwig->vesicle_map);
     field_init(ludwig->vesicle_map, 1, le);
+
+    field_create(pe, cs, 3, "phi_gradmu", &ludwig->phi_gradmu);
+    field_init(ludwig->phi_gradmu, 0, le);
+
+    field_create(pe, cs, 3, "psi_gradmu", &ludwig->psi_gradmu);
+    field_init(ludwig->psi_gradmu, 0, le);
 
     field_create(pe, cs, 1, "u_mask", &ludwig->u_mask);
     field_init(ludwig->u_mask, 1, le);

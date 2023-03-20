@@ -23,7 +23,8 @@ int is_measurement_step(void);
 int is_config_step(void);
 int is_config_at_end(void);
 int is_colloid_io_step(void);
-
+int is_phi_gradmu_output_step(void);
+int is_psi_gradmu_output_step(void);
 int is_phi_output_step(void);
 int is_mask_output_step(void);
 int is_vesicle_map_output_step(void);

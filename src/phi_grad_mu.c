@@ -26,18 +26,52 @@
 
 __global__ void phi_grad_mu_fluid_kernel(kernel_ctxt_t * ktx, field_t * phi,
 					 fe_t * fe, hydro_t * hydro,
-					field_t * subgrid_potential);
+					field_t * subgrid_potential, field_t * phi_gradmu, field_t * psi_gradmu);
 __global__ void phi_grad_mu_solid_kernel(kernel_ctxt_t * ktx, field_t * phi,
 					 fe_t * fe, hydro_t * hydro,
-					 map_t * map, field_t * subgrid_potential, rt_t * rt);
+					 map_t * map, field_t * subgrid_potential, rt_t * rt, field_t * phi_gradmu, field_t * psi_gradmu);
 __global__ void phi_grad_mu_external_kernel(kernel_ctxt_t * ktx, field_t * phi,
 					    double3 grad_mu, hydro_t * hydro);
 __global__ void phi_grad_mu_external_ll_kernel(kernel_ctxt_t * ktx, field_t * phi,
 					    double3 grad_mu_phi, double3 grad_mu_psi,
-						 hydro_t * hydro);
+						 hydro_t * hydro, field_t * phi_gradmu, field_t * psi_gradmu);
 __global__ void phi_grad_mu_external_ll_outside_vesicle_only_kernel(kernel_ctxt_t * ktx, field_t * phi,
 					    double3 grad_mu_phi, double3 grad_mu_psi,
-						 hydro_t * hydro, field_t * vesicle_map);
+						 hydro_t * hydro, field_t * vesicle_map, field_t * phi_gradmu, field_t * psi_gradmu);
+
+
+/*****************************************************************************
+ *
+ *  phi_grad_mu_set_zero
+ *
+ *  Accumulate local force resulting from constant external chemical
+ *  potential gradient.
+ *
+ *****************************************************************************/
+
+__host__ int phi_grad_mu_set_zero(cs_t * cs, field_t * phi_gradmu) {
+
+  int nlocal[3];
+  int index, ic, jc, kc;
+
+  cs_nlocal(phi_gradmu->cs, nlocal);
+
+  for (ic = 1; ic <= nlocal[X]; ic++) {
+    for (jc = 1; jc <= nlocal[Y]; jc++) {
+      for (kc = 1; kc <= nlocal[Z]; kc++) {
+
+        index = cs_index(phi_gradmu->cs, ic, jc, kc);
+
+        phi_gradmu->data[addr_rank1(phi_gradmu->nsites, 3, index, 0)] = 0;
+        phi_gradmu->data[addr_rank1(phi_gradmu->nsites, 3, index, 1)] = 0;
+        phi_gradmu->data[addr_rank1(phi_gradmu->nsites, 3, index, 2)] = 0;
+      }
+    }
+  }
+  return 0;
+}
+
+
 
 /*****************************************************************************
  *
@@ -49,7 +83,7 @@ __global__ void phi_grad_mu_external_ll_outside_vesicle_only_kernel(kernel_ctxt_
  *****************************************************************************/
 
 __host__ int phi_grad_mu_fluid(cs_t * cs, field_t * phi, fe_t * fe,
-			       hydro_t * hydro, field_t * subgrid_potential) {
+			       hydro_t * hydro, field_t * subgrid_potential, field_t * phi_gradmu, field_t * psi_gradmu) {
   int nlocal[3];
   dim3 nblk, ntpb;
 
@@ -75,7 +109,7 @@ __host__ int phi_grad_mu_fluid(cs_t * cs, field_t * phi, fe_t * fe,
 
   tdpLaunchKernel(phi_grad_mu_fluid_kernel, nblk, ntpb, 0, 0,
 		  ctxt->target, phi->target, fe_target, hydro->target,
-		sf_target);
+		sf_target, phi_gradmu->target, psi_gradmu->target);
 
   tdpAssert(tdpPeekAtLastError());
   tdpAssert(tdpDeviceSynchronize());
@@ -95,7 +129,7 @@ __host__ int phi_grad_mu_fluid(cs_t * cs, field_t * phi, fe_t * fe,
 
 __host__ int phi_grad_mu_solid(cs_t * cs, field_t * phi, fe_t * fe,
 			       hydro_t * hydro, map_t * map, 
-				field_t * subgrid_potential, rt_t * rt) {
+				field_t * subgrid_potential, rt_t * rt, field_t * phi_gradmu, field_t * psi_gradmu) {
   int nlocal[3];
   dim3 nblk, ntpb;
 
@@ -122,7 +156,7 @@ __host__ int phi_grad_mu_solid(cs_t * cs, field_t * phi, fe_t * fe,
 
   tdpLaunchKernel(phi_grad_mu_solid_kernel, nblk, ntpb, 0, 0,
 		  ctxt->target, phi->target, fe_target, hydro->target,
-		  map->target, sf_target, rt);
+		  map->target, sf_target, rt, phi_gradmu->target, psi_gradmu->target);
 
   tdpAssert(tdpPeekAtLastError());
   tdpAssert(tdpDeviceSynchronize());
@@ -203,7 +237,7 @@ __host__ int phi_grad_mu_external(cs_t * cs, field_t * phi, hydro_t * hydro) {
  *
  *****************************************************************************/
 
-__host__ int phi_grad_mu_external_ll(cs_t * cs, field_t * phi, hydro_t * hydro, field_t * vesicle_map, rt_t * rt) {
+__host__ int phi_grad_mu_external_ll(cs_t * cs, field_t * phi, hydro_t * hydro, field_t * vesicle_map, rt_t * rt, field_t * phi_gradmu, field_t * psi_gradmu) {
 
   int nlocal[3];
   int is_grad_mu_phi = 0;     /* Short circuit the kernel if not required. */
@@ -259,7 +293,7 @@ __host__ int phi_grad_mu_external_ll(cs_t * cs, field_t * phi, hydro_t * hydro, 
       kernel_ctxt_launch_param(ctxt, &nblk, &ntpb);
 
       tdpLaunchKernel(phi_grad_mu_external_ll_outside_vesicle_only_kernel, nblk, ntpb, 0, 0,
-		    ctxt->target, phi->target, grad_mu_phi, grad_mu_psi, hydro->target, vesicle_map->target);
+		    ctxt->target, phi->target, grad_mu_phi, grad_mu_psi, hydro->target, vesicle_map->target, phi_gradmu->target, psi_gradmu->target);
 
       tdpAssert(tdpPeekAtLastError());
       tdpAssert(tdpDeviceSynchronize());
@@ -277,7 +311,7 @@ __host__ int phi_grad_mu_external_ll(cs_t * cs, field_t * phi, hydro_t * hydro, 
       kernel_ctxt_launch_param(ctxt, &nblk, &ntpb);
 
       tdpLaunchKernel(phi_grad_mu_external_ll_kernel, nblk, ntpb, 0, 0,
-		    ctxt->target, phi->target, grad_mu_phi, grad_mu_psi, hydro->target);
+		    ctxt->target, phi->target, grad_mu_phi, grad_mu_psi, hydro->target, phi_gradmu->target, psi_gradmu->target);
 
       tdpAssert(tdpPeekAtLastError());
       tdpAssert(tdpDeviceSynchronize());
@@ -304,7 +338,7 @@ __host__ int phi_grad_mu_external_ll(cs_t * cs, field_t * phi, hydro_t * hydro, 
 
 __global__ void phi_grad_mu_fluid_kernel(kernel_ctxt_t * ktx, field_t * phi,
 					 fe_t * fe, hydro_t * hydro, 
-					field_t * subgrid_potential) {
+					field_t * subgrid_potential, field_t * phi_gradmu, field_t * psi_gradmu) {
   int kiterations;
   int kindex;
   assert(ktx);
@@ -361,7 +395,11 @@ __global__ void phi_grad_mu_fluid_kernel(kernel_ctxt_t * ktx, field_t * phi,
 
       force[X] = 0.0;
       force[X] += -phi0[0]*0.5*(mup1[0] - mum1[0] + up1 - um1);
+      phi_gradmu->data[addr_rank1(phi_gradmu->nsites, 3, index, 0)] += -phi0[0]*0.5*(mup1[0] - mum1[0] + up1 - um1);
+
       force[X] += -phi0[1]*0.5*(mup1[1] - mum1[1]);
+      psi_gradmu->data[addr_rank1(psi_gradmu->nsites, 3, index, 0)] += -phi0[1]*0.5*(mup1[1] - mum1[1]);
+
       if (timestep % writefreq == 0) localforce[X] -= phi0[0]*0.5*(up1 - um1);
     }
 
@@ -376,7 +414,11 @@ __global__ void phi_grad_mu_fluid_kernel(kernel_ctxt_t * ktx, field_t * phi,
 
       force[Y] = 0.0;
       force[Y] += -phi0[0]*0.5*(mup1[0] - mum1[0] + up1 - um1);
+      phi_gradmu->data[addr_rank1(phi_gradmu->nsites, 3, index, 1)] += -phi0[0]*0.5*(mup1[0] - mum1[0] + up1 - um1);
+
       force[Y] += -phi0[1]*0.5*(mup1[1] - mum1[1]);
+      psi_gradmu->data[addr_rank1(psi_gradmu->nsites, 3, index, 1)] += -phi0[1]*0.5*(mup1[1] - mum1[1]);
+
       if (timestep % writefreq == 0) localforce[Y] -= phi0[0]*0.5*(up1 - um1);
     }
 
@@ -391,10 +433,13 @@ __global__ void phi_grad_mu_fluid_kernel(kernel_ctxt_t * ktx, field_t * phi,
 
       force[Z] = 0.0;
       force[Z] += -phi0[0]*0.5*(mup1[0] - mum1[0] + up1 - um1);
+      phi_gradmu->data[addr_rank1(phi_gradmu->nsites, 3, index, 2)] += -phi0[0]*0.5*(mup1[0] - mum1[0] + up1 - um1);
+
       force[Z] += -phi0[1]*0.5*(mup1[1] - mum1[1]);
+      psi_gradmu->data[addr_rank1(psi_gradmu->nsites, 3, index, 2)] += -phi0[1]*0.5*(mup1[1] - mum1[1]);
+
       if (timestep % writefreq == 0) localforce[Z] -= phi0[0]*0.5*(up1 - um1);
     }
-
     hydro_f_local_add(hydro, index, force);
   }
 
@@ -434,7 +479,7 @@ __global__ void phi_grad_mu_fluid_kernel(kernel_ctxt_t * ktx, field_t * phi,
 
 __global__ void phi_grad_mu_solid_kernel(kernel_ctxt_t * ktx, field_t * field,
 					 fe_t * fe, hydro_t * hydro,
-					 map_t * map, field_t * subgrid_potential, rt_t * rt) {
+					 map_t * map, field_t * subgrid_potential, rt_t * rt, field_t * phi_gradmu, field_t * psi_gradmu) {
   int kiterations;
   int kindex;
   assert(ktx);
@@ -514,7 +559,11 @@ __global__ void phi_grad_mu_solid_kernel(kernel_ctxt_t * ktx, field_t * field,
       }
 
       force[X] -= phi[0]*0.5*(mup1[0] - mum1[0] + up1 - um1);
+      phi_gradmu->data[addr_rank1(phi_gradmu->nsites, 3, index0, 0)] -= phi[0]*0.5*(mup1[0] - mum1[0] + up1 - um1);
+
       force[X] -= phi[1]*0.5*(mup1[1] - mum1[1]);
+      psi_gradmu->data[addr_rank1(psi_gradmu->nsites, 3, index0, 0)] -= phi[1]*0.5*(mup1[1] - mum1[1]);
+
       if (timestep % writefreq == 0) localforce[X] -= phi[0]*0.5*(up1 - um1);
 
     }
@@ -553,7 +602,11 @@ __global__ void phi_grad_mu_solid_kernel(kernel_ctxt_t * ktx, field_t * field,
       }
 
       force[Y] -= phi[0]*0.5*(mup1[0] - mum1[0] + up1 - um1);
+      phi_gradmu->data[addr_rank1(phi_gradmu->nsites, 3, index0, 1)] -= phi[0]*0.5*(mup1[0] - mum1[0] + up1 - um1);
+
       force[Y] -= phi[1]*0.5*(mup1[1] - mum1[1]);
+      psi_gradmu->data[addr_rank1(psi_gradmu->nsites, 3, index0, 1)] -= phi[1]*0.5*(mup1[1] - mum1[1]);
+
       if (timestep % writefreq == 0) localforce[Y] -= phi[0]*0.5*(up1 - um1);
       //if (timestep % writefreq == 0 && up1-um1 != 0.0) printf("fluid %14.7e\n", localforce[Y]);
     }
@@ -592,7 +645,11 @@ __global__ void phi_grad_mu_solid_kernel(kernel_ctxt_t * ktx, field_t * field,
       }
 
       force[Z] -= phi[0]*0.5*(mup1[0] - mum1[0] + up1 - um1);
+      phi_gradmu->data[addr_rank1(phi_gradmu->nsites, 3, index0, 2)] -= phi[0]*0.5*(mup1[0] - mum1[0] + up1 - um1);
+
       force[Z] -= phi[1]*0.5*(mup1[1] - mum1[1]);
+      psi_gradmu->data[addr_rank1(psi_gradmu->nsites, 3, index0, 2)] -= phi[1]*0.5*(mup1[1] - mum1[1]);
+
       if (timestep % writefreq == 0) localforce[Z] -= phi[0]*0.5*(up1 - um1);
 
     }
@@ -649,6 +706,7 @@ __global__ void phi_grad_mu_external_kernel(kernel_ctxt_t * ktx, field_t * phi,
     force[Z] = -phi0*grad_mu.z;
 
     hydro_f_local_add(hydro, index, force);
+
   }
 
   return;
@@ -667,7 +725,7 @@ __global__ void phi_grad_mu_external_kernel(kernel_ctxt_t * ktx, field_t * phi,
 
 __global__ void phi_grad_mu_external_ll_kernel(kernel_ctxt_t * ktx, field_t * phi,
 					    double3 grad_mu_phi, double3 grad_mu_psi, 
-						hydro_t * hydro) {
+						hydro_t * hydro, field_t * phi_gradmu, field_t * psi_gradmu) {
   int kiterations;
   int kindex;
 
@@ -693,6 +751,14 @@ __global__ void phi_grad_mu_external_ll_kernel(kernel_ctxt_t * ktx, field_t * ph
     force[Z] = -phi0*grad_mu_phi.z - psi0*grad_mu_psi.z;
 
     hydro_f_local_add(hydro, index, force);
+    phi_gradmu->data[addr_rank1(phi_gradmu->nsites, 3, index, 0)] += -phi0*grad_mu_phi.x;
+    phi_gradmu->data[addr_rank1(phi_gradmu->nsites, 3, index, 1)] += -phi0*grad_mu_phi.y;
+    phi_gradmu->data[addr_rank1(phi_gradmu->nsites, 3, index, 2)] += -phi0*grad_mu_phi.z;
+ 
+    psi_gradmu->data[addr_rank1(psi_gradmu->nsites, 3, index, 0)] += -psi0*grad_mu_psi.x;
+    psi_gradmu->data[addr_rank1(psi_gradmu->nsites, 3, index, 1)] += -psi0*grad_mu_psi.y;
+    psi_gradmu->data[addr_rank1(psi_gradmu->nsites, 3, index, 2)] += -psi0*grad_mu_psi.z;
+ 
   }
 
   return;
@@ -709,7 +775,7 @@ __global__ void phi_grad_mu_external_ll_kernel(kernel_ctxt_t * ktx, field_t * ph
 
 __global__ void phi_grad_mu_external_ll_outside_vesicle_only_kernel(kernel_ctxt_t * ktx, field_t * phi,
 					    double3 grad_mu_phi, double3 grad_mu_psi, 
-						hydro_t * hydro, field_t * vesicle_map) {
+						hydro_t * hydro, field_t * vesicle_map, field_t * phi_gradmu, field_t * psi_gradmu) {
   int kiterations;
   int kindex;
 
@@ -737,9 +803,15 @@ __global__ void phi_grad_mu_external_ll_outside_vesicle_only_kernel(kernel_ctxt_
       force[Z] = -phi0*grad_mu_phi.z - psi0*grad_mu_psi.z;
 
       hydro_f_local_add(hydro, index, force);
+      phi_gradmu->data[addr_rank1(phi_gradmu->nsites, 3, index, 0)] += -phi0*grad_mu_phi.x;
+      phi_gradmu->data[addr_rank1(phi_gradmu->nsites, 3, index, 1)] += -phi0*grad_mu_phi.y;
+      phi_gradmu->data[addr_rank1(phi_gradmu->nsites, 3, index, 2)] += -phi0*grad_mu_phi.z;
+
+      psi_gradmu->data[addr_rank1(psi_gradmu->nsites, 3, index, 0)] += -psi0*grad_mu_psi.x;
+      psi_gradmu->data[addr_rank1(psi_gradmu->nsites, 3, index, 1)] += -psi0*grad_mu_psi.y;
+      psi_gradmu->data[addr_rank1(psi_gradmu->nsites, 3, index, 2)] += -psi0*grad_mu_psi.z;
+ 
     }
-
   }
-
   return;
 }

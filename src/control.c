@@ -26,6 +26,8 @@ static int freq_statistics = 100;
 static int freq_measure    = 100000000;
 static int freq_config     = 100000000;
 static int freq_phi        = 100000000;
+static int freq_phi_gradmu        = 100000000;
+static int freq_psi_gradmu        = 100000000;
 static int freq_mask       = 100000000;
 static int freq_vesicle_map       = 100000000;
 static int freq_subgrid_potential       = 100000000;
@@ -72,6 +74,8 @@ int init_control(pe_t * pe, rt_t * rt) {
   rt_int_parameter(rt, "freq_measure", &freq_measure);
   rt_int_parameter(rt, "freq_config", &freq_config);
   rt_int_parameter(rt, "freq_phi", &freq_phi);
+  rt_int_parameter(rt, "freq_phi_gradmu", &freq_phi_gradmu);
+  rt_int_parameter(rt, "freq_psi_gradmu", &freq_psi_gradmu);
   rt_int_parameter(rt, "freq_mask", &freq_mask);
   rt_int_parameter(rt, "freq_vesicle_map", &freq_vesicle_map);
   rt_int_parameter(rt, "freq_subgrid_potential", &freq_subgrid_potential);
@@ -140,6 +144,34 @@ int is_phi_output_step() {
   physics_ref(&phys);
   return ((physics_control_timestep(phys) % freq_phi) == 0);
 }
+
+
+/*****************************************************************************
+ *
+ *  is_phi_gradmu_output_step
+ *
+ *****************************************************************************/
+
+int is_phi_gradmu_output_step() {
+  physics_t * phys = NULL;
+  physics_ref(&phys);
+  return ((physics_control_timestep(phys) % freq_phi_gradmu) == 0);
+}
+
+
+/*****************************************************************************
+ *
+ *  is_psi_gradmu_output_step
+ *
+ *****************************************************************************/
+
+int is_psi_gradmu_output_step() {
+  physics_t * phys = NULL;
+  physics_ref(&phys);
+  return ((physics_control_timestep(phys) % freq_psi_gradmu) == 0);
+}
+
+
 
 /*****************************************************************************
  *
