@@ -18,6 +18,7 @@
 #ifndef LUDWIG_STENCIL_H
 #define LUDWIG_STENCIL_H
 
+#include <stdint.h>
 #include <math.h>
 #include "cartesian.h"     /* not used explicitly here, but required ... */
 
