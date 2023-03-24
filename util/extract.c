@@ -238,7 +238,8 @@ int main(int argc, char ** argv) {
 
       printf("%s %s\n", argv[0], argv[argc-1]);
       printf("Identified file name as %s\n", stub);
-      sprintf(filename, "%s-metadata.%3.3d-%3.3d", stub, nfile, ifile);
+      snprintf(filename, FILENAME_MAX-1, "%s-metadata.%3.3d-%3.3d",
+	       stub, nfile, ifile);
       printf("Attempt to read metadata file %s\n", filename);
       pe_create(MPI_COMM_WORLD, PE_QUIET, &pe);
       ifail = io_metadata_from_file(pe, filename, &meta);
@@ -267,11 +268,11 @@ int main(int argc, char ** argv) {
       exit(-1);
     }
     else {
-      char buf[FILENAME_MAX] = {0};
+      char buf[BUFSIZ] = {0};
       char * filename = buf;
       int ifile = file_get_file_index(argv[optind]);
       int nfile = file_get_file_nfile(argv[optind]);
-      sprintf(filename, "%s.%3.3d-%3.3d.meta", stub, nfile, ifile);
+      snprintf(filename, BUFSIZ-1, "%s.%3.3d-%3.3d.meta", stub, nfile, ifile);
       read_meta_data_file(filename, &metadata);
     }
   }
