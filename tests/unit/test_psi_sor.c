@@ -238,7 +238,6 @@ int test_psi_solver_sor_var_epsilon_solve(pe_t * pe) {
   psi_halo_rho(psi);
 
   /* Time step is -1 to avoid output */
-  /* FIXME: want some abstraction in args ... */
   {
     var_epsilon_t user = {.fe = NULL, .epsilon = fepsilon_constant};
 

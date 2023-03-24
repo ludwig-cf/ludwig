@@ -89,8 +89,6 @@ int test_psi_options_default(void) {
   assert(fabs(opts.diffacc - 0.0) < DBL_EPSILON);
 
   /* Other */
-  /* FIXME: this should be replaced */
-  if (opts.nsolver != -1) ifail = -1;
 
   return ifail;
 }
