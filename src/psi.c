@@ -18,14 +18,10 @@
  *****************************************************************************/
 
 #include <assert.h>
-#include <limits.h>
 #include <math.h>
+#include <limits.h>
 
-#include "pe.h"
-#include "coords.h"
-#include "util.h"
-#include "map.h"
-#include "psi_gradients.h"
+#include "psi.h"
 
 /*****************************************************************************
  *
@@ -83,6 +79,8 @@ int psi_free(psi_t ** psi) {
 int psi_initialise(pe_t * pe, cs_t * cs, const psi_options_t * opts,
 		   psi_t * psi) {
 
+  int ifail = 0;
+
   assert(pe);
   assert(cs);
   assert(opts);
@@ -116,6 +114,7 @@ int psi_initialise(pe_t * pe, cs_t * cs, const psi_options_t * opts,
 
   /* Solver options */
   psi->solver = opts->solver;
+  ifail = stencil_create(opts->solver.nstencil, &psi->stencil);
 
   /* Nernst-Planck */
   psi->multisteps = opts->nsmallstep;
@@ -132,7 +131,7 @@ int psi_initialise(pe_t * pe, cs_t * cs, const psi_options_t * opts,
 
   psi->nfreq_io = INT_MAX;
 
-  return 0;
+  return ifail;
 }
 
 /*****************************************************************************
@@ -145,6 +144,7 @@ int psi_finalise(psi_t * psi) {
 
   assert(psi->psi);
 
+  stencil_free(&psi->stencil);
   field_free(psi->rho);
   field_free(psi->psi);
 

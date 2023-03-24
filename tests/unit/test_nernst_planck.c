@@ -23,18 +23,12 @@
 #include "pe.h"
 #include "coords.h"
 #include "physics.h"
-#include "control.h"
 #include "map.h"
-#include "psi.h"
 #include "psi_sor.h"
-#include "psi_stats.h"
 #include "fe_electro.h"
 #include "nernst_planck.h"
-#include "util_fopen.h"
-#include "tests.h"
 
 static int test_nernst_planck_driver(pe_t * pe);
-static int test_io(cs_t * cs, psi_t * psi, int tstep);
 
 /*****************************************************************************
  *
@@ -94,7 +88,6 @@ static int test_nernst_planck_driver(pe_t * pe) {
 
   int nlocal[3];
   int noffst[3];
-  int test_output_required = 0;
   int mpi_cartsz[3];
   int mpi_cartcoords[3];
 
@@ -147,7 +140,7 @@ static int test_nernst_planck_driver(pe_t * pe) {
   opts.epsilon2 = epsilon;
   psi_create(pe, cs, &opts, &psi);
 
-  /* Care. the free energy gets the temperatue from global physics_t. */
+  /* Care. the free energy gets the temperature from global physics_t. */
   fe_electro_create(pe, psi, &fe);
 
   /* wall charge density */
@@ -208,12 +201,17 @@ static int test_nernst_planck_driver(pe_t * pe) {
   map_halo(map);
 
   psi_halo_psi(psi);
-  psi_sor_poisson(psi, -1);
+
+  {
+    psi_solver_sor_t * sor = NULL;
+    psi_solver_sor_create(psi, &sor);
+    psi_solver_sor_solve(sor, -1);
+    psi_solver_sor_free(&sor);
+  }
+
   psi_halo_rho(psi);
 
   nernst_planck_driver(psi, (fe_t *) fe, map);
-
-  if (test_output_required) test_io(cs, psi, 0);
 
   /* We adopt a rather simple way to extract the answer from the
    * MPI task holding the centre of the system. The charge
@@ -261,96 +259,6 @@ static int test_nernst_planck_driver(pe_t * pe) {
   psi_free(&psi);
   cs_free(cs);
   physics_free(phys);
-
-  return 0;
-}
-
-/*****************************************************************************
- *
- *  test_io
- *
- *****************************************************************************/
-
-static int test_io(cs_t * cs, psi_t * psi, int tstep) {
-
-  int ntotal[3];
-  int nlocal[3];
-  int ic, jc, kc, index;
-
-  double * field;               /* 1-d field (local) */
-  double * psifield;            /* 1-d psi field for output */
-  double * rho0field;           /* 1-d rho0 field for output */
-  double * rho1field;           /* 1-d rho0 field for output */
-
-  char filename[BUFSIZ];
-  FILE * out;
-  MPI_Comm comm;
-
-  cs_nlocal(cs, nlocal);
-  cs_ntotal(cs, ntotal);
-  cs_cart_comm(cs, &comm);
-
-  jc = 2;
-  kc = 2;
-
-  /* 1D output. calloc() is used to zero the arays, then
-   * MPI_Gather to get complete picture. */
-
-  field = (double *) calloc(nlocal[X], sizeof(double));
-  psifield = (double *) calloc(ntotal[X], sizeof(double));
-  rho0field = (double *) calloc(ntotal[X], sizeof(double));
-  rho1field = (double *) calloc(ntotal[X], sizeof(double));
-  assert(field);
-  assert(psifield);
-  assert(rho0field);
-  assert(rho1field);
-  if (field == NULL) pe_fatal(psi->pe, "calloc(field) failed\n");
-  if (psifield == NULL) pe_fatal(psi->pe, "calloc(psifield) failed\n");
-  if (rho0field == NULL) pe_fatal(psi->pe, "calloc(rho0field) failed\n");
-  if (rho1field == NULL) pe_fatal(psi->pe, "calloc(rho1field) failed\n");
-
-  for (ic = 1; ic <= nlocal[X]; ic++) {
-
-    index = cs_index(cs, ic, jc, kc);
-    psi_psi(psi, index, field + ic - 1);
-  }
-
-  MPI_Gather(field, nlocal[X], MPI_DOUBLE,
-	     psifield, nlocal[X], MPI_DOUBLE, 0, comm);
-
-  for (ic = 1; ic <= nlocal[X]; ic++) {
-    index = cs_index(cs, ic, jc, kc);
-    psi_rho(psi, index, 0, field + ic - 1);
-  }
-
-  MPI_Gather(field, nlocal[X], MPI_DOUBLE,
-	     rho0field, nlocal[X], MPI_DOUBLE, 0, comm);
-
-  for (ic = 1; ic <= nlocal[X]; ic++) {
-    index = cs_index(cs, ic, jc, kc);
-    psi_rho(psi, index, 1, field + ic - 1);
-  }
-
-  MPI_Gather(field, nlocal[X], MPI_DOUBLE,
-	     rho1field, nlocal[X], MPI_DOUBLE, 0, comm);
-
-  if (cs_cart_rank(cs) == 0) {
-
-    sprintf(filename, "np_test-%d.dat", tstep);
-    out = util_fopen(filename, "w");
-    if (out == NULL) pe_fatal(psi->pe, "Could not open %s\n", filename);
-
-    for (ic = 1; ic <= ntotal[X]; ic++) {
-      fprintf(out, "%d %14.7e %14.7e %14.7e\n", ic, psifield[ic-1],
-	      rho0field[ic-1], rho1field[ic-1]);
-    }
-    fclose(out);
-  }
-
-  free(rho1field);
-  free(rho0field);
-  free(psifield);
-  free(field);
 
   return 0;
 }

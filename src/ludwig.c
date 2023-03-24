@@ -101,12 +101,11 @@
 /* Electrokinetics */
 #include "psi.h"
 #include "psi_rt.h"
-#include "psi_sor.h"
 #include "psi_stats.h"
 #include "psi_force.h"
+#include "psi_solver.h"
 #include "psi_colloid.h"
 #include "nernst_planck.h"
-#include "psi_petsc.h"
 
 /* Statistics */
 #include "stats_colloid.h"
@@ -146,7 +145,8 @@ struct ludwig_s {
   wall_t * wall;            /* Side walls / Porous media */
   noise_t * noise_rho;      /* Lattice fluctuation generator (rho) */
   noise_t * noise_phi;      /* Binary fluid noise generation (fluxes) */
-  f_vare_t epsilon;         /* Variable epsilon function for Poisson solver */
+
+  psi_solver_t * poisson;      /* Poisson solver */
 
   fe_t * fe;                   /* Free energy "polymorphic" version */
   ch_t * ch;                   /* Cahn Hilliard (surfactants) */
@@ -236,10 +236,6 @@ static int ludwig_rt(ludwig_t * ludwig) {
 
   physics_init_rt(rt, ludwig->phys); 
   physics_info(pe, ludwig->phys);
-
-#ifdef PETSC
-  if (ludwig->psi) psi_petsc_init(ludwig->psi, ludwig->fe, ludwig->epsilon);
-#endif
 
   lb_run_time(pe, cs, rt, &ludwig->lb);
   collision_run_time(pe, rt, ludwig->lb, ludwig->noise_rho);
@@ -617,11 +613,9 @@ void ludwig_run(const char * inputfile) {
       /* Poisson solve */
 
       TIMER_start(TIMER_ELECTRO_POISSON);
-#ifdef PETSC
-      psi_petsc_solve(ludwig->psi, ludwig->fe, ludwig->epsilon);
-#else
-      psi_sor_solve(ludwig->psi, ludwig->fe, ludwig->epsilon, step);
-#endif
+
+      ludwig->poisson->impl->solve(ludwig->poisson, step);
+
       TIMER_stop(TIMER_ELECTRO_POISSON);
 
       if (ludwig->hydro) {
@@ -658,8 +652,8 @@ void ludwig_run(const char * inputfile) {
 
           /* Force calculation as divergence of stress tensor */
 	  if (flag == PSI_FORCE_DIVERGENCE) {
-	    psi_force_divstress_d3qx(ludwig->psi, ludwig->fe, ludwig->hydro,
-				  ludwig->map, ludwig->collinfo);
+	    psi_force_divstress(ludwig->psi, ludwig->fe, ludwig->hydro,
+				ludwig->collinfo);
 	  }
 	  TIMER_stop(TIMER_FORCE_CALCULATION);
 
@@ -987,9 +981,8 @@ void ludwig_run(const char * inputfile) {
   MPI_Barrier(comm);
 
   /* Shut down cleanly. Give the timer statistics. Finalise PE. */
-#ifdef PETSC
-  if (ludwig->psi) psi_petsc_finish();
-#endif
+
+  if (ludwig->poisson) ludwig->poisson->impl->free(&ludwig->poisson);
   if (ludwig->psi) psi_free(&ludwig->psi);
 
   if (ludwig->stat_rheo) stats_rheology_free(ludwig->stat_rheo);
@@ -1762,6 +1755,7 @@ int free_energy_init_rt(ludwig_t * ludwig) {
   }
   else if(strcmp(description, "fe_electro") == 0) {
 
+    int ifail = 0;
     fe_electro_t * fe = NULL;
     fe_force_method_enum_t method = fe_force_method_default();
     int psi_method = PSI_FORCE_NONE;
@@ -1807,6 +1801,7 @@ int free_energy_init_rt(ludwig_t * ludwig) {
     pe_info(pe, "Parameters:\n");
 
     {
+      /* Options here currently include solver options ... */
       psi_options_t opts = psi_options_default(nhalo);
       psi_options_rt(pe, cs, rt, &opts);
       psi_create(pe, cs, &opts, &ludwig->psi);
@@ -1820,6 +1815,16 @@ int free_energy_init_rt(ludwig_t * ludwig) {
     /* Create FE objects and set function pointers */
     fe_electro_create(pe, ludwig->psi, &fe);
     ludwig->fe = (fe_t *) fe;
+
+    /* Uniform solver ok */
+
+    ifail = psi_solver_create(ludwig->psi, &ludwig->poisson);
+    if (ifail != 0) {
+      pe_info(pe, "Poisson solver initialisation failed\n");
+      pe_info(pe, "This probably means you specified \"petsc\" but it has\n");
+      pe_info(pe, "not been compiled. Please specify sor in the input.\n");
+      pe_fatal(pe, "Please check and try again\n");
+    }
   }
   else if(strcmp(description, "fe_electro_symmetric") == 0) {
 
@@ -1925,11 +1930,28 @@ int free_energy_init_rt(ludwig_t * ludwig) {
     /* If permittivities really not the same number... */
 
     if (util_double_same(e1, e2)) {
+      int ifail = 0;
+      ifail = psi_solver_create(ludwig->psi, &ludwig->poisson);
+      if (ifail != 0) {
+	pe_info(pe, "Poisson solver initialisation failed\n");
+	pe_info(pe, "This may mean you specified \"petsc\" but it has\n");
+	pe_info(pe, "not been compiled. Please specify sor in the input.\n");
+	pe_fatal(pe, "Please check and try again\n");
+      }
       pe_info(pe, "Poisson solver:           %15s\n", "uniform");
     }
     else {
+      int ifail = 0;
+      var_epsilon_t user = {.fe = (fe_t *) fes,
+			    .epsilon = (var_epsilon_ft) fe_es_var_epsilon};
+      ifail = psi_solver_var_epsilon_create(ludwig->psi, user, &ludwig->poisson);
+      if (ifail != 0) {
+	pe_info(pe, "Poisson solver initialisation failed\n");
+	pe_info(pe, "This may mean you specified \"petsc\" but it has\n");
+	pe_info(pe, "not been compiled. Please specify sor in the input.\n");
+	pe_fatal(pe, "Please check and try again\n");
+      }
       pe_info(pe, "Poisson solver:           %15s\n", "heterogeneous");
-      ludwig->epsilon = (f_vare_t) fe_es_var_epsilon;
     }
 
     /* Force */

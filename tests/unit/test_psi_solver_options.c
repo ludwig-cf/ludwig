@@ -25,6 +25,7 @@
 
 int test_psi_poisson_solver_to_string(void);
 int test_psi_poisson_solver_from_string(void);
+int test_psi_poisson_solver_default(int argc, char ** argv);
 int test_psi_solver_options_default(void);
 int test_psi_solver_options_type(void);
 int test_psi_solver_options_to_json(void);
@@ -36,7 +37,7 @@ int test_psi_solver_options_from_json(void);
  *
  *****************************************************************************/
 
-int test_psi_solver_options_suite(void) {
+int test_psi_solver_options_suite(int argc, char ** argv) {
 
   pe_t * pe = NULL;
 
@@ -47,6 +48,7 @@ int test_psi_solver_options_suite(void) {
 
   test_psi_poisson_solver_to_string();
   test_psi_poisson_solver_from_string();
+  test_psi_poisson_solver_default(argc, argv);
   test_psi_solver_options_default();
   test_psi_solver_options_type();
   test_psi_solver_options_to_json();
@@ -134,6 +136,40 @@ int test_psi_poisson_solver_from_string(void) {
 
 /*****************************************************************************
  *
+ *  test_psi_poisson_solver_default
+ *
+ *****************************************************************************/
+
+int test_psi_poisson_solver_default(int argc, char ** argv) {
+
+  int ifail = 0;
+
+  {
+    /* No Petsc */
+    psi_poisson_solver_enum_t psolver = psi_poisson_solver_default();
+    if (psolver != PSI_POISSON_SOLVER_SOR) ifail = -1;
+    assert(ifail == 0);
+  }
+
+  {
+    /* Petsc. This requires check with PetscInitialised(). */
+    int havePetsc = 0;
+
+    PetscInitialize(&argc, &argv, (char *) 0, NULL);
+    PetscInitialised(&havePetsc);
+    if (havePetsc) {
+      psi_poisson_solver_enum_t psolver = psi_poisson_solver_default();
+      if (psolver != PSI_POISSON_SOLVER_PETSC) ifail = -1;
+      assert(ifail == 0);
+    }
+    PetscFinalize();
+  }
+
+  return ifail;
+}
+
+/*****************************************************************************
+ *
  *  test_psi_solver_options_default
  *
  *****************************************************************************/
@@ -143,7 +179,7 @@ int test_psi_solver_options_default(void) {
   int ifail = 0;
   psi_solver_options_t pso = psi_solver_options_default();
 
-  assert(pso.psolver  == PSI_POISSON_SOLVER_SOR);
+  assert(pso.psolver  == psi_poisson_solver_default());
   assert(pso.maxits   == 10000);
   assert(pso.verbose  == 0);
   assert(pso.nfreq    == INT_MAX);

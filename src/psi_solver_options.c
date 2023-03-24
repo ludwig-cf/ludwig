@@ -4,6 +4,9 @@
  *
  *  Container for Poission solver options.
  *
+ *  nb. The default solver type is Petsc if Petsc is available,
+ *      otherwise fall back to the internal sor implementation.
+ *
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -20,6 +23,23 @@
 
 #include "psi_solver_options.h"
 #include "util.h"
+
+/*****************************************************************************
+ *
+ *  psi_poisson_solver_default
+ *
+ *****************************************************************************/
+
+psi_poisson_solver_enum_t psi_poisson_solver_default(void) {
+
+  int havePetsc = 0;
+  psi_poisson_solver_enum_t psolver = PSI_POISSON_SOLVER_SOR;
+
+  PetscInitialised(&havePetsc);
+  if (havePetsc) psolver = PSI_POISSON_SOLVER_PETSC;
+
+  return psolver;
+}
 
 /*****************************************************************************
  *
@@ -77,7 +97,8 @@ psi_poisson_solver_enum_t psi_poisson_solver_from_string(const char * str) {
 
 psi_solver_options_t psi_solver_options_default(void) {
 
-  psi_solver_options_t pso = psi_solver_options_type(PSI_POISSON_SOLVER_SOR);
+  psi_poisson_solver_enum_t psolver = psi_poisson_solver_default();
+  psi_solver_options_t pso = psi_solver_options_type(psolver);
 
   return pso;
 }

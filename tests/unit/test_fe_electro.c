@@ -293,6 +293,7 @@ static int do_test3(pe_t * pe, cs_t * cs, physics_t * phys) {
 
   /* With a potential (only): explicitly set the relevant terms
    * (we need to know the differencing scheme in fe_electro.c). */
+  /* Note these values don't test the sign of the field terms. */
 
   psi0 = 1.0;
   psi1 = 2.0;

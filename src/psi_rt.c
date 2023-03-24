@@ -24,10 +24,9 @@
 
 #include "pe.h"
 #include "runtime.h"
+#include "io_info_args_rt.h"
 #include "psi_rt.h"
 #include "psi_init.h"
-#include "io_harness.h"
-#include "io_info_args_rt.h"
 #include "util_bits.h"
 
 /*****************************************************************************
@@ -108,6 +107,18 @@ int psi_rt_init_rho(pe_t * pe, rt_t * rt, psi_t * obj, map_t * map) {
     n = rt_double_parameter(rt, "electrokinetics_init_delta_el", &delta_el);
     if (n == 0) pe_fatal(pe, "... please set electrokinetics_init_delta_el\n");
     pe_info(pe, "Initial condition delta_el: %14.7e\n", delta_el);
+
+    {
+      /* psi_p is the saturation potential */
+      double beta   = obj->beta;
+      double e      = obj->e;
+      double dplus  = obj->diffusivity[0];
+      double dminus = obj->diffusivity[1];
+      double psi_p  = dplus*dminus*delta_el/(beta*e*(dplus + dminus)*rho_el);
+      double tau_e  = obj->epsilon/(beta*e*e*(dplus + dminus)*rho_el);
+      pe_info(pe, "Saturation potential:        %14.7e\n", psi_p);
+      pe_info(pe, "Saturation timescale:        %14.7e\n", tau_e);
+    }
 
     psi_init_liquid_junction(obj, rho_el, delta_el);
   }
@@ -218,6 +229,49 @@ int psi_options_rt(pe_t * pe, cs_t * cs, rt_t * rt, psi_options_t * popts) {
   /* Poisson solver */
   /* There are two possible sources of nfreq */
 
+  {
+    /* Solver type */
+    char str[BUFSIZ] = {0};
+    strcpy(str, psi_poisson_solver_to_string(psi_poisson_solver_default()));
+    rt_string_parameter(rt, "electrokinetics_solver_type", str, BUFSIZ);
+    opts.solver.psolver = psi_poisson_solver_from_string(str);
+    switch (opts.solver.psolver) {
+    case (PSI_POISSON_SOLVER_INVALID):
+      /* Not recognised */
+      pe_info(pe, "electrokinetics_solver_type: %s\n", str);
+      pe_info(pe, "is not recongnised\n");
+      pe_fatal(pe, "Please check and try again!\n");
+      break;
+    case (PSI_POISSON_SOLVER_PETSC):
+      /* Check Petsc is actually available */
+      {
+	int isAvailable = 0;
+	PetscInitialised(&isAvailable);
+	if (isAvailable == 0) {
+	  pe_info(pe, "electrokinetics_solver_type:  petsc\n");
+	  pe_info(pe, "Petsc has not been compiled in this build\n");
+	  pe_info(pe, "Please use the `sor` solver.\n");
+	  pe_fatal(pe, "Please check the input and try again!\n");
+	}
+      }
+      break;
+    default:
+      ; /* ok */
+    }
+  }
+
+  /* Stencil must be available. */
+  if (rt_int_parameter(rt, "electrokinetics_solver_stencil",
+		       &opts.solver.nstencil)) {
+    stencil_t * s = NULL;
+    int ifail = stencil_create(opts.solver.nstencil, &s);
+    if (ifail != 0) {
+      pe_info(pe, "electroknietics_solver_stencil: %d\n", opts.solver.nstencil);
+      pe_fatal(pe, "Not supported. Please check and try again!\n");
+    }
+    if (s) stencil_free(&s);
+  }
+
   rt_int_parameter(rt, "electrokinetics_maxits",  &opts.solver.maxits);
   rt_int_parameter(rt, "freq_statistics", &opts.solver.nfreq);
   rt_int_parameter(rt, "freq_psi_resid",  &opts.solver.nfreq);
@@ -288,8 +342,11 @@ int psi_info(pe_t * pe, const psi_t * psi) {
   }
 
   /* Add full information ... */
-  pe_info(pe, "Relative tolerance:  %20.7e\n", psi->solver.reltol);
-  pe_info(pe, "Absolute tolerance:  %20.7e\n", psi->solver.abstol);
+  pe_info(pe, "Solver type:         %20s\n",
+	  psi_poisson_solver_to_string(psi->solver.psolver));
+  pe_info(pe, "Solver stencil points:   %16d\n", psi->solver.nstencil);
+  pe_info(pe, "Relative tolerance:  %20.7e\n",   psi->solver.reltol);
+  pe_info(pe, "Absolute tolerance:  %20.7e\n",   psi->solver.abstol);
   pe_info(pe, "Max. no. of iterations:  %16d\n", psi->solver.maxits);
 
   pe_info(pe, "Number of multisteps:       %d\n", psi->multisteps);

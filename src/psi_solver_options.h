@@ -17,6 +17,7 @@
 #define LUDWIG_PSI_SOLVER_OPTIONS_H
 
 #include "util_json.h"
+#include "util_petsc.h"
 
 /* Poisson solver method */
 
@@ -46,6 +47,7 @@ struct psi_solver_options_s {
 
 const char * psi_poisson_solver_to_string(psi_poisson_solver_enum_t mytype);
 psi_poisson_solver_enum_t psi_poisson_solver_from_string(const char * str);
+psi_poisson_solver_enum_t psi_poisson_solver_default(void);
 
 psi_solver_options_t psi_solver_options_default(void);
 psi_solver_options_t psi_solver_options_type(psi_poisson_solver_enum_t mytype);

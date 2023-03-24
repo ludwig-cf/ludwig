@@ -309,7 +309,7 @@ int fe_electro_stress(fe_electro_t * fe, int index, double s[3][3]) {
   reunit = 1.0/eunit;
 
   psi_epsilon(fe->psi, &epsilon);
-  psi_electric_field_d3qx(fe->psi, index, e);
+  psi_electric_field(fe->psi, index, e);
 
   e2 = 0.0;
 
@@ -362,7 +362,7 @@ int fe_electro_stress_ex(fe_electro_t * fe, int index, double s[3][3]) {
   reunit = 1.0/eunit;
 
   psi_epsilon(fe->psi, &epsilon);
-  psi_electric_field_d3qx(fe->psi, index, e);
+  psi_electric_field(fe->psi, index, e);
 
   e2 = 0.0;
 

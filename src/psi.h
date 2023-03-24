@@ -16,9 +16,9 @@
 
 #include "pe.h"
 #include "field.h"
-#include "io_harness.h"
 #include "map.h"
 #include "psi_options.h"
+#include "stencil.h"
 
 typedef struct psi_s psi_t;
 
@@ -61,15 +61,11 @@ struct psi_s {
   double e0[3];             /* External electric field */
 
   /* Solver options */
-  psi_solver_options_t solver;
+  psi_solver_options_t solver;      /* User options */
+  stencil_t * stencil;              /* Finite difference stencil info */
 
 };
 
-
-/* f_vare_t describes the signature of the function expected
- * to return the permittivity as a function of position index. */
-
-typedef int (* f_vare_t)(void * fe, int index, double * epsilon);
 
 int psi_create(pe_t * pe, cs_t * cs, const psi_options_t * opts, psi_t ** p);
 int psi_free(psi_t ** psi);

@@ -40,6 +40,9 @@ int test_psi_suite(void) {
 
   pe_create(MPI_COMM_WORLD, PE_QUIET, &pe);
 
+  /* Changes in psi_t should be accompanied by changes in tests... */
+  assert(sizeof(psi_t) == 184);
+
   test_psi_initialise(pe);
   test_psi_create(pe);
   test_psi_psi_set(pe);
@@ -112,6 +115,8 @@ int test_psi_initialise(pe_t * pe) {
     /* Solver options */
     /* Assume correctly covered in solver options tests ... */
     assert(psi.solver.psolver == PSI_POISSON_SOLVER_SOR);
+    assert(psi.stencil);
+    assert(psi.stencil->npoints == psi.solver.nstencil);
 
     /* Nernst Planck */
     assert(psi.multisteps == opts.nsmallstep);
