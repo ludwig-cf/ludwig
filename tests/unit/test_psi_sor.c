@@ -108,7 +108,7 @@ int test_psi_solver_sor_create(pe_t * pe) {
 int test_psi_solver_sor_solve(pe_t * pe) {
 
   int nhalo = 1;
-  int ntotal[3] = {2, 2, 64};  /* Always quasi-1d system in z */
+  int ntotal[3] = {4, 4, 64};  /* Always quasi-1d system in z */
 
   cs_t * cs = NULL;
   psi_t * psi = NULL;
@@ -210,7 +210,7 @@ int test_psi_solver_sor_var_epsilon_create(pe_t * pe) {
 int test_psi_solver_sor_var_epsilon_solve(pe_t * pe) {
 
   int nhalo = 1;
-  int ntotal[3] = {2, 2, 64};  /* Always quasi-1d system in z */
+  int ntotal[3] = {4, 4, 64};  /* Always quasi-1d system in z */
 
   cs_t * cs = NULL;
   psi_t * psi = NULL;
