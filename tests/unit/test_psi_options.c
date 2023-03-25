@@ -36,8 +36,6 @@ int test_psi_options_suite(void) {
   pe_create(MPI_COMM_WORLD, PE_QUIET, &pe);
 
   /* A change in components requires a test update... */
-
-  printf("sizeof(psi_options_t): %ld\n", sizeof(psi_options_t));
   assert(sizeof(psi_options_t) == 392);
   assert(PSI_NKMAX >= 2);
 
