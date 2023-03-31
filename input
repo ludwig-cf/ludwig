@@ -1,0 +1,19 @@
+N_cycles        1000
+
+size            128_64_64
+
+viscosity       0.1
+
+free_energy     none
+
+colloid_init    no_colloids
+
+periodicity     1_1_1
+
+freq_statistics 500
+config_at_end   no
+
+N_LE_plane      0
+LE_plane_vel    0.05
+
+random_seed     7361237

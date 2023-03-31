@@ -1,0 +1,17 @@
+#!/bin/bash
+#SBATCH --account=m22oc-S2329216
+#SBATCH --job-name=ludwig_test
+#SBATCH --gres=gpu:1
+#SBATCH --time=00:10:00
+#SBATCH --partition=gpu
+#SBATCH --qos=short
+
+module load gcc nvidia/nvhpc/22.11
+
+# cd tests
+# make -k d3q19-short
+
+./src/Ludwig.exe input
+
+
+
