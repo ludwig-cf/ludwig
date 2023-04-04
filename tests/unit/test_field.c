@@ -543,8 +543,10 @@ int test_field_halo_create(pe_t * pe) {
   field_halo_create(field, &h);
 
   test_coords_field_set(cs, 2, field->data, MPI_DOUBLE, test_ref_double1);
+  field_memcpy(field, tdpMemcpyHostToDevice);
   field_halo_post(field, &h);
   field_halo_wait(field, &h);
+  field_memcpy(field, tdpMemcpyDeviceToHost);
   test_coords_field_check(cs, 2, 2, field->data, MPI_DOUBLE, test_ref_double1);
 
   field_halo_free(&h);
