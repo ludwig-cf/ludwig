@@ -33,6 +33,17 @@
 
 #include "cs_limits.h"
 
+#if defined(__NVCC__)
+
+typedef struct cuda_graph_s cuda_graph_t;
+
+struct cuda_graph_s {
+  cudaGraph_t graph;
+  cudaGraphExec_t graphExec;
+  intptr_t hostCallbackArgs[27][3];
+};
+#endif
+
 typedef struct field_halo_s field_halo_t;
 
 struct field_halo_s {
@@ -46,7 +57,17 @@ struct field_halo_s {
   cs_limits_t rlim[27];         /* halo: recv regions (rectangular) */
   double * send[27];            /* halo: send data buffers */
   double * recv[27];            /* halo: recv data buffers */
+  int max_buf_len;             /* halo: the size of the largest buffer */
   MPI_Request request[2*27];    /* halo: array of send/recv requests */
+
+  tdpStream_t stream;
+  field_halo_t * target;        /* target structure */
+  double * send_d[27];          /* halo: device send data buffers */
+  double * recv_d[27];          /* halo: device recv data buffers */
+#if defined(__NVCC__)
+  cuda_graph_t *send_graph;
+  cuda_graph_t *recv_graph;
+#endif
 };
 
 typedef struct field_s field_t;
@@ -111,7 +132,6 @@ __host__ __device__ int field_scalar_array(field_t * obj, int index,
 __host__ __device__ int field_scalar_array_set(field_t * obj, int index,
 					       const double * array);
 
-
 int field_read_buf(field_t * field, int index, const char * buf);
 int field_read_buf_ascii(field_t * field, int index, const char * buf);
 int field_write_buf(field_t * field, int index, char * buf);
@@ -121,5 +141,10 @@ int field_io_aggr_unpack(field_t * field, const io_aggregator_t * aggr);
 
 int field_io_write(field_t * field, int timestep, io_event_t * event);
 int field_io_read(field_t * field, int timestep, io_event_t * event);
+
+#if defined(__NVCC__)
+int create_send_graph(const field_t * field, field_halo_t * h);
+int create_recv_graph(const field_t * field, field_halo_t * h);
+#endif
 
 #endif
