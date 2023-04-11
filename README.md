@@ -1,4 +1,3 @@
-
 ### Ludwig
 
 A lattice Boltzmann code for complex fluids
@@ -86,5 +85,16 @@ under an MIT license by Gave Gamble at https://github.com/DaveGamble/cJSON.
 
 
 For bug reports, problems, and other issues, please open a new issue.
+
+
+## For MSc projects
+Our goal is to inspect the code in-depth, locate the root cause of the problem, and implement necessary fixes, which may require a complete reimplementation of the GPU version of the code. Ultimately, our objective is to create a well-optimized GPU version of the 'Lees Edwards BC' method, which will enable us to achieve significant performance enhancements and good scalability.
+
+Student: Andong Xiao 
+Supervisor: Kevin Stanford
+
+### Relevant document can be seen from
+[Wiki](https://git.ecdf.ed.ac.uk/s2329216/msc_projects_document.git)
+
 
 
