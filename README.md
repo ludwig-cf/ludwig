@@ -92,9 +92,10 @@ For bug reports, problems, and other issues, please open a new issue.
 Our goal is to inspect the code in-depth, locate the root cause of poor performance of some part of the code, and implement necessary fixes, which may require a complete reimplementation of the GPU version of the code. Ultimately, our objective is to create a well-optimized GPU version of the 'Lees Edwards BC' method, which will enable us to achieve significant performance enhancements and good scalability.
 
 Student: Andong Xiao 
+
 Supervisor: Kevin Stanford
 
-Relevant document can be seen from:  [Wiki](https://git.ecdf.ed.ac.uk/s2329216/msc_projects_document.git)
+Relevant documents including meeting blog, questions and some assessments materials can be seen from:  [Wiki](https://git.ecdf.ed.ac.uk/s2329216/msc_projects_document.git), which is maintained in another repository.
 
 
 
