@@ -1400,9 +1400,10 @@ int colloids_init_halo_range_check(pe_t * pe, cs_t * cs,
 
   cs_nhalo(cs, &nhalo);
 
-  if (lcell[X] < (a0max + nhalo - 0.5)) ifail = 1;
-  if (lcell[Y] < (a0max + nhalo - 0.5)) ifail = 1;
-  if (lcell[Z] < (a0max + nhalo - 0.5)) ifail = 1;
+  // LIGHTHOUSE
+  //if (lcell[X] < (a0max + nhalo - 0.5)) ifail = 1;
+  //if (lcell[Y] < (a0max + nhalo - 0.5)) ifail = 1;
+  //if (lcell[Z] < (a0max + nhalo - 0.5)) ifail = 1;
 
   if (ifail == 1) {
     pe_fatal(pe, "Must have cell width > a0_max + nhalo\n");

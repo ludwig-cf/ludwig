@@ -720,7 +720,7 @@ int colloids_update_discrete_forces_phi(colloids_info_t * cinfo, field_t * phi, 
   double phi_, u, um1, up1, u0, delta, cutoff;
   double rnorm, rsq, rsqm1, rsqp1;
   double r0[3], r[3], grad_u[3], dcentre[3], centerofmass[3] = {0.0, 0.0, 0.0}, centre_to_r[3];
-  double vesicle_radius, distance_from_vesicle;
+  double vesicle_radius, distance_from_vesicle, vesicle_number;
 
   colloid_t * pc = NULL;
   physics_t * phys = NULL;
@@ -758,8 +758,10 @@ int colloids_update_discrete_forces_phi(colloids_info_t * cinfo, field_t * phi, 
   rt_int_parameter(rt, "phi_interaction_mask", &interaction_mask_on);
   rt_int_parameter(rt, "phi_interaction_external_only", &external_only_on);
   rt_double_parameter(rt, "vesicle_radius", &vesicle_radius);
+  rt_double_parameter(rt, "vesicle_number", &vesicle_number);
   rt_int_parameter(rt, "freq_write", &writefreq);
 
+  //if (vesicle_number == 0) return;
 /* Get centerofmass from central particle (bc we know there's only 1) */
   colloids_info_local_head(cinfo, &pc);
   for ( ; pc; pc = pc->nextlocal) {
@@ -903,14 +905,14 @@ int colloids_update_discrete_forces_phi(colloids_info_t * cinfo, field_t * phi, 
                   indexm1 = cs_index(cinfo->cs, i - 1, j, k);
 	
 		  if (external_only_on) {
-		    // Outside vesicle
+		    // If inside, no interact
 		    if ( rsqm1 > cutoff*cutoff || (int) vesicle_map->data[addr_rank1(vesicle_map->nsites, 1, indexm1, 0)] == 1)  um1 = 0.0;
-		    // Inside vesicle
+		    // If outside, interact
  		    else um1 = u0/(sqrt(2*M_PI*delta))*exp(-0.5*(rsqm1/delta)*(rsqm1/delta))*(1 - interaction_mask_on*u_mask->data[addr_rank1(u_mask->nsites, 1, indexm1, 0)]); 
 
-		    // Outside vesicle
+		    // If inside, no interact
 		    if ( rsqp1 > cutoff*cutoff || (int) vesicle_map->data[addr_rank1(vesicle_map->nsites, 1, indexp1, 0)] == 1) up1 = 0.0;
-		    // Inside vesicle
+		    // If outside, interact
 		    else up1 = u0/(sqrt(2*M_PI*delta))*exp(-0.5*(rsqp1/delta)*(rsqp1/delta))*(1 - interaction_mask_on*u_mask->data[addr_rank1(u_mask->nsites, 1, indexp1, 0)]); 
 		  }
 		  else {

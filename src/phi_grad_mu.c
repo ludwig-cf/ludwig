@@ -283,7 +283,7 @@ __host__ int phi_grad_mu_external_ll(cs_t * cs, field_t * phi, hydro_t * hydro, 
   if ((is_grad_mu_phi || is_grad_mu_psi) && phi->nf == 2) {
 
     rt_int_parameter(rt, "grad_mu_psi_outside_vesicle_only", &grad_mu_psi_outside_vesicle_only);
-    if (grad_mu_psi_outside_vesicle_only) {
+    if (grad_mu_psi_outside_vesicle_only ) {
       
       limits.imin = 1; limits.imax = nlocal[X];
       limits.jmin = 1; limits.jmax = nlocal[Y];
@@ -488,8 +488,8 @@ __global__ void phi_grad_mu_solid_kernel(kernel_ctxt_t * ktx, field_t * field,
   assert(field->nf <= NVECTOR);
 
 /* -----> For book-keeping */
-  double globalforce[3];
-  double localforce[3] = {0,0,0};
+  double globalforce[3] = {0.,0.,0.};
+  double localforce[3] = {0.,0.,0.};
   int writefreq = 100000;
   int rank;
 
@@ -728,7 +728,15 @@ __global__ void phi_grad_mu_external_ll_kernel(kernel_ctxt_t * ktx, field_t * ph
 						hydro_t * hydro, field_t * phi_gradmu, field_t * psi_gradmu) {
   int kiterations;
   int kindex;
+  double total_force[3] = {0.0, 0.0, 0.0};
+  double total_force_global[3] = {0.0, 0.0, 0.0};
+  int rank;
+  MPI_Comm comm;
+  cs_cart_comm(hydro->cs, &comm);
+  MPI_Comm_rank(comm, &rank); 
 
+
+ 
   assert(ktx);
   assert(phi);
   assert(hydro);
@@ -747,8 +755,13 @@ __global__ void phi_grad_mu_external_ll_kernel(kernel_ctxt_t * ktx, field_t * ph
     double psi0 = phi->data[addr_rank1(phi->nsites, 2, index, 1)];
 
     force[X] = -phi0*grad_mu_phi.x - psi0*grad_mu_psi.x;
+    total_force[X] += force[X];
+
     force[Y] = -phi0*grad_mu_phi.y - psi0*grad_mu_psi.y;
+    total_force[Y] += force[Y];
+
     force[Z] = -phi0*grad_mu_phi.z - psi0*grad_mu_psi.z;
+    total_force[Z] += force[Z];
 
     hydro_f_local_add(hydro, index, force);
     phi_gradmu->data[addr_rank1(phi_gradmu->nsites, 3, index, 0)] += -phi0*grad_mu_phi.x;
@@ -761,6 +774,9 @@ __global__ void phi_grad_mu_external_ll_kernel(kernel_ctxt_t * ktx, field_t * ph
  
   }
 
+  //MPI_Reduce(&total_force, &total_force_global, 3, MPI_DOUBLE, MPI_SUM, 0, comm);
+  //printf("total force from grad mu = %f %f %f\n", total_force_global[X], total_force_global[Y], total_force_global[Z]);
+  
   return;
 }
 
@@ -776,9 +792,17 @@ __global__ void phi_grad_mu_external_ll_kernel(kernel_ctxt_t * ktx, field_t * ph
 __global__ void phi_grad_mu_external_ll_outside_vesicle_only_kernel(kernel_ctxt_t * ktx, field_t * phi,
 					    double3 grad_mu_phi, double3 grad_mu_psi, 
 						hydro_t * hydro, field_t * vesicle_map, field_t * phi_gradmu, field_t * psi_gradmu) {
+
+  int rank;
+  MPI_Comm comm;
+  cs_cart_comm(hydro->cs, &comm);
+  MPI_Comm_rank(comm, &rank); 
+
   int kiterations;
   int kindex;
 
+  double total_force[3] = {0.0, 0.0, 0.0};
+  double total_force_global[3] = {0.0, 0.0, 0.0};
   assert(ktx);
   assert(phi);
   assert(hydro);
@@ -791,16 +815,22 @@ __global__ void phi_grad_mu_external_ll_outside_vesicle_only_kernel(kernel_ctxt_
     int jc    = kernel_coords_jc(ktx, kindex);
     int kc    = kernel_coords_kc(ktx, kindex);
     int index = kernel_coords_index(ktx, ic, jc, kc);
+    int indexm1 = kernel_coords_index(ktx, ic, jc - 1, kc);
+    int indexp1 = kernel_coords_index(ktx, ic, jc + 1, kc);
 
-    /* Find the nodes which are inside the vesicle */
-    if ((int) vesicle_map->data[addr_rank1(vesicle_map->nsites, 1, index, 0)] == 1) {
-      double force[3] = {};
-      double phi0 = phi->data[addr_rank1(phi->nsites, 2, index, 0)];
-      double psi0 = phi->data[addr_rank1(phi->nsites, 2, index, 1)];
+    double force[3] = {};
+    double phi0 = phi->data[addr_rank1(phi->nsites, 2, index, 0)];
+    double psi0 = phi->data[addr_rank1(phi->nsites, 2, index, 1)];
 
+    if ((int) vesicle_map->data[addr_rank1(vesicle_map->nsites, 1, index, 0)] == 0) {
       force[X] = -phi0*grad_mu_phi.x - psi0*grad_mu_psi.x;
+      total_force[X] += force[X];
+
       force[Y] = -phi0*grad_mu_phi.y - psi0*grad_mu_psi.y;
+      total_force[Y] += force[Y];
+
       force[Z] = -phi0*grad_mu_phi.z - psi0*grad_mu_psi.z;
+      total_force[Z] += force[Z];
 
       hydro_f_local_add(hydro, index, force);
       phi_gradmu->data[addr_rank1(phi_gradmu->nsites, 3, index, 0)] += -phi0*grad_mu_phi.x;
@@ -810,8 +840,66 @@ __global__ void phi_grad_mu_external_ll_outside_vesicle_only_kernel(kernel_ctxt_
       psi_gradmu->data[addr_rank1(psi_gradmu->nsites, 3, index, 0)] += -psi0*grad_mu_psi.x;
       psi_gradmu->data[addr_rank1(psi_gradmu->nsites, 3, index, 1)] += -psi0*grad_mu_psi.y;
       psi_gradmu->data[addr_rank1(psi_gradmu->nsites, 3, index, 2)] += -psi0*grad_mu_psi.z;
- 
     }
+ 
+/*
+    if ((int) vesicle_map->data[addr_rank1(vesicle_map->nsites, 1, index, 0)] == 0) {
+      if ((int) vesicle_map->data[addr_rank1(vesicle_map->nsites, 1, indexp1, 0)] == 1 ||
+          (int) vesicle_map->data[addr_rank1(vesicle_map->nsites, 1, indexm1, 0)] == 1) {
+	
+        force[X] = -phi0*grad_mu_phi.x - psi0*grad_mu_psi.x;
+        force[Y] = 0.5*(-phi0*grad_mu_phi.y - psi0*grad_mu_psi.y);
+        force[Z] = -phi0*grad_mu_phi.z - psi0*grad_mu_psi.z;
+
+        hydro_f_local_add(hydro, index, force);
+        phi_gradmu->data[addr_rank1(phi_gradmu->nsites, 3, index, 0)] += -phi0*grad_mu_phi.x;
+        phi_gradmu->data[addr_rank1(phi_gradmu->nsites, 3, index, 1)] += 0.5*(-phi0*grad_mu_phi.y);
+        phi_gradmu->data[addr_rank1(phi_gradmu->nsites, 3, index, 2)] += -phi0*grad_mu_phi.z;
+
+        psi_gradmu->data[addr_rank1(psi_gradmu->nsites, 3, index, 0)] += -psi0*grad_mu_psi.x;
+        psi_gradmu->data[addr_rank1(psi_gradmu->nsites, 3, index, 1)] += 0.5*(-psi0*grad_mu_psi.y);
+        psi_gradmu->data[addr_rank1(psi_gradmu->nsites, 3, index, 2)] += -psi0*grad_mu_psi.z;
+ 
+      }
+      else {
+        force[X] = -phi0*grad_mu_phi.x - psi0*grad_mu_psi.x;
+        force[Y] = -phi0*grad_mu_phi.y - psi0*grad_mu_psi.y;
+        force[Z] = -phi0*grad_mu_phi.z - psi0*grad_mu_psi.z;
+
+        hydro_f_local_add(hydro, index, force);
+        phi_gradmu->data[addr_rank1(phi_gradmu->nsites, 3, index, 0)] += -phi0*grad_mu_phi.x;
+        phi_gradmu->data[addr_rank1(phi_gradmu->nsites, 3, index, 1)] += -phi0*grad_mu_phi.y;
+        phi_gradmu->data[addr_rank1(phi_gradmu->nsites, 3, index, 2)] += -phi0*grad_mu_phi.z;
+
+        psi_gradmu->data[addr_rank1(psi_gradmu->nsites, 3, index, 0)] += -psi0*grad_mu_psi.x;
+        psi_gradmu->data[addr_rank1(psi_gradmu->nsites, 3, index, 1)] += -psi0*grad_mu_psi.y;
+        psi_gradmu->data[addr_rank1(psi_gradmu->nsites, 3, index, 2)] += -psi0*grad_mu_psi.z;
+      }
+    }
+
+    else if ((int) vesicle_map->data[addr_rank1(vesicle_map->nsites, 1, index, 0)] == 1) {
+      if ((int) vesicle_map->data[addr_rank1(vesicle_map->nsites, 1, indexp1, 0)] == 0 ||
+          (int) vesicle_map->data[addr_rank1(vesicle_map->nsites, 1, indexm1, 0)] == 0) {
+	
+        force[X] = -phi0*grad_mu_phi.x - psi0*grad_mu_psi.x;
+        force[Y] = 0.5*(-phi0*grad_mu_phi.y - psi0*grad_mu_psi.y);
+        force[Z] = -phi0*grad_mu_phi.z - psi0*grad_mu_psi.z;
+
+        hydro_f_local_add(hydro, index, force);
+        phi_gradmu->data[addr_rank1(phi_gradmu->nsites, 3, index, 0)] += -phi0*grad_mu_phi.x;
+        phi_gradmu->data[addr_rank1(phi_gradmu->nsites, 3, index, 1)] += 0.5*(-phi0*grad_mu_phi.y);
+        phi_gradmu->data[addr_rank1(phi_gradmu->nsites, 3, index, 2)] += -phi0*grad_mu_phi.z;
+
+        psi_gradmu->data[addr_rank1(psi_gradmu->nsites, 3, index, 0)] += -psi0*grad_mu_psi.x;
+        psi_gradmu->data[addr_rank1(psi_gradmu->nsites, 3, index, 1)] += 0.5*(-psi0*grad_mu_psi.y);
+        psi_gradmu->data[addr_rank1(psi_gradmu->nsites, 3, index, 2)] += -psi0*grad_mu_psi.z;
+
+      }
+    }
+  */
   }
+  
+  //MPI_Reduce(&total_force, &total_force_global, 3, MPI_DOUBLE, MPI_SUM, 0, comm);
+  //printf("total force from grad mu = %f %f %f\n", total_force_global[X], total_force_global[Y], total_force_global[Z]);
   return;
 }

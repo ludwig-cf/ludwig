@@ -558,12 +558,12 @@ void ludwig_run(const char * inputfile) {
       hydro_f_zero(ludwig->hydro, fzero);
 /* Calculate flux mask for later use in interact_compute, phi_force/phi_grad_mu.c and ch_solver LIGHTHOUSE but should work */
       TIMER_start(TIMER_SUBGRID_FLUX_MASK);
-      subgrid_flux_mask(ludwig->pe, ludwig->collinfo, ludwig->flux_mask, ludwig->u_mask, ludwig->rt, ludwig->phi, ludwig->map, ludwig->hydro);
+      subgrid_flux_mask(ludwig->pe, ludwig->collinfo, ludwig->flux_mask, ludwig->u_mask, ludwig->rt, ludwig->phi, ludwig->map, ludwig->hydro, ludwig->vesicle_map);
       TIMER_stop(TIMER_SUBGRID_FLUX_MASK);
     }
     else {
       TIMER_start(TIMER_SUBGRID_FLUX_MASK);
-      subgrid_flux_mask(ludwig->pe, ludwig->collinfo, ludwig->flux_mask, ludwig->u_mask, ludwig->rt, ludwig->phi, ludwig->map, ludwig->hydro);
+      subgrid_flux_mask(ludwig->pe, ludwig->collinfo, ludwig->flux_mask, ludwig->u_mask, ludwig->rt, ludwig->phi, ludwig->map, ludwig->hydro, ludwig->vesicle_map);
       TIMER_stop(TIMER_SUBGRID_FLUX_MASK);
     } 
 

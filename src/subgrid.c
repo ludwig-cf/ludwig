@@ -637,7 +637,7 @@ static double d_peskin(double r) {
  *
  *****************************************************************************/
 
-int subgrid_flux_mask(pe_t * pe, colloids_info_t * cinfo, field_t * flux_mask, field_t * u_mask, rt_t * rt, field_t * phi, map_t * map, hydro_t * hydro) {
+int subgrid_flux_mask(pe_t * pe, colloids_info_t * cinfo, field_t * flux_mask, field_t * u_mask, rt_t * rt, field_t * phi, map_t * map, hydro_t * hydro, field_t * vesicle_map) {
 
   int ia, i, j, k, index, p, template_on, beads_per_vesicle;
   int nlocal[3], offset[3];
@@ -645,7 +645,7 @@ int subgrid_flux_mask(pe_t * pe, colloids_info_t * cinfo, field_t * flux_mask, f
   int centrefound = 0, holefound = 0, orthofound = 0;
   int mask_phi_switch, mask_psi_switch, vesicle_number, reaction_switch, interaction_mask;
   int timestep, writefreq;
-  int correction = 0;
+  int correction = 0, outside_only = 0;
 
   double m[3] = {0., 0., 0.}, n[3] = {0., 0., 0.}, ijk[3];
   double r[3], rcentre[3], rhole[3], rortho[3], rcentre_local[3], rsq;
@@ -892,7 +892,7 @@ int subgrid_flux_mask(pe_t * pe, colloids_info_t * cinfo, field_t * flux_mask, f
 
 	// PRODUCE PHI
         if (reaction_switch) {
-	  if (rnorm < radius - std_width - 2) {
+	  if (rnorm < radius - std_width - 1) {
 	    if (strcmp(reaction_model, "uniform") == 0) 
 	    {
 	      phi->data[addr_rank1(phi->nsites, 2, index, 0)] += kappa;
@@ -978,14 +978,25 @@ int subgrid_flux_mask(pe_t * pe, colloids_info_t * cinfo, field_t * flux_mask, f
   }
 
   // These subroutines require communication of total quantities of phi and/or psi
+ 
   rt_int_parameter(rt, "psi_grad_mu_correction", &correction);
-  if ((strcmp(reaction_model, "psi<->phi") == 0) && correction) {
+  rt_int_parameter(rt, "grad_mu_psi_outside_vesicle_only", &outside_only);
+
+  // LIGHTHOUSE
+  //if ((strcmp(reaction_model, "psi<->phi") == 0) && correction) {
+  if (correction) {
     MPI_Allreduce(&totpsi_local, &totpsi, 1, MPI_DOUBLE, MPI_SUM, comm);
-    //pe_verbose(cinfo->pe, "totpsi = %f\n", totpsi);
     int is_grad_mu_psi = 0; 
     int nsfluid;
+    int num_nodes_outside_vesicle_local = 0;
+    int num_nodes_outside_vesicle_global;
+    double totpsi_outside_local = 0.0;
+    double totpsi_outside_global = 0.0;
+    double totpsi_local = 0.0, totpsi_global = 0.0;
     double rvolume;
-    double f[3];
+    double f[3] = {0.,0.,0.};
+    double total_f_local[3] = {0.,0.,0.};
+    double total_f_global[3] = {0.,0.,0.};
     double mu_psi[3] = {};
     double3 grad_mu_psi = {};
 
@@ -998,25 +1009,84 @@ int subgrid_flux_mask(pe_t * pe, colloids_info_t * cinfo, field_t * flux_mask, f
  
       is_grad_mu_psi = (mu_psi[X] != 0.0 || mu_psi[Y] != 0.0 || mu_psi[Z] != 0.0);
     }
-
     if (is_grad_mu_psi) {
-      assert(map);
-      map_volume_allreduce(map, MAP_FLUID, &nsfluid);
-      rvolume = 1.0/nsfluid;
-      for (ia = 0; ia < 3; ia++) {
-	// Force on fluid is - psi grad_mu_ext
-	f[ia] = rvolume*totpsi*mu_psi[ia];
-      }
-    }
+      /* Calculate total amount of psi */
+      if (outside_only) { 
+      /* in fluid nodes outside the vesicle */
+        for (i = 1; i <= nlocal[X] + 0; i++) {
+          for (j = 1; j <= nlocal[Y] + 0; j++) {
+            for (k = 1; k <= nlocal[Z] + 0; k++) {
+              index = cs_index(cinfo->cs, i, j, k); 
+	      if ((int) vesicle_map->data[addr_rank1(vesicle_map->nsites, 1, index, 0)] == 0) {
+	        num_nodes_outside_vesicle_local += 1;
+		totpsi_outside_local += phi->data[addr_rank1(phi->nsites, 2, index, 1)];
+	      }
+	    }
+          }
+        }
+        MPI_Barrier(comm);
+        MPI_Allreduce(&num_nodes_outside_vesicle_local, &num_nodes_outside_vesicle_global, 1, MPI_INT, MPI_SUM, comm);
+        MPI_Allreduce(&totpsi_outside_local, &totpsi_outside_global, 1, MPI_DOUBLE, MPI_SUM, comm);
+        rvolume = 1.0/num_nodes_outside_vesicle_global;
 
-    for (i = 1; i <= nlocal[X] + 0; i++) {
-      for (j = 1; j <= nlocal[Y] + 0; j++) {
-        for (k = 1; k <= nlocal[Z] + 0; k++) {
-          index = cs_index(cinfo->cs, i, j, k); 
-	  hydro_f_local_add(hydro, index, f);
-	}
+        for (ia = 0; ia < 3; ia++) {
+	  /* Force on fluid is - psi grad_mu_ext */
+	  f[ia] = rvolume*totpsi_outside_global*mu_psi[ia];
+        }
+
+        for (i = 1; i <= nlocal[X] + 0; i++) {
+          for (j = 1; j <= nlocal[Y] + 0; j++) {
+            for (k = 1; k <= nlocal[Z] + 0; k++) {
+              index = cs_index(cinfo->cs, i, j, k); 
+	      if ((int) vesicle_map->data[addr_rank1(vesicle_map->nsites, 1, index, 0)] == 0) {
+	        hydro_f_local_add(hydro, index, f);
+	        total_f_local[0] += f[0];
+	        total_f_local[1] += f[1];
+	        total_f_local[2] += f[2];
+	      }
+	    }
+          }
+        }
+      }
+      else {
+      /* Calculate total amount of psi on all fluid nodes */
+        assert(map);
+        map_volume_allreduce(map, MAP_FLUID, &nsfluid);
+        rvolume = 1.0/nsfluid;
+
+        for (i = 1; i <= nlocal[X] + 0; i++) {
+          for (j = 1; j <= nlocal[Y] + 0; j++) {
+            for (k = 1; k <= nlocal[Z] + 0; k++) {
+              index = cs_index(cinfo->cs, i, j, k); 
+	      totpsi_local += phi->data[addr_rank1(phi->nsites, 2, index, 1)];
+	    }
+	  }
+        }
+
+        MPI_Barrier(comm);
+        MPI_Allreduce(&totpsi_local, &totpsi_global, 1, MPI_DOUBLE, MPI_SUM, comm);
+
+        for (ia = 0; ia < 3; ia++) {
+	  /* Force on fluid is - psi grad_mu_ext */
+	  f[ia] = rvolume*totpsi_global*mu_psi[ia];
+        }
+	//printf("1 over volume = %d\n", nsfluid);
+
+        for (i = 1; i <= nlocal[X] + 0; i++) {
+          for (j = 1; j <= nlocal[Y] + 0; j++) {
+            for (k = 1; k <= nlocal[Z] + 0; k++) {
+              index = cs_index(cinfo->cs, i, j, k); 
+	      hydro_f_local_add(hydro, index, f);
+	      total_f_local[0] += f[0];
+	      total_f_local[1] += f[1];
+	      total_f_local[2] += f[2];
+	    }
+          }
+        }
       }
     }
+    MPI_Allreduce(&total_f_local, &total_f_global, 3, MPI_DOUBLE, MPI_SUM, comm);
+    //printf("total force from subgrid = %f %f %f\n", total_f_total[0], total_f_total[1], total_f_total[2]);
   }
 
   if (timestep % writefreq == 0) {
