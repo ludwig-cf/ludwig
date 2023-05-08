@@ -321,8 +321,15 @@ static int ludwig_rt(ludwig_t * ludwig) {
     physics_rho0(ludwig->phys, &rho0);
     if (ludwig->hydro) hydro_rho0(ludwig->hydro, rho0);
 
+    /* This should be relocated with LE plane input */
     rt_int_parameter(rt, "LE_init_profile", &n);
-    if (n != 0) lb_le_init_shear_profile(ludwig->lb, ludwig->le);
+    if (n != 0) {
+      if (lees_edw_nplane_total(ludwig->le) == 0) {
+	pe_info(ludwig->pe, "Cannot use LE_init_profile with no planes\n");
+	pe_fatal(ludwig->pe, "Please check the input and try again\n");
+      }
+      lb_le_init_shear_profile(ludwig->lb, ludwig->le);
+    }
   }
   else {
     /* Distributions */
