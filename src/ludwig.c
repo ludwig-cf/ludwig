@@ -316,14 +316,12 @@ static int ludwig_rt(ludwig_t * ludwig) {
 
   if (ntstep == 0) {
     double rho0 = 1.0;
-    n = 0;
     lb_rt_initial_conditions(pe, rt, ludwig->lb, ludwig->phys);
     physics_rho0(ludwig->phys, &rho0);
     if (ludwig->hydro) hydro_rho0(ludwig->hydro, rho0);
 
     /* This should be relocated with LE plane input */
-    rt_int_parameter(rt, "LE_init_profile", &n);
-    if (n != 0) {
+    if (rt_switch(ludwig->rt, "LE_init_profile")) {
       if (lees_edw_nplane_total(ludwig->le) == 0) {
 	pe_info(ludwig->pe, "Cannot use LE_init_profile with no planes\n");
 	pe_fatal(ludwig->pe, "Please check the input and try again\n");
