@@ -1,0 +1,18 @@
+#!/bin/bash
+#SBATCH --account=m22oc-S2329216
+#SBATCH --job-name=test
+#SBATCH --output=%x-%j.out
+#SBATCH --gres=gpu:1
+#SBATCH --time=00:10:00
+#SBATCH --partition=gpu
+#SBATCH --qos=short
+
+module load gcc nvidia/nvhpc/22.11
+
+cd tests
+make -k d3q19-short
+
+# make -k test
+
+
+
