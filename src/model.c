@@ -838,7 +838,7 @@ int lb_0th_moment(lb_t * lb, int index, lb_dist_enum_t nd, double * rho) {
  *
  *****************************************************************************/
 
-__host__
+__host__ __device__
 int lb_1st_moment(lb_t * lb, int index, lb_dist_enum_t nd, double g[3]) {
 
   int p;
@@ -909,7 +909,7 @@ int lb_2nd_moment(lb_t * lb, int index, lb_dist_enum_t nd, double s[3][3]) {
  *
  *****************************************************************************/
 
-__host__
+__host__ 
 int lb_1st_moment_equilib_set(lb_t * lb, int index, double rho, double u[3]) {
 
   int ia, ib, p;

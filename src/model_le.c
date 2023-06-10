@@ -31,10 +31,46 @@
 #include "timer.h"
 #include "util.h"
 
-static int le_reproject(lb_t *lb, lees_edw_t *le);
+__global__ static void le_reproject(lb_t *lb, lees_edw_t *le);
 static int le_displace_and_interpolate(lb_t *lb, lees_edw_t *le);
 static int le_displace_and_interpolate_parallel(lb_t *lb, lees_edw_t *le);
 
+void copyModelToDevice(lb_model_t *h_model, lb_model_t *d_model) {
+    int nvel = h_model->nvel;
+    // Allocate memory on the GPU for the arrays in the struct
+    int8_t (*d_cv)[3];
+    double *d_wv;
+    double *d_na;
+    double *d_ma;
+
+    cudaMalloc((void**)&d_cv, sizeof(int8_t[3]) * nvel);
+    cudaMalloc((void**)&d_wv, sizeof(double) * nvel);
+    cudaMalloc((void**)&d_na, sizeof(double) * nvel);
+
+    // Allocate memory for 2D array ma as a flat 1D array
+    cudaMalloc((void**)&d_ma, sizeof(double) * nvel * nvel);  // adjust this if ma is not square
+
+    // Copy the data from host to the GPU
+    cudaMemcpy(d_cv, h_model->cv, sizeof(int8_t[3]) * nvel, cudaMemcpyHostToDevice);
+    cudaMemcpy(d_wv, h_model->wv, sizeof(double) * nvel, cudaMemcpyHostToDevice);
+    cudaMemcpy(d_na, h_model->na, sizeof(double) * nvel, cudaMemcpyHostToDevice);
+    
+    //I am not sure about ma, as i do not know the scope of ma
+    for(int i = 0; i < nvel; i++) {
+        cudaMemcpy(&d_ma[i * nvel], h_model->ma[i], sizeof(double) * nvel, cudaMemcpyHostToDevice);  // adjust this if ma is not square
+    }
+
+    // Set the pointers in the struct to the newly allocated GPU memory
+    cudaMemcpy(&(d_model->cv), &d_cv, sizeof(int8_t(*)[3]), cudaMemcpyHostToDevice);
+    cudaMemcpy(&(d_model->wv), &d_wv, sizeof(double*), cudaMemcpyHostToDevice);
+    cudaMemcpy(&(d_model->na), &d_na, sizeof(double*), cudaMemcpyHostToDevice);
+    cudaMemcpy(&(d_model->ma), &d_ma, sizeof(double*), cudaMemcpyHostToDevice);
+
+    //copy the rest data to gpu
+    cudaMemcpy(&(d_model->ndim), &(h_model->ndim), sizeof(int8_t), cudaMemcpyHostToDevice);
+    cudaMemcpy(&(d_model->nvel), &(h_model->nvel), sizeof(int8_t), cudaMemcpyHostToDevice);
+    cudaMemcpy(&(d_model->cs2), &(h_model->cs2), sizeof(double), cudaMemcpyHostToDevice);
+}
 /*****************************************************************************
  *
  *  lb_le_apply_boundary_conditions
@@ -69,9 +105,19 @@ __host__ int lb_le_apply_boundary_conditions(lb_t *lb, lees_edw_t *le) {
 
         /* Everything must be done on host at the moment (slowly) ... */
         /* ... and copy back at the end */
-        lb_memcpy(lb, tdpMemcpyDeviceToHost);
+        copyModelToDevice(&lb->model, &lb->target->model);
+        
+        lees_edw_t * le_target;
+        lees_edw_target(le, &le_target);
 
-        le_reproject(lb, le);
+        int nlocal[3];
+        lees_edw_nlocal(le, nlocal);
+        dim3 numBlocks(1, (nlocal[Y] + 15) / 16, (nlocal[Z] + 15) / 16);
+        dim3 threadsPerBlock(1, 16, 16);
+        le_reproject<<<numBlocks, threadsPerBlock>>>(lb->target, le_target);
+        cudaDeviceSynchronize();
+
+        lb_memcpy(lb, tdpMemcpyDeviceToHost);
 
         if (mpi_cartsz[Y] > 1) {
             le_displace_and_interpolate_parallel(lb, le);
@@ -108,7 +154,7 @@ __host__ int lb_le_apply_boundary_conditions(lb_t *lb, lees_edw_t *le) {
  *
  *****************************************************************************/
 
-static int le_reproject(lb_t *lb, lees_edw_t *le) {
+__global__ static void le_reproject(lb_t *lb, lees_edw_t *le) {
 
     int ic, jc, kc, index;
     int nplane, plane, side;
@@ -133,76 +179,77 @@ static int le_reproject(lb_t *lb, lees_edw_t *le) {
     t = 1.0 * physics_control_timestep(phys);
     lees_edw_nlocal(le, nlocal);
     
-    for (jc = 1; jc <= nlocal[Y]; jc++) {
-        for (kc = 1; kc <= nlocal[Z]; kc++) {
-            for (plane = 0; plane < nplane; plane++) {
-                for (side = 0; side < 2; side++) {
+    jc = blockIdx.y * blockDim.y + threadIdx.y;
+    kc = blockIdx.z * blockDim.z + threadIdx.z;
 
-                    du[X] = 0.0;
-                    du[Y] = 0.0;
-                    du[Z] = 0.0;
+    if (jc < nlocal[Y] && kc < nlocal[Z]) {
+        for (plane = 0; plane < nplane; plane++) {
+            for (side = 0; side < 2; side++) {
 
-                    if (side == 0) {
-                        /* Start with plane below Lees-Edwards BC */
-                        lees_edw_plane_uy_now(le, t, &du[Y]);
-                        du[Y] *= -1.0;
-                        ic = lees_edw_plane_location(le, plane);
-                        cx = +1;
+                du[X] = 0.0;
+                du[Y] = 0.0;
+                du[Z] = 0.0;
+
+                if (side == 0) {
+                    /* Start with plane below Lees-Edwards BC */
+                    lees_edw_plane_uy_now(le, t, &du[Y]);
+                    du[Y] *= -1.0;
+                    ic = lees_edw_plane_location(le, plane);
+                    cx = +1;
+                }
+                else {
+                    /* Finally, deal with plane above LEBC */
+                    lees_edw_plane_uy_now(le, t, &du[Y]);
+                    ic = lees_edw_plane_location(le, plane) + 1;
+                    cx = -1;
+                }
+
+                index = lees_edw_index(le, ic, jc, kc);
+
+                for (n = 0; n < ndist; n++) {
+
+                    /* Compute 0th and 1st moments */
+                    lb_dist_enum_t ndn = (lb_dist_enum_t)n;
+                    lb_0th_moment(lb, index, ndn, &rho);
+                    lb_1st_moment(lb, index, ndn, g);
+
+                    for (ia = 0; ia < 3; ia++) {
+                        for (ib = 0; ib < 3; ib++) {
+                            ds[ia][ib] = (g[ia] * du[ib] + du[ia] * g[ib] + rho * du[ia] * du[ib]);
+                        }
                     }
-                    else {
-                        /* Finally, deal with plane above LEBC */
-                        lees_edw_plane_uy_now(le, t, &du[Y]);
-                        ic = lees_edw_plane_location(le, plane) + 1;
-                        cx = -1;
-                    }
 
-                    index = lees_edw_index(le, ic, jc, kc);
+                    /* Now update the distribution */
+                    for (int p = 1; p < lb->model.nvel; p++) {
 
-                    for (n = 0; n < ndist; n++) {
+                        double cs2 = lb->model.cs2;
+                        double rcs2 = 1.0 / cs2;
+                        if (lb->model.cv[p][X] != cx)
+                            continue;
 
-                        /* Compute 0th and 1st moments */
-                        lb_dist_enum_t ndn = (lb_dist_enum_t)n;
-                        lb_0th_moment(lb, index, ndn, &rho);
-                        lb_1st_moment(lb, index, ndn, g);
+                        udotc = du[Y] * lb->model.cv[p][Y];
+                        sdotq = 0.0;
 
                         for (ia = 0; ia < 3; ia++) {
                             for (ib = 0; ib < 3; ib++) {
-                                ds[ia][ib] = (g[ia] * du[ib] + du[ia] * g[ib] + rho * du[ia] * du[ib]);
+                                double dab = cs2 * (ia == ib);
+                                double q = (lb->model.cv[p][ia] * lb->model.cv[p][ib] - dab);
+                                sdotq += ds[ia][ib] * q;
                             }
                         }
 
-                        /* Now update the distribution */
-                        for (int p = 1; p < lb->model.nvel; p++) {
+                        /* Project all this back to the distribution. */
 
-                            double cs2 = lb->model.cs2;
-                            double rcs2 = 1.0 / cs2;
-                            if (lb->model.cv[p][X] != cx)
-                                continue;
-
-                            udotc = du[Y] * lb->model.cv[p][Y];
-                            sdotq = 0.0;
-
-                            for (ia = 0; ia < 3; ia++) {
-                                for (ib = 0; ib < 3; ib++) {
-                                    double dab = cs2 * (ia == ib);
-                                    double q = (lb->model.cv[p][ia] * lb->model.cv[p][ib] - dab);
-                                    sdotq += ds[ia][ib] * q;
-                                }
-                            }
-
-                            /* Project all this back to the distribution. */
-
-                            lb_f(lb, index, p, n, &fnew);
-                            fnew += lb->model.wv[p] * (rho * udotc * rcs2 + 0.5 * sdotq * rcs2 * rcs2);
-                            lb_f_set(lb, index, p, n, fnew);
-                        }
+                        lb_f(lb, index, p, n, &fnew);
+                        fnew += lb->model.wv[p] * (rho * udotc * rcs2 + 0.5 * sdotq * rcs2 * rcs2);
+                        lb_f_set(lb, index, p, n, fnew);
                     }
                 }
             }
-            /* next site */
         }
+            /* next site */
     }
-    return 0;
+    return;
 }
 
 /*****************************************************************************

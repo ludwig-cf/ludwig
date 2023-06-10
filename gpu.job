@@ -1,6 +1,6 @@
 #!/bin/bash
 #SBATCH --account=m22oc-S2329216
-#SBATCH --job-name=ludwig_test
+#SBATCH --job-name=gpu
 #SBATCH --gres=gpu:1
 #SBATCH --time=00:10:00
 #SBATCH --partition=gpu
