@@ -41,30 +41,20 @@ void copyModelToDevice(lb_model_t *h_model, lb_model_t *d_model) {
     int8_t (*d_cv)[3];
     double *d_wv;
     double *d_na;
-    double *d_ma;
 
     cudaMalloc((void**)&d_cv, sizeof(int8_t[3]) * nvel);
     cudaMalloc((void**)&d_wv, sizeof(double) * nvel);
     cudaMalloc((void**)&d_na, sizeof(double) * nvel);
-
-    // Allocate memory for 2D array ma as a flat 1D array
-    cudaMalloc((void**)&d_ma, sizeof(double) * nvel * nvel);  // adjust this if ma is not square
-
+    
     // Copy the data from host to the GPU
     cudaMemcpy(d_cv, h_model->cv, sizeof(int8_t[3]) * nvel, cudaMemcpyHostToDevice);
     cudaMemcpy(d_wv, h_model->wv, sizeof(double) * nvel, cudaMemcpyHostToDevice);
     cudaMemcpy(d_na, h_model->na, sizeof(double) * nvel, cudaMemcpyHostToDevice);
     
-    //I am not sure about ma, as i do not know the scope of ma
-    for(int i = 0; i < nvel; i++) {
-        cudaMemcpy(&d_ma[i * nvel], h_model->ma[i], sizeof(double) * nvel, cudaMemcpyHostToDevice);  // adjust this if ma is not square
-    }
-
     // Set the pointers in the struct to the newly allocated GPU memory
     cudaMemcpy(&(d_model->cv), &d_cv, sizeof(int8_t(*)[3]), cudaMemcpyHostToDevice);
     cudaMemcpy(&(d_model->wv), &d_wv, sizeof(double*), cudaMemcpyHostToDevice);
     cudaMemcpy(&(d_model->na), &d_na, sizeof(double*), cudaMemcpyHostToDevice);
-    cudaMemcpy(&(d_model->ma), &d_ma, sizeof(double*), cudaMemcpyHostToDevice);
 
     //copy the rest data to gpu
     cudaMemcpy(&(d_model->ndim), &(h_model->ndim), sizeof(int8_t), cudaMemcpyHostToDevice);
@@ -155,7 +145,6 @@ __host__ int lb_le_apply_boundary_conditions(lb_t *lb, lees_edw_t *le) {
  *****************************************************************************/
 
 __global__ static void le_reproject(lb_t *lb, lees_edw_t *le) {
-
     int ic, jc, kc, index;
     int nplane, plane, side;
     int ia, ib;
