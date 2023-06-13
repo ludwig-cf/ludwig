@@ -170,7 +170,7 @@ __global__ static void le_reproject(lb_t *lb, lees_edw_t *le) {
     
     jc = blockIdx.y * blockDim.y + threadIdx.y;
     kc = blockIdx.z * blockDim.z + threadIdx.z;
-
+    
     if (jc < nlocal[Y] && kc < nlocal[Z]) {
         for (plane = 0; plane < nplane; plane++) {
             for (side = 0; side < 2; side++) {
@@ -294,6 +294,14 @@ int le_displace_and_interpolate(lb_t *lb, lees_edw_t *le) {
             nprop += 1;
     }
 
+    // int truth[nprop];
+    // for (int p = 1, int i = 0; p < lb->model.nvel; p++) {
+    //     if (lb->model.cv[p][X] == +1) {
+    //         truth[i] = p;
+    //         i++;
+    //     }
+    // }
+
     ndata = ndist * nprop * nlocal[Y] * nlocal[Z];
     recv_buff = (double *)malloc(ndata * sizeof(double));
     assert(recv_buff);
@@ -333,6 +341,30 @@ int le_displace_and_interpolate(lb_t *lb, lees_edw_t *le) {
                 /* Next site */
             }
         }
+
+        // ndata = 0;
+        // for (jc = 1; jc <= nlocal[Y]; jc++) {
+
+        //     j1 = 1 + (jc + jdy - 1 + 2 * nlocal[Y]) % nlocal[Y];
+        //     j2 = 1 + (j1 % nlocal[Y]);
+
+        //     for (kc = 1; kc <= nlocal[Z]; kc++) {
+
+        //         index0 = lees_edw_index(le, ic, j1, kc);
+        //         index1 = lees_edw_index(le, ic, j2, kc);
+
+        //         /* xdisp_fwd_cv[0] identifies cv[p][X] = +1 */
+
+        //         for (n = 0; n < ndist; n++) {
+        //             for (int i = 0; i < nprop; i++) {
+        //                 //int ndata = ((jc-1)*nlocal_Z + (kc-1))*ndist*nprop + n*nprop + i;
+        //                 recv_buff[ndata++] = (1.0 - fr) * lb->f[LB_ADDR(lb->nsite, ndist, truth[i], index0, n, p)] +
+        //                                      fr * lb->f[LB_ADDR(lb->nsite, ndist, truth[i], index1, n, p)];
+        //             }
+        //         }
+        //         /* Next site */
+        //     }
+        // }
 
         /* ...and copy back ... */
 
