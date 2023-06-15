@@ -27,6 +27,7 @@
 #include "colloid_sums.h"
 #include "psi_colloid.h"
 #include "util.h"
+#include "util_ellipsoid.h"
 #include "wall.h"
 #include "build.h"
 #include "blue_phase.h"
@@ -91,7 +92,7 @@ int build_update_map(cs_t * cs, colloids_info_t * cinfo, map_t * map) {
   double  rsite0[3];
   double  rsep[3];
 
-  double   radius, rsq;
+  double   largestdimn;
   double   cosine, mod;
 
   /* To set the wetting data in the map, we assume C, H zero at moment */
@@ -150,10 +151,9 @@ int build_update_map(cs_t * cs, colloids_info_t * cinfo, map_t * map) {
 
           if (p_colloid->s.type == COLLOID_TYPE_SUBGRID) continue;
 
-	  /* Set actual position and radius */
+	  /* Set actual position and size of the cube to be checked */
 
-	  radius = p_colloid->s.a0;
-	  rsq    = radius*radius;
+	  colloids_largest_dimension(p_colloid, &largestdimn);
 
 	  /* Need to translate the colloid position to "local"
 	   * coordinates, so that the correct range of lattice
@@ -168,12 +168,12 @@ int build_update_map(cs_t * cs, colloids_info_t * cinfo, map_t * map) {
 	   * should not extend beyond the boundary of the current domain
 	   * (but include halos). */
 
-	  i_min = imax(1 - nhalo,         (int) floor(r0[X] - radius));
-	  i_max = imin(nlocal[X] + nhalo, (int) ceil (r0[X] + radius));
-	  j_min = imax(1 - nhalo,         (int) floor(r0[Y] - radius));
-	  j_max = imin(nlocal[Y] + nhalo, (int) ceil (r0[Y] + radius));
-	  k_min = imax(1 - nhalo,         (int) floor(r0[Z] - radius));
-	  k_max = imin(nlocal[Z] + nhalo, (int) ceil (r0[Z] + radius));
+	  i_min = imax(1 - nhalo,         (int) floor(r0[X] - largestdimn));
+	  i_max = imin(nlocal[X] + nhalo, (int) ceil (r0[X] + largestdimn));
+	  j_min = imax(1 - nhalo,         (int) floor(r0[Y] - largestdimn));
+	  j_max = imin(nlocal[Y] + nhalo, (int) ceil (r0[Y] + largestdimn));
+	  k_min = imax(1 - nhalo,         (int) floor(r0[Z] - largestdimn));
+	  k_max = imin(nlocal[Z] + nhalo, (int) ceil (r0[Z] + largestdimn));
 
 	  /* Check each site to see whether it is inside or not */
 
@@ -190,7 +190,7 @@ int build_update_map(cs_t * cs, colloids_info_t * cinfo, map_t * map) {
 
 		/* Are we inside? */
 
-		if (dot_product(rsep, rsep) < rsq) {
+		if (is_site_inside_colloid(p_colloid, rsep)) {
 
 		  /* Set index */
 		  index = cs_index(cs, i, j, k);
@@ -226,6 +226,79 @@ int build_update_map(cs_t * cs, colloids_info_t * cinfo, map_t * map) {
   }
 
   return 0;
+}
+/*****************************************************************************
+ *
+ *  Compute whether the given grid point is inside the colloid
+ *
+ *****************************************************************************/
+__host__ int is_site_inside_colloid(colloid_t * pc, double rsep[3]) {
+
+double radius;
+double lhs,rhs;
+
+double * elabc, *quater;
+double elev1[3], elev2[3], elev3[3];
+double worldv1[3]={1.0,0.0,0.0};
+double worldv2[3]={0.0,1.0,0.0};
+double elL[3][3] = {{0.0,0.0,0.0},{0.0,0.0,0.0},{0.0,0.0,0.0}};
+double elQ[3][3], elQT[3][3], elA[3][3], elAp[3][3];
+
+int i;
+
+  lhs	= dot_product(rsep, rsep);
+  radius = pc->s.a0;
+  rhs    = radius*radius;
+     
+  if (pc->s.type == COLLOID_TYPE_ELLIPSOID) {
+    /*Constructing Lambda matrix*/
+    elabc  = pc->s.elabc;
+    for(i=0; i<3; i++) elL[i][i]=1.0/(elabc[i]*elabc[i]);
+    /*Constructing Q matrix*/
+    quater = pc->s.quater;
+    rotate_tobodyframe_quaternion(quater, worldv1, elev1);
+    rotate_tobodyframe_quaternion(quater, worldv2, elev2);
+    cross_product(elev1,elev2,elev3);
+    normalise_unit_vector(elev3,3);
+    for(i=0; i<3; i++) elQ[i][0]=elev1[i];
+    for(i=0; i<3; i++) elQ[i][1]=elev2[i];
+    for(i=0; i<3; i++) elQ[i][2]=elev3[i];
+    /*Constructing A matrix*/
+    matrix_product(elQ,elL,elAp);
+    matrix_transpose(elQ,elQT);
+    matrix_product(elAp,elQT,elA);
+    /*Evaluating quadratic equation*/
+    lhs = elA[0][0]*rsep[X]*rsep[X] 
+	+ elA[1][1]*rsep[Y]*rsep[Y] 
+	+ elA[2][2]*rsep[Z]*rsep[Z]
+	+ (elA[0][1]+elA[1][0])*rsep[X]*rsep[Y]
+	+ (elA[0][2]+elA[2][0])*rsep[X]*rsep[Z]
+	+ (elA[1][2]+elA[2][1])*rsep[Y]*rsep[Z];
+    rhs = 1.0;
+  }
+return (lhs < rhs);
+}
+/*****************************************************************************
+ *
+ *  Compute the largest dimension of the colloid
+ *
+ *****************************************************************************/
+
+__host__ void colloids_largest_dimension(colloid_t * pc, double * large ) {
+
+  double ela,elb,elc;
+  assert(pc);
+  assert(large);
+	  
+  *large = pc->s.a0;
+  if (pc->s.type == COLLOID_TYPE_ELLIPSOID) {
+    ela    = pc->s.elabc[0];
+    elb    = pc->s.elabc[1];
+    elc    = pc->s.elabc[2];
+    *large=ela > elb ? (ela > elc ? ela : elc) : (elb > elc ? elb : elc);
+  }
+
+  return ;
 }
 
 /*****************************************************************************
