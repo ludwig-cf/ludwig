@@ -168,10 +168,10 @@ __global__ static void le_reproject(lb_t *lb, lees_edw_t *le) {
     t = 1.0 * physics_control_timestep(phys);
     lees_edw_nlocal(le, nlocal);
     
-    jc = blockIdx.y * blockDim.y + threadIdx.y;
-    kc = blockIdx.z * blockDim.z + threadIdx.z;
+    jc = blockIdx.y * blockDim.y + threadIdx.y + 1;
+    kc = blockIdx.z * blockDim.z + threadIdx.z + 1;
     
-    if (jc < nlocal[Y] && kc < nlocal[Z]) {
+    if (jc <= nlocal[Y] && kc <= nlocal[Z]) {
         for (plane = 0; plane < nplane; plane++) {
             for (side = 0; side < 2; side++) {
 
@@ -358,8 +358,8 @@ int le_displace_and_interpolate(lb_t *lb, lees_edw_t *le) {
         //         for (n = 0; n < ndist; n++) {
         //             for (int i = 0; i < nprop; i++) {
         //                 //int ndata = ((jc-1)*nlocal_Z + (kc-1))*ndist*nprop + n*nprop + i;
-        //                 recv_buff[ndata++] = (1.0 - fr) * lb->f[LB_ADDR(lb->nsite, ndist, truth[i], index0, n, p)] +
-        //                                      fr * lb->f[LB_ADDR(lb->nsite, ndist, truth[i], index1, n, p)];
+        //                 recv_buff[ndata++] = (1.0 - fr) * lb->f[LB_ADDR(lb->nsite, ndist, lb->model->nvel, index0, n, truth[i])] +
+        //                                      fr * lb->f[LB_ADDR(lb->nsite, ndist, lb->nodel->nvei, index1, n, truth[i])];
         //             }
         //         }
         //         /* Next site */
