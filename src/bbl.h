@@ -29,6 +29,7 @@ int bbl_pass0(bbl_t * bbl, lb_t * lb, colloids_info_t * cinfo);
 
 int bbl_active_set(bbl_t * bbl, colloids_info_t * cinfo);
 int bbl_update_colloids(bbl_t * bbl, wall_t * wall, colloids_info_t * cinfo);
+int bbl_update_ellipsoids(bbl_t * bbl, wall_t * wall, colloids_info_t * cinfo);
 
 int bbl_surface_stress(bbl_t * bbl, double slocal[3][3]);
 int bbl_order_parameter_deficit(bbl_t * bbl, double * delta);
