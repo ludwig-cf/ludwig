@@ -969,6 +969,7 @@ void ludwig_run(const char * inputfile) {
 	wall_is_pm(ludwig->wall, &is_pm);
 	hydro_memcpy(ludwig->hydro, tdpMemcpyDeviceToHost);
 	stats_velocity_minmax(&statvel, ludwig->hydro, ludwig->map);
+	stats_colloid_write_velocities(ludwig->pe, ludwig->collinfo);
       }
 
       lb_collision_stats_kt(ludwig->lb, ludwig->noise_rho, ludwig->map);
