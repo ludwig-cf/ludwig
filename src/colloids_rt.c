@@ -21,6 +21,7 @@
 
 #include "pe.h"
 #include "util.h"
+#include "util_ellipsoid.h"
 #include "coords.h"
 #include "runtime.h"
 #include "physics.h"
@@ -387,6 +388,9 @@ int colloids_rt_state_stub(pe_t * pe, rt_t * rt, colloids_info_t * cinfo,
   const char * format_e3 = "%-28s %14.7e %14.7e %14.7e\n";
   const char * format_s1 = "%-28s  %s\n";
 
+  /*For ellipsoids*/
+  double ev1[3],ev2[3];
+
   assert(pe);
   assert(rt);
   assert(cinfo);
@@ -461,6 +465,7 @@ int colloids_rt_state_stub(pe_t * pe, rt_t * rt, colloids_info_t * cinfo,
   state->type = COLLOID_TYPE_DEFAULT;
   if (strcmp(value, "active") == 0) state->type = COLLOID_TYPE_ACTIVE;
   if (strcmp(value, "subgrid") == 0) state->type = COLLOID_TYPE_SUBGRID;
+  if (strcmp(value, "ellipsoid") == 0) state->type = COLLOID_TYPE_ELLIPSOID;/*sumesh-ell*/
   if (nrt) pe_info(pe, format_s1, stub, value);
 
   snprintf(key, BUFSIZ-1, "%s_%s", stub, "rng");
@@ -530,6 +535,23 @@ int colloids_rt_state_stub(pe_t * pe, rt_t * rt, colloids_info_t * cinfo,
   snprintf(key, BUFSIZ-1, "%s_%s", stub, "epsilon");
   nrt = rt_double_parameter(rt, key, &state->epsilon);
   if (nrt) pe_info(pe, format_e1, key, state->epsilon);
+
+  snprintf(key, BUFSIZ-1, "%s_%s", stub, "elabc");/*sumesh-ell*/
+  nrt = rt_double_parameter_vector(rt, key, state->elabc);
+  if (nrt) pe_info(pe, format_e3, key, state->elabc[X], state->elabc[Y], state->elabc[Z]);
+
+  snprintf(key, BUFSIZ-1, "%s_%s", stub, "elev1");/*sumesh-ell*/
+  nrt = rt_double_parameter_vector(rt, key, ev1);
+  if (nrt) pe_info(pe, format_e3, key, ev1[X], ev1[Y], ev1[Z]);
+  normalise_unit_vector(ev1,3);
+
+  snprintf(key, BUFSIZ-1, "%s_%s", stub, "elev2");/*sumesh-ell*/
+  nrt = rt_double_parameter_vector(rt, key, ev2);
+  if (nrt) pe_info(pe, format_e3, key, ev2[X], ev2[Y], ev2[Z]);
+  normalise_unit_vector(ev2,3);
+  orthonormalise_vector_b_to_a(ev1, ev2);
+
+  quaternions_from_vectors(ev1,ev2,state->quater);
 
   return 0;
 }
