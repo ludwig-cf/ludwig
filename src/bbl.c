@@ -991,10 +991,10 @@ int bbl_update_ellipsoids(bbl_t * bbl, wall_t * wall, colloids_info_t * cinfo) {
 
   double * elabc;
   double *quatern, quaternext[4], *quaterold;
-  double *own, ownext[3];
+  double *own;//ownext[3];
   double torqbn[3],torqwn[3];
-  double obn[3],obnext[3];
-  double odotbn[3],odotbathalf[3];
+  double obn[3];//,obnext[3];
+  double odotbn[3];//,odotbathalf[3];
   double obatquart[3],obathalf[3];
   double owatquart[3],owathalf[3];
   double qbar[4],qathalf_p[4];
