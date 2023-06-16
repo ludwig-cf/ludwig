@@ -552,7 +552,7 @@ int colloids_rt_state_stub(pe_t * pe, rt_t * rt, colloids_info_t * cinfo,
   orthonormalise_vector_b_to_a(ev1, ev2);
 
   quaternions_from_vectors(ev1,ev2,state->quater);
-
+  copy_vectortovector(state->quater,state->quaterold,4);
   return 0;
 }
 

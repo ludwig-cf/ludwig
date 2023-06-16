@@ -1197,17 +1197,15 @@ int bbl_update_ellipsoids(bbl_t * bbl, wall_t * wall, colloids_info_t * cinfo) {
   quaternion_from_omega(owathalf,0.5,qbar);
   quaternion_product(qbar,quatern,quaternext);
   
-  for(i = 0; i < 4; i++) {pc->s.quater[i]=quaternext[i];}/*To be moved to coll_update*/
+/*To be moved to coll_update*/
+  copy_vectortovector(pc->s.quater,pc->s.quaterold,4);
+  copy_vectortovector(quaternext,pc->s.quater,4);
+  for(i = 0; i < 4; i++) {pc->s.quater[i]=quaternext[i];}
   //for(i = 0; i < 3; i++) {xb[3+i] = ownext[i];}/*To be moved to coll_update*/
   }
 //  double v[3]={1.0,0.0,0.0},b[3],c[3];
 //  rotate_tobodyframe_quaternion(quatern,v,b);
 //  rotate_tobodyframe_quaternion(quaternext,v,c);
-//  printf("%f, %f, %f -->> %f, %f, %f\n",b[0],b[1],b[2],c[0],c[1],c[2]);
-//  printf("printing stuff from bbl\n");
-//  print_vector_onscreen(quaternext,4);
-//  print_vector_onscreen(xb+3,3);
-//  print_vector_onscreen(torqwn,3);
 
     /* Set the position update, but don't actually move
      * the particles. This is deferred until the next
@@ -1221,9 +1219,6 @@ int bbl_update_ellipsoids(bbl_t * bbl, wall_t * wall, colloids_info_t * cinfo) {
       if (pc->s.isfixedw == 0) pc->s.w[ia] = xb[3+ia];
     }
    
-   for(i = 0; i < 6; i++) printf("%0.12f, ",xb[i]);
-   printf("\n");
-
     if (pc->s.isfixeds == 0) {
       rotate_vector(pc->s.m, xb + 3);
       rotate_vector(pc->s.s, xb + 3);
@@ -1274,8 +1269,6 @@ int bbl_update_ellipsoids(bbl_t * bbl, wall_t * wall, colloids_info_t * cinfo) {
 	pc->zeta[19]*pc->s.w[Y] +
 	pc->zeta[20]*pc->s.w[Z]);
 
-//	printf("printing torqueu\n");
-//	print_vector_onscreen(pc->t0,3);
     /* Copy non-hydrodynamic contribution for the diagnostic record. */
 
     pc->diagnostic.fnonhy[X] = pc->force[X];

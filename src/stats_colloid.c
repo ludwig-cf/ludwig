@@ -155,7 +155,7 @@ int stats_colloid_write_velocities(pe_t * pe, colloids_info_t * info) {
   pe_info(pe, "Colloid velocities");
 
   for ( ; pc; pc = pc->nextlocal) {
-    printf("%22.15e %22.15e %22.15e %22.15e %22.15e %22.15e\n",
+    printf("%22.15f %22.15f %22.15f %22.15f %22.15f %22.15f\n",
        pc->s.v[X], pc->s.v[Y], pc->s.v[Z], pc->s.w[X], pc->s.w[Y], pc->s.w[Z]);
   }
 
