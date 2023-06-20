@@ -54,7 +54,7 @@ struct psi_options_s {
   /* Time stepping for Nernst Planck */
   int nsolver;                    /* Nernst Planck method */
   int nsmallstep;                 /* No. small timesteps in time splitting */
-  double diffacc;                 /* FIXME: what exactly is this? */
+  double diffacc;                 /* Criterion for time splitting adjustment */
 
   /* Other */
   int method;                     /* Force computation method */
@@ -64,6 +64,8 @@ struct psi_options_s {
 
 psi_options_t psi_options_default(int nhalo);
 
+int psi_options_to_json(const psi_options_t * opts, cJSON ** json);
+int psi_options_from_json(const cJSON * json, psi_options_t * opts);
 
 int psi_bjerrum_length1(const psi_options_t * opts, double * lb);
 int psi_bjerrum_length2(const psi_options_t * opts, double * lb);
