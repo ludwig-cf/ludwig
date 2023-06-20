@@ -276,8 +276,11 @@ int psi_options_rt(pe_t * pe, cs_t * cs, rt_t * rt, psi_options_t * popts) {
   rt_int_parameter(rt, "freq_statistics", &opts.solver.nfreq);
   rt_int_parameter(rt, "freq_psi_resid",  &opts.solver.nfreq);
 
+  /* Accept either form (older "rel_tol" "abs_tol" to be removed) */
   rt_double_parameter(rt, "electrokinetics_rel_tol", &opts.solver.reltol);
   rt_double_parameter(rt, "electrokinetics_abs_tol", &opts.solver.abstol);
+  rt_double_parameter(rt, "electrokinetics_solver_reltol", &opts.solver.reltol);
+  rt_double_parameter(rt, "electrokinetics_solver_abstol", &opts.solver.abstol);
 
   /* NPE time splitting and criteria */
 
