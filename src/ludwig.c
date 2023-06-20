@@ -915,12 +915,7 @@ void ludwig_run(const char * inputfile) {
     if (ludwig->psi) {
       if (is_psi_output_step() || is_config_step()) {
 	pe_info(ludwig->pe, "Writing psi file at step %d!\n", step);
-<<<<<<< HEAD
 	psi_io_write(ludwig->psi, step);
-=======
-	sprintf(filename,"psi-%8.8d", step);
-	io_write_data(iohandler, filename, ludwig->psi);
->>>>>>> develop
       }
     }
 
