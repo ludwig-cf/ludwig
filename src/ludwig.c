@@ -206,7 +206,6 @@ static int ludwig_rt(ludwig_t * ludwig) {
   int ntstep;
   int n, nstat;
   char filename[FILENAME_MAX];
-  char subdirectory[FILENAME_MAX/2];
 
   pe_t * pe = NULL;
   cs_t * cs = NULL;
@@ -306,18 +305,22 @@ static int ludwig_rt(ludwig_t * ludwig) {
 
   /* NOW INITIAL CONDITIONS */
 
-  pe_subdirectory(pe, subdirectory);
   ntstep = physics_control_timestep(ludwig->phys);
 
   if (ntstep == 0) {
     double rho0 = 1.0;
-    n = 0;
     lb_rt_initial_conditions(pe, rt, ludwig->lb, ludwig->phys);
     physics_rho0(ludwig->phys, &rho0);
     if (ludwig->hydro) hydro_rho0(ludwig->hydro, rho0);
 
-    rt_int_parameter(rt, "LE_init_profile", &n);
-    if (n != 0) lb_le_init_shear_profile(ludwig->lb, ludwig->le);
+    /* This should be relocated with LE plane input */
+    if (rt_switch(ludwig->rt, "LE_init_profile")) {
+      if (lees_edw_nplane_total(ludwig->le) == 0) {
+	pe_info(ludwig->pe, "Cannot use LE_init_profile with no planes\n");
+	pe_fatal(ludwig->pe, "Please check the input and try again\n");
+      }
+      lb_le_init_shear_profile(ludwig->lb, ludwig->le);
+    }
   }
   else {
     /* Distributions */
@@ -440,7 +443,6 @@ static int ludwig_rt(ludwig_t * ludwig) {
 void ludwig_run(const char * inputfile) {
 
   char    filename[FILENAME_MAX];
-  char    subdirectory[FILENAME_MAX/2];
   int     is_porous_media = 0;
   int     step = 0;
   int     is_pm = 0;
@@ -498,8 +500,6 @@ void ludwig_run(const char * inputfile) {
   statvel.print_vol_flux = rt_switch(ludwig->rt, "stats_vel_print_vol_flux");
 
   /* Report initial statistics */
-
-  pe_subdirectory(ludwig->pe, subdirectory);
 
   /* Move initilaised data to target for initial conditions/time stepping */
 
@@ -882,7 +882,7 @@ void ludwig_run(const char * inputfile) {
     if (is_config_step() || is_measurement_step() || is_colloid_io_step()) {
       if (ncolloid > 0) {
 	pe_info(ludwig->pe, "Writing colloid output at step %d!\n", step);
-	sprintf(filename, "%s%s%8.8d", subdirectory, "config.cds", step);
+	sprintf(filename, "%s%8.8d", "config.cds", step);
 	colloid_io_write(ludwig->cio, filename);
       }
     }
@@ -915,7 +915,12 @@ void ludwig_run(const char * inputfile) {
     if (ludwig->psi) {
       if (is_psi_output_step() || is_config_step()) {
 	pe_info(ludwig->pe, "Writing psi file at step %d!\n", step);
+<<<<<<< HEAD
 	psi_io_write(ludwig->psi, step);
+=======
+	sprintf(filename,"psi-%8.8d", step);
+	io_write_data(iohandler, filename, ludwig->psi);
+>>>>>>> develop
       }
     }
 
@@ -933,7 +938,7 @@ void ludwig_run(const char * inputfile) {
     }
 
     if (is_shear_output_step()) {
-      sprintf(filename, "%sstr-%8.8d.dat", subdirectory, step);
+      sprintf(filename, "str-%8.8d.dat", step);
       stats_rheology_stress_section(ludwig->stat_rheo, filename);
       stats_rheology_stress_profile_zero(ludwig->stat_rheo);
     }
