@@ -41,7 +41,7 @@ int test_psi_suite(void) {
   pe_create(MPI_COMM_WORLD, PE_QUIET, &pe);
 
   /* Changes in psi_t should be accompanied by changes in tests... */
-  assert(sizeof(psi_t) == 184);
+  assert(sizeof(psi_t) == 576);
 
   test_psi_initialise(pe);
   test_psi_create(pe);
@@ -124,6 +124,7 @@ int test_psi_initialise(pe_t * pe) {
 
     /* Other */
     assert(psi.method == opts.method);
+    assert(psi.options.nk == opts.nk);
 
     psi_finalise(&psi);
   }
