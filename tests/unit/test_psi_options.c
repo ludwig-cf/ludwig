@@ -20,6 +20,8 @@
 #include "psi_options.h"
 
 int test_psi_options_default(void);
+int test_psi_options_to_json(void);
+int test_psi_options_from_json(void);
 int test_psi_bjerrum_length(void);
 int test_psi_debye_length(void);
 
@@ -40,6 +42,8 @@ int test_psi_options_suite(void) {
   assert(PSI_NKMAX >= 2);
 
   test_psi_options_default();
+  test_psi_options_to_json();
+  test_psi_options_from_json();
   test_psi_bjerrum_length();
   test_psi_debye_length();
 
@@ -87,6 +91,87 @@ int test_psi_options_default(void) {
   assert(fabs(opts.diffacc - 0.0) < DBL_EPSILON);
 
   /* Other */
+
+  return ifail;
+}
+
+/*****************************************************************************
+ *
+ *  test_psi_options_to_json
+ *
+ *****************************************************************************/
+
+int test_psi_options_to_json(void) {
+
+  int ifail = 0;
+  psi_options_t opts = psi_options_default(0);
+  cJSON * json = NULL;
+
+  ifail = psi_options_to_json(&opts, &json);
+  assert(ifail == 0);
+
+  {
+    psi_options_t check = {0};
+    ifail = psi_options_from_json(json, &check);
+    assert(ifail == 0);
+    if (check.nk != 2) ifail = -1;
+    assert(check.nk == 2);
+  }
+
+  cJSON_Delete(json);
+
+  return ifail;
+}
+
+/*****************************************************************************
+ *
+ *  test_psi_options_from_json
+ *
+ *  Using the minimum requirement for solver options.
+ *
+ *****************************************************************************/
+
+int test_psi_options_from_json(void) {
+
+  int ifail = 0;
+  const char * jstr = "{ \"Number of species\":     2,"
+                      "  \"Unit charge\":           2.5,"
+                      "  \"Boltzmann factor\":      3.0,"
+                      "  \"First permittivity\":    2000.0,"
+                      "  \"Second permittivity\":   3000.0,"
+                      "  \"Valencies\":             [1, -1],"
+                      "  \"Diffusivities\":         [0.01, 0.02],"
+                      "  \"External field\":        [1.0, 2.0, 3.0],"
+                      "  \"Solver options\":        {"
+                      "         \"Solver type\":    \"sor\" "
+                      "}}";
+
+  cJSON * json = cJSON_Parse(jstr);
+  assert(json);
+
+  {
+    /* Check result */
+    psi_options_t opts = {0};
+    ifail = psi_options_from_json(json, &opts);
+    assert(ifail == 0);
+
+    assert(opts.nk == 2);
+    assert(fabs(opts.e    - 2.5) < DBL_EPSILON);
+    assert(fabs(opts.beta - 3.0) < DBL_EPSILON);
+    assert(fabs(opts.epsilon1 - 2000.0) < DBL_EPSILON);
+    assert(fabs(opts.epsilon2 - 3000.0) < DBL_EPSILON);
+    assert(opts.valency[0] == +1);
+    assert(opts.valency[1] == -1);
+    assert(fabs(opts.diffusivity[0] - 0.01) < DBL_EPSILON);
+    assert(fabs(opts.diffusivity[1] - 0.02) < DBL_EPSILON);
+    assert(fabs(opts.e0[0] - 1.0) < DBL_EPSILON);
+    assert(fabs(opts.e0[1] - 2.0) < DBL_EPSILON);
+    assert(fabs(opts.e0[2] - 3.0) < DBL_EPSILON);
+
+    assert(opts.solver.psolver == PSI_POISSON_SOLVER_SOR);
+  }
+
+  cJSON_Delete(json);
 
   return ifail;
 }
