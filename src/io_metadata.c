@@ -237,13 +237,14 @@ int io_metadata_from_json(cs_t * cs, const cJSON * json, io_metadata_t * m) {
  *
  *  io_metadata_write
  *
- *  Driver to write to file with an optional extra comment block.
+ *  Driver to write to file with an optional extra json block.
  *
  *****************************************************************************/
 
 int io_metadata_write(const io_metadata_t * metadata,
 		      const char * stub,
-		      const cJSON * comments) {
+		      const char * extra_name,
+		      const cJSON * extra_json) {
 
   int ifail = 0;
   cJSON * json = NULL;
@@ -257,9 +258,9 @@ int io_metadata_write(const io_metadata_t * metadata,
   /* Generate a json with the header inserted (gets deleted below) */
 
   io_metadata_to_json(metadata, &json);
-  if (comments) {
-    cJSON * jtmp = cJSON_Duplicate(comments, 1);
-    cJSON_AddItemToObject(json, "comments", jtmp);
+  if (extra_name && extra_json) {
+    cJSON * jtmp = cJSON_Duplicate(extra_json, 1);
+    cJSON_AddItemToObject(json, extra_name, jtmp);
   }
 
   /* The extension uses indices in natural numbers 001-002 etc. */

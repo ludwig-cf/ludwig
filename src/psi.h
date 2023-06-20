@@ -64,6 +64,9 @@ struct psi_s {
   psi_solver_options_t solver;      /* User options */
   stencil_t * stencil;              /* Finite difference stencil info */
 
+  /* Options */
+  psi_options_t options;            /* Overall options (currently a copy) */
+
 };
 
 
@@ -80,6 +83,8 @@ int psi_diffusivity(psi_t * obj, int n, double * diff);
 int psi_halo_psi(psi_t * obj);
 int psi_halo_psijump(psi_t * obj);
 int psi_halo_rho(psi_t * obj);
+
+int psi_io_write(psi_t * psi, int nstep);
 
 int psi_rho(psi_t * obj, int index, int n, double * rho);
 int psi_rho_set(psi_t * obj, int index, int n, double rho);

@@ -131,6 +131,9 @@ int psi_initialise(pe_t * pe, cs_t * cs, const psi_options_t * opts,
 
   psi->nfreq_io = INT_MAX;
 
+  /* Copy of the options structure */
+  psi->options = *opts;
+
   return ifail;
 }
 
@@ -957,3 +960,34 @@ int psi_electroneutral(psi_t * psi, map_t * map) {
   return 0;
 }
 
+/*****************************************************************************
+ *
+ *  psi_io_write
+ *
+ *  Convenience to write both psi, rho with extra information.
+ *
+ *****************************************************************************/
+
+int psi_io_write(psi_t * psi, int nstep) {
+
+  int ifail = 0;
+  io_event_t io1 = {0};
+  io_event_t io2 = {0};
+  const char * extra = "electrokinetics";
+  cJSON * json = NULL;
+
+  ifail = psi_options_to_json(&psi->options, &json);
+  if (ifail == 0) {
+    io1.extra_name = extra;
+    io2.extra_name = extra;
+    io1.extra_json  = json;
+    io2.extra_json  = json;
+  }
+
+  ifail += field_io_write(psi->psi, nstep, &io1);
+  ifail += field_io_write(psi->rho, nstep, &io2);
+
+  cJSON_Delete(json);
+
+  return ifail;
+}

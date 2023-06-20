@@ -914,11 +914,8 @@ void ludwig_run(const char * inputfile) {
 
     if (ludwig->psi) {
       if (is_psi_output_step() || is_config_step()) {
-	io_event_t event1 = {0};
-	io_event_t event2 = {0};
 	pe_info(ludwig->pe, "Writing psi file at step %d!\n", step);
-	field_io_write(ludwig->psi->psi, step, &event1);
-	field_io_write(ludwig->psi->rho, step, &event2);
+	psi_io_write(ludwig->psi, step);
       }
     }
 

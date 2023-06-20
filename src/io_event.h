@@ -31,6 +31,8 @@ typedef enum io_event_record_enum io_event_record_t;
 typedef struct io_event_s io_event_t;
 
 struct io_event_s {
+  const char * extra_name;      /* Extra metadata name */
+  cJSON * extra_json;           /* Extra JSON section */
   double time[IO_EVENT_MAX];    /* MPI_Wtime()s */
 };
 

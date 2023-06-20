@@ -55,7 +55,8 @@ int io_metadata_from_json(cs_t * cs, const cJSON * json,
 
 int io_metadata_write(const io_metadata_t * metadata,
 		      const char * stub,
-		      const cJSON * comments);
+		      const char * extra,
+		      const cJSON * json);
 int io_metadata_from_file(pe_t * pe, const char * filename,
 			  io_metadata_t ** metadata);
 
