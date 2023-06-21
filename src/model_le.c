@@ -155,7 +155,9 @@ __host__ int lb_le_apply_boundary_conditions(lb_t *lb, lees_edw_t *le) {
         int ndata = ndist * nprop * nlocal[Y] * nlocal[Z];
         double *recv_buff;
         cudaMalloc((void**)&recv_buff, ndata * sizeof(double));
-
+        if (recv_buff == NULL) {
+            pe_fatal(lb->pe, "malloc(recv_buff) failed\n");
+        }
         int *positive = (int *)malloc(sizeof(int) * nprop);
         int *negative = (int *)malloc(sizeof(int) * negprop);
         for (int p = 1, i = 0, j = 0; p < lb->model.nvel; p++) {
@@ -365,29 +367,7 @@ __global__ void le_displace_and_interpolate(lb_t *lb, lees_edw_t *le, double *re
     jc = blockIdx.y * blockDim.y + threadIdx.y + 1;
     kc = blockIdx.z * blockDim.z + threadIdx.z + 1;
     int tid = (jc - 1) + (kc - 1) * gridDim.y * blockDim.y;
-    // if (tid == 0) {
-    //     for (int i = 0; i < nprop; i++) {
-    //         printf("positve[%d] = %d ", i, positive[i]);
-    //     }
-    //     printf("\n");
-    //     for (int i = 0; i < negprop; i++) {
-    //         printf("negative[%d] = %d ", i, negative[i]);
-    //     }
-    //     printf("le->buffer_duy[0] = %d le->buffer_duy[1] = %d  le->buffer_duy[2] = %d\n", le->buffer_duy[0], le->buffer_duy[1], le->buffer_duy[2]);
-
-    // }
     
-    // __syncthreads();
-    // if (tid == 0) {
-    //     printf("works");
-    //     printf("le->buffer_duy[0] = %d le->buffer_duy[1] = %d  le->buffer_duy[2] = %d\n", le->buffer_duy[0], le->buffer_duy[1], le->buffer_duy[2]);
-    // }
-    // __syncthreads();
-
-    // if (tid == 0) {
-    //     printf("le->buffer_duy[0] = %d le->buffer_duy[1] = %d  le->buffer_duy[2] = %d\n", le->buffer_duy[0], le->buffer_duy[1], le->buffer_duy[2]);
-    // }
-
     /* We need to interpolate into a temporary buffer to make sure we
      * don't overwrite distributions taking part. The size is just
      * determined by the size of the local domain, and the number
@@ -397,72 +377,15 @@ __global__ void le_displace_and_interpolate(lb_t *lb, lees_edw_t *le, double *re
 
     /* Allocate a buffer large enough for all cvp[][X] = +1 */
 
-    // nprop = 0;
-    // negprop = 0;
-    // for (int p = 1; p < lb->model.nvel; p++) {
-    //     if (lb->model.cv[p][X] == +1) nprop += 1;
-    //     if (lb->model.cv[p][X] == -1) negprop += 1;
-    // }
-    //
-    // int *positive = (int *)malloc(sizeof(int) * nprop);
-    // int *negative = (int *)malloc(sizeof(int) * negprop);
-    // for (int p = 1, i = 0, j = 0; p < lb->model.nvel; p++) {
-    //     if (lb->model.cv[p][X] == +1) {
-    //         positive[i] = p;
-    //         i++;
-    //     }
-    //     if (lb->model.cv[p][X] == -1) {
-    //         negative[j] = p;
-    //         j++;
-    //     }
-    // }
-
-    // ndata = ndist * nprop * nlocal[Y] * nlocal[Z];
-    // recv_buff = (double *)malloc(ndata * sizeof(double));
-
     assert(recv_buff);
-    if (recv_buff == NULL)
-        // pe_fatal(lb->pe, "malloc(recv_buff) failed\n");
-        printf("malloc(recv_buff) failed\n");
+   
 
-    // printf("checking point 1 \n");
     for (plane = 0; plane < nplane; plane++) {
-        // printf("checking point 1.1 \n");
         ic = lees_edw_plane_location(le, plane);
-        // printf("checking point 1.2 \n");
         lees_edw_buffer_displacement(le, nhalo, t, &dy);
-        // printf("checking point 1.3 \n");
         dy = fmod(dy, ltot[Y]);
         jdy = floor(dy);
         fr = dy - jdy;
-
-        // ndata = 0;
-        // for (jc = 1; jc <= nlocal[Y]; jc++) {
-
-        //     j1 = 1 + (jc + jdy - 1 + 2 * nlocal[Y]) % nlocal[Y];
-        //     j2 = 1 + (j1 % nlocal[Y]);
-
-        //     for (kc = 1; kc <= nlocal[Z]; kc++) {
-
-        //         index0 = lees_edw_index(le, ic, j1, kc);
-        //         index1 = lees_edw_index(le, ic, j2, kc);
-
-        //         /* xdisp_fwd_cv[0] identifies cv[p][X] = +1 */
-
-        //         for (n = 0; n < ndist; n++) {
-        //             for (int p = 1; p < lb->model.nvel; p++) {
-        //                 if (lb->model.cv[p][X] != +1)
-        //                     continue;
-        //                 recv_buff[ndata++] = (1.0 - fr) * lb->f[LB_ADDR(lb->nsite, ndist, lb->model.nvel, index0, n, p)] +
-        //                                      fr * lb->f[LB_ADDR(lb->nsite, ndist, lb->model.nvel, index1, n, p)];
-        //             }
-        //         }
-        //         /* Next site */
-        //     }
-        // }
-
-       
-        // printf("checking point 2 \n");
 
         if (jc <= nlocal[Y] && kc <= nlocal[Z]) {
 
@@ -483,31 +406,8 @@ __global__ void le_displace_and_interpolate(lb_t *lb, lees_edw_t *le, double *re
             }
             /* Next site */
         }
-        
-
-        // /* ...and copy back ... */
-
-        // ndata = 0;
-        // for (jc = 1; jc <= nlocal[Y]; jc++) {
-        //     for (kc = 1; kc <= nlocal[Z]; kc++) {
-
-        //         index0 = lees_edw_index(le, ic, jc, kc);
-
-        //         for (n = 0; n < ndist; n++) {
-        //             for (int p = 1; p < lb->model.nvel; p++) {
-        //                 if (lb->model.cv[p][X] != +1)
-        //                     continue;
-        //                 int la = LB_ADDR(lb->nsite, ndist, lb->model.nvel, index0, n, p);
-        //                 lb->f[la] = recv_buff[ndata++];
-        //             }
-        //         }
-        //         /* Next site */
-        //     }
-        // }
 
         /* ...and copy back ... */
-        // printf("checking point 3 \n");
-
         if (jc <= nlocal[Y] && kc <= nlocal[Z]) {
             index0 = lees_edw_index(le, ic, jc, kc);
 
@@ -523,39 +423,12 @@ __global__ void le_displace_and_interpolate(lb_t *lb, lees_edw_t *le, double *re
         
 
         /* OTHER DIRECTION */
-        // printf("checking point 4 \n");
-
         ic = lees_edw_plane_location(le, plane) + 1;
 
         lees_edw_buffer_displacement(le, nhalo, t, &dy);
         dy = fmod(-dy, ltot[Y]);
         jdy = floor(dy);
         fr = dy - jdy;
-
-        // ndata = 0;
-        // for (jc = 1; jc <= nlocal[Y]; jc++) {
-
-        //     j1 = 1 + (jc + jdy - 1 + 2 * nlocal[Y]) % nlocal[Y];
-        //     j2 = 1 + (j1 % nlocal[Y]);
-
-        //     for (kc = 1; kc <= nlocal[Z]; kc++) {
-
-        //         index0 = lees_edw_index(le, ic, j1, kc);
-        //         index1 = lees_edw_index(le, ic, j2, kc);
-
-        //         for (n = 0; n < ndist; n++) {
-        //             for (int p = 1; p < lb->model.nvel; p++) {
-        //                 if (lb->model.cv[p][X] == -1) {
-        //                     int l0 = LB_ADDR(lb->nsite, ndist, lb->model.nvel, index0, n, p);
-        //                     int l1 = LB_ADDR(lb->nsite, ndist, lb->model.nvel, index1, n, p);
-        //                     recv_buff[ndata++] = (1.0 - fr) * lb->f[l0] + fr * lb->f[l1];
-        //                 }
-        //             }
-        //         }
-        //         /* Next site */
-        //     }
-        // }
-        // printf("checking point 5 \n");
 
         if (jc <= nlocal[Y] && kc <= nlocal[Z]) {
 
@@ -579,25 +452,6 @@ __global__ void le_displace_and_interpolate(lb_t *lb, lees_edw_t *le, double *re
 
         /* ...and now overwrite... */
 
-        // ndata = 0;
-        // for (jc = 1; jc <= nlocal[Y]; jc++) {
-        //     for (kc = 1; kc <= nlocal[Z]; kc++) {
-
-        //         index0 = lees_edw_index(le, ic, jc, kc);
-
-        //         for (n = 0; n < ndist; n++) {
-        //             for (int p = 1; p < lb->model.nvel; p++) {
-        //                 if (lb->model.cv[p][X] == -1) {
-        //                     int ijkp = LB_ADDR(lb->nsite, ndist, lb->model.nvel, index0, n, p);
-        //                     lb->f[ijkp] = recv_buff[ndata++];
-        //                 }
-        //             }
-        //         }
-        //     }
-        // }
-
-        // printf("checking point 6 \n");
-        
         if (jc <= nlocal[Y] && kc <= nlocal[Z]) {
 
             index0 = lees_edw_index(le, ic, jc, kc);
@@ -615,8 +469,6 @@ __global__ void le_displace_and_interpolate(lb_t *lb, lees_edw_t *le, double *re
         /* Next plane */
     }
 
-    // free(recv_buff);
-    // printf("checking point last \n");
     return;
 }
 
