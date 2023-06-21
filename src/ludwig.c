@@ -673,11 +673,7 @@ void ludwig_run(const char * inputfile) {
       TIMER_stop(TIMER_HALO_LATTICE);
     
       nernst_planck_adjust_multistep(ludwig->psi);
-
-      if (is_statistics_step()) pe_info(ludwig->pe, "%d multisteps\n",im);
-
       psi_zero_mean(ludwig->psi);
-
     }
 
     /* order parameter dynamics (not if symmetric_lb) */
