@@ -1,16 +1,15 @@
 ##############################################################################
 #
-#  Charge conservation smoke test 2
+#  Charge conservation smoke test
 #
-#  On colloid movement replacement of fluid
+#  On colloid movement removal of fluid
 #
-#  The colloid initial conditions are carefully crafted to
-#  give a change in discrete shape at time step X.
+#  As for rr1 but colloid in halo region.
 #
 ##############################################################################
 
 N_start  0
-N_cycles 2
+N_cycles 3
 
 size 32_32_32
 periodicity 1_1_1
@@ -39,15 +38,14 @@ fd_advection_scheme_order 2
 
 colloid_init        input_one
 
-colloid_one_type    default
+colloid_one_type    inactive
+
 colloid_one_a0      2.3
 colloid_one_ah      2.3
-colloid_one_r       16.0_16.0_16.299
+colloid_one_r       32.0_32.0_31.699
 colloid_one_v       0.0_0.0_0.01
 colloid_one_s       1.0_0.0_0.0
 colloid_one_m       1.0_0.0_0.0
-colloid_one_c       0.0
-colloid_one_h       0.0
 
 colloid_one_q0     +0.01
 colloid_one_q1      0.0000
@@ -59,6 +57,7 @@ colloid_one_q1      0.0000
 ###############################################################################
 
 freq_statistics 1
+freq_psi_resid  10
 config_at_end no
 
 default_io_grid 1_1_1
@@ -79,6 +78,11 @@ electrokinetics_d0      0.01
 electrokinetics_d1      0.01
 electrokinetics_eunit   1.0
 electrokinetics_epsilon 3.3e3
+
+electrokinetics_rel_tol  1e-08
+electrokinetics_abs_tol  1e-15
+electrokinetics_maxits   2000
+
 electrokinetics_init    uniform
 electrokinetics_init_rho_el 0.001
 
