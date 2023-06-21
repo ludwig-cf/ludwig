@@ -2,9 +2,31 @@
 #
 #  Guoy-Chapman electrokinetics
 #
-#  Note residual reporting is switched off to allow this test to
-#  pass at 1000 steps. (Exact residual varies above tolerance on
-#  different platforms.)
+#  This is a sample input file for the problem described at
+#  https://ludwig.epcc.ed.ac.uk/tutorials/electrokinetics/electrokinetics.html
+#
+#  We have a quasi-one dimensional system in the x-direction and we
+#  use the special initialisation
+#
+#  electrokinetics_init          gouy_chapman
+#
+#  to provide walls at x = 1 and x = Lx. We arrange for the system to
+#  have a surface charge (0.3125, 0.03125, or 0.003125) and zero
+#  co-ion concentration (counter-charge only). The whole system is
+#  electroneutral. E.g.,
+#
+#  electrokinetics_init_rho_el   0.0
+#  electrokinetics_init_sigma    0.003125
+#
+#  For the purposes of this test, only 100 time steps are used,
+#  and the SOR residual reporting is switch off to allow the test
+#  to pass (the residual can be sensitive to the platform/compiler
+#  at the level of the test tolerance).
+#
+#  For the results presented, 100,000 steps were used, and the
+#  final configuration file is used to provide the charge density.
+#  Statistics and residual reporting can be used at 1000 steps
+#  interval.
 #
 ##############################################################################
 
@@ -14,7 +36,6 @@
 #
 ###############################################################################
 
-N_start  0
 N_cycles 100
 
 ##############################################################################
@@ -23,19 +44,19 @@ N_cycles 100
 # 
 ##############################################################################
 
-size 64_4_4
-grid 1_1_2
-periodicity 1_1_1
+size               64_4_4
+periodicity        1_1_1
 lb_halo_scheme     lb_halo_openmp_reduced
 
 ##############################################################################
 #
 #  Fluid parameters
 #
+#  The temperature is relevant for k_B T in the electrokinetics context.
+#
 ##############################################################################
 
-viscosity 0.1
-viscosity_bulk 0.1
+viscosity           0.1
 
 isothermal_fluctuations off
 temperature 3.33333333333333333e-5
@@ -47,7 +68,7 @@ temperature 3.33333333333333333e-5
 #
 ###############################################################################
 
-free_energy fe_electro
+free_energy               fe_electro
 fe_force_method           phi_gradmu_correction
 
 fd_advection_scheme_order 3
@@ -59,7 +80,6 @@ fd_advection_scheme_order 3
 ###############################################################################
 
 colloid_init        none
-magnetic_b0      0.0_0.0_0.0
 
 ###############################################################################
 #
@@ -75,13 +95,13 @@ boundary_walls 0_0_0
 #
 ###############################################################################
 
-freq_statistics 100
-freq_psi_resid  10000
-config_at_end no
+freq_statistics               100
+freq_psi_resid                1000
+config_at_end                 no
 
-colloid_io_freq 1000
-
-stats_vel_print_vol_flux    yes
+psi_io_mode                   mpiio
+psi_io_format                 ascii
+psi_io_report                 no
 
 ###############################################################################
 #
@@ -89,23 +109,19 @@ stats_vel_print_vol_flux    yes
 #
 ###############################################################################
 
-electrokinetics_z0      +1
-electrokinetics_z1      -1
-electrokinetics_d0      0.01
-electrokinetics_d1      0.01
-electrokinetics_eunit   1.0
-electrokinetics_epsilon 3.3e3
+electrokinetics_z0              +1
+electrokinetics_z1              -1
+electrokinetics_d0               0.01
+electrokinetics_d1               0.01
+electrokinetics_eunit            1.0
+electrokinetics_epsilon          3.3e3
 
-electrokinetics_rel_tol  1e-08
-electrokinetics_abs_tol  1e-15
-electrokinetics_maxits   2000
+electrokinetics_init             gouy_chapman
+electrokinetics_init_rho_el      0.0
+electrokinetics_init_sigma       0.003125
 
-electrokinetics_init    gouy_chapman
-electrokinetics_init_rho_el 0.001
-electrokinetics_init_sigma 0.03125
-
-psi_io_mode             mpiio
-psi_io_report           no
+electrokinetics_solver_type      sor
+electrokinetics_solver_stencil   7
 
 ###############################################################################
 #
