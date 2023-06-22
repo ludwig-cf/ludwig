@@ -25,8 +25,6 @@
 int wall_rt_init(pe_t * pe, cs_t * cs, rt_t * rt, lb_t * lb, map_t * map,
 		 wall_t ** wall) {
 
-  double ux_bot = 0.0;
-  double ux_top = 0.0;
   wall_slip_t ws = {0};
   wall_param_t p = {0};
 
@@ -47,6 +45,8 @@ int wall_rt_init(pe_t * pe, cs_t * cs, rt_t * rt, lb_t * lb, map_t * map,
   /* Run through input parameters */
 
   if (p.iswall) {
+    double ux_bot = 0.0;
+    double ux_top = 0.0;
     rt_double_parameter(rt, "boundary_speed_bottom", &ux_bot);
     rt_double_parameter(rt, "boundary_speed_top", &ux_top);
 
@@ -54,6 +54,12 @@ int wall_rt_init(pe_t * pe, cs_t * cs, rt_t * rt, lb_t * lb, map_t * map,
 
     p.ubot[X] = ux_bot; p.ubot[Y] = 0.0; p.ubot[Z] = 0.0;
     p.utop[X] = ux_top; p.utop[Y] = 0.0; p.utop[Z] = 0.0;
+
+    /* If there is a boundary ux, the wall cannot be in X */
+    if ((ux_bot != 0.0 || ux_top != 0.0) && p.isboundary[X]) {
+      pe_info(pe, "Cannot have non-zero u_x wall velocity if wall is X\n");
+      pe_fatal(pe, "Please check and try again\n");
+    }
 
     rt_double_parameter(rt, "boundary_lubrication_rcnormal", &p.lubr_rc[X]);
     p.lubr_rc[Y] = p.lubr_rc[X];
