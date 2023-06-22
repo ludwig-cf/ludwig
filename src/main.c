@@ -36,7 +36,19 @@ int main(int argc, char ** argv) {
   PetscInitialize(&argc, &argv, (char*) 0, NULL); 
 #endif 
 
-  ludwig_run(inputfile);
+  if (argc == 1) {
+    ludwig_run(inputfile);
+  }
+  else {
+    /* No command line arguments please */
+    int rank = -1;
+    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+    if (rank == 0) {
+      printf("Command line arguments are now disabled.\n");
+      printf("In particular, the input file must be called \"input\"\n");
+      printf("and be in the current working directory.\n");
+    }
+  }
 
 #ifdef PETSC
   PetscFinalize();
