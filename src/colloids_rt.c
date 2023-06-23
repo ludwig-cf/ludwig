@@ -389,7 +389,7 @@ int colloids_rt_state_stub(pe_t * pe, rt_t * rt, colloids_info_t * cinfo,
   const char * format_s1 = "%-28s  %s\n";
 
   /*For ellipsoids*/
-  double ev1[3],ev2[3];
+  double euler[3];
 
   assert(pe);
   assert(rt);
@@ -540,19 +540,16 @@ int colloids_rt_state_stub(pe_t * pe, rt_t * rt, colloids_info_t * cinfo,
   nrt = rt_double_parameter_vector(rt, key, state->elabc);
   if (nrt) pe_info(pe, format_e3, key, state->elabc[X], state->elabc[Y], state->elabc[Z]);
 
-  snprintf(key, BUFSIZ-1, "%s_%s", stub, "elev1");/*sumesh-ell*/
-  nrt = rt_double_parameter_vector(rt, key, ev1);
-  if (nrt) pe_info(pe, format_e3, key, ev1[X], ev1[Y], ev1[Z]);
-  normalise_unit_vector(ev1,3);
+  snprintf(key, BUFSIZ-1, "%s_%s", stub, "euler");/*sumesh-ell*/
+  nrt = rt_double_parameter_vector(rt, key, euler);
+  euler[X]=euler[X]/180.0*M_PI;
+  euler[Y]=euler[Y]/180.0*M_PI;
+  euler[Z]=euler[Z]/180.0*M_PI;
+  if (nrt) pe_info(pe, format_e3, key, euler[X], euler[Y], euler[Z]);
 
-  snprintf(key, BUFSIZ-1, "%s_%s", stub, "elev2");/*sumesh-ell*/
-  nrt = rt_double_parameter_vector(rt, key, ev2);
-  if (nrt) pe_info(pe, format_e3, key, ev2[X], ev2[Y], ev2[Z]);
-  normalise_unit_vector(ev2,3);
-  orthonormalise_vector_b_to_a(ev1, ev2);
-
-  quaternions_from_vectors(ev1,ev2,state->quater);
+  quaternions_from_eulerangles(euler[X],euler[Y], euler[Z], state->quater);
   copy_vectortovector(state->quater,state->quaterold,4);
+
   return 0;
 }
 
