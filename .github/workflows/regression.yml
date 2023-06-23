@@ -22,3 +22,6 @@ jobs:
         cp config/github-gcc.mk config.mk
         make serial
         make -j 2
+
+    - name: Check
+      run: make test
