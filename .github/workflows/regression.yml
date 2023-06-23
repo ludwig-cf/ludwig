@@ -16,8 +16,9 @@ jobs:
     - name: Checkout repository
       uses: actions/checkout@v3
 
-    - name: Configure
-    - run: gcc --version
-    - run: cp config/github-gcc.mk config.mk
-    - run: make serial
-    - run: make
+    - name: Build
+      run: |
+      gcc --version
+      cp config/github-gcc.mk config.mk
+      make serial
+      make -j 2
