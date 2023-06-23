@@ -1,6 +1,6 @@
 # Regression tests (serial)
 
-name: "Regression test"
+name: "Regression"
 
 on:
   pull_request:
@@ -10,7 +10,7 @@ on:
 
 jobs:
 
-  make-d2q9:
+  d2q9:
     runs-on: ubuntu-latest
 
     steps:
@@ -29,6 +29,26 @@ jobs:
       run: |
         make unit
         make -C tests d2q9
+
+  d3q15:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v3
+
+    - name: Build
+      run: |
+        gcc --version
+        cp config/github-gcc.mk config.mk
+        sed -i "s/D3Q19/D3Q15/" config.mk
+        make serial
+        make -j 2
+
+    - name: Check
+      run: |
+        make unit
+        make -C tests d3q15
 
   make-d3q19-short:
     runs-on: ubuntu-latest
