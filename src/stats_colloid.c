@@ -169,26 +169,26 @@ int stats_colloid_write_velocities(pe_t * pe, colloids_info_t * info) {
  *
  *****************************************************************************/
 
-int stats_colloid_write_orientations(pe_t * pe, colloids_info_t * info, double const t) {
+int stats_colloid_write_info(pe_t * pe, colloids_info_t * info, double const t) {
 
   colloid_t * pc = NULL;
   double phi,theta,psi;
-  double dcm[3][3];
   double r;
-  double opred[3];
+  double opred[3],angpred[2];
   double gammadot=(0.002/32.0);
   colloids_info_all_head(info, &pc);
 
-  pe_info(pe, "Colloid orientations and predicted angular velocities\n");
+  pe_info(pe, "Colloid orientations and velocities\n");
 
   for ( ; pc; pc = pc->nextlocal) {
-       //print_vector_onscreen(pc->s.quater,4);
-       rotationmatrix_from_quaternions(pc->s.quater, dcm);
-       eulerangles_from_dcm(dcm, &phi, &theta, &psi);
-       printf("%f, %f, %f\n",phi*180.0/M_PI,theta*180.0/M_PI,psi*180.0/M_PI);
-       r = pc->s.elabc[0]/pc->s.elabc[1];
-       Jeffery_omega_predicted(r,pc->s.quater, gammadot,opred);
-       printf("%22.15e,%22.25e,%22.15e\n",opred[0],opred[1],opred[2]);
+
+    eulerangles_from_quaternions(pc->s.quater, &phi, &theta, &psi);
+    printf("%22.15e, %22.15e, %22.15e\n",phi*180.0/M_PI,theta*180.0/M_PI,psi*180.0/M_PI);
+    r = pc->s.elabc[0]/pc->s.elabc[1];
+    Jeffery_omega_predicted(r,pc->s.quater, gammadot,opred,angpred);
+    printf("%22.15e %22.15e %22.15e U \n", pc->s.v[X], pc->s.v[Y], pc->s.v[Z]);
+    printf("%22.15e,\t%22.15e,\t%22.15e Predicted O\n",opred[0],opred[1],opred[2]);
+    printf("%22.15e,\t%22.15e,\t%22.15e Calculated O\n",pc->s.w[X], pc->s.w[Y], pc->s.w[Z]);
   }
 
   return 0;
