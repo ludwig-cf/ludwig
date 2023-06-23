@@ -1,6 +1,6 @@
 # Regression tests (serial)
 
-name: "Regression (serial)"
+name: "Regression test"
 
 on:
   pull_request:
@@ -9,7 +9,7 @@ on:
     - develop
 
 jobs:
-  run-serial-tests:
+  make-d3q19-short:
     runs-on: ubuntu-latest
 
     steps:
@@ -18,3 +18,6 @@ jobs:
 
     - name: Configure
       run: gcc --version
+      run: cp config/github-gcc.mk config.mk
+      run: make serial
+      run: make
