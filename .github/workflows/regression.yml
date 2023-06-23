@@ -18,7 +18,7 @@ jobs:
 
     - name: Build
       run: |
-      gcc --version
-      cp config/github-gcc.mk config.mk
-      make serial
-      make -j 2
+        gcc --version
+        cp config/github-gcc.mk config.mk
+        make serial
+        make -j 2
