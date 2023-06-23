@@ -23,5 +23,8 @@ jobs:
         make serial
         make -j 2
 
+    # Some care may be required with threads
     - name: Check
-      run: make test
+      run: |
+        export OMP_NUM_THREADS=1
+        make test
