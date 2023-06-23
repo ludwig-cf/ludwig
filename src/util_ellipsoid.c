@@ -159,22 +159,6 @@ __host__ __device__ void quaternion_from_omega(const double omega[3], const doub
   
   return;
   }
-/*****************************************************************************
- *
- *  Rotate to world frame by quaternion
- *
- ****************************************************************************/
-__host__ __device__ void rotate_toworldframe_quaternion(const double q[4], const double a[3], double b[3]) {
- double pseudoa[4],qinv[4],binter[4],pseudob[4];
- pseudoa[0]=0.0;
- for(int i = 1; i < 4; i++) {pseudoa[i] = a[i-1];}
- qinv[0]=q[0]; 
- for(int i = 1; i < 4; i++) {qinv[i] =-q[i];}
- quaternion_product(q,pseudoa,binter);
- quaternion_product(binter,qinv,pseudob);
- for(int i = 0; i < 3; i++) {b[i] = pseudob[i+1];}
- return;
- }
 
 /*****************************************************************************
  *
@@ -226,71 +210,45 @@ __host__ __device__ void inertia_tensor_quaternion(const double q[4], const doub
  *
  ****************************************************************************/
 __host__ __device__ void rotate_tobodyframe_quaternion(const double q[4], const double a[3], double b[3]) {
- double pseudoa[4],qinv[4],binter[4],pseudob[4];
- pseudoa[0]=0.0;
- for(int i = 1; i < 4; i++) {pseudoa[i] = a[i-1];}
- qinv[0]=q[0]; 
- for(int i = 1; i < 4; i++) {qinv[i] =-q[i];}
- quaternion_product(qinv,pseudoa,binter);
- quaternion_product(binter,q,pseudob);
- for(int i = 0; i < 3; i++) {b[i] = pseudob[i+1];}
+   double s1, s2, s3[3];
+   s1=(2.0*q[0]*q[0]-1.0);
+   s2=dot_product(&q[1],a);
+   cross_product(&q[1],a,s3);
+   for(int i = 0; i < 3; i++) {b[i]=s1*a[i] + 2.0*s2*q[i+1] + 2.0*q[0]*s3[i];}
  return;
  }
 
 /*****************************************************************************
  *
- *  Determining the quaternions
+ *  Determining Euler angles from quaternions
  *
  ****************************************************************************/
-__host__ __device__ void quaternions_from_vectors(const double a[3], const double b[3], double q[4]) {
-  double R[3][3];
-  rotationmatrix_from_vectors(a,b,R);
-  quaternions_from_dcm(R,q);
-  normalise_unit_vector(q,4);
-  return;
-  }
-/*****************************************************************************
- *
- *  Determining the rotation matrix from given quaternions
- *
- ****************************************************************************/
-__host__ __device__ void rotationmatrix_from_quaternions(const double q[4], double R[3][3]) {
-  R[0][0]=1.0-2.0*(q[2]*q[2]+q[3]*q[3]);
-  R[1][0]=2.0*(q[1]*q[2]+q[3]*q[0]);
-  R[2][0]=2.0*(q[1]*q[3]-q[2]*q[0]);
-  R[0][1]=2.0*(q[2]*q[1]-q[3]*q[0]);
-  R[1][1]=1.0-2.0*(q[3]*q[3]+q[1]*q[1]);
-  R[2][1]=2.0*(q[2]*q[3]+q[1]*q[0]);
-  R[0][2]=2.0*(q[3]*q[1]+q[2]*q[0]);
-  R[1][2]=2.0*(q[3]*q[2]-q[1]*q[0]);
-  R[2][2]=1.0-2.0*(q[1]*q[1]+q[2]*q[2]);
-  return;
-  }
-/*****************************************************************************
- *
- *  Determining the rotation matrix from given two orientation vectors
- *
- ****************************************************************************/
-__host__ __device__ void rotationmatrix_from_vectors(const double a[3], const double b[3], double R[3][3]) {
-  double c[3];
-  double inertialv1[3]={1.0,0.0,0.0};
-  double inertialv2[3]={0.0,1.0,0.0};
-  double inertialv3[3]={0.0,0.0,1.0};
+__host__ __device__ void eulerangles_from_quaternions(const double *q, double *phi, double *theta, double *psi) {
 
-  cross_product(a,b,c);
-  normalise_unit_vector(c,3);
-  /*Calculating the DCM matrix*/
-  R[0][0]=dot_product(inertialv1,a);
-  R[0][1]=dot_product(inertialv1,b);
-  R[0][2]=dot_product(inertialv1,c);
-  R[1][0]=dot_product(inertialv2,a);
-  R[1][1]=dot_product(inertialv2,b);
-  R[1][2]=dot_product(inertialv2,c);
-  R[2][0]=dot_product(inertialv3,a);
-  R[2][1]=dot_product(inertialv3,b);
-  R[2][2]=dot_product(inertialv3,c);
+  double st,ct,sp,cp,ss,cs;
+  st=2.0*sqrt((q[1]*q[1]+q[2]*q[2])*(1.0-q[1]*q[1]-q[2]*q[2]));
+  ct=1-2.0*(q[1]*q[1]+q[2]*q[2]);
+  if(fabs(st)>1.0e-12) {
+    sp=2.0*(q[1]*q[3]+q[2]*q[0])/st;
+    cp=2.0*(q[1]*q[0]-q[2]*q[3])/st;
+    ss=2.0*(q[1]*q[3]-q[2]*q[0])/st;
+    cs=2.0*(q[1]*q[0]+q[2]*q[3])/st;
+    *phi = atan2(sp,cp);
+    *theta = atan2(st,ct);
+    *psi = atan2(ss,cs);
+  }
+  else {
+    st=sqrt(q[1]*q[1]+q[2]*q[2]);
+    ct=sqrt(q[3]*q[3]+q[0]*q[0]);
+    sp=sqrt(q[2]*q[2]+q[3]*q[3]);
+    cp=sqrt(q[1]*q[1]+q[0]*q[0]);
+    *phi=2*atan2(sp,cp);
+    *theta=2*atan2(st,ct);
+    *psi = 0.0;
+  }
   return;
   }
+
 
 /*****************************************************************************
  *
@@ -304,70 +262,6 @@ __host__ __device__ void quaternions_from_eulerangles(const double phi, const do
   q[2]=sin(theta/2.0)*sin((phi-psi)/2.0);
   q[3]=cos(theta/2.0)*sin((phi+psi)/2.0);
   return;
-  }
-
-/*****************************************************************************
- *
- *  Determining Euler angles from the rotation matrix
- *
- ****************************************************************************/
-__host__ __device__ void eulerangles_from_dcm(const double R[3][3], double *phi, double *theta, double *psi){
-
-  if(R[2][2]==1.0){
-    *theta=0.0;
-    *phi=0.0;
-    *psi=atan2(R[0][1],R[0][0]);
-  }
-  else if(R[2][2]==-1.0){
-    *theta=M_PI;
-    *psi=0.0;
-    *phi=atan2(R[0][1],R[0][0]);
-  }
-  else {
-    *phi=atan2(R[2][0],-R[2][1]);
-    *theta=acos(R[2][2]);
-    *psi=atan2(R[0][2],R[1][2]);
-  }
-
-  return;
-  }
-
-/*****************************************************************************
- *
- *  Determining quaternions from the rotation matrix
- *
- ****************************************************************************/
-__host__ __device__ void quaternions_from_dcm(const double R[3][3], double q[4]){
-  
-  double trq=R[0][0]+R[1][1]+R[2][2];
-  q[0]=0.5*sqrt(1.0+trq);
-  if(fabs(q[0])<1e-12){
-    q[1]=sqrt((1.0+R[0][0])/2.0);
-    q[2]=R[0][1]/(2.0*q[1]);
-    q[3]=R[1][2]/(2.0*q[2]);
-  }
-  else {
-  q[1]=(R[1][2]-R[2][1])/(4.0*q[0]);
-  q[2]=(R[2][0]-R[0][2])/(4.0*q[0]);
-  q[3]=(R[0][1]-R[1][0])/(4.0*q[0]);
-  }
-
-  return;
-  }
-
-/*****************************************************************************
- *
- *  Rotating a vector by a matrix
- *
- ****************************************************************************/
-__host__ __device__ void rotate_byRmatrix(const double R[3][3], const double x[3], double xcap[3]    ){
-  for(int i=0; i < 3; i++){
-    xcap[i]=0.0;
-    for(int j = 0; j < 3; j++) {
-    xcap[i]+=R[i][j]*x[j];
-    }
-  }
-  return ;
   }
 
 /*****************************************************************************
@@ -387,7 +281,7 @@ __host__ __device__ void copy_vectortovector(const double a[3], double b[3], int
 *  Jeffery's predictions for a spheroid
 *
 *****************************************************************************/
-__host__ __device__ void Jeffery_omega_predicted(double const r, double const quater[4], double const gammadot, double opred[3]) {
+__host__ __device__ void Jeffery_omega_predicted(double const r, double const quater[4], double const gammadot, double opred[3], double angpred[2]) {
 
   double beta;
   double phi1,the1;
@@ -406,11 +300,13 @@ __host__ __device__ void Jeffery_omega_predicted(double const r, double const qu
   rotate_tobodyframe_quaternion(quater,v1,p);
   /*Determing pdot in Guazzeli's convention*/
   pdoty=p[0]*v2[0]+p[1]*v2[1]+p[2]*v2[2];
-  phiar=(p[0]-pdoty*v2[0]*v2[0])*v3[0]+
-        (p[1]-pdoty*v2[1]*v2[1])*v3[1]+
-        (p[2]-pdoty*v2[2]*v2[2])*v3[2];
+  phiar=(p[0]-pdoty*v2[0])*v3[0]+
+        (p[1]-pdoty*v2[1])*v3[1]+
+        (p[2]-pdoty*v2[2])*v3[2];
   the1=acos(-pdoty);
   phi1=acos(phiar);
+  angpred[0]=phi1;
+  angpred[1]=the1;
   pxj= sin(the1)*sin(phi1);
   pyj= sin(the1)*cos(phi1);
   pzj=-cos(the1);
@@ -427,12 +323,9 @@ __host__ __device__ void Jeffery_omega_predicted(double const r, double const qu
   /*Determining the tumbling velocity*/
   cross_product(p,pdot,pcpdot);
   /*Determining the total angular velocity*/
-  opred[0]=omp*p[0]+pcpdot[0];
-  opred[1]=omp*p[1]+pcpdot[1];
-  opred[2]=omp*p[2]+pcpdot[2];
+  for(int i = 0; i < 3; i++) {opred[i]=omp*p[i]+pcpdot[i];}
 
   return ;
   }
-
 
 /*****************************************************************************/

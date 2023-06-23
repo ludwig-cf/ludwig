@@ -29,18 +29,12 @@ __host__ __device__ void orthonormalise_vector_b_to_a(double *a, double *b);
 __host__ __device__ void matrix_product(const double a[3][3], const double b[3][3],
 				       double result[3][3]);
 __host__ __device__ void matrix_transpose(const double a[3][3], double result[3][3]);
-__host__ __device__ void   rotate_byRmatrix(const double R[3][3], const double x[3], double xcap[3]);
-__host__ __device__ void   rotationmatrix_from_vectors(const double a[3], const double b[3], double R[3][3]);
-__host__ __device__ void   rotationmatrix_from_quaternions(const double q[4], double R[3][3]);
-__host__ __device__ void   quaternions_from_dcm(const double R[3][3], double q[4]);
-__host__ __device__ void   quaternions_from_vectors(const double a[3], const double b[3], double q[4]);
-__host__ __device__ void   eulerangles_from_dcm(const double R[3][3], double *phi, double *theta, double *psi);
 __host__ __device__ void   quaternions_from_eulerangles(const double phi, const double theta, const      double psi, double q[4]);
+__host__ __device__ void eulerangles_from_quaternions(const double *q, double *phi, double *theta, double *psi);
 __host__ __device__ void quaternion_product(const double a[4], const double b[4], double result[4]);
 __host__ __device__ void rotate_tobodyframe_quaternion(const double q[4], const double a[3], double      b[3]);
-__host__ __device__ void rotate_toworldframe_quaternion(const double q[4], const double a[3], double      b[3]);
 __host__ __device__ void inertia_tensor_quaternion(const double q[4], const double a[3], double      b[3][3]);
 __host__ __device__ void quaternion_from_omega(const double omega[3], const double f, double qbar[4]);
 __host__ __device__ void copy_vectortovector(double const a[3], double b[3], const int n);
-__host__ __device__ void Jeffery_omega_predicted(double const r, double const quater[4], double const gdot, double opred[3]);
+__host__ __device__ void Jeffery_omega_predicted(double const r, double const quater[4], double const gdot, double opred[3], double angpred[2]);
 #endif

@@ -176,8 +176,7 @@ int bounce_back_on_links(bbl_t * bbl, lb_t * lb, wall_t * wall,
     colloid_sums_halo(cinfo, COLLOID_SUM_ACTIVE);
   }
 
-  bbl_update_ellipsoids(bbl, wall, cinfo);/*sumesh*/
-  //bbl_update_colloids(bbl, wall, cinfo);
+  bbl_update_colloids(bbl, wall, cinfo);
 
   bbl_pass2(bbl, lb, cinfo);
 
@@ -752,20 +751,12 @@ static int bbl_pass2(bbl_t * bbl, lb_t * lb, colloids_info_t * cinfo) {
 int bbl_update_colloids(bbl_t * bbl, wall_t * wall, colloids_info_t * cinfo) {
 
   int ia;
-  int ipivot[6];
-  int iprow = 0;
-  int idash, j, k;
+  int iret;
 
-  double mass;    /* Assumes (4/3) rho pi r^3 */
-  double moment;  /* also assumes (2/5) mass r^2 for sphere */
-  double tmp;
   double rho0;
-  double dwall[3];
   double xb[6];
-  double a[6][6];
 
   colloid_t * pc;
-  PI_DOUBLE(pi);
 
   assert(bbl);
   assert(cinfo);
@@ -778,132 +769,20 @@ int bbl_update_colloids(bbl_t * bbl, wall_t * wall, colloids_info_t * cinfo) {
 
   for ( ; pc; pc = pc->nextall) {
 
-    if (pc->s.type == COLLOID_TYPE_SUBGRID) continue;
-
-    /* Set up the matrix problem and solve it here. */
-
-    /* Mass and moment of inertia are those of a hard sphere
-     * with the input radius */
-
-    mass = (4.0/3.0)*pi*rho0*pow(pc->s.a0, 3);
-    moment = (2.0/5.0)*mass*pow(pc->s.a0, 2);
-
-    /* Wall lubrication correction */
-    wall_lubr_sphere(wall, pc->s.ah, pc->s.r, dwall);
-
-    /* Add inertial terms to diagonal elements */
-
-    a[0][0] = mass +   pc->zeta[0] - dwall[X];
-    a[0][1] =          pc->zeta[1];
-    a[0][2] =          pc->zeta[2];
-    a[0][3] =          pc->zeta[3];
-    a[0][4] =          pc->zeta[4];
-    a[0][5] =          pc->zeta[5];
-    a[1][1] = mass +   pc->zeta[6] - dwall[Y];
-    a[1][2] =          pc->zeta[7];
-    a[1][3] =          pc->zeta[8];
-    a[1][4] =          pc->zeta[9];
-    a[1][5] =          pc->zeta[10];
-    a[2][2] = mass +   pc->zeta[11] - dwall[Z];
-    a[2][3] =          pc->zeta[12];
-    a[2][4] =          pc->zeta[13];
-    a[2][5] =          pc->zeta[14];
-    a[3][3] = moment + pc->zeta[15];
-    a[3][4] =          pc->zeta[16];
-    a[3][5] =          pc->zeta[17];
-    a[4][4] = moment + pc->zeta[18];
-    a[4][5] =          pc->zeta[19];
-    a[5][5] = moment + pc->zeta[20];
-
-    /* Lower triangle */
-
-    a[1][0] = a[0][1];
-    a[2][0] = a[0][2];
-    a[2][1] = a[1][2];
-    a[3][0] = a[0][3];
-    a[3][1] = a[1][3];
-    a[3][2] = a[2][3];
-    a[4][0] = a[0][4];
-    a[4][1] = a[1][4];
-    a[4][2] = a[2][4];
-    a[4][3] = a[3][4];
-    a[5][0] = a[0][5];
-    a[5][1] = a[1][5];
-    a[5][2] = a[2][5];
-    a[5][3] = a[3][5];
-    a[5][4] = a[4][5];
-
-    /* Form the right-hand side */
-
-    for (ia = 0; ia < 3; ia++) {
-      xb[ia] = mass*pc->s.v[ia] + pc->f0[ia] + pc->force[ia];
-      xb[3+ia] = moment*pc->s.w[ia] + pc->t0[ia] + pc->torque[ia];
+    if (pc->s.type == COLLOID_TYPE_SUBGRID) { 
+      continue;
+    }
+    else if (pc->s.type == COLLOID_TYPE_ELLIPSOID) {
+      iret = bbl_update_ellipsoid(bbl, wall, pc, rho0, xb);
+    }
+    else {
+      iret = bbl_update_colloid_default(bbl, wall, pc, rho0, xb);
     }
 
-    /* Contribution to mass conservation from squirmer */
-
-    for (ia = 0; ia < 3; ia++) {
-      xb[ia] += pc->fc0[ia];
-      xb[3+ia] += pc->tc0[ia];
+    if(iret!=0) {
+      pe_fatal(bbl->pe, "Gaussian elimination failed in bbl_update\n");
     }
-
-    /* Begin the Gaussian elimination */
-
-    for (k = 0; k < 6; k++) {
-      ipivot[k] = -1;
-    }
-
-    for (k = 0; k < 6; k++) {
-
-      /* Find pivot row */
-      tmp = 0.0;
-      for (idash = 0; idash < 6; idash++) {
-	if (ipivot[idash] == -1) {
-	  if (fabs(a[idash][k]) >= tmp) {
-	    tmp = fabs(a[idash][k]);
-	    iprow = idash;
-	  }
-	}
-      }
-      ipivot[k] = iprow;
-
-      /* divide pivot row by the pivot element a[iprow][k] */
-
-      if (a[iprow][k] == 0.0) {
-	pe_fatal(bbl->pe, "Gaussian elimination failed in bbl_update\n");
-      }
-
-      tmp = 1.0 / a[iprow][k];
-
-      for (j = k; j < 6; j++) {
-	a[iprow][j] *= tmp;
-      }
-      xb[iprow] *= tmp;
-
-      /* Subtract the pivot row (scaled) from remaining rows */
-
-      for (idash = 0; idash < 6; idash++) {
-	if (ipivot[idash] == -1) {
-	  tmp = a[idash][k];
-	  for (j = k; j < 6; j++) {
-	    a[idash][j] -= tmp*a[iprow][j];
-	  }
-	  xb[idash] -= tmp*xb[iprow];
-	}
-      }
-    }
-
-    /* Now do the back substitution */
-
-    for (idash = 5; idash > -1; idash--) {
-      iprow = ipivot[idash];
-      tmp = xb[iprow];
-      for (k = idash+1; k < 6; k++) {
-	tmp -= a[iprow][k]*xb[ipivot[k]];
-      }
-      xb[iprow] = tmp;
-    }
-
+     
     /* Set the position update, but don't actually move
      * the particles. This is deferred until the next
      * call to coll_update() and associated cell list
@@ -922,34 +801,7 @@ int bbl_update_colloids(bbl_t * bbl, wall_t * wall, colloids_info_t * cinfo) {
     }
 
     /* Record the actual hydrodynamic force on the particle */
-
-    pc->diagnostic.fhydro[X] = pc->f0[X]
-      -(pc->zeta[0]*pc->s.v[X] +
-	pc->zeta[1]*pc->s.v[Y] +
-	pc->zeta[2]*pc->s.v[Z] +
-	pc->zeta[3]*pc->s.w[X] +
-	pc->zeta[4]*pc->s.w[Y] +
-	pc->zeta[5]*pc->s.w[Z]);
-    pc->diagnostic.fhydro[Y] = pc->f0[Y]
-      -(pc->zeta[ 1]*pc->s.v[X] +
-	pc->zeta[ 6]*pc->s.v[Y] +
-	pc->zeta[ 7]*pc->s.v[Z] +
-	pc->zeta[ 8]*pc->s.w[X] +
-	pc->zeta[ 9]*pc->s.w[Y] +
-	pc->zeta[10]*pc->s.w[Z]);
-    pc->diagnostic.fhydro[Z] = pc->f0[Z]
-      -(pc->zeta[ 2]*pc->s.v[X] +
-	pc->zeta[ 7]*pc->s.v[Y] +
-	pc->zeta[11]*pc->s.v[Z] +
-	pc->zeta[12]*pc->s.w[X] +
-	pc->zeta[13]*pc->s.w[Y] +
-	pc->zeta[14]*pc->s.w[Z]);
-
-    /* Copy non-hydrodynamic contribution for the diagnostic record. */
-
-    pc->diagnostic.fnonhy[X] = pc->force[X];
-    pc->diagnostic.fnonhy[Y] = pc->force[Y];
-    pc->diagnostic.fnonhy[Z] = pc->force[Z];
+    record_force_torque(pc);
 
     /* Next colloid */
   }
@@ -964,66 +816,151 @@ int bbl_update_colloids(bbl_t * bbl, wall_t * wall, colloids_info_t * cinfo) {
 
 /*****************************************************************************
  *
- *  bbl_update_ellipsoids
+ *  bbl_update_colloids_default
  *
- *  Update the velocity and position of each ellipsoidal particle.
+ *  Calculate the velocity of each particle for the default case, spheres.
  *
- *  This is a linear algebra problem, which is always 6x6, and is
- *  solved using a bog-standard Gaussian elimination with partial
- *  pivoting, followed by backsubstitution.
+ *****************************************************************************/
+int bbl_update_colloid_default(bbl_t * bbl, wall_t * wall, colloid_t * pc, double rho0, double xb[6]) {
+
+  int ia;
+  int iret=0;
+
+  double mass;    /* Assumes (4/3) rho pi r^3 */
+  double moment;  /* also assumes (2/5) mass r^2 for sphere */
+  double dwall[3];
+  double a[6][6];
+
+  PI_DOUBLE(pi);
+
+  assert(bbl);
+  assert(wall);
+  assert(pc);
+
+  /* Set up the matrix problem and solve it here. */
+
+  /* Mass and moment of inertia are those of a hard sphere
+   * with the input radius */
+
+  mass = (4.0/3.0)*pi*rho0*pow(pc->s.a0, 3);
+  moment = (2.0/5.0)*mass*pow(pc->s.a0, 2);
+
+  /* Wall lubrication correction */
+  wall_lubr_sphere(wall, pc->s.ah, pc->s.r, dwall);
+
+  /* Add inertial terms to diagonal elements */
+
+  a[0][0] = mass +   pc->zeta[0] - dwall[X];
+  a[0][1] =          pc->zeta[1];
+  a[0][2] =          pc->zeta[2];
+  a[0][3] =          pc->zeta[3];
+  a[0][4] =          pc->zeta[4];
+  a[0][5] =          pc->zeta[5];
+  a[1][1] = mass +   pc->zeta[6] - dwall[Y];
+  a[1][2] =          pc->zeta[7];
+  a[1][3] =          pc->zeta[8];
+  a[1][4] =          pc->zeta[9];
+  a[1][5] =          pc->zeta[10];
+  a[2][2] = mass +   pc->zeta[11] - dwall[Z];
+  a[2][3] =          pc->zeta[12];
+  a[2][4] =          pc->zeta[13];
+  a[2][5] =          pc->zeta[14];
+  a[3][3] = moment + pc->zeta[15];
+  a[3][4] =          pc->zeta[16];
+  a[3][5] =          pc->zeta[17];
+  a[4][4] = moment + pc->zeta[18];
+  a[4][5] =          pc->zeta[19];
+  a[5][5] = moment + pc->zeta[20];
+
+    /* Lower triangle */
+
+  a[1][0] = a[0][1];
+  a[2][0] = a[0][2];
+  a[2][1] = a[1][2];
+  a[3][0] = a[0][3];
+  a[3][1] = a[1][3];
+  a[3][2] = a[2][3];
+  a[4][0] = a[0][4];
+  a[4][1] = a[1][4];
+  a[4][2] = a[2][4];
+  a[4][3] = a[3][4];
+  a[5][0] = a[0][5];
+  a[5][1] = a[1][5];
+  a[5][2] = a[2][5];
+  a[5][3] = a[3][5];
+  a[5][4] = a[4][5];
+
+  /* Form the right-hand side */
+
+  for (ia = 0; ia < 3; ia++) {
+    xb[ia] = mass*pc->s.v[ia] + pc->f0[ia] + pc->force[ia];
+    xb[3+ia] = moment*pc->s.w[ia] + pc->t0[ia] + pc->torque[ia];
+  }
+
+  /* Contribution to mass conservation from squirmer */
+
+  for (ia = 0; ia < 3; ia++) {
+    xb[ia] += pc->fc0[ia];
+    xb[3+ia] += pc->tc0[ia];
+  }
+
+  iret = solver_Gausselimination(a,xb);
+
+  return iret;
+}
+
+/*****************************************************************************
+ *
+ *  bbl_update_ellipsoid
  *
  *****************************************************************************/
 
-int bbl_update_ellipsoids(bbl_t * bbl, wall_t * wall, colloids_info_t * cinfo) {
+int bbl_update_ellipsoid(bbl_t * bbl, wall_t * wall, colloid_t * pc, double rho0, double xb[6]) {
 
-  int i,ia;
+  int iret = 0;
 
-  double mass;    /* Assumes (4/3) rho pi abc */
-  double mI_P[3];  /* also assumes that for an ellipsoid */
-  double mI[3][3];  /* also assumes that for an ellipsoid */
-  double rho0;
-  double dwall[3];
   double a[6][6];
-  double xb[6];
-
-  double * elabc;
-  double *quatern;
   double quaternext[4];
   double owathalf[3];
   double qbar[4];
 
-  colloid_t * pc;
-  PI_DOUBLE(pi);
-
   assert(bbl);
-  assert(cinfo);
+  assert(wall);
+  assert(pc);
 
-  colloids_info_rho0(cinfo, &rho0);
-
-  /* All colloids, including halo */
-
-  colloids_info_all_head(cinfo, &pc);
-
-  for ( ; pc; pc = pc->nextall) {
-
-    if (pc->s.type == COLLOID_TYPE_SUBGRID) continue;
-
-    /* Set up the matrix problem and solve it here. */
+  /* Set up the matrix problem and solve it here. */
     
-    /* Mass and moment of inertia are those of a hard ellipsoid*/
+  setter_ladd_ellipsoid(pc, wall, rho0, a, xb);
+  iret = solver_Gausselimination(a,xb);
 
-    elabc=pc->s.elabc;
+  /* Finding the new quaternions */
+
+  for(int i = 0; i < 3; i++) owathalf[i] = 0.5*(pc->s.w[i]+xb[3+i]);
+  quaternion_from_omega(owathalf,0.5,qbar);
+  quaternion_product(qbar,pc->s.quater,quaternext);
+  copy_vectortovector(pc->s.quater,pc->s.quaterold,4);
+  copy_vectortovector(quaternext,pc->s.quater,4);
+
+  /*Predictor*/
+  /*Calculate the orientation based on the predictor*/
+  /*Calculate the moment of inertia at n+1th time step*/
+  /*Corrector*/
+/*
+    setter_ladd_Gausselmn_LHS(0.5, pc->zeta, &dwall[0], mass, mI, a);
+    setter_ladd_Gausselmn_RHS(0.5, mass, mI, pc->s.v, pc->s.w, pc->f0, pc->t0, pc->force, pc->torque, pc->fc0, pc->tc0, xb);
+
+    if(pc->s.type==COLLOID_TYPE_ELLIPSOID) {
+      setter_ladd_LHS_ellipsoid(pc->s.quaterold, &mI_P[0],mI,a);
+    }
+    solver_ladd_Gausselmn(bbl,a, xb);
+    copy_vectortovector(&xb[3],owathalf,3);
+    quaternion_from_omega(owathalf,0.5,qbar);
+    quaternion_product(qbar,quatern,quaternext);
+    copy_vectortovector(pc->s.quater,pc->s.quaterold,4);
+    copy_vectortovector(quaternext,pc->s.quater,4);
+
     quatern = pc->s.quater;
-    mass = (4.0/3.0)*pi*rho0*elabc[0]*elabc[1]*elabc[2];
-    mI_P[0] = (1.0/5.0)*mass*(pow(elabc[1],2)+pow(elabc[2],2));
-    mI_P[1] = (1.0/5.0)*mass*(pow(elabc[0],2)+pow(elabc[2],2));
-    mI_P[2] = (1.0/5.0)*mass*(pow(elabc[0],2)+pow(elabc[1],2));
     inertia_tensor_quaternion(quatern, mI_P, mI);
-
-    wall_lubr_sphere(wall, pc->s.ah, pc->s.r, dwall);
-    
-   /*One step*/
-
     setter_ladd_Gausselmn_LHS(1.0, pc->zeta, &dwall[0], mass, mI, a);
     setter_ladd_Gausselmn_RHS(1.0, mass, mI, pc->s.v, pc->s.w, pc->f0, pc->t0, pc->force, pc->torque, pc->fc0, pc->tc0, xb);
 
@@ -1031,73 +968,9 @@ int bbl_update_ellipsoids(bbl_t * bbl, wall_t * wall, colloids_info_t * cinfo) {
       setter_ladd_LHS_ellipsoid(pc->s.quaterold, &mI_P[0],mI,a);
     }
     solver_ladd_Gausselmn(bbl,a, xb);
-    for(i = 0; i < 3; i++) owathalf[i] = 0.5*(pc->s.w[i]+xb[3+i]);
-    quaternion_from_omega(owathalf,0.5,qbar);
-    quaternion_product(qbar,quatern,quaternext);
-    copy_vectortovector(pc->s.quater,pc->s.quaterold,4);
-    copy_vectortovector(quaternext,pc->s.quater,4);
-
-    /*Predictor*/
-    /*Calculate the orientation based on the predictor*/
-    /*Corrector*/
-
- /*   double half=0.5;
-    setter_ladd_Gausselmn_LHS(half, pc->zeta, &dwall[0], mass, &moment[0], a);
-    setter_ladd_Gausselmn_RHS(half, mass, &moment[0], pc->s.v, pc->s.w, pc->f0, pc->t0, pc->      force, pc->torque, pc->fc0, pc->tc0, xb);
-
-    if(pc->s.type==COLLOID_TYPE_ELLIPSOID) {
-      setter_ladd_LHS_ellipsoid(half, pc->s.quater, pc->s.quaterold, pc->s.w, &moment[0],a);
-    }
-
-    solver_ladd_Gausselmn(bbl,a, xb);
-    quatern = pc->s.quater;
-    own = pc->s.w;
-    quaterold = pc->s.quaterold;
-    copy_vectortovector(&xb[3],owathalf,3);
-    quaternion_from_omega(owathalf,0.5,qbar);
-    quaternion_product(qbar,quatern,quaternext);
-    copy_vectortovector(pc->s.quater,pc->s.quaterold,4);
-    copy_vectortovector(quaternext,pc->s.quater,4);
-
-    setter_ladd_Gausselmn_LHS(1.0, pc->zeta, &dwall[0], mass, &moment[0], a);
-    setter_ladd_Gausselmn_RHS(1.0, mass, &moment[0], pc->s.v, pc->s.w, pc->f0, pc->t0, pc->      force, pc->torque, pc->fc0, pc->tc0, xb);
-
-    if(pc->s.type==COLLOID_TYPE_ELLIPSOID) {
-      setter_ladd_LHS_ellipsoid(1.0, pc->s.quater, pc->s.quaterold, pc->s.w, &moment[0],a);
-    }
-
-    solver_ladd_Gausselmn(bbl,a, xb);
-
 */
 
-    /* Set the position update, but don't actually move
-     * the particles. This is deferred until the next
-     * call to coll_update() and associated cell list
-     * update.
-     * We use mean of old and new velocity. */
-
-    for (ia = 0; ia < 3; ia++) {
-      if (pc->s.isfixedrxyz[ia] == 0) pc->s.dr[ia] = 0.5*(pc->s.v[ia] + xb[ia]);
-      if (pc->s.isfixedvxyz[ia] == 0) pc->s.v[ia] = xb[ia];
-      if (pc->s.isfixedw == 0) pc->s.w[ia] = xb[3+ia];
-    }
-   
-    if (pc->s.isfixeds == 0) {
-      rotate_vector(pc->s.m, xb + 3);
-      rotate_vector(pc->s.s, xb + 3);
-    }
-
-    /* Record the actual hydrodynamic force and torque on the particle */
-    record_force_torque(pc);
-    /* Next colloid */
-  }
-
-  /* As the lubrication force is based on the updated velocity, but
-   * the old position, we can account for the total momentum here. */
-
-  bbl_wall_lubrication_account(bbl, wall, cinfo);
-
-  return 0;
+  return iret;
 }
 
 /*****************************************************************************
@@ -1163,99 +1036,106 @@ return;
 
 /*****************************************************************************
  *
- *  Setting up  6 x 6 equations of Ladd - Modifying LHS for an ellipsoid
+ *  Setting up  6 x 6 equations of Ladd for an ellipsoid
  *
 *****************************************************************************/
-void setter_ladd_LHS_ellipsoid(const double *quaterold, const double *moment,  const double mI[3][3], double a[6][6]) {
-    
+void setter_ladd_ellipsoid(colloid_t *pc, wall_t * wall, double rho0, double a[6][6], double xb[3]) {
+
+  double mass;    /* Assumes (4/3) rho pi abc */
+  double mI_P[3];  /* also assumes that for an ellipsoid */
+  double mI[3][3];  /* also assumes that for an ellipsoid */
   double mIold[3][3];
+  double dwall[3];
+
+  double * elabc;
+  double * zeta;
+  double frn = 1.0;
+  
+  int ia,j;
+  double IijOj;
+    
+  assert(pc);
+  PI_DOUBLE(pi);
+
+  zeta=pc->zeta;
+   /* Mass and moment of inertia are those of a hard ellipsoid*/
+
+  elabc=pc->s.elabc;
+  mass = (4.0/3.0)*pi*rho0*elabc[0]*elabc[1]*elabc[2];
+  mI_P[0] = (1.0/5.0)*mass*(pow(elabc[1],2)+pow(elabc[2],2));
+  mI_P[1] = (1.0/5.0)*mass*(pow(elabc[0],2)+pow(elabc[2],2));
+  mI_P[2] = (1.0/5.0)*mass*(pow(elabc[0],2)+pow(elabc[1],2));
+  inertia_tensor_quaternion(pc->s.quater, mI_P, mI);
+
+  wall_lubr_sphere(wall, pc->s.ah, pc->s.r, dwall);
  
-  inertia_tensor_quaternion(quaterold, moment, mIold);
+  /* Add inertial terms to diagonal elements */
+
+  a[0][0] = (mass/frn) +   zeta[0] - dwall[X];
+  a[0][1] =          zeta[1];
+  a[0][2] =          zeta[2];
+  a[0][3] =          zeta[3];
+  a[0][4] =          zeta[4];
+  a[0][5] =          zeta[5];
+  a[1][1] = (mass/frn) +   zeta[6] - dwall[Y];
+  a[1][2] =          zeta[7];
+  a[1][3] =          zeta[8];
+  a[1][4] =          zeta[9];
+  a[1][5] =          zeta[10];
+  a[2][2] = (mass/frn) +   zeta[11] - dwall[Z];
+  a[2][3] =          zeta[12];
+  a[2][4] =          zeta[13];
+  a[2][5] =          zeta[14];
+  a[3][3] = (mI[0][0]/frn) + zeta[15];
+  a[3][4] = (mI[0][1]/frn) + zeta[16];
+  a[3][5] = (mI[0][2]/frn) + zeta[17];
+  a[4][4] = (mI[1][1]/frn) + zeta[18];
+  a[4][5] = (mI[1][2]/frn) + zeta[19];
+  a[5][5] = (mI[2][2]/frn) + zeta[20];
+
+    /* Lower triangle */
+
+  a[1][0] = a[0][1];
+  a[2][0] = a[0][2];
+  a[2][1] = a[1][2];
+  a[3][0] = a[0][3];
+  a[3][1] = a[1][3];
+  a[3][2] = a[2][3];
+  a[4][0] = a[0][4];
+  a[4][1] = a[1][4];
+  a[4][2] = a[2][4];
+  a[4][3] = a[3][4];
+  a[5][0] = a[0][5];
+  a[5][1] = a[1][5];
+  a[5][2] = a[2][5];
+  a[5][3] = a[3][5];
+  a[5][4] = a[4][5];
+    
   /*Add unsteady moment of inertia terms*/
+  inertia_tensor_quaternion(pc->s.quaterold, &mI_P[0], mIold);
   for(int i = 0; i < 3; i++) {
     for(int j = 0; j < 3; j++) {
       a[3+i][3+j] += (mI[i][j] - mIold[i][j]);
     }
   }
-  return;
+  
+  /* Form the right-hand side */
+
+  for (ia = 0; ia < 3; ia++) {
+    xb[ia] = (mass/frn)*pc->s.v[ia] + pc->f0[ia] + pc->force[ia];
+    IijOj  = 0.0;
+    for(j = 0; j < 3; j++) {IijOj += mI[ia][j]*pc->s.w[j];}
+      xb[3+ia] = IijOj/frn + pc->t0[ia] + pc->torque[ia];
   }
-/*****************************************************************************
- *
- *  Setting up  6 x 6 equations of Ladd - the LHS
- *
-*****************************************************************************/
-void setter_ladd_Gausselmn_LHS(const double frn, const double *zeta, const double *dwall, const double mass, const double mI[3][3],  double a[6][6]) {
-    
-    /* Add inertial terms to diagonal elements */
 
-    a[0][0] = (mass/frn) +   zeta[0] - dwall[X];
-    a[0][1] =          zeta[1];
-    a[0][2] =          zeta[2];
-    a[0][3] =          zeta[3];
-    a[0][4] =          zeta[4];
-    a[0][5] =          zeta[5];
-    a[1][1] = (mass/frn) +   zeta[6] - dwall[Y];
-    a[1][2] =          zeta[7];
-    a[1][3] =          zeta[8];
-    a[1][4] =          zeta[9];
-    a[1][5] =          zeta[10];
-    a[2][2] = (mass/frn) +   zeta[11] - dwall[Z];
-    a[2][3] =          zeta[12];
-    a[2][4] =          zeta[13];
-    a[2][5] =          zeta[14];
-    a[3][3] = (mI[0][0]/frn) + zeta[15];
-    a[3][4] = (mI[0][1]/frn) + zeta[16];
-    a[3][5] = (mI[0][2]/frn) + zeta[17];
-    a[4][4] = (mI[1][1]/frn) + zeta[18];
-    a[4][5] = (mI[1][2]/frn) + zeta[19];
-    a[5][5] = (mI[2][2]/frn) + zeta[20];
+  /* Contribution to mass conservation from squirmer */
 
-    /* Lower triangle */
-
-    a[1][0] = a[0][1];
-    a[2][0] = a[0][2];
-    a[2][1] = a[1][2];
-    a[3][0] = a[0][3];
-    a[3][1] = a[1][3];
-    a[3][2] = a[2][3];
-    a[4][0] = a[0][4];
-    a[4][1] = a[1][4];
-    a[4][2] = a[2][4];
-    a[4][3] = a[3][4];
-    a[5][0] = a[0][5];
-    a[5][1] = a[1][5];
-    a[5][2] = a[2][5];
-    a[5][3] = a[3][5];
-    a[5][4] = a[4][5];
+  for (ia = 0; ia < 3; ia++) {
+    xb[ia] += pc->fc0[ia];
+    xb[3+ia] += pc->tc0[ia];
+  }
 
   return;
-  }
-/*****************************************************************************
- *
- *  Setting up  6 x 6 equations of Ladd - the RHS
- *
-*****************************************************************************/
-void setter_ladd_Gausselmn_RHS(const double frn, const double mass, const double mI[3][3], const double *v, const double *w, const double *f0, const double *t0, const double *force, const double *torque, const double *fc0, const double *tc0, double xb[6]) {
-   
-  int ia,j;
-  double IijOj;
-    /* Form the right-hand side */
-
-    for (ia = 0; ia < 3; ia++) {
-      xb[ia] = (mass/frn)*v[ia] + f0[ia] + force[ia];
-      IijOj  = 0.0;
-      for(j = 0; j < 3; j++) {IijOj += mI[ia][j]*w[j];}
-      xb[3+ia] = IijOj/frn + t0[ia] + torque[ia];
-    }
-
-    /* Contribution to mass conservation from squirmer */
-
-    for (ia = 0; ia < 3; ia++) {
-      xb[ia] += fc0[ia];
-      xb[3+ia] += tc0[ia];
-    }
-
-return;
 }
 
 /*****************************************************************************
@@ -1263,7 +1143,7 @@ return;
  *  Gaussian elimination of 6 x 6 equations of Ladd
  *
 *****************************************************************************/
-void solver_ladd_Gausselmn(bbl_t * bbl, double a[6][6], double xb[6]) {
+int solver_Gausselimination(double a[6][6], double xb[6]) {
 
   int ipivot[6];
   int iprow = 0;
@@ -1293,7 +1173,7 @@ void solver_ladd_Gausselmn(bbl_t * bbl, double a[6][6], double xb[6]) {
       /* divide pivot row by the pivot element a[iprow][k] */
 
       if (a[iprow][k] == 0.0) {
-	pe_fatal(bbl->pe, "Gaussian elimination failed in bbl_update\n");
+        return(1);
       }
 
       tmp = 1.0 / a[iprow][k];
@@ -1326,7 +1206,7 @@ void solver_ladd_Gausselmn(bbl_t * bbl, double a[6][6], double xb[6]) {
       }
       xb[iprow] = tmp;
     }
-  return;
+  return(0);
  }
 
 /*****************************************************************************
