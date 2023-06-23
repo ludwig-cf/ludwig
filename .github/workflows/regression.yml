@@ -69,3 +69,23 @@ jobs:
       run: |
         export OMP_NUM_THREADS=1
         make test
+
+  d3q27:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v3
+
+    - name: Build
+      run: |
+        gcc --version
+        cp config/github-gcc.mk config.mk
+        sed -i "s/D3Q19/D3Q27/" config.mk
+        make serial
+        make -j 2
+
+    # No specific tests yet
+    - name: Check
+      run: |
+        make unit
