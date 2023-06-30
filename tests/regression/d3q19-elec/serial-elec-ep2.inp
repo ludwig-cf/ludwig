@@ -142,7 +142,7 @@ electrokinetics_epsilon 100.0
 electrokinetics_init    uniform
 electrokinetics_init_rho_el 0.00104
 
-electrokinetics_rel_tol  1e-07
+electrokinetics_rel_tol  1e-08
 electrokinetics_abs_tol  1e-15
 electrokinetics_maxits   5000
 electrokinetics_diffacc  0.5

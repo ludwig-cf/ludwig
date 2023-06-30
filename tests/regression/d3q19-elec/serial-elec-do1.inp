@@ -130,8 +130,10 @@ electrokinetics_epsilon2    300.0
 electrokinetics_init        uniform
 electrokinetics_init_rho_el 0.00047
 
-electrokinetics_rel_tol  1e-06
-electrokinetics_abs_tol  1e-07
+electrokinetics_solver_type    sor
+electrokinetics_solver_stencil   7
+electrokinetics_rel_tol  1e-10
+electrokinetics_abs_tol  1e-15
 electrokinetics_maxits   10000
 electrokinetics_diffacc  0.5
 
