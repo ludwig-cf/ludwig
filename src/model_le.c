@@ -177,7 +177,6 @@ __host__ int lb_le_apply_boundary_conditions(lb_t *lb, lees_edw_t *le) {
     lees_edw_cartsz(le, mpi_cartsz);
 
     if (lees_edw_nplane_local(le) > 0) {
-
         TIMER_start(TIMER_LE);
 
         /* Everything must be done on host at the moment (slowly) ... */
@@ -424,8 +423,6 @@ void le_displace_and_interpolate(lb_t *lb, lees_edw_t *le) {
         jdy = floor(dy);
         fr = dy - jdy;
 
-        // printf("jdy = %d, fr = %f \n\n", jdy, fr);
-
         interpolation<<<numBlocks, threadsPerBlock>>>(lb->target, le_target, recv_buff, d_positive, nprop, ic, jdy, ndist, fr);
         cudaDeviceSynchronize();
         
@@ -434,7 +431,6 @@ void le_displace_and_interpolate(lb_t *lb, lees_edw_t *le) {
 
         /* OTHER DIRECTION */
         ic = lees_edw_plane_location(le, plane) + 1;
-
         lees_edw_buffer_displacement(le, nhalo, t, &dy);
         dy = fmod(-dy, ltot[Y]);
         jdy = floor(dy);
@@ -445,7 +441,6 @@ void le_displace_and_interpolate(lb_t *lb, lees_edw_t *le) {
 
         copy_back<<<numBlocks, threadsPerBlock>>>(lb->target, le_target, recv_buff, d_negative, negprop, ic, ndist, fr);
         cudaDeviceSynchronize();
-        
     }
 
     return;
