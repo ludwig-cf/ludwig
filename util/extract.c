@@ -272,7 +272,7 @@ int main(int argc, char ** argv) {
       char * filename = buf;
       int ifile = file_get_file_index(argv[optind]);
       int nfile = file_get_file_nfile(argv[optind]);
-      snprintf(filename, BIFSIZ, "%s.%3.3d-%3.3d.meta", stub, nfile, ifile);
+      snprintf(filename, BUFSIZ, "%s.%3.3d-%3.3d.meta", stub, nfile, ifile);
       read_meta_data_file(filename, &metadata);
     }
   }
