@@ -19,5 +19,6 @@ int stats_colloid_momentum(colloids_info_t * cinfo, double g[3]);
 int stats_colloid_velocity_minmax(colloids_info_t * cinfo);
 int stats_colloid_write_velocities(pe_t * pe, colloids_info_t * cinfo);
 int stats_colloid_write_info(pe_t * pe, colloids_info_t * cinfo, const double t);
+int stats_colloid_write_orientations(pe_t * pe, colloids_info_t * cinfo, const double t);
 
 #endif
