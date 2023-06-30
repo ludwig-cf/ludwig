@@ -208,36 +208,6 @@ __host__ int lees_edw_target(lees_edw_t * le, lees_edw_t ** target) {
 
 /*****************************************************************************
  *
- * lees_edw_nplane_set
- *
- *****************************************************************************/
-
-int lees_edw_nplane_set(lees_edw_t * le, int nplanetotal) {
-
-  assert(le);
-
-  le->param->nplanetotal = nplanetotal;
-
-  return 0;
-}
-
-/*****************************************************************************
- *
- * lees_edw_plane_uy_set
- *
- *****************************************************************************/
-
-int lees_edw_plane_uy_set(lees_edw_t * le, double uy) {
-
-  assert(le);
-
-  le->param->uy = uy;
-
-  return 0;
-}
-
-/*****************************************************************************
- *
  *  lees_edw_oscillatory_set
  *
  *****************************************************************************/
@@ -426,7 +396,6 @@ __host__ int lees_edw_info(lees_edw_t * le) {
 
 static int lees_edw_init_tables(lees_edw_t * le) {
 
-  /*  int ib, ic, ip, n, nb, nh, np;*/
   int nhalo;
   int rdims[3];
   int cartsz[3];
@@ -443,14 +412,7 @@ static int lees_edw_init_tables(lees_edw_t * le) {
   le->param->nhalo = nhalo;
   le->param->nplanelocal = le->param->nplanetotal / cartsz[X];
 
-  /* Look up table for buffer -> real index */
-
-  /* For each 'x' location in the buffer region, work out the corresponding
-   * x index in the real system:
-   *   - for each boundary there are 2*nhalo buffer planes
-   *   - the locations extend nhalo points either side of the boundary.
-   */
-
+  /* Number of buffer planes */
   le->param->nxbuffer = 2*nhalo*le->param->nplanelocal;
 
   /* Set up a 1-dimensional communicator for transfer of data
@@ -585,7 +547,7 @@ int lees_edw_steady_uy(lees_edw_t * le, int ic, double * uy) {
 
 /*****************************************************************************
  *
- *  lees_edw_get_block_uy
+ *  lees_edw_block_uy
  *
  *  Return the velocity of the LE 'block' at ic relative to the
  *  centre of the system.
@@ -811,6 +773,7 @@ int lees_edw_shear_rate(lees_edw_t * le, double * gammadot) {
   double ltot[3];
 
   assert(le);
+
   cs_ltot(le->cs, ltot);
 
   *gammadot = le->param->uy*le->param->nplanetotal/ltot[X];
