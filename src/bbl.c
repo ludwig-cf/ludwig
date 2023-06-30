@@ -795,6 +795,7 @@ int bbl_update_colloids(bbl_t * bbl, wall_t * wall, colloids_info_t * cinfo) {
       if (pc->s.isfixedw == 0) pc->s.w[ia] = xb[3+ia];
     }
 
+
     if (pc->s.isfixeds == 0) {
       rotate_vector(pc->s.m, xb + 3);
       rotate_vector(pc->s.s, xb + 3);
@@ -927,9 +928,9 @@ int bbl_update_ellipsoid(bbl_t * bbl, wall_t * wall, colloid_t * pc, double rho0
   assert(bbl);
   assert(wall);
   assert(pc);
-
+  
   /* Set up the matrix problem and solve it here. */
-    
+   
   setter_ladd_ellipsoid(pc, wall, rho0, a, xb);
   iret = solver_Gausselimination(a,xb);
 
@@ -1125,7 +1126,7 @@ void setter_ladd_ellipsoid(colloid_t *pc, wall_t * wall, double rho0, double a[6
     xb[ia] = (mass/frn)*pc->s.v[ia] + pc->f0[ia] + pc->force[ia];
     IijOj  = 0.0;
     for(j = 0; j < 3; j++) {IijOj += mI[ia][j]*pc->s.w[j];}
-      xb[3+ia] = IijOj/frn + pc->t0[ia] + pc->torque[ia];
+    xb[3+ia] = IijOj/frn + pc->t0[ia] + pc->torque[ia];
   }
 
   /* Contribution to mass conservation from squirmer */
