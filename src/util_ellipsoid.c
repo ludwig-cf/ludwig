@@ -328,4 +328,103 @@ __host__ __device__ void Jeffery_omega_predicted(double const r, double const qu
   return ;
   }
 
+/*****************************************************************************
+*
+*  Calculating Euler angles from vectors
+*
+*****************************************************************************/
+__host__ __device__ void euler_from_vectors(double a[3], double b[3], double *euler) {
+
+  double c[3],r[3][3];
+  normalise_unit_vector(a, 3);
+  orthonormalise_vector_b_to_a(a, b);
+  cross_product(a,b,c);
+  dcm_from_vectors(a,b,c,r);
+  euler_from_dcm(r,&euler[0],&euler[1],&euler[2]);
+
+ return;
+}
+/*****************************************************************************
+*
+*  Calculating Euler angles from Direction Cosine Matrix
+*
+*****************************************************************************/
+__host__ __device__ void euler_from_dcm(double const r[3][3], double *phi, double *theta, double *psi) {
+
+  *theta=acos(r[2][2]);
+  if(fabs(fabs(r[2][2])-1.0)>1e-12) {
+    *phi=atan2(r[2][0],-r[2][1]);
+    *psi=atan2(r[0][2],r[1][2]);
+  }
+  else {
+    *phi=atan2(r[0][1],r[0][0]);
+    *psi = 0.0;
+  }
+return;
+}
+/*****************************************************************************
+*
+*  Calculating Direction Cosine Matrix from a given set of orientation vectors
+*
+*****************************************************************************/
+__host__ __device__ void dcm_from_vectors(double const a[3], double const b[3], double const c[3], double r[3][3]) {
+
+double v1[3]={1.0,0.0,0.0};
+double v2[3]={0.0,1.0,0.0};
+double v3[3]={0.0,0.0,1.0};
+
+r[0][0] = dot_product(v1,a);
+r[1][0] = dot_product(v1,b);
+r[2][0] = dot_product(v1,c);
+r[0][1] = dot_product(v2,a);
+r[1][1] = dot_product(v2,b);
+r[2][1] = dot_product(v2,c);
+r[0][2] = dot_product(v3,a);
+r[1][2] = dot_product(v3,b);
+r[2][2] = dot_product(v3,c);
+
+return;
+}
+
+/*****************************************************************************
+*
+*  Settling velocity of a prolate spheroid, Leal pg 559
+*
+*****************************************************************************/
+__host__ __device__ void settling_velocity_prolate(double const r, double const f, double const mu, double const ela, double U[2]) {
+
+double ecc,logecc;
+double cfterm1,cfterm21,cf1br,cf1;
+double cfterm2,cfterm22,cf2br,cf2;
+double dcoef;
+double rinv;
+PI_DOUBLE(pi);
+rinv = 1.0/r;
+ecc = sqrt(1.0 - (rinv*rinv));
+logecc = log((1.0+ecc)/(1.0-ecc));
+cfterm1 = -2.0*ecc;
+cfterm21 = 1.0 + ecc*ecc;
+cf1br = cfterm1 + cfterm21*logecc;
+cf1 = (8.0/3.0)*(ecc*ecc*ecc)/cf1br;
+cfterm2 = 2.0*ecc;
+cfterm22 = 3.0*ecc*ecc - 1.0;
+cf2br = cfterm2 + cfterm22*logecc;
+cf2 = (16.0/3.0)*(ecc*ecc*ecc)/cf2br;
+dcoef = 6.0*pi*mu*ela;
+U[0] = f/(dcoef*cf1);
+U[1] = f/(dcoef*cf2);
+return;
+}
+
+/*****************************************************************************
+ *
+ *  Calculate the mass of an ellipsoid
+ *
+ ****************************************************************************/
+__host__ __device__ double mass_ellipsoid(const double dim[3], const double density){
+
+  PI_DOUBLE(pi);
+  return (4.0/3.0)*pi*(dim[0]*dim[1]*dim[2]);
+
+}
 /*****************************************************************************/

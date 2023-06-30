@@ -153,7 +153,7 @@ int build_update_map(cs_t * cs, colloids_info_t * cinfo, map_t * map) {
 
 	  /* Set actual position and size of the cube to be checked */
 
-	  colloids_largest_dimension(p_colloid, &largestdimn);
+	  largestdimn = colloids_largest_dimension(p_colloid);
 
 	  /* Need to translate the colloid position to "local"
 	   * coordinates, so that the correct range of lattice
@@ -246,10 +246,6 @@ double elQ[3][3], elQT[3][3], elA[3][3], elAp[3][3];
 
 int i;
 
-  lhs	= dot_product(rsep, rsep);
-  radius = pc->s.a0;
-  rhs    = radius*radius;
-     
   if (pc->s.type == COLLOID_TYPE_ELLIPSOID) {
     /*Constructing Lambda matrix*/
     elabc  = pc->s.elabc;
@@ -276,6 +272,11 @@ int i;
 	+ (elA[1][2]+elA[2][1])*rsep[Y]*rsep[Z];
     rhs = 1.0;
   }
+  else {
+    lhs	= dot_product(rsep, rsep);
+    radius = pc->s.a0;
+    rhs    = radius*radius;
+  }
 return (lhs < rhs);
 }
 /*****************************************************************************
@@ -284,21 +285,23 @@ return (lhs < rhs);
  *
  *****************************************************************************/
 
-__host__ void colloids_largest_dimension(colloid_t * pc, double * large ) {
+__host__ double colloids_largest_dimension(colloid_t * pc) {
 
   double ela,elb,elc;
+  double large;
   assert(pc);
-  assert(large);
 	  
-  *large = pc->s.a0;
   if (pc->s.type == COLLOID_TYPE_ELLIPSOID) {
     ela    = pc->s.elabc[0];
     elb    = pc->s.elabc[1];
     elc    = pc->s.elabc[2];
-    *large=ela > elb ? (ela > elc ? ela : elc) : (elb > elc ? elb : elc);
+    large=ela > elb ? (ela > elc ? ela : elc) : (elb > elc ? elb : elc);
+  }
+  else {
+    large = pc->s.a0;
   }
 
-  return ;
+  return large;
 }
 
 /*****************************************************************************
@@ -394,13 +397,14 @@ int build_reconstruct_links(cs_t * cs, colloids_info_t * cinfo,
   int index0, index1, p;
   int status1;
 
-  double       radius;
   double       lambda = 0.5;
   double      rsite1[3];
   double      rsep[3];
   double      r0[3];
   int ntotal[3];
   int offset[3];
+
+  double   largestdimn;
 
   colloid_t * pc = NULL;
 
@@ -411,7 +415,6 @@ int build_reconstruct_links(cs_t * cs, colloids_info_t * cinfo,
   cs_nlocal_offset(cs, offset);
 
   p_link = p_colloid->lnk;
-  radius = p_colloid->s.a0;
 
   /* Failsafe approach: set all links to unused status */
 
@@ -427,17 +430,18 @@ int build_reconstruct_links(cs_t * cs, colloids_info_t * cinfo,
   /* Limits of the cube around the particle. Make sure these are
    * the appropriate lattice nodes, which extend to the penultimate
    * site in each direction (to include halos). */
+  largestdimn = colloids_largest_dimension(p_colloid);
 
   r0[X] = p_colloid->s.r[X] - 1.0*offset[X];
   r0[Y] = p_colloid->s.r[Y] - 1.0*offset[Y];
   r0[Z] = p_colloid->s.r[Z] - 1.0*offset[Z];
 
-  i_min = imax(1,         (int) floor(r0[X] - radius));
-  i_max = imin(ntotal[X], (int) ceil (r0[X] + radius));
-  j_min = imax(1,         (int) floor(r0[Y] - radius));
-  j_max = imin(ntotal[Y], (int) ceil (r0[Y] + radius));
-  k_min = imax(1,         (int) floor(r0[Z] - radius));
-  k_max = imin(ntotal[Z], (int) ceil (r0[Z] + radius));
+  i_min = imax(1,         (int) floor(r0[X] - largestdimn));
+  i_max = imin(ntotal[X], (int) ceil (r0[X] + largestdimn));
+  j_min = imax(1,         (int) floor(r0[Y] - largestdimn));
+  j_max = imin(ntotal[Y], (int) ceil (r0[Y] + largestdimn));
+  k_min = imax(1,         (int) floor(r0[Z] - largestdimn));
+  k_max = imin(ntotal[Z], (int) ceil (r0[Z] + largestdimn));
 
   for (i = i_min; i <= i_max; i++) {
     for (j = j_min; j <= j_max; j++) {
@@ -1360,7 +1364,7 @@ int build_colloid_wall_links(cs_t * cs, colloids_info_t * cinfo,
   int ntotal[3];
   int offset[3];
 
-  double radius;
+  double largestdimn;
   double lambda = 0.5;
   double r0[3];
   double rsite1[3];
@@ -1378,7 +1382,7 @@ int build_colloid_wall_links(cs_t * cs, colloids_info_t * cinfo,
 
   p_link = p_colloid->lnk;
   p_last = p_colloid->lnk;
-  radius = p_colloid->s.a0;
+  largestdimn = colloids_largest_dimension(p_colloid);
 
   /* Work out the first unused link */
 
@@ -1394,12 +1398,12 @@ int build_colloid_wall_links(cs_t * cs, colloids_info_t * cinfo,
   r0[Y] = p_colloid->s.r[Y] - 1.0*offset[Y];
   r0[Z] = p_colloid->s.r[Z] - 1.0*offset[Z];
 
-  i_min = imax(1,         (int) floor(r0[X] - radius));
-  i_max = imin(ntotal[X], (int) ceil (r0[X] + radius));
-  j_min = imax(1,         (int) floor(r0[Y] - radius));
-  j_max = imin(ntotal[Y], (int) ceil (r0[Y] + radius));
-  k_min = imax(1,         (int) floor(r0[Z] - radius));
-  k_max = imin(ntotal[Z], (int) ceil (r0[Z] + radius));
+  i_min = imax(1,         (int) floor(r0[X] - largestdimn));
+  i_max = imin(ntotal[X], (int) ceil (r0[X] + largestdimn));
+  j_min = imax(1,         (int) floor(r0[Y] - largestdimn));
+  j_max = imin(ntotal[Y], (int) ceil (r0[Y] + largestdimn));
+  k_min = imax(1,         (int) floor(r0[Z] - largestdimn));
+  k_max = imin(ntotal[Z], (int) ceil (r0[Z] + largestdimn));
 
   for (i = i_min; i <= i_max; i++) { 
     for (j = j_min; j <= j_max; j++) {
