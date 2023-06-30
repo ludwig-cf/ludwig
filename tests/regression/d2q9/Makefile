@@ -28,4 +28,4 @@ mpix64:
 	@echo "TEST --> regression test mpi (64 mpi tasks)"
 
 clean:
-	rm -f *new test-diff*
+	rm -f *new test-diff* input

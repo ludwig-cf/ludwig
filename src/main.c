@@ -35,7 +35,19 @@ int main(int argc, char ** argv) {
   MPI_Init_thread(&argc, &argv, MPI_THREAD_FUNNELED, &provided);
   PetscInitialize(&argc, &argv, (char*) 0, NULL); 
 
-  ludwig_run(inputfile);
+  if (argc == 1) {
+    ludwig_run(inputfile);
+  }
+  else {
+    /* No command line arguments please */
+    int rank = -1;
+    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+    if (rank == 0) {
+      printf("Command line arguments are now disabled.\n");
+      printf("In particular, the input file must be called \"input\"\n");
+      printf("and be in the current working directory.\n");
+    }
+  }
 
   PetscFinalize();
   MPI_Finalize();
