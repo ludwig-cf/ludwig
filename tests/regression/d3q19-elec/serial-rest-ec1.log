@@ -30,14 +30,11 @@ Valency species 0:          1
 Diffusivity species 0:      1.0000000e-02
 Valency species 1:         -1
 Diffusivity species 1:      1.0000000e-02
-Number of multisteps:       1
-Number of skipsteps:        1
-Diffusive accuracy in NPE:  0.0000000e+00
 Relative tolerance:         1.1920929e-07
 Absolute tolerance:         1.1920929e-09
 Max. no. of iterations:             10000
-I/O decomposition:          1 1 1
-I/O format:                 BINARY
+Number of multisteps:       1
+Diffusive accuracy in NPE:  0.0000000e+00
 Force calculation:          phi_gradmu_correction
 
 System properties
@@ -125,6 +122,10 @@ Scalars - total mean variance min max
 [rho]  3.2726000e+01  1.9230769e-04  1.0000000e-03
 [rho]  3.2726000e+01  0.0000000e+00  1.0003057e-03
 [elc] -1.4922959e-15 -3.0566084e-07  1.9230769e-04
+[psi_zeta]  0.0000000e+00
+
+Free energies - timestep f v f/v f_s a f_s/a
+[fe]              0 -5.1748931944e+02  3.2716000000e+04 -1.5817621942e-02  0.0000000000e+00
 
 Momentum - x y z
 [total   ]  4.5402571e-13  0.0000000e+00  5.0965010e-01
@@ -142,6 +143,13 @@ Colloid velocities - x y z
 SOR solver converged to relative tolerance
 SOR residual per site  3.8552497e-12 at 100 iterations
 1 multisteps
+Writing distribution output at step 20!
+Writing colloid output at step 20!
+
+colloid_io_write:
+writing colloid information to config.cds00000020.001-001 etc
+Writing psi file at step 20!
+Writing rho/velocity output at step 20!
 
 Scalars - total mean variance min max
 [rho]       32715.00  1.00000000000  5.7030058e-09  0.99976080725  1.00025312238
@@ -164,11 +172,6 @@ Velocity - x y z
 [maximum ]  2.3349236e-04  2.3349236e-04  1.0560165e-03
 
 Completed cycle 20
-
-colloid_io_write:
-writing colloid information to config.cds00000020.001-001 etc
-Writing velocity output at step 20!
-Writing psi file at step 20!
 
 Timer resolution: 0.01 second
 

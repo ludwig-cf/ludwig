@@ -7,7 +7,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2012-2017 The University of Edinburgh
+ *  (c) 2012-2023 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -18,23 +18,15 @@
 #include <float.h>
 #include <math.h>
 
-#include "pe.h"
-#include "coords.h"
-#include "util.h"
 #include "psi.h"
-#include "psi_s.h"
 
-#include "test_coords_field.h"
-#include "tests.h"
-
-static int testf2(cs_t * cs, int ic, int jc, int kc, int n, void * ref);
-static int do_test1(pe_t * pe);
-static int do_test2(pe_t * pe);
-static int do_test_halo1(pe_t * pe);
-static int do_test_halo2(pe_t * pe);
-static int do_test_bjerrum(pe_t * pe);
-static int do_test_ionic_strength(pe_t * pe);
-static int do_test_io1(pe_t * pe);
+int test_psi_initialise(pe_t * pe);
+int test_psi_create(pe_t * pe);
+int test_psi_psi_set(pe_t * pe);
+int test_psi_rho_set(pe_t * pe);
+int test_psi_halo_psi(pe_t * pe);
+int test_psi_halo_rho(pe_t * pe);
+int test_psi_ionic_strength(pe_t * pe);
 
 /*****************************************************************************
  *
@@ -48,13 +40,16 @@ int test_psi_suite(void) {
 
   pe_create(MPI_COMM_WORLD, PE_QUIET, &pe);
 
-  do_test1(pe);
-  do_test2(pe);
-  do_test_halo1(pe);
-  do_test_halo2(pe);
-  do_test_io1(pe);
-  do_test_bjerrum(pe);
-  do_test_ionic_strength(pe);
+  /* Changes in psi_t should be accompanied by changes in tests... */
+  assert(sizeof(psi_t) == 576);
+
+  test_psi_initialise(pe);
+  test_psi_create(pe);
+  test_psi_psi_set(pe);
+  test_psi_rho_set(pe);
+  test_psi_halo_psi(pe);
+  test_psi_halo_rho(pe);
+  test_psi_ionic_strength(pe);
 
   pe_info(pe, "PASS     ./unit/test_psi\n");
   pe_free(pe);
@@ -64,114 +59,76 @@ int test_psi_suite(void) {
 
 /*****************************************************************************
  *
- *  do_test1
- *
- *  Test object creation/deletion, and the various access functions.
+ *  test_psi_initialise
  *
  *****************************************************************************/
 
-static int do_test1(pe_t * pe) {
+int test_psi_initialise(pe_t * pe) {
 
-  int nk;
-  int iv, n;
-  int valency[3] = {1, 2, 3};
-  double e, diff;
-  double diffusivity[3] = {1.0, 2.0, 3.0};
-  double eunit = -1.0;
-
-  cs_t * cs;
-  psi_t * psi;
-
-  assert(pe);
-
-  cs_create(pe, &cs);
-  cs_init(cs);
-
-  nk = 3;
-  psi_create(pe, cs, nk, &psi);
-  assert(psi);
-  psi_nk(psi, &n);
-  test_assert(n == 3);
-
-  for (n = 0; n < nk; n++) {
-    psi_valency_set(psi, n, valency[n]);
-    psi_valency(psi, n, &iv);
-    test_assert(iv == valency[n]);
-    psi_diffusivity_set(psi, n, diffusivity[n]);
-    psi_diffusivity(psi, n, &diff);
-    test_assert(fabs(diff - diffusivity[n]) < DBL_EPSILON);
-  }
-
-  psi_unit_charge(psi, &e);
-  test_assert(fabs(e - 1.0) < DBL_EPSILON); /* Default unit = 1.0 */
-  psi_unit_charge_set(psi, eunit);
-  psi_unit_charge(psi, &e);
-  test_assert(fabs(eunit - e) < DBL_EPSILON);
-
-  psi_free(psi);
-  cs_free(cs);
-
-  return 0;
-}
-
-/*****************************************************************************
- *
- *  do_test2
- *
- *  Check access to the lattice-based quantities.
- *
- *****************************************************************************/
-
-static int do_test2(pe_t * pe) {
-
-  int nk = 2;
-  int iv, n;
-  int index;
-  int valency[2] = {1, 2};
-  double diff;
-  double ref, value;
-  double diffusivity[2] = {1.0, 2.0};
-
+  int nhalo = 1;
   cs_t * cs = NULL;
-  psi_t * psi = NULL;
-
-  assert(pe);
 
   cs_create(pe, &cs);
+  cs_nhalo_set(cs, nhalo);
   cs_init(cs);
 
-  psi_create(pe, cs, nk, &psi);
-  assert(psi);
-  psi_nk(psi, &n);
-  test_assert(n == 2);
+  {
+    /* With some non-default values ... */
+    int nsites = 0;
+    psi_options_t opts = psi_options_default(nhalo);
+    psi_t psi = {0};
 
-  for (n = 0; n < nk; n++) {
-    psi_valency_set(psi, n, valency[n]);
-    psi_valency(psi, n, &iv);
-    test_assert(iv == valency[n]);
-    psi_diffusivity_set(psi, n, diffusivity[n]);
-    psi_diffusivity(psi, n, &diff);
-    test_assert(fabs(diff - diffusivity[n]) < DBL_EPSILON);
+    opts.e        = 2.0;
+    opts.beta     = 0.5;
+    opts.epsilon1 = 0.2;
+    opts.epsilon2 = 0.3;
+    opts.e0[X]    = 4.0;
+    opts.e0[Y]    = 5.0;
+    opts.e0[Z]    = 6.0;
+
+    psi_initialise(pe, cs, &opts, &psi);
+
+    cs_nsites(cs, &nsites);
+
+    /* Check existing structure */
+    assert(psi.pe     == pe);
+    assert(psi.cs     == cs);
+    assert(psi.nk     == opts.nk);
+    assert(psi.nsites == nsites);
+    assert(psi.psi    != NULL);
+    assert(psi.rho    != NULL);
+
+    assert(fabs(psi.diffusivity[0] - opts.diffusivity[0]) < DBL_EPSILON);
+    assert(fabs(psi.diffusivity[1] - opts.diffusivity[1]) < DBL_EPSILON);
+    assert(psi.valency[0] == opts.valency[0]);
+    assert(psi.valency[1] == opts.valency[1]);
+
+    /* Physical quantities */
+    assert(fabs(psi.e - opts.e) < DBL_EPSILON);
+    assert(fabs(psi.epsilon  - opts.epsilon1) < DBL_EPSILON);
+    assert(fabs(psi.epsilon2 - opts.epsilon2) < DBL_EPSILON);
+    assert(fabs(psi.beta - opts.beta) < DBL_EPSILON);
+    assert(fabs(psi.e0[X] - opts.e0[X]) < DBL_EPSILON);
+    assert(fabs(psi.e0[Y] - opts.e0[Y]) < DBL_EPSILON);
+    assert(fabs(psi.e0[Z] - opts.e0[Z]) < DBL_EPSILON);
+
+    /* Solver options */
+    /* Assume correctly covered in solver options tests ... */
+    assert(psi.solver.psolver == PSI_POISSON_SOLVER_SOR);
+    assert(psi.stencil);
+    assert(psi.stencil->npoints == psi.solver.nstencil);
+
+    /* Nernst Planck */
+    assert(psi.multisteps == opts.nsmallstep);
+    assert(fabs(psi.diffacc - opts.diffacc) < DBL_EPSILON);
+
+    /* Other */
+    assert(psi.method == opts.method);
+    assert(psi.options.nk == opts.nk);
+
+    psi_finalise(&psi);
   }
 
-  index = 1;
-  ref = 1.0;
-  psi_psi_set(psi, index, ref);
-  psi_psi(psi, index, &value);
-  test_assert(fabs(value - ref) < DBL_EPSILON);
-
-  for (n = 0; n < nk; n++) {
-    ref = 1.0 + n;
-    psi_rho_set(psi, index, n, ref);
-    psi_rho(psi, index, n, &value);
-    test_assert(fabs(value - ref) < DBL_EPSILON);
-  }
-
-  ref = 1.0 + 4.0;
-  psi_rho_elec(psi, index, &value);
-  test_assert(fabs(value - ref) < DBL_EPSILON);
-
-  psi_free(psi);
   cs_free(cs);
 
   return 0;
@@ -179,166 +136,32 @@ static int do_test2(pe_t * pe) {
 
 /*****************************************************************************
  *
- *  do_test_halo1
- *
- *  Take the default system size with nhalo = 2 and nk = 3, and
- *  check the halo swap.
+ *  test_psi_create
  *
  *****************************************************************************/
 
-static int do_test_halo1(pe_t * pe) {
+int test_psi_create(pe_t * pe) {
 
-  int nk;
   int nhalo = 2;
   cs_t * cs = NULL;
-  psi_t * psi = NULL;
-
-  assert(pe);
 
   cs_create(pe, &cs);
   cs_nhalo_set(cs, nhalo);
   cs_init(cs);
 
-  nk = 3;
-  psi_create(pe, cs, nk, &psi);
-  assert(psi);
+  {
+    psi_options_t opts = psi_options_default(nhalo);
+    psi_t * psi = NULL;
 
-  test_coords_field_set(cs, 1, psi->psi, MPI_DOUBLE, test_ref_double1);
-  psi_halo_psi(psi);
-  test_coords_field_check(cs, nhalo, 1, psi->psi, MPI_DOUBLE, test_ref_double1);
+    psi_create(pe, cs, &opts, &psi);
+    assert(psi);
+    assert(psi->psi);
+    assert(psi->rho);
 
-  test_coords_field_set(cs, nk, psi->rho, MPI_DOUBLE, test_ref_double1);
-  psi_halo_rho(psi);
-  test_coords_field_check(cs, nhalo, nk, psi->rho, MPI_DOUBLE, test_ref_double1);
-
-  test_coords_field_set(cs, nk, psi->rho, MPI_DOUBLE, testf2);
-  psi_halo_rho(psi);
-  test_coords_field_check(cs, nhalo, nk, psi->rho, MPI_DOUBLE, testf2);
-
-  psi_free(psi);
-  cs_free(cs);
-
-  return 0;
-}
-
-/*****************************************************************************
- *
- *  do_test_halo2
- *
- *  Check the halo swap in a one-dimensional decomposition.
- *
- *****************************************************************************/
-
-static int do_test_halo2(pe_t * pe) {
-
-  int nk;
-  int grid[3];
-  int nhalo = 3;
-  cs_t * cs = NULL;
-  psi_t * psi;
-
-  assert(pe);
-
-  /* Use a 1-d decomposition, which increases the number of
-   * MPI tasks in one direction cf. the default. */
-
-  grid[0] = 1;
-  grid[1] = pe_mpi_size(pe);
-  grid[2] = 1;
-
-  cs_create(pe, &cs);
-  cs_decomposition_set(cs, grid);
-  cs_nhalo_set(cs, nhalo);
-  cs_init(cs);
-
-  nk = 2;
-  psi_create(pe, cs, nk, &psi);
-  assert(psi);
-
-  test_coords_field_set(cs, 1, psi->psi, MPI_DOUBLE, test_ref_double1);
-  psi_halo_psi(psi);
-  test_coords_field_check(cs, nhalo, 1, psi->psi, MPI_DOUBLE, test_ref_double1);
-
-  test_coords_field_set(cs, nk, psi->rho, MPI_DOUBLE, test_ref_double1);
-  psi_halo_rho(psi);
-  test_coords_field_check(cs, nhalo, nk, psi->rho, MPI_DOUBLE, test_ref_double1);
-
-  psi_free(psi);
-  cs_free(cs);
-
-  return 0;
-}
-
-/*****************************************************************************
- *
- *  do_test_io1
- *
- *  Note that the io functions must use the psi_ object at the moment.
- *  Take default (i.e., binary) write, and specify explicitly binary
- *  read.
- * 
- *****************************************************************************/
-
-static int do_test_io1(pe_t * pe) {
-
-  int nk;
-  int grid[3] = {1, 1, 1};
-  const char * filename = "psi-test-io";
-
-  cs_t * cs = NULL;
-  psi_t * psi = NULL;
-  io_info_t * iohandler = NULL;
-  MPI_Comm comm;
-
-  assert(pe);
-
-  cs_create(pe, &cs);
-  cs_init(cs);
-  cs_cart_comm(cs, &comm);
-
-  if (pe_mpi_size(pe) == 8) {
-    grid[X] = 2;
-    grid[Y] = 2;
-    grid[Z] = 2;
+    psi_free(&psi);
+    assert(psi == NULL);
   }
 
-  nk = 2;
-  psi_create(pe, cs, nk, &psi);
-  assert(psi);
-  psi_init_io_info(psi, grid, IO_FORMAT_DEFAULT, IO_FORMAT_DEFAULT);
-
-  test_coords_field_set(cs, 1, psi->psi, MPI_DOUBLE, test_ref_double1);
-  test_coords_field_set(cs, nk, psi->rho, MPI_DOUBLE, test_ref_double1);
-
-  psi_io_info(psi, &iohandler);
-  assert(iohandler);
-  io_write_data(iohandler, filename,  psi);
-
-  psi_free(psi);
-  MPI_Barrier(comm);
-
-  /* Recreate, and read. This zeros out all the fields, so they
-   * must be read correctly to pass. */
-
-  psi_create(pe, cs, nk, &psi);
-  psi_init_io_info(psi, grid, IO_FORMAT_BINARY, IO_FORMAT_BINARY);
-
-  psi_io_info(psi, &iohandler);
-  assert(iohandler);
-  io_read_data(iohandler, filename, psi);
-
-  psi_halo_psi(psi);
-  psi_halo_rho(psi);
-
-  /* Zero halo region required */
-  test_coords_field_check(cs, 0, 1, psi->psi, MPI_DOUBLE, test_ref_double1);
-  test_coords_field_check(cs, 0, nk, psi->rho, MPI_DOUBLE, test_ref_double1);
-
-  MPI_Barrier(comm);
-  io_remove(filename, iohandler);
-  io_remove_metadata(iohandler, "psi");
-
-  psi_free(psi);
   cs_free(cs);
 
   return 0;
@@ -346,62 +169,37 @@ static int do_test_io1(pe_t * pe) {
 
 /*****************************************************************************
  *
- *  do_test_bjerrum
- *
- *  Test the bjerrum length comes out right.
- *  l_B = e^2 / 4\pi epsilon KT
- *
- *  We set out unit charge to be 1 in lattice units, and a plausable
- *  lattice Boltzmann temperature of 10^-05; the units of permeativity
- *  are still somewhat open to investigation...
- *
- *  At the moment I have the famous 41.4 which is the dielectric
- *  *isotropy* used for blue phases scaled by an arbitrary 1000.
- *
- *  Also test the Debye length for unit ionic strength while we
- *  are at it.
+ *  test_psi_psi_set
  *
  *****************************************************************************/
 
-static int do_test_bjerrum(pe_t * pe) {
+int test_psi_psi_set(pe_t * pe) {
 
+  int nhalo = 2;
+  int ntotal[3] = {64, 4, 4};
+  psi_options_t opts = psi_options_default(nhalo);
   psi_t * psi = NULL;
-  double eref = 1.0;
-  double epsilonref = 41.4*1000.0;
-  double ktref = 0.00001;
-  double tmp, lbref, ldebyeref;
-
   cs_t * cs = NULL;
-  PI_DOUBLE(pi_);
-
-  assert(pe);
 
   cs_create(pe, &cs);
+  cs_nhalo_set(cs, nhalo);
+  cs_ntotal_set(cs, ntotal);
   cs_init(cs);
-  psi_create(pe, cs, 2, &psi);
 
-  psi_beta_set(psi, 1.0/ktref);
-  psi_beta(psi, &tmp);
-  test_assert(fabs(1.0/ktref - tmp) < DBL_EPSILON);
+  psi_create(pe, cs, &opts, &psi);
+  assert(psi->psi->data);
 
-  psi_epsilon_set(psi, epsilonref);
-  psi_epsilon(psi, &tmp);
-  test_assert(fabs(tmp - epsilonref) < DBL_EPSILON);
+  {
+    /* potential */
+    int index = 1;
+    double psi0 = 2.0;
+    double value = 0.0;
+    psi_psi_set(psi, index, psi0);
+    psi_psi(psi, index, &value);
+    assert(fabs(value - psi0) < DBL_EPSILON);
+  }
 
-  psi_unit_charge_set(psi, eref);
-  psi_unit_charge(psi, &tmp);
-  test_assert(fabs(tmp - eref) < DBL_EPSILON);
-
-  lbref = eref*eref / (4.0*pi_*epsilonref*ktref);
-  psi_bjerrum_length(psi, &tmp);
-  test_assert(fabs(lbref - tmp) < DBL_EPSILON);
-
-  /* For unit ionic strength */
-  ldebyeref = 1.0 / sqrt(8.0*pi_*lbref);
-  psi_debye_length(psi, 1.0, &tmp);
-  test_assert(fabs(ldebyeref - tmp) < DBL_EPSILON);
-
-  psi_free(psi);
+  psi_free(&psi);
   cs_free(cs);
 
   return 0;
@@ -409,70 +207,222 @@ static int do_test_bjerrum(pe_t * pe) {
 
 /*****************************************************************************
  *
- *  do_test_ionic_strength
- *
- *  Test the calculation of the ionic strength. We require just
- *  valency and charge density for a given number of species. 
+ *  psi_rho_set
  *
  *****************************************************************************/
 
-static int do_test_ionic_strength(pe_t * pe) {
+int test_psi_rho_set(pe_t * pe) {
 
-  int n, nk = 2;
+  int nhalo = 2;
+  int ntotal[3] = {64, 4, 4};
+  psi_options_t opts = psi_options_default(nhalo);
   psi_t * psi = NULL;
+  cs_t * cs = NULL;
 
-  int index = 1;             /* Lattice point will be present */
+  cs_create(pe, &cs);
+  cs_nhalo_set(cs, nhalo);
+  cs_ntotal_set(cs, ntotal);
+  cs_init(cs);
+
+  psi_create(pe, cs, &opts, &psi);
+  assert(psi->rho->data);
+
+  /* Charge densities */
+  for (int n = 0; n < psi->nk; n++) {
+    int index = 1 + n;
+    double rho0 = 6.0 + 1.0*n;
+    double value = 0.0;
+    psi_rho_set(psi, index, n, rho0);
+    psi_rho(psi, index, n, &value);
+    assert(fabs(value - rho0) < DBL_EPSILON);
+  }
+
+  psi_free(&psi);
+  cs_free(cs);
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  test_psi_halo_psi
+ *
+ *****************************************************************************/
+
+int test_psi_halo_psi(pe_t * pe) {
+
+  int ifail = 0;
+  int nhalo = 2;
+  int ntotal[3] = {16, 16, 16};
+  psi_options_t opts = psi_options_default(nhalo);
+  psi_t * psi = NULL;
+  cs_t * cs = NULL;
+
+  cs_create(pe, &cs);
+  cs_nhalo_set(cs, nhalo);
+  cs_ntotal_set(cs, ntotal);
+  cs_init(cs);
+
+  psi_create(pe, cs, &opts, &psi);
+
+  /* Provide uniform values ... */
+  {
+    int nlocal[3] = {0};
+    double psi0 = 2.0;
+    cs_nlocal(cs, nlocal);
+
+    for (int ic = 1; ic <= nlocal[X]; ic++) {
+      for (int jc = 1; jc <= nlocal[Y]; jc++) {
+	for (int kc = 1; kc <= nlocal[Z]; kc++) {
+	  int index = cs_index(cs, ic, jc, kc);
+	  psi_psi_set(psi, index, psi0);
+	}
+      }
+    }
+  }
+
+  psi_halo_psi(psi);
+
+  /* Check ... */
+  {
+    int nlocal[3] = {0};
+    double psi0 = 2.0;
+    cs_nlocal(cs, nlocal);
+
+    for (int ic = 1 - nhalo; ic <= nlocal[X] + nhalo; ic++) {
+      for (int jc = 1 - nhalo; jc <= nlocal[Y] + nhalo; jc++) {
+	for (int kc = 1 - nhalo; kc <= nlocal[Z] + nhalo; kc++) {
+	  int index = cs_index(cs, ic, jc, kc);
+	  double value = 0.0;
+	  psi_psi(psi, index, &value);
+	  assert(fabs(value - psi0) < DBL_EPSILON);
+	  if (fabs(value - psi0) > DBL_EPSILON) ifail += 1;
+	}
+      }
+    }
+  }
+
+  psi_free(&psi);
+  cs_free(cs);
+
+  return ifail;
+}
+
+/*****************************************************************************
+ *
+ *  test_psi_halo_rho
+ *
+ *****************************************************************************/
+
+int test_psi_halo_rho(pe_t * pe) {
+
+  int ifail = 0;
+  int nhalo = 1;
+  int ntotal[3] = {16, 16, 16};
+  psi_options_t opts = psi_options_default(nhalo);
+  psi_t * psi = NULL;
+  cs_t * cs = NULL;
+
+  cs_create(pe, &cs);
+  cs_nhalo_set(cs, nhalo);
+  cs_ntotal_set(cs, ntotal);
+  cs_init(cs);
+
+  psi_create(pe, cs, &opts, &psi);
+
+  /* Provide uniform values per chareged species ... */
+  {
+    int nlocal[3] = {0};
+    cs_nlocal(cs, nlocal);
+
+    for (int ic = 1; ic <= nlocal[X]; ic++) {
+      for (int jc = 1; jc <= nlocal[Y]; jc++) {
+	for (int kc = 1; kc <= nlocal[Z]; kc++) {
+	  int index = cs_index(cs, ic, jc, kc);
+	  for (int n = 0; n < psi->nk; n++) {
+	    double rho0 = 6.0 + 1.0*n;
+	    psi_rho_set(psi, index, n, rho0);
+	  }
+	}
+      }
+    }
+  }
+
+  psi_halo_rho(psi);
+
+  /* Check ... */
+  {
+    int nlocal[3] = {0};
+    cs_nlocal(cs, nlocal);
+
+    for (int ic = 1 - nhalo; ic <= nlocal[X] + nhalo; ic++) {
+      for (int jc = 1 - nhalo; jc <= nlocal[Y] + nhalo; jc++) {
+	for (int kc = 1 - nhalo; kc <= nlocal[Z] + nhalo; kc++) {
+	  int index = cs_index(cs, ic, jc, kc);
+	  for (int n = 0; n < psi->nk; n++) {
+	    double rho0 = 6.0 + 1.0*n;
+	    double value = 0.0;
+	    psi_rho(psi, index, n, &value);
+	    assert(fabs(value - rho0) < DBL_EPSILON);
+	    if (fabs(value - rho0) > DBL_EPSILON) ifail += 1;
+	  }
+	}
+      }
+    }
+  }
+
+  psi_free(&psi);
+  cs_free(cs);
+
+  return ifail;
+}
+
+/*****************************************************************************
+ *
+ *  test_psi_ionic_strength
+ *
+ *****************************************************************************/
+
+int test_psi_ionic_strength(pe_t * pe) {
+  
+  int nhalo = 1;
+  int ntotal[3] = {8, 8, 8};
+  psi_options_t opts = psi_options_default(nhalo);
+  psi_t * psi = NULL;
+  cs_t * cs = NULL;
+
+  /* We require a valency and a charge density ... */ 
   int valency[2] = {+2, -2};
-  double rho[2] = {1.0, 2.0};
-  double rhoi;
-  double expect;
-  cs_t * cs = NULL;
+  double rho0[2] = {3.0, 5.0};
 
-  assert(pe);
+  opts.valency[0] = valency[0];
+  opts.valency[1] = valency[1];
 
   cs_create(pe, &cs);
+  cs_nhalo_set(cs, nhalo);
+  cs_ntotal_set(cs, ntotal);
   cs_init(cs);
-  psi_create(pe, cs, nk, &psi);
 
-  for (n = 0; n < nk; n++) {
-    psi_valency_set(psi, n, valency[n]);
-    psi_rho_set(psi, index, n, rho[n]);
+  psi_create(pe, cs, &opts, &psi);
+
+  /* Set the charge density, and compute an ionic strength */
+  {
+    int index = 2;
+    int strength = 0.0;
+    for (int n = 0; n < psi->nk; n++) {
+      psi_rho_set(psi, index, n, rho0[n]);
+      strength += 0.5*valency[n]*valency[n]*rho0[n];
+    }
+
+    {
+      double value = 0.0;
+      psi_ionic_strength(psi, index, &value);
+      assert(fabs(value - strength) < DBL_EPSILON);
+    }
   }
-
-  expect = 0.5*(pow(valency[0], 2)*rho[0] + pow(valency[1], 2)*rho[1]);
-
-  psi_ionic_strength(psi, index, &rhoi);
-  test_assert(fabs(expect - rhoi) < DBL_EPSILON);
-
-  psi_free(psi);
+  
+  psi_free(&psi);
   cs_free(cs);
-
-  return 0;
-}
-
-/*****************************************************************************
- *
- *  testf2
- *
- *  With signature halo_ft from test_coords_field.h
- *  A 'wall' function perioidic in z-direction.
- *
- *****************************************************************************/
-
-static int testf2(cs_t * cs, int ic, int jc, int kc, int n, void * buf) {
-
-  int ntotal[3];
-  double * ref = (double *) buf;
-
-  assert(cs);
-  assert(ref);
-
-  cs_ntotal(cs, ntotal);
-
-  *ref = -1.0;
-
-  if (kc == 1 || kc == 0) *ref = 1.0;
-  if (kc == ntotal[Z] || kc == ntotal[Z] + 1) *ref = 1.0;
 
   return 0;
 }
