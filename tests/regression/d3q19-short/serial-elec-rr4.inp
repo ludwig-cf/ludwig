@@ -58,14 +58,18 @@ colloid_one_q1      0.0000
 ###############################################################################
 
 freq_statistics 1
+freq_psi_resid  10
 config_at_end no
 
 default_io_grid 1_1_1
 colloid_io_freq 1000
 
+psi_io_mode      mpiio
+psi_io_report    no
+
 ###############################################################################
 #
-#  Electrokinetics ALWAYS 2 SPECIES FOR NOW
+#  Electrokinetics
 #
 ###############################################################################
 
@@ -75,6 +79,11 @@ electrokinetics_d0      0.01
 electrokinetics_d1      0.01
 electrokinetics_eunit   1.0
 electrokinetics_epsilon 3.3e3
+
+electrokinetics_rel_tol  1e-08
+electrokinetics_abs_tol  1e-15
+electrokinetics_maxits   2000
+
 electrokinetics_init    uniform
 electrokinetics_init_rho_el 0.001
 

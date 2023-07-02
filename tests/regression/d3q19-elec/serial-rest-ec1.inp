@@ -73,8 +73,19 @@ electrokinetics_d0      0.01
 electrokinetics_d1      0.01
 electrokinetics_eunit   1.0
 electrokinetics_epsilon 3.3e3
+
+electrokinetics_rel_tol  1e-09
+electrokinetics_abs_tol  1e-15
+electrokinetics_maxits   2000
+
+
 electrokinetics_init    uniform
 electrokinetics_init_rho_el 0.001
+
+# Now mandatory to use mpiio for electrokinetics
+
+psi_io_mode             mpiio
+psi_io_report           no
 
 ###############################################################################
 #

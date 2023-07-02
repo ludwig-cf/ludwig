@@ -46,14 +46,11 @@ Valency species 0:          1
 Diffusivity species 0:      1.0000000e-01
 Valency species 1:         -1
 Diffusivity species 1:      1.0000000e-01
-Number of multisteps:       1
-Number of skipsteps:        1
-Diffusive accuracy in NPE:  5.0000000e-01
 Relative tolerance:         1.0000000e-06
 Absolute tolerance:         1.0000000e-07
 Max. no. of iterations:             10000
-I/O decomposition:          1 1 1
-I/O format:                 BINARY
+Number of multisteps:       1
+Diffusive accuracy in NPE:  5.0000000e-01
 
 Coupling part
 -------------
@@ -132,6 +129,9 @@ Scalars - total mean variance min max
 [rho]  1.9251200e+00  4.7000000e-04  4.7000000e-04
 [rho]  1.9251200e+00  4.7000000e-04  4.7000000e-04
 [elc]  0.0000000e+00  0.0000000e+00  0.0000000e+00
+
+Free energy density - timestep total fluid
+[fed]              0 -1.0518099887e-02 -1.0518099887e-02
 
 Momentum - x y z
 [total   ]  0.0000000e+00  1.1368684e-13  0.0000000e+00

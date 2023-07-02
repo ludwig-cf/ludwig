@@ -47,7 +47,7 @@ $ make test
 Full details of the build process are available at
 <a href = "https://ludwg.epcc.ed.ac.uk/">https://ludwig.epcc.ed.ac.uk/</a>.
 
-#### Background and Tutorial
+#### Background
 
 Background documentation on the LB model and various free energy choices
 is available in the `docs` directory.
@@ -56,14 +56,6 @@ $ cd docs
 $ make
 ```
 will produce a pdf version of the LaTeX source.
-
-A short tutorial, which includes some examples in which the
-results are visualised, is also provided:
-```
-$ cd docs/tutorial
-$ make
-```
-to produce a pdf of the tutorial instructions.
 
 #### Contributing
 

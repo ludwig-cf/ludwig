@@ -1,6 +1,5 @@
 Welcome to Ludwig v0.7.32 (Serial version running on 1 process)
 
-The SVN revision details are: 3209M
 Note assertions via standard C assert() are on.
 
 Read 36 user parameters from serial-elec-rr1.inp
@@ -30,14 +29,13 @@ Valency species 0:          1
 Diffusivity species 0:      1.0000000e-02
 Valency species 1:         -1
 Diffusivity species 1:      1.0000000e-02
+Solver type:                          sor
+Solver stencil points:                  7
+Relative tolerance:         1.0000000e-08
+Absolute tolerance:         1.0000000e-15
+Max. no. of iterations:              2000
 Number of multisteps:       1
-Number of skipsteps:        1
 Diffusive accuracy in NPE:  0.0000000e+00
-Relative tolerance:         1.1920929e-07
-Absolute tolerance:         1.1920929e-09
-Max. no. of iterations:             10000
-I/O decomposition:          1 1 1
-I/O format:                 BINARY
 Force calculation:          phi_gradmu_correction
 
 System properties
@@ -125,6 +123,10 @@ Scalars - total mean variance min max
 [rho]  3.2726000e+01  1.9230769e-04  1.0000000e-03
 [rho]  3.2726000e+01  0.0000000e+00  1.0003057e-03
 [elc] -1.4922959e-15 -3.0566084e-07  1.9230769e-04
+[psi_zeta]  0.0000000e+00
+
+Free energies - timestep f v f/v f_s a f_s/a
+[fe]              0 -5.1748931944e+02  3.2716000000e+04 -1.5817621942e-02  0.0000000000e+00
 
 Momentum - x y z
 [total   ]  4.5402571e-13  0.0000000e+00  5.0965010e-01
@@ -139,9 +141,6 @@ Colloid velocities - x y z
 [minimum ]  0.0000000e+00  0.0000000e+00  1.0000000e-02
 [maximum ]  0.0000000e+00  0.0000000e+00  1.0000000e-02
 
-SOR solver converged to relative tolerance
-SOR residual per site  4.6031502e-09 at 105 iterations
-1 multisteps
 
 Scalars - total mean variance min max
 [rho]       32716.00  1.00000000000  2.0078220e-08  0.99474397928  1.00525602072
@@ -171,13 +170,10 @@ Colloid velocities - x y z
 [minimum ]  1.2272861e-17 -4.1743567e-18  5.2560207e-03
 [maximum ]  1.2272861e-17 -4.1743567e-18  5.2560207e-03
 
-SOR solver converged to relative tolerance
-SOR residual per site  7.8603898e-11 at 110 iterations
-1 multisteps
 
 Scalars - total mean variance min max
 [rho]       32715.00  1.00000000000  3.1667262e-08  0.99486242850  1.00470540593
-[psi] -2.4471310e-14 -6.0146459e-04  1.3552052e-02
+[psi] -2.4471310e-14 -6.0146458e-04  1.3552052e-02
 [rho]  3.2726000e+01  1.8867925e-04  1.0264264e-03
 [rho]  3.2726000e+01  4.3470370e-20  1.0269783e-03
 [elc]  2.4730652e-15 -5.5183543e-07  1.8867925e-04

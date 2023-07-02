@@ -268,12 +268,11 @@ int main(int argc, char ** argv) {
       exit(-1);
     }
     else {
-      char buf[FILENAME_MAX] = {0};
+      char buf[BUFSIZ] = {0};
       char * filename = buf;
       int ifile = file_get_file_index(argv[optind]);
       int nfile = file_get_file_nfile(argv[optind]);
-      snprintf(filename, FILENAME_MAX, "%s.%3.3d-%3.3d.meta",
-	       stub, nfile, ifile);
+      snprintf(filename, BUFSIZ, "%s.%3.3d-%3.3d.meta", stub, nfile, ifile);
       read_meta_data_file(filename, &metadata);
     }
   }

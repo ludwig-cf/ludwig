@@ -2,12 +2,10 @@
  *
  *  fe_electro_symmetric.h
  *
- *  $Id$
- *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2013-2017 The University of Edinburgh
+ *  (c) 2013-2023 The University of Edinburgh
  *
  *  Contributing authors:
  *    Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -48,9 +46,6 @@ int fe_es_mu_ion_solv(fe_es_t * fe, int index, int n, double * mu);
 
 __host__
 int fe_es_deltamu_set(fe_es_t * fe, int nk, double * deltamu);
-
-__host__
-int fe_es_epsilon_set(fe_es_t * fe, double e1, double e2);
 
 __host__
 int fe_es_var_epsilon(fe_es_t * fe, int index, double * epsilon);

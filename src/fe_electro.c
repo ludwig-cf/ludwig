@@ -27,7 +27,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2013-2018 The University of Edinburgh
+ *  (c) 2013-2023 The University of Edinburgh
  *
  *  Contributing authors:
  *  Oliver Henrich  (ohenrich@epcc.ed.ac.uk)
@@ -43,7 +43,6 @@
 #include "pe.h"
 #include "physics.h"
 #include "util.h"
-#include "psi_s.h"
 #include "psi_gradients.h"
 #include "fe_electro.h"
 
@@ -310,7 +309,7 @@ int fe_electro_stress(fe_electro_t * fe, int index, double s[3][3]) {
   reunit = 1.0/eunit;
 
   psi_epsilon(fe->psi, &epsilon);
-  psi_electric_field_d3qx(fe->psi, index, e);
+  psi_electric_field(fe->psi, index, e);
 
   e2 = 0.0;
 
@@ -363,7 +362,7 @@ int fe_electro_stress_ex(fe_electro_t * fe, int index, double s[3][3]) {
   reunit = 1.0/eunit;
 
   psi_epsilon(fe->psi, &epsilon);
-  psi_electric_field_d3qx(fe->psi, index, e);
+  psi_electric_field(fe->psi, index, e);
 
   e2 = 0.0;
 

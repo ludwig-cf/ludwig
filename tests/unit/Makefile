@@ -45,6 +45,11 @@ LIBS = $(BLIBS) $(SRC)/libludwig.a -lm
 
 MPI_RUN = $(LAUNCH_MPIRUN_CMD) $(MPIRUN_NTASK_FLAG) $(MPIRUN_NTASKS)
 
+ifdef HAVE_PETSC
+INCL += $(PETSC_INCL)
+LIBS += $(PETSC_LIB)
+endif
+
 #------------------------------------------------------------------------------
 #  Rules
 #------------------------------------------------------------------------------
