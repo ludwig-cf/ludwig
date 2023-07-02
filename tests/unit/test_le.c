@@ -150,7 +150,7 @@ int test_lees_edw_buffer_displacement(pe_t * pe, cs_t * cs) {
    * it's  not realistic */
   {
     lees_edw_options_t opts = {.nplanes = 1, .type = LE_SHEAR_TYPE_OSCILLATORY,
-                               .nt0 = 0, .period = 2, .uy = 4.0*atan(1.0)};
+                               .period = 2, .nt0 = 0, .uy = 4.0*atan(1.0)};
     lees_edw_t * le = NULL;
     int ib = 0;
     double t = 0.5;
