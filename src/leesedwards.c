@@ -68,8 +68,6 @@ static int lees_edw_init_tables(lees_edw_t * le);
 
 static __constant__ lees_edw_param_t static_param;
 
-__host__ __device__ int lees_edw_buffer_duy(lees_edw_t * le, int ib);
-
 /*****************************************************************************
  *
  *  lees_edw_create
@@ -208,23 +206,6 @@ __host__ int lees_edw_target(lees_edw_t * le, lees_edw_t ** target) {
 
 /*****************************************************************************
  *
- *  lees_edw_oscillatory_set
- *
- *****************************************************************************/
-
-int lees_edw_oscillatory_set(lees_edw_t * le, int period) {
-
-  assert(le);
-
-  le->param->type = LE_SHEAR_TYPE_OSCILLATORY;
-  le->param->period = period;
-  le->param->omega = 2.0*4.0*atan(1.0)/le->param->period;
-
-  return 0;
-} 
-
-/*****************************************************************************
- *
  *  lees_edw_toffset_set
  *
  *****************************************************************************/
@@ -244,10 +225,6 @@ int lees_edw_toffset_set(lees_edw_t * le, int nt0) {
  *
  *  We assume there are a given number of equally-spaced planes
  *  all with the same speed.
- *
- *  Pending (KS):
- *   - dx should be integers, i.e, ntotal[X] % ntotal must be zero
- *   - look at displacement issue
  *
  *****************************************************************************/
 
@@ -278,6 +255,14 @@ static int lees_edw_init(lees_edw_t * le, const lees_edw_options_t * info) {
     le->param->dx_sep = 1.0*ntotal[X] / le->param->nplanetotal;
     le->param->dx_min = 0.5*le->param->dx_sep;
     le->param->time0 = 1.0*le->param->nt0;
+
+    if (le->param->type == LE_SHEAR_TYPE_OSCILLATORY) {
+      if (info->period <= 0) {
+	pe_info(le->pe, "Oscillatory shear must have period > 0\n");
+	pe_fatal(le->pe, "Please check the input and try again.");
+      }
+      le->param->omega = 2.0*4.0*atan(1.0)/le->param->period;
+    }
   }
 
   lees_edw_checks(le);
@@ -609,7 +594,9 @@ int lees_edw_plane_uy_now(lees_edw_t * le, double t, double * uy) {
   assert(tle >= 0.0);
 
   *uy = le->param->uy;
-  if (le->param->type == LE_SHEAR_TYPE_OSCILLATORY) *uy *= cos(le->param->omega*tle);
+  if (le->param->type == LE_SHEAR_TYPE_OSCILLATORY) {
+    *uy *= cos(le->param->omega*tle);
+  }
 
   return 0;
 }
