@@ -34,6 +34,7 @@ int test_lees_edw_create(pe_t * pe, cs_t * cs);
 int test_lees_edw_buffer_displacement(pe_t * pe, cs_t * cs);
 int test_lees_edw_buffer_du(pe_t * pe, cs_t * cs);
 int test_lees_edw_buffer_duy(pe_t * pe, cs_t * cs);
+int test_lees_edw_plane_uy_now(pe_t * pe, cs_t * cs);
 
 int test_lees_edw_type_to_string(void);
 int test_lees_edw_type_from_string(void);
@@ -63,6 +64,7 @@ int test_le_suite(void) {
   test_lees_edw_buffer_displacement(pe, cs);
   test_lees_edw_buffer_du(pe, cs);
   test_lees_edw_buffer_duy(pe, cs);
+  test_lees_edw_plane_uy_now(pe, cs);
 
   test_parallel1(pe, cs);
   test_le_parallel2(pe, cs);
@@ -255,6 +257,50 @@ int test_lees_edw_buffer_duy(pe_t * pe, cs_t * cs) {
   }
 
   lees_edw_free(le);
+
+  return ifail;
+}
+
+/*****************************************************************************
+ *
+ *  test_lees_edw_plane_uy_now
+ *
+ *****************************************************************************/
+
+int test_lees_edw_plane_uy_now(pe_t * pe, cs_t * cs) {
+
+  int ifail = 0;
+
+  /* Steady shear */
+  {
+    lees_edw_options_t opts = {.nplanes = 1, .type = LE_SHEAR_TYPE_STEADY,
+                               .nt0 = 0, .uy = 0.01};
+    lees_edw_t * le = NULL;
+    double t  = 0.5;           /* Steady result independent of t */
+    double uy = 0.0;
+
+    ifail = lees_edw_create(pe, cs, &opts, &le);
+    lees_edw_plane_uy_now(le, t, &uy);
+    if (fabs(uy - opts.uy) > DBL_EPSILON) ifail = -1;
+    assert(ifail == 0);
+    lees_edw_free(le);
+  }
+
+  /* Oscillatory shear */
+  /* Parameters are to get uy cos(omega.t) = 1 ... */
+  {
+    lees_edw_options_t opts = {.nplanes = 1, LE_SHEAR_TYPE_OSCILLATORY,
+                               .period = 3, .nt0 = 100, .uy = -2.0};
+    lees_edw_t * le = NULL;
+    double t  = 1.0 + 1.0*opts.nt0;
+    double uy = 0.0;
+
+    ifail = lees_edw_create(pe, cs, &opts, &le);
+    lees_edw_plane_uy_now(le, t, &uy);
+    if (fabs(uy - 1.0) > FLT_EPSILON) ifail = -1;
+    assert(ifail == 0);
+    lees_edw_free(le);
+  }
 
   return ifail;
 }
