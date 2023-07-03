@@ -21,6 +21,7 @@
 
 #include "pe.h"
 #include "util.h"
+#include "util_ellipsoid.h"
 #include "coords.h"
 #include "runtime.h"
 #include "physics.h"
@@ -387,11 +388,19 @@ int colloids_rt_state_stub(pe_t * pe, rt_t * rt, colloids_info_t * cinfo,
   const char * format_e3 = "%-28s %14.7e %14.7e %14.7e\n";
   const char * format_s1 = "%-28s  %s\n";
 
+  /*For ellipsoids*/
+  int nrteuler = 0;
+  int nrtv1,nrtv2;
+  double elev1[3];
+  double elev2[3];
+  double euler[3];
+
   assert(pe);
   assert(rt);
   assert(cinfo);
   assert(stub);
   assert(state);
+  PI_DOUBLE(pi);
 
   state->rebuild = 1;
 
@@ -461,6 +470,7 @@ int colloids_rt_state_stub(pe_t * pe, rt_t * rt, colloids_info_t * cinfo,
   state->type = COLLOID_TYPE_DEFAULT;
   if (strcmp(value, "active") == 0) state->type = COLLOID_TYPE_ACTIVE;
   if (strcmp(value, "subgrid") == 0) state->type = COLLOID_TYPE_SUBGRID;
+  if (strcmp(value, "ellipsoid") == 0) state->type = COLLOID_TYPE_ELLIPSOID;/*sumesh-ell*/
   if (nrt) pe_info(pe, format_s1, stub, value);
 
   snprintf(key, BUFSIZ-1, "%s_%s", stub, "rng");
@@ -530,6 +540,39 @@ int colloids_rt_state_stub(pe_t * pe, rt_t * rt, colloids_info_t * cinfo,
   snprintf(key, BUFSIZ-1, "%s_%s", stub, "epsilon");
   nrt = rt_double_parameter(rt, key, &state->epsilon);
   if (nrt) pe_info(pe, format_e1, key, state->epsilon);
+
+  snprintf(key, BUFSIZ-1, "%s_%s", stub, "elabc");/*sumesh-ell*/
+  nrt = rt_double_parameter_vector(rt, key, state->elabc);
+  if (nrt) pe_info(pe, format_e3, key, state->elabc[X], state->elabc[Y], state->elabc[Z]);
+
+  snprintf(key, BUFSIZ-1, "%s_%s", stub, "euler");/*sumesh-ell*/
+  nrt = rt_double_parameter_vector(rt, key, euler);
+  if (nrt) {
+    euler[X]=euler[X]/180.0*pi;
+    euler[Y]=euler[Y]/180.0*pi;
+    euler[Z]=euler[Z]/180.0*pi;
+    pe_info(pe, format_e3, key, euler[X], euler[Y], euler[Z]);
+    nrteuler=nrt;
+  }
+
+  snprintf(key, BUFSIZ-1, "%s_%s", stub, "elev1");
+  nrtv1 = rt_double_parameter_vector(rt, key, elev1);
+  if (nrtv1) pe_info(pe, format_e3, key, elev1[X], elev1[Y], elev1[Z]);
+
+  snprintf(key, BUFSIZ-1, "%s_%s", stub, "elev2");
+  nrtv2 = rt_double_parameter_vector(rt, key, elev2);
+  if (nrtv2) pe_info(pe, format_e3, key, elev2[X], elev2[Y], elev2[Z]);
+
+  if (nrteuler&&nrtv1&&nrtv2) {
+    printf("Over writing the Euler angles with that of given vectors\nNew ");
+  }
+  if(nrtv1 && nrtv2) {
+    euler_from_vectors(elev1, elev2, euler);
+    pe_info(pe, format_e3, "Euler angles", euler[X], euler[Y], euler[Z]);
+  }
+
+  quaternions_from_eulerangles(euler[X],euler[Y], euler[Z], state->quater);
+  copy_vectortovector(state->quater,state->quaterold,4);
 
   return 0;
 }
