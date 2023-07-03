@@ -88,7 +88,6 @@ struct colloid_state_type {
   /*sumesh - parameters describing ellipsoids*/
   double elabc[3];	/*Semi principal axes 1-3*/
   double quater[4];	/*Quaternions of the ellipsoid*/
-  double quaterold[4];	/*Quaternions of the ellipsoid from previous time step*/
 
   /* Charges. We allow two charge valencies (cf a general number
    * number in the electrokinetics section). q0 will be associated

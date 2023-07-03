@@ -572,7 +572,6 @@ int colloids_rt_state_stub(pe_t * pe, rt_t * rt, colloids_info_t * cinfo,
   }
 
   quaternions_from_eulerangles(euler[X],euler[Y], euler[Z], state->quater);
-  copy_vectortovector(state->quater,state->quaterold,4);
 
   return 0;
 }
