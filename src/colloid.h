@@ -7,10 +7,11 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2010-2021 The University of Edinburgh
+ *  (c) 2010-2023 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
+ *  Sumesh Thampi added the ellipsoidal particles.
  *
  *****************************************************************************/
 
@@ -37,7 +38,7 @@ enum colloid_type_enum {COLLOID_TYPE_DEFAULT = 0,
 			COLLOID_TYPE_ACTIVE,
 			COLLOID_TYPE_SUBGRID,
 			COLLOID_TYPE_JANUS,
-			COLLOID_TYPE_ELLIPSOID};/*sumesh-ell*/
+			COLLOID_TYPE_ELLIPSOID};
 
 typedef enum colloid_type_enum colloid_type_enum_t;
 typedef struct colloid_state_type colloid_state_t;
@@ -85,11 +86,6 @@ struct colloid_state_type {
   double dr[3];         /* r update (pending refactor of move/build process) */
   double deltaphi;      /* order parameter bbl net; required to restart */
 
-  /*sumesh - parameters describing ellipsoids*/
-  double elabc[3];	/*Semi principal axes 1-3*/
-  double quater[4];	/*Quaternions of the ellipsoid*/
-  double quaterold[4];	/*Quaternions of the ellipsoid from previous time step*/
-
   /* Charges. We allow two charge valencies (cf a general number
    * number in the electrokinetics section). q0 will be associated
    * with psi->rho[0] and q1 to psi->rho[1] in the electrokinetics.
@@ -107,6 +103,13 @@ struct colloid_state_type {
   double saf;           /* surface area to fluid (finite difference grid) */
 
   double al;            /* Offset parameter used for subgrid particles */
+
+  /* parameters describing ellipsoids */
+
+  double elabc[3];	/* Semi principal axes a,b,c */
+  double quater[4];	/* Quaternion */
+  double quaterold[4];	/* Quaternion at previous time step */
+
   double dpad[NPAD_DBL];/* Again, this pads to 512 bytes to allow
 			 * for future expansion. */
 };
