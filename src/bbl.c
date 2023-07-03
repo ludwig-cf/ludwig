@@ -939,7 +939,7 @@ int bbl_update_ellipsoid(bbl_t * bbl, wall_t * wall, colloid_t * pc, double rho0
   for(int i = 0; i < 3; i++) owathalf[i] = 0.5*(pc->s.w[i]+xb[3+i]);
   quaternion_from_omega(owathalf,0.5,qbar);
   quaternion_product(qbar,pc->s.quater,quaternext);
-  copy_vectortovector(pc->s.quater,pc->s.quaterold,4);
+  //copy_vectortovector(pc->s.quater,pc->s.quaterold,4);
   copy_vectortovector(quaternext,pc->s.quater,4);
 
   /*Predictor*/
@@ -1045,7 +1045,8 @@ void setter_ladd_ellipsoid(colloid_t *pc, wall_t * wall, double rho0, double a[6
   double mass;    /* Assumes (4/3) rho pi abc */
   double mI_P[3];  /* also assumes that for an ellipsoid */
   double mI[3][3];  /* also assumes that for an ellipsoid */
-  double mIold[3][3];
+  //double mIold[3][3];
+  double dIijdt[3][3];
   double dwall[3];
 
   double * elabc;
@@ -1113,10 +1114,12 @@ void setter_ladd_ellipsoid(colloid_t *pc, wall_t * wall, double rho0, double a[6
   a[5][4] = a[4][5];
     
   /*Add unsteady moment of inertia terms*/
-  inertia_tensor_quaternion(pc->s.quaterold, &mI_P[0], mIold);
+  unsteady_mI(pc->s.quater, mI_P, pc->s.w, dIijdt);
+  //inertia_tensor_quaternion(pc->s.quaterold, &mI_P[0], mIold);
   for(int i = 0; i < 3; i++) {
     for(int j = 0; j < 3; j++) {
-      a[3+i][3+j] += (mI[i][j] - mIold[i][j]);
+      a[3+i][3+j] += dIijdt[i][j];
+      //a[3+i][3+j] += (mI[i][j] - mIold[i][j]);
     }
   }
   
