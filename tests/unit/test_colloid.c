@@ -7,13 +7,14 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2010-2022 The University of Edinburgh
+ *  (c) 2010-2023 The University of Edinburgh
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *
  *****************************************************************************/
 
 #include <assert.h>
+#include <float.h>
 #include <math.h>
 #include <stdlib.h>
 
@@ -54,9 +55,9 @@ int test_colloid_suite(void) {
 			  18.0, -19.0, 20.0, 21.0,
 			  {22.0, 23.0, 24.0},
 			  25.0, 26.00, 27.0, 28.0,
-                          29.0, 30.0, 31.0, 32.0, 33.0, {34.0, 35.0, 36.0,
-			  37.0, 38.0, 39.0, 40.0, 41.0, 42.0, 43.0, 44.0,
-			  45.0, 46.0, 47.0}};
+                          29.0, 30.0, 31.0, 32.0, 33.0, {34.0, 35.0, 36.0},
+			  {37.0, 38.0, 39.0, 40.0}, {41.0, 42.0, 43.0, 44.0},
+			  {45.0, 46.0, 47.0}};
 
   const char * tmp_ascii = "/tmp/temp-test-io-file-ascii";
   const char * tmp_binary = "/tmp/temp-test-io-file-binary";
@@ -67,6 +68,8 @@ int test_colloid_suite(void) {
   /* I assert that the colloid struct is 512 bytes. I.e., don't
    * change it without sorting out the padding. */
   test_assert(sizeof(colloid_state_t) == 512);
+  assert(NPAD_INT == 13);
+  assert(NPAD_DBL ==  4);
 
   MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 
@@ -211,6 +214,28 @@ int test_colloid_compare(colloid_state_t * s1, colloid_state_t * s2) {
   test_assert(test_are_equal_scalar_double(s1->c,  s2->c));
   test_assert(test_are_equal_scalar_double(s1->h,  s2->h));
   test_assert(test_are_equal_vector_double(s1->dr, s2->dr, 3));
+
+  assert(fabs(s1->deltaphi     - s2->deltaphi) < DBL_EPSILON);
+  assert(fabs(s1->q0           - s2->q0)       < DBL_EPSILON);
+  assert(fabs(s1->q1           - s2->q1)       < DBL_EPSILON);
+  assert(fabs(s1->epsilon      - s2->epsilon)  < DBL_EPSILON);
+  assert(fabs(s1->deltaq0      - s2->deltaq0)  < DBL_EPSILON);
+  assert(fabs(s1->deltaq1      - s2->deltaq1)  < DBL_EPSILON);
+  assert(fabs(s1->sa           - s2->sa)       < DBL_EPSILON);
+  assert(fabs(s1->saf          - s2->saf)      < DBL_EPSILON);
+  assert(fabs(s1->al           - s2->al)       < DBL_EPSILON);
+
+  assert(fabs(s1->elabc[0]     - s2->elabc[0]) < DBL_EPSILON);
+  assert(fabs(s1->elabc[1]     - s2->elabc[1]) < DBL_EPSILON);
+  assert(fabs(s1->elabc[2]     - s2->elabc[2]) < DBL_EPSILON);
+  assert(fabs(s1->quater[0]    - s2->quater[0]) < DBL_EPSILON);
+  assert(fabs(s1->quater[1]    - s2->quater[1]) < DBL_EPSILON);
+  assert(fabs(s1->quater[2]    - s2->quater[2]) < DBL_EPSILON);
+  assert(fabs(s1->quater[3]    - s2->quater[3]) < DBL_EPSILON);
+  assert(fabs(s1->quaterold[0] - s2->quaterold[0]) < DBL_EPSILON);
+  assert(fabs(s1->quaterold[1] - s2->quaterold[1]) < DBL_EPSILON);
+  assert(fabs(s1->quaterold[2] - s2->quaterold[2]) < DBL_EPSILON);
+  assert(fabs(s1->quaterold[3] - s2->quaterold[3]) < DBL_EPSILON);
 
   /* check the last element of the padding */
   test_assert(test_are_equal_scalar_double(s1->dpad[NPAD_DBL-1], s2->dpad[NPAD_DBL-1]));

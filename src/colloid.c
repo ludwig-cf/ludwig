@@ -8,8 +8,9 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
+ *  (c) 2010-2023 The University of Edinburgh
+ *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
- *  (c) 2010-2021 The University of Edinburgh
  *
  *****************************************************************************/
 
@@ -35,7 +36,6 @@ int colloid_state_read_ascii(colloid_state_t * ps, FILE * fp) {
   const char * isformat = "%24d\n";
   const char * sformat  = "%24le\n";
   const char * vformat  = "%24le %24le %24le\n";
-  const char * qformat  = "%241e %241e %241e %241e\n";
 
   assert(ps);
   assert(fp);
@@ -93,9 +93,20 @@ int colloid_state_read_ascii(colloid_state_t * ps, FILE * fp) {
   nread += fscanf(fp, sformat, &ps->saf);
   nread += fscanf(fp, sformat, &ps->al);
 
-  nread += fscanf(fp, vformat, &ps->elabc[0], &ps->elabc[1], &ps->elabc[2]);
-  nread += fscanf(fp, qformat, &ps->quater[0], &ps->quater[1], &ps->quater[2], &ps->quater[3]);
-  nread += fscanf(fp, qformat, &ps->quaterold[0], &ps->quaterold[1], &ps->quaterold[2], &ps->quaterold[3]);
+  /* For backwards compatability, these are read one line at a time */
+  nread += fscanf(fp, sformat, &ps->elabc[0]);
+  nread += fscanf(fp, sformat, &ps->elabc[1]);
+  nread += fscanf(fp, sformat, &ps->elabc[2]);
+
+  nread += fscanf(fp, sformat, &ps->quater[0]);
+  nread += fscanf(fp, sformat, &ps->quater[1]);
+  nread += fscanf(fp, sformat, &ps->quater[2]);
+  nread += fscanf(fp, sformat, &ps->quater[3]);
+
+  nread += fscanf(fp, sformat, &ps->quaterold[0]);
+  nread += fscanf(fp, sformat, &ps->quaterold[1]);
+  nread += fscanf(fp, sformat, &ps->quaterold[2]);
+  nread += fscanf(fp, sformat, &ps->quaterold[3]);
 
   for (n = 0; n < NPAD_DBL; n++) {
     nread += fscanf(fp, sformat, &ps->dpad[n]);
@@ -154,7 +165,6 @@ int colloid_state_write_ascii(const colloid_state_t * s, FILE * fp) {
   const char * isformat = "%24d\n";
   const char * sformat  = "%24.15e\n";
   const char * vformat  = "%24.15e %24.15e %24.15e\n";
-  const char * qformat  = "%24.15e %24.15e %24.15e %24.15e\n";
 
   assert(s);
   assert(fp);
@@ -215,9 +225,23 @@ int colloid_state_write_ascii(const colloid_state_t * s, FILE * fp) {
   nwrite += fprintf(fp, sformat, s->saf);
   nwrite += fprintf(fp, sformat, s->al);
 
-  nwrite += fprintf(fp, vformat, s->elabc[0], s->elabc[1], s->elabc[2]);
-  nwrite += fprintf(fp, qformat, s->quater[0], s->quater[1], s->quater[2],s->quater[3]);
-  nwrite += fprintf(fp, qformat, s->quaterold[0], s->quaterold[1], s->quaterold[2],s->quaterold[3]);
+  /* Additional entries should be one data item per line at a time */
+
+  nwrite += fprintf(fp, sformat, s->elabc[0]);
+  nwrite += fprintf(fp, sformat, s->elabc[1]);
+  nwrite += fprintf(fp, sformat, s->elabc[2]);
+
+  nwrite += fprintf(fp, sformat, s->quater[0]);
+  nwrite += fprintf(fp, sformat, s->quater[1]);
+  nwrite += fprintf(fp, sformat, s->quater[2]);
+  nwrite += fprintf(fp, sformat, s->quater[3]);
+
+  nwrite += fprintf(fp, sformat, s->quaterold[0]);
+  nwrite += fprintf(fp, sformat, s->quaterold[1]);
+  nwrite += fprintf(fp, sformat, s->quaterold[2]);
+  nwrite += fprintf(fp, sformat, s->quaterold[3]);
+
+  /* Padding */
 
   for (n = 0; n < NPAD_DBL; n++) {
     nwrite += fprintf(fp, sformat, s->dpad[n]);
