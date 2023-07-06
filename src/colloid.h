@@ -30,7 +30,7 @@ typedef enum colloid_io_version colloid_io_version_t;
 
 #define NTOT_VAR (32+48)
 #define NPAD_INT  13
-#define NPAD_DBL  8
+#define NPAD_DBL  4
 #define NBOND_MAX  2
 
 enum colloid_type_enum {COLLOID_TYPE_DEFAULT = 0,
@@ -88,6 +88,7 @@ struct colloid_state_type {
   /*sumesh - parameters describing ellipsoids*/
   double elabc[3];	/*Semi principal axes 1-3*/
   double quater[4];	/*Quaternions of the ellipsoid*/
+  double quaterold[4];	/*Quaternions of the ellipsoid from previous time step*/
 
   /* Charges. We allow two charge valencies (cf a general number
    * number in the electrokinetics section). q0 will be associated
