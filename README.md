@@ -44,7 +44,8 @@ $ make test
 ```
 
 
-Full details of the build process are available at
+Full details of the build process, and tutorials on how to
+use the code are available at
 <a href = "https://ludwg.epcc.ed.ac.uk/">https://ludwig.epcc.ed.ac.uk/</a>.
 
 #### Background
