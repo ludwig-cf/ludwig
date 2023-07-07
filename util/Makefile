@@ -11,7 +11,7 @@
 #  Edinburgh Soft Matter and Statistical Physics Group and
 #  Edinburgh Parallel Computing Centre
 #
-#  (c) 2016-2021 The University of Edinburgh
+#  (c) 2016-2023 The University of Edinburgh
 #
 #  Contributing authors:
 #  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -71,10 +71,10 @@ polarizer: polarizer.o
 clean:
 	rm -f *.o colloid_init extract_colloids capillary extract \
 	coll_squ_subgrid_init multi_poly_init polarizer
+	rm -f *gcda *gcno
 
 .SUFFIXES:
 .SUFFIXES: .c .o
 
 .c.o:
 	$(CC) $(CFLAGS) $(INCL) -c $*.c
-

@@ -30,14 +30,11 @@ Valency species 0:          1
 Diffusivity species 0:      1.0000000e-02
 Valency species 1:         -1
 Diffusivity species 1:      1.0000000e-02
-Number of multisteps:       1
-Number of skipsteps:        1
-Diffusive accuracy in NPE:  0.0000000e+00
 Relative tolerance:         1.1920929e-07
 Absolute tolerance:         1.1920929e-09
 Max. no. of iterations:             10000
-I/O decomposition:          1 1 1
-I/O format:                 BINARY
+Number of multisteps:       1
+Diffusive accuracy in NPE:  0.0000000e+00
 Force calculation:          phi_gradmu_correction
 
 System properties
@@ -106,10 +103,10 @@ Input radius maximum:         2.3000000e+00
 Final cell list:              11 11 11
 Final cell lengths:           2.9090909e+00  2.9090909e+00  2.9090909e+00
 
-Re-starting simulation at step 20 with data read from config
-file(s) dist-00000020
-hydro files(s) vel-00000020
-electrokinetics files(s) psi-00000020
+Re-starting simulation at step 20 with data read from file
+Reading distribution files for step 20
+Reading rho/vel files for step 20
+Reading electrokinetics files for step 20
 Initial conditions.
 
 Scalars - total mean variance min max
@@ -118,6 +115,10 @@ Scalars - total mean variance min max
 [rho]  3.2726000e+01  1.8867925e-04  1.0413963e-03
 [rho]  3.2726000e+01  0.0000000e+00  1.0436820e-03
 [elc]  2.4008573e-15 -2.2857042e-06  1.8867925e-04
+[psi_zeta]  8.2502980e-03
+
+Free energies - timestep f v f/v f_s a f_s/a
+[fe]             20 -5.1748728127e+02  3.2715000000e+04 -1.5818043138e-02  0.0000000000e+00
 
 Momentum - x y z
 [total   ]  4.4153432e-13  1.9531615e-14  5.0965010e-01

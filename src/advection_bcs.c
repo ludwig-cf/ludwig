@@ -7,7 +7,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2009-2021 The University of Edinburgh
+ *  (c) 2009-2023 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -23,7 +23,6 @@
 #include "coords.h"
 #include "kernel.h"
 #include "advection_s.h"
-#include "psi_gradients.h"
 #include "timer.h"
 #include "advection_bcs.h"
 
@@ -244,56 +243,6 @@ __global__ void advflux_cs_no_flux_kernel(kernel_ctxt_t * ktx,
   }
 
   return;
-}
-
-/*****************************************************************************
- *
- *  advective_bcs_no_flux_d3qx
- *
- *  Set normal fluxes at solid fluid interfaces to zero.
- *
- *****************************************************************************/
-
-int advective_bcs_no_flux_d3qx(int nf, double ** flx, map_t * map) {
-
-  int n;
-  int nsites;
-  int nlocal[3];
-  int ic, jc, kc, index0, index1;
-  int status;
-  int c;
-  double mask[PSI_NGRAD];
-
-  assert(nf > 0);
-  assert(flx);
-  assert(map);
-
-  cs_nsites(map->cs, &nsites);
-  cs_nlocal(map->cs, nlocal);
-
-  for (ic = 1; ic <= nlocal[X]; ic++) {
-    for (jc = 1; jc <= nlocal[Y]; jc++) {
-      for (kc = 1; kc <= nlocal[Z]; kc++) {
-
-	index0 = cs_index(map->cs, ic, jc, kc);
-	map_status(map, index0, &status);
-	mask[0] = (status == MAP_FLUID);
-
-	for (c = 1; c < PSI_NGRAD; c++) {
-
-	  index1 = cs_index(map->cs, ic + psi_gr_cv[c][X], jc + psi_gr_cv[c][Y], kc + psi_gr_cv[c][Z]);
-	  map_status(map, index1, &status);
-	  mask[c] = (status == MAP_FLUID);
-
-	  for (n = 0;  n < nf; n++) {
-	    flx[addr_rank1(nsites, nf, index0, n)][c - 1] *= mask[0]*mask[c];
-	  }
-	}
-      }
-    }
-  }
-
-  return 0;
 }
 
 /*****************************************************************************

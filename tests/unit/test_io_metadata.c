@@ -214,7 +214,7 @@ int test_io_metadata_write(cs_t * cs, int keep) {
   assert(cs);
 
   io_metadata_create(cs, &options, &element, &meta);
-  ifail = io_metadata_write(meta, "test-io", header);
+  ifail = io_metadata_write(meta, "test-io", "Extra", header);
   assert(ifail == 0);
 
   /* Remove at rank 0 (a test that the file exists with the correct name) */

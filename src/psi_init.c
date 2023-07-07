@@ -4,12 +4,10 @@
  *
  *  Various initial states for electrokinetics.
  *
- *  $Id$
- *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2012-16 The University of Edinburgh
+ *  (c) 2012-2023 The University of Edinburgh
  *
  *  Contributing authors:
  *  Oliver Henrich (ohenrich@epcc.ed.ac.uk)
@@ -23,7 +21,6 @@
 #include "pe.h"
 #include "coords.h"
 #include "psi_init.h"
-#include "psi_s.h"
 
 /*****************************************************************************
  *
@@ -160,13 +157,15 @@ int psi_init_gouy_chapman(psi_t * obj, map_t * map, double rho_el,
  *
  *  psi_init_liquid_junction
  *
- *  Set rho(1 <= x <= Lx/2)    = 1.01 * electrolyte
- *      rho(Lx/2+1 <= x <= Lx) = 0.99 * electrolyte
+ *  This follows Mafe et al., so we set for two species:
  *
- *  This sets up the system for liquid junction potential.
+ *    rho_left  = rho_el + delta_el / 2
+ *    rho_right = rho_el - delta_el / 2
  *
- *  rho_el is the average electrolyte concentration.
- *  delta_el is the relative difference of the concentrations.
+ *  where left and right are separated by the half way point in the
+ *  x-direction.
+ *
+ *  We should have delta_el << rho_el.
  *
  *****************************************************************************/
 
@@ -192,13 +191,13 @@ int psi_init_liquid_junction(psi_t * obj, double rho_el, double delta_el) {
 
 	psi_psi_set(obj, index, 0.0);
 
-	if ((1 <= noff[0] + ic) && (noff[0] + ic < ntotal[X]/2)) {
-	  psi_rho_set(obj, index, 0, rho_el * (1.0 + delta_el));
-	  psi_rho_set(obj, index, 1, rho_el * (1.0 + delta_el));
+	if ((1 <= noff[X] + ic) && (noff[X] + ic <= ntotal[X]/2)) {
+	  psi_rho_set(obj, index, 0, rho_el + 0.5*delta_el);
+	  psi_rho_set(obj, index, 1, rho_el + 0.5*delta_el);
 	}
-	else{
-	  psi_rho_set(obj, index, 0, rho_el * (1.0 - delta_el));
-	  psi_rho_set(obj, index, 1, rho_el * (1.0 - delta_el));
+	else {
+	  psi_rho_set(obj, index, 0, rho_el - 0.5*delta_el);
+	  psi_rho_set(obj, index, 1, rho_el - 0.5*delta_el);
 	}
       }
     }

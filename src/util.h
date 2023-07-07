@@ -53,11 +53,9 @@ __host__ int util_jacobi(double a[3][3], double vals[3], double vecs[3][3]);
 __host__ int util_jacobi_sort(double a[3][3], double vals[3], double vecs[3][3]);
 __host__ int util_discrete_volume_sphere(double r0[3], double a0, double * vn);
 __host__ int util_gauss_jordan(const int n, double * a, double * b);
-__host__ __device__ int util_dpythag(double a, double b, double * p);
+__host__ int util_dpythag(double a, double b, double * p);
 __host__ int util_matrix_create(int m, int n, double *** p);
-__host__ int util_vector_create(int m, double ** p);
 __host__ int util_matrix_free(int m, double *** p);
-__host__ int util_vector_free(double ** p);
 __host__ int util_matrix_invert(int n, double ** a);
 
 __host__ int util_random_unit_vector(int * state, double rhat[3]);
