@@ -136,7 +136,7 @@ __global__ void interpolation(lb_t *lb, lees_edw_t *le, double *recv_buff, int *
             for (int i = 0; i < nprop; i++) {
                 int l0 = LB_ADDR(lb->nsite, ndist, lb->model.nvel, index0, n, positive[i]);
                 int l1 = LB_ADDR(lb->nsite, ndist, lb->model.nvel, index1, n, positive[i]);
-                int index = ((jc-1)*nlocal[Z] + (kc-1))*ndist*nprop + n*nprop + i;
+                int index = ((jc-1)*nlocal[Z] + (kc-1))*ndist*nprop + n*nprop + i + 2 * plane * displacement;
                 recv_buff[index] = (1.0 - fr) * lb->f[l0] + fr * lb->f[l1];
             }
         }
@@ -160,8 +160,8 @@ __global__ void interpolation(lb_t *lb, lees_edw_t *le, double *recv_buff, int *
             for (int i = 0; i < negprop; i++) {
                 int l0 = LB_ADDR(lb->nsite, ndist, lb->model.nvel, index0, n, negative[i]);
                 int l1 = LB_ADDR(lb->nsite, ndist, lb->model.nvel, index1, n, negative[i]);
-                int index = ((jc-1)*nlocal[Z] + (kc-1))*ndist*negprop + n*negprop + i;
-                recv_buff[index + displacement] = (1.0 - fr) * lb->f[l0] + fr * lb->f[l1];
+                int index = ((jc-1)*nlocal[Z] + (kc-1))*ndist*negprop + n*negprop + i + (2 * plane + 1) * displacement;
+                recv_buff[index] = (1.0 - fr) * lb->f[l0] + fr * lb->f[l1];
             }
         }
     }
@@ -190,7 +190,7 @@ __global__ void copy_back(lb_t *lb, lees_edw_t *le, double *recv_buff, int *posi
 
         for (int n = 0; n < ndist; n++) {
             for (int i = 0; i < nprop; i++) {
-                int index = ((jc-1)*nlocal[Z] + (kc-1))*ndist*nprop + n*nprop + i;
+                int index = ((jc-1)*nlocal[Z] + (kc-1))*ndist*nprop + n*nprop + i + 2 * plane * displacement;
                 int la = LB_ADDR(lb->nsite, ndist, lb->model.nvel, index0, n, positive[i]);
                 lb->f[la] = recv_buff[index];
             }
@@ -203,9 +203,9 @@ __global__ void copy_back(lb_t *lb, lees_edw_t *le, double *recv_buff, int *posi
 
         for (int n = 0; n < ndist; n++) {
             for (int i = 0; i < negprop; i++) {
-                int index = ((jc-1)*nlocal[Z] + (kc-1))*ndist*negprop + n*negprop + i;
+                int index = ((jc-1)*nlocal[Z] + (kc-1))*ndist*negprop + n*negprop + i + (2 * plane + 1) * displacement;
                 int la = LB_ADDR(lb->nsite, ndist, lb->model.nvel, index0, n, negative[i]);
-                lb->f[la] = recv_buff[index + displacement];
+                lb->f[la] = recv_buff[index];
             }
         }
     }
@@ -445,7 +445,7 @@ void le_displace_and_interpolate(lb_t *lb, lees_edw_t *le) {
         if (lb->model.cv[p][X] == -1) negprop += 1;
     }
     displacement = ndist * nprop * nlocal[Y] * nlocal[Z];
-    ndata = 2 * displacement;
+    ndata = 2 * nplane * displacement;
     cudaMalloc((void**)&recv_buff, ndata * sizeof(double));
 
     if (recv_buff == NULL) {
