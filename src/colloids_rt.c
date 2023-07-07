@@ -394,6 +394,7 @@ int colloids_rt_state_stub(pe_t * pe, rt_t * rt, colloids_info_t * cinfo,
   double elev1[3];
   double elev2[3];
   double euler[3];
+  double v1[3]={1.0,0.0,0.0};
 
   assert(pe);
   assert(rt);
@@ -545,6 +546,12 @@ int colloids_rt_state_stub(pe_t * pe, rt_t * rt, colloids_info_t * cinfo,
   nrt = rt_double_parameter_vector(rt, key, state->elabc);
   if (nrt) pe_info(pe, format_e3, key, state->elabc[X], state->elabc[Y], state->elabc[Z]);
 
+  if(check_the_order(state->elabc[X],state->elabc[Y],state->elabc[Z])) {
+    printf("Correct the order in which the dimensions of the ellipoid is specified\n");
+    printf("It should be a > b > c\n");
+    return 1;
+  }
+ 
   snprintf(key, BUFSIZ-1, "%s_%s", stub, "euler");/*sumesh-ell*/
   nrt = rt_double_parameter_vector(rt, key, euler);
   if (nrt) {
@@ -573,6 +580,10 @@ int colloids_rt_state_stub(pe_t * pe, rt_t * rt, colloids_info_t * cinfo,
 
   quaternions_from_eulerangles(euler[X],euler[Y], euler[Z], state->quater);
   copy_vectortovector(state->quater,state->quaterold,4);
+
+  /*If active and ellipsoid, assign the squirmer orientation as along the long axis*/
+  rotate_tobodyframe_quaternion(state->quater, v1, state->m);
+  printf("Spheroidal squirmer oriented along the major axis, %f, %f, %f\n",state->m[X],state->m[Y],state->m[Z]);
 
   return 0;
 }
@@ -1158,3 +1169,15 @@ int wall_ss_cut_init(pe_t * pe, cs_t * cs, rt_t * rt, wall_t * wall,
 
   return 0;
 }
+
+/*****************************************************************************
+ *
+ *  Ordering 3 numbers in the ascending order
+ *
+ *****************************************************************************/
+
+  int check_the_order(const double a,const double b,const double c) {
+  
+  return ((b-a)>1.0e-12)|((c-b)>1.0e-12);
+  }
+ /*****************************************************************************/

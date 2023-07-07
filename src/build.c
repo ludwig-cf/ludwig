@@ -246,7 +246,9 @@ double elQ[3][3], elQT[3][3], elA[3][3], elAp[3][3];
 
 int i;
 
-  if (pc->s.type == COLLOID_TYPE_ELLIPSOID) {
+//  if (pc->s.type == COLLOID_TYPE_ELLIPSOID) {
+  if ((pc->s.type == COLLOID_TYPE_ELLIPSOID)|(pc->s.type == COLLOID_TYPE_ACTIVE)) {
+
     /*Constructing Lambda matrix*/
     elabc  = pc->s.elabc;
     for(i=0; i<3; i++) elL[i][i]=1.0/(elabc[i]*elabc[i]);
@@ -291,7 +293,8 @@ __host__ double colloids_largest_dimension(colloid_t * pc) {
   double large;
   assert(pc);
 	  
-  if (pc->s.type == COLLOID_TYPE_ELLIPSOID) {
+  //if (pc->s.type == COLLOID_TYPE_ELLIPSOID) {
+  if ((pc->s.type == COLLOID_TYPE_ELLIPSOID)|(pc->s.type == COLLOID_TYPE_ACTIVE)) {
     ela    = pc->s.elabc[0];
     elb    = pc->s.elabc[1];
     elc    = pc->s.elabc[2];

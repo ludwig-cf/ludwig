@@ -391,14 +391,13 @@ static int bbl_pass1(bbl_t * bbl, lb_t * lb, colloids_info_t * cinfo) {
   double elc;
   double ele;
   double ela;
-  double *quater;
-  double elwz[3]={1.0,0.0,0.0};
-  double elbz[3];
   double elz;
-  double denom, nume1, nume2, term1, term2;
-  double elrho[3],els[3],xi1,xi2,xi;
-  double elr, sdotez, usqsc;
-  double usq[0];
+  double elr, sdotez;
+  double *quater;
+  double *elbz;
+  double denom, term1, term2;
+  double elrho[3],xi1,xi2,xi;
+  double diff1,gridin[3],elzin;
 
   physics_t * phys = NULL;
   colloid_t * pc = NULL;
@@ -423,10 +422,7 @@ static int bbl_pass1(bbl_t * bbl, lb_t * lb, colloids_info_t * cinfo) {
     elc=sqrt(elabc[0]*elabc[0]-elabc[1]*elabc[1]);
     ele=elc/elabc[0];
     ela = colloids_largest_dimension(pc);
-    /*Check with Kevin*/
-    if(fabs(ela-elabc[0])>1e-12) {printf("%f, %f error\n",ela,elabc[0]); break;}
-    rotate_tobodyframe_quaternion(quater, elwz, elbz);
-
+    quater=pc->s.quater;
 
     /* Diagnostic record of f0 before additions are made. */
     /* Really, f0 should not be used for dual purposes... */
@@ -478,29 +474,11 @@ static int bbl_pass1(bbl_t * bbl, lb_t * lb, colloids_info_t * cinfo) {
 	dm =  2.0*fdist - lb->model.wv[ij]*pc->deltam;
 	delta = 2.0*rcs2*lb->model.wv[ij]*rho0;
 
-        /*Ellipsoidal squirmer*/
-        /*Kevin - right way to put? ellipsoidal active?*/
-        /*Kevin - p_link->rb correct?*/
-        elz=dot_product(p_link->rb,elbz);
-        for(int ia=0; ia<3; ia++) {elrho[ia]=p_link->rb[ia]-elz*elbz[ia];}
-        elr=sqrt(elrho[0]*elrho[0]+elrho[1]*elrho[1]+elrho[2]*elrho[2]);
-        for(int ia=0; ia<3; ia++) {elrho[ia]=elrho[ia]/elr;}
-        denom=sqrt(ela*ela-ele*ele*elz*elz);
-        nume1=sqrt(ela*ela-elz*elz);
-        nume2=sqrt(1.0-ele*ele);
-        term1=-nume1/denom;
-        term2= nume2*elz/denom;
-	for(int ia = 0; ia < 3; ia++) {els[ia]=term1*elbz[ia]+term2*elrho[ia];}
-	sdotez=0.0;
-        for(int ia = 0; ia < 3; ia++) {sdotez+=els[ia]*elbz[ia];}
-	xi1=sqrt(elr*elr+(elz+elc)*(elz+elc));
-	xi2=sqrt(elr*elr+(elz-elc)*(elz-elc));
-	xi=(xi1-xi2)/(2.0*elc);
-	usqsc = -(pc->s.b1)*sdotez - (pc->s.b2)*xi*sdotez;
-        for(int ia = 0; ia < 3; ia++) {usq[ia]=usqsc*els[ia];}
 
 	/* Squirmer section */
 	if (pc->s.type == COLLOID_TYPE_ACTIVE) {
+
+	  /*For spherical squirmer*/
 
 	  /* We expect s.m to be a unit vector, but for floating
 	   * point purposes, we must make sure here. */
@@ -512,14 +490,45 @@ static int bbl_pass1(bbl_t * bbl, lb_t * lb, colloids_info_t * cinfo) {
 	  if (cost*cost > 1.0) cost = 1.0;
 	  assert(cost*cost <= 1.0);
 	  sint = sqrt(1.0 - cost*cost);
+	  plegendre = -sint*(pc->s.b2*cost + pc->s.b1);
 
 	  cross_product(p_link->rb, pc->s.m, vector1);
 	  cross_product(vector1, p_link->rb, tans);
+          
+          /*Insertion - Sumesh*/
+	  /*Ellipsoidal squirmer*/
+	  elbz=pc->s.m;
+          elz=dot_product(p_link->rb,elbz);
+          for(int ia=0; ia<3; ia++) {elrho[ia]=p_link->rb[ia]-elz*elbz[ia];}
+	  elr = modulus(elrho);
+	  rmod = 0.0;
+	  if (elr != 0.0) rmod = 1.0/elr;
+          for(int ia=0; ia<3; ia++) {elrho[ia]=elrho[ia]*rmod;}
+          denom=sqrt(ela*ela-ele*ele*elz*elz);
+	  diff1=ela*ela-elz*elz;
+	  /*Taking care of the unusual circumstances in which the grid point lies*/
+	  /*outside the particle and elz > ela. Then the tangent vector is calculated*/
+	  /*for the neighbouring grid point inside*/
+	  if(diff1<0.0){
+	    for(ia = 0; ia < 3; ia++) {
+	      gridin[ia] = p_link->rb[ia]+lb->model.cv[ij][ia];
+              elzin=dot_product(gridin,elbz);
+	      diff1=ela*ela-elzin*elzin;
+	    }
+	  }
+          term1=-sqrt(diff1)/denom;
+          term2=sqrt(1.0-ele*ele)*elz/denom;
+	  for(int ia = 0; ia < 3; ia++) {tans[ia]=term1*elbz[ia]+term2*elrho[ia];}
+	  sdotez=dot_product(tans,elbz);
+	  xi1=sqrt(elr*elr+(elz+elc)*(elz+elc));
+	  xi2=sqrt(elr*elr+(elz-elc)*(elz-elc));
+	  xi=(xi1-xi2)/(2.0*elc);
+	  plegendre = -(pc->s.b1)*sdotez - (pc->s.b2)*xi*sdotez;
+	  /*Insertion Sumesh*/
 
 	  mod = modulus(tans);
 	  rmod = 0.0;
 	  if (mod != 0.0) rmod = 1.0/mod;
-	  plegendre = -sint*(pc->s.b2*cost + pc->s.b1);
 
 	  dm_a = 0.0;
 	  for (ia = 0; ia < 3; ia++) {
@@ -815,7 +824,8 @@ int bbl_update_colloids(bbl_t * bbl, wall_t * wall, colloids_info_t * cinfo) {
     if (pc->s.type == COLLOID_TYPE_SUBGRID) { 
       continue;
     }
-    else if (pc->s.type == COLLOID_TYPE_ELLIPSOID) {
+    else if ((pc->s.type == COLLOID_TYPE_ELLIPSOID)|(pc->s.type == COLLOID_TYPE_ACTIVE)) {
+    //else if (pc->s.type == COLLOID_TYPE_ELLIPSOID) {
       iret = bbl_update_ellipsoid(bbl, wall, pc, rho0, xb);
     }
     else {
@@ -967,6 +977,7 @@ int bbl_update_ellipsoid(bbl_t * bbl, wall_t * wall, colloid_t * pc, double rho0
   double quaternext[4];
   double owathalf[3];
   double qbar[4];
+  double v1[3]={1.0,0.0,0.0};
 
   assert(bbl);
   assert(wall);
@@ -984,6 +995,8 @@ int bbl_update_ellipsoid(bbl_t * bbl, wall_t * wall, colloid_t * pc, double rho0
   quaternion_product(qbar,pc->s.quater,quaternext);
   copy_vectortovector(pc->s.quater,pc->s.quaterold,4);
   copy_vectortovector(quaternext,pc->s.quater,4);
+  /*Saving the orientation if it is active - can be converted to an if loop*/
+  rotate_tobodyframe_quaternion(pc->s.quater, v1, pc->s.m);
 
   /*Predictor*/
   /*Calculate the orientation based on the predictor*/
