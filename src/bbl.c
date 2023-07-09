@@ -389,15 +389,15 @@ static int bbl_pass1(bbl_t * bbl, lb_t * lb, colloids_info_t * cinfo) {
 
   double *elabc;
   double elc;
-  double ele;
-  double ela;
-  double elz;
+  double ele,ele2;
+  double ela,ela2;
+  double elz,elz2;
   double elr, sdotez;
   double *quater;
   double *elbz;
   double denom, term1, term2;
   double elrho[3],xi1,xi2,xi;
-  double diff1,gridin[3],elzin;
+  double diff1,diff2,gridin[3],elzin;
 
   physics_t * phys = NULL;
   colloid_t * pc = NULL;
@@ -504,8 +504,11 @@ static int bbl_pass1(bbl_t * bbl, lb_t * lb, colloids_info_t * cinfo) {
 	  rmod = 0.0;
 	  if (elr != 0.0) rmod = 1.0/elr;
           for(int ia=0; ia<3; ia++) {elrho[ia]=elrho[ia]*rmod;}
-          denom=sqrt(ela*ela-ele*ele*elz*elz);
-	  diff1=ela*ela-elz*elz;
+	  ela2=ela*ela;
+          elz2=elz*elz;
+	  ele2=ele*ele;
+	  diff1=ela2-elz2;
+          diff2=ela2-ele2*elz2;
 	  /*Taking care of the unusual circumstances in which the grid point lies*/
 	  /*outside the particle and elz > ela. Then the tangent vector is calculated*/
 	  /*for the neighbouring grid point inside*/
@@ -513,9 +516,13 @@ static int bbl_pass1(bbl_t * bbl, lb_t * lb, colloids_info_t * cinfo) {
 	    for(ia = 0; ia < 3; ia++) {
 	      gridin[ia] = p_link->rb[ia]+lb->model.cv[ij][ia];
               elzin=dot_product(gridin,elbz);
-	      diff1=ela*ela-elzin*elzin;
+	      elz2=elzin*elzin;
+	      diff1=ela2-elz2;
 	    }
+	    /*diff1 is a more stringent criterion*/
+	    if(diff2<0.0) {diff2 = ela2-ele2*elz2;}
 	  }
+          denom=sqrt(diff2);
           term1=-sqrt(diff1)/denom;
           term2=sqrt(1.0-ele*ele)*elz/denom;
 	  for(int ia = 0; ia < 3; ia++) {tans[ia]=term1*elbz[ia]+term2*elrho[ia];}
