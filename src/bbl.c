@@ -998,10 +998,12 @@ int bbl_update_ellipsoid(bbl_t * bbl, wall_t * wall, colloid_t * pc, double rho0
   /* And then finding the new quaternions */
   
   for(int i = 0; i < 3; i++) owathalf[i] = 0.5*(pc->s.w[i]+xb[3+i]);
-  quaternion_from_omega(owathalf,0.5,qbar);
-  quaternion_product(qbar,pc->s.quater,quaternext);
-  copy_vectortovector(pc->s.quater,pc->s.quaterold,4);
-  copy_vectortovector(quaternext,pc->s.quater,4);
+  if (pc->s.isfixeds == 0) {
+    quaternion_from_omega(owathalf,0.5,qbar);
+    quaternion_product(qbar,pc->s.quater,quaternext);
+    copy_vectortovector(pc->s.quater,pc->s.quaterold,4);
+    copy_vectortovector(quaternext,pc->s.quater,4);
+  }
   /*Saving the orientation if it is active - can be converted to an if loop*/
   rotate_tobodyframe_quaternion(pc->s.quater, v1, pc->s.m);
 
@@ -1110,7 +1112,7 @@ void setter_ladd_ellipsoid(colloid_t *pc, wall_t * wall, double rho0, double a[6
   double mI[3][3];  /* also assumes that for an ellipsoid */
   double mIold[3][3];
   double dIijdt[3][3];
-  double dwall[3];
+  double dwall[3]={0.0,0.0,0.0};
   /*Flag = 0 dI/dt using quaternions d/dt(qqIqq)) */
   /*Flag = 1 dI/dt from previous time step, I(t)-I(t-\Delta t)*/
   int ddtmI_fd_flag = 0;
@@ -1136,7 +1138,6 @@ void setter_ladd_ellipsoid(colloid_t *pc, wall_t * wall, double rho0, double a[6
   inertia_tensor_quaternion(pc->s.quater, mI_P, mI);
 
   wall_lubr_sphere(wall, pc->s.ah, pc->s.r, dwall);
- 
   /* Add inertial terms to diagonal elements */
 
   a[0][0] = (mass/frn) +   zeta[0] - dwall[X];

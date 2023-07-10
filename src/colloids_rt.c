@@ -555,10 +555,10 @@ int colloids_rt_state_stub(pe_t * pe, rt_t * rt, colloids_info_t * cinfo,
   snprintf(key, BUFSIZ-1, "%s_%s", stub, "euler");/*sumesh-ell*/
   nrt = rt_double_parameter_vector(rt, key, euler);
   if (nrt) {
+    pe_info(pe, format_e3, key, euler[X], euler[Y], euler[Z]);
     euler[X]=euler[X]/180.0*pi;
     euler[Y]=euler[Y]/180.0*pi;
     euler[Z]=euler[Z]/180.0*pi;
-    pe_info(pe, format_e3, key, euler[X], euler[Y], euler[Z]);
     nrteuler=nrt;
   }
 

@@ -291,6 +291,27 @@ __host__ __device__ void copy_vectortovector(const double a[3], double b[3], int
 
 /*****************************************************************************
 *
+*  Far field predictions of Mitchell and Spagnolie
+*
+*****************************************************************************/
+__host__ __device__ void ellipsoid_nearwall_predicted(double const r, double const h, double const quater[4], double opred[3], double angpred[2]) {
+
+  double ecc,ecc2,A,B,C,D,h2;
+  double phi, theta, psi;
+  eulerangles_from_quaternions(quater, &phi, &theta, &psi);
+  ecc=sqrt(1.0 - 1.0/(r*r));
+  ecc2=ecc*ecc;
+  A = 9.0*ecc2/(32.0*(2.0 - ecc2));
+  B = 3.0*ecc2*(6.0-4.0*ecc2)/(64.0*(2.0-ecc2));
+  C = 27.0*ecc2*ecc2/(256.0*(2.0-ecc2));
+  D = (48.0-48.0*ecc2+21.0*ecc2*ecc2)/(256.0*(2.0-ecc2));
+  h2 = h*h;
+  opred[0]=cos(2.0*phi)/(h2)*(A - (B/h2)-C*cos(2*phi)/h2) - D/(h2*h2);
+return;
+}
+
+/*****************************************************************************
+*
 *  Jeffery's predictions for a spheroid
 *
 *****************************************************************************/
