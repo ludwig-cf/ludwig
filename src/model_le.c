@@ -37,9 +37,9 @@
 __global__ static void le_reproject(lb_t *lb, lees_edw_t *le);
 static void le_displace_and_interpolate(lb_t *lb, lees_edw_t *le);
 __global__ static void interpolation(lb_t *lb, lees_edw_t *le, double *recv_buff, int *positive,  
-    int *negative, int nprop, int negprop, int displacement, double t);
+    int *negative, int nprop, int negprop, int displacement, double t, kernel_ctxt_t * ktxt);
 __global__ static void copy_back(lb_t *lb, lees_edw_t *le, double *recv_buff, int *positive,  
-    int *negative, int nprop, int negprop, int displacement);
+    int *negative, int nprop, int negprop, int displacement, kernel_ctxt_t * ktxt);
 static int le_displace_and_interpolate_parallel(lb_t *lb, lees_edw_t *le);
 
 void copyModelToDevice(lb_model_t *h_model, lb_model_t *d_model) {
@@ -99,7 +99,7 @@ cudaError_t copy_buffer_duy_to_device(lees_edw_s* d_lees_edw, int* h_buffer_duy,
 }
 
 __global__ void interpolation(lb_t *lb, lees_edw_t *le, double *recv_buff, int *positive,  
-    int *negative, int nprop, int negprop, int displacement, double t) {
+    int *negative, int nprop, int negprop, int displacement, double t, kernel_ctxt_t * ktxt) {
     int plane, ic, jc, kc;
     int nhalo, ndist, nplane;
     int jdy, j1, j2, index0, index1;
@@ -113,64 +113,126 @@ __global__ void interpolation(lb_t *lb, lees_edw_t *le, double *recv_buff, int *
     lees_edw_ltot(le, ltot);
     nplane = lees_edw_nplane_local(le);
 
-    plane = blockIdx.x * blockDim.x + threadIdx.x;
-    jc = blockIdx.y * blockDim.y + threadIdx.y + 1;
-    kc = blockIdx.z * blockDim.z + threadIdx.z + 1;
+    int kindex;
+    int kiter;
+    assert(ktxt);
+    kiter = kernel_iterations(ktxt);
 
-    if (jc <= nlocal[Y] && kc <= nlocal[Z] && plane < nplane) {
+    for_simt_parallel(kindex, kiter, 1) {
+        plane = kernel_coords_ic(ktxt, kindex);
+        jc = kernel_coords_jc(ktxt, kindex);
+        kc = kernel_coords_kc(ktxt, kindex);
 
-        ic = lees_edw_plane_location(le, plane);
-        lees_edw_buffer_displacement(le, nhalo, t, &dy);
-        dy = fmod(dy, ltot[Y]);
-        jdy = floor(dy);
-        fr = dy - jdy;
+        if (jc <= nlocal[Y] && kc <= nlocal[Z] && plane < nplane) {
 
-        j1 = 1 + (jc + jdy - 1 + 2 * nlocal[Y]) % nlocal[Y];
-        j2 = 1 + (j1 % nlocal[Y]);
+            ic = lees_edw_plane_location(le, plane);
+            lees_edw_buffer_displacement(le, nhalo, t, &dy);
+            dy = fmod(dy, ltot[Y]);
+            jdy = floor(dy);
+            fr = dy - jdy;
 
-        index0 = lees_edw_index(le, ic, j1, kc);
-        index1 = lees_edw_index(le, ic, j2, kc);
+            j1 = 1 + (jc + jdy - 1 + 2 * nlocal[Y]) % nlocal[Y];
+            j2 = 1 + (j1 % nlocal[Y]);
 
-        /* xdisp_fwd_cv[0] identifies cv[p][X] = +1 */
+            index0 = lees_edw_index(le, ic, j1, kc);
+            index1 = lees_edw_index(le, ic, j2, kc);
 
-        for (int n = 0; n < ndist; n++) {
-            for (int i = 0; i < nprop; i++) {
-                int l0 = LB_ADDR(lb->nsite, ndist, lb->model.nvel, index0, n, positive[i]);
-                int l1 = LB_ADDR(lb->nsite, ndist, lb->model.nvel, index1, n, positive[i]);
-                int index = ((jc-1)*nlocal[Z] + (kc-1))*ndist*nprop + n*nprop + i + 2 * plane * displacement;
-                recv_buff[index] = (1.0 - fr) * lb->f[l0] + fr * lb->f[l1];
+            /* xdisp_fwd_cv[0] identifies cv[p][X] = +1 */
+
+            for (int n = 0; n < ndist; n++) {
+                for (int i = 0; i < nprop; i++) {
+                    int l0 = LB_ADDR(lb->nsite, ndist, lb->model.nvel, index0, n, positive[i]);
+                    int l1 = LB_ADDR(lb->nsite, ndist, lb->model.nvel, index1, n, positive[i]);
+                    int index = ((jc-1)*nlocal[Z] + (kc-1))*ndist*nprop + n*nprop + i + 2 * plane * displacement;
+                    recv_buff[index] = (1.0 - fr) * lb->f[l0] + fr * lb->f[l1];
+                }
             }
-        }
 
-        /* OTHER DIRECTION */
-        ic = lees_edw_plane_location(le, plane) + 1;
-        lees_edw_buffer_displacement(le, nhalo, t, &dy);
-        dy = fmod(-dy, ltot[Y]);
-        jdy = floor(dy);
-        fr = dy - jdy;
+            /* OTHER DIRECTION */
+            ic = lees_edw_plane_location(le, plane) + 1;
+            lees_edw_buffer_displacement(le, nhalo, t, &dy);
+            dy = fmod(-dy, ltot[Y]);
+            jdy = floor(dy);
+            fr = dy - jdy;
 
-        j1 = 1 + (jc + jdy - 1 + 2 * nlocal[Y]) % nlocal[Y];
-        j2 = 1 + (j1 % nlocal[Y]);
+            j1 = 1 + (jc + jdy - 1 + 2 * nlocal[Y]) % nlocal[Y];
+            j2 = 1 + (j1 % nlocal[Y]);
 
-        index0 = lees_edw_index(le, ic, j1, kc);
-        index1 = lees_edw_index(le, ic, j2, kc);
+            index0 = lees_edw_index(le, ic, j1, kc);
+            index1 = lees_edw_index(le, ic, j2, kc);
 
-        /* xdisp_fwd_cv[0] identifies cv[p][X] = -1 */
+            /* xdisp_fwd_cv[0] identifies cv[p][X] = -1 */
 
-        for (int n = 0; n < ndist; n++) {
-            for (int i = 0; i < negprop; i++) {
-                int l0 = LB_ADDR(lb->nsite, ndist, lb->model.nvel, index0, n, negative[i]);
-                int l1 = LB_ADDR(lb->nsite, ndist, lb->model.nvel, index1, n, negative[i]);
-                int index = ((jc-1)*nlocal[Z] + (kc-1))*ndist*negprop + n*negprop + i + (2 * plane + 1) * displacement;
-                recv_buff[index] = (1.0 - fr) * lb->f[l0] + fr * lb->f[l1];
+            for (int n = 0; n < ndist; n++) {
+                for (int i = 0; i < negprop; i++) {
+                    int l0 = LB_ADDR(lb->nsite, ndist, lb->model.nvel, index0, n, negative[i]);
+                    int l1 = LB_ADDR(lb->nsite, ndist, lb->model.nvel, index1, n, negative[i]);
+                    int index = ((jc-1)*nlocal[Z] + (kc-1))*ndist*negprop + n*negprop + i + (2 * plane + 1) * displacement;
+                    recv_buff[index] = (1.0 - fr) * lb->f[l0] + fr * lb->f[l1];
+                }
             }
         }
     }
 
+
+    // plane = blockIdx.x * blockDim.x + threadIdx.x;
+    // jc = blockIdx.y * blockDim.y + threadIdx.y + 1;
+    // kc = blockIdx.z * blockDim.z + threadIdx.z + 1;
+
+    // if (jc <= nlocal[Y] && kc <= nlocal[Z] && plane < nplane) {
+
+    //     ic = lees_edw_plane_location(le, plane);
+    //     lees_edw_buffer_displacement(le, nhalo, t, &dy);
+    //     dy = fmod(dy, ltot[Y]);
+    //     jdy = floor(dy);
+    //     fr = dy - jdy;
+
+    //     j1 = 1 + (jc + jdy - 1 + 2 * nlocal[Y]) % nlocal[Y];
+    //     j2 = 1 + (j1 % nlocal[Y]);
+
+    //     index0 = lees_edw_index(le, ic, j1, kc);
+    //     index1 = lees_edw_index(le, ic, j2, kc);
+
+    //     /* xdisp_fwd_cv[0] identifies cv[p][X] = +1 */
+
+    //     for (int n = 0; n < ndist; n++) {
+    //         for (int i = 0; i < nprop; i++) {
+    //             int l0 = LB_ADDR(lb->nsite, ndist, lb->model.nvel, index0, n, positive[i]);
+    //             int l1 = LB_ADDR(lb->nsite, ndist, lb->model.nvel, index1, n, positive[i]);
+    //             int index = ((jc-1)*nlocal[Z] + (kc-1))*ndist*nprop + n*nprop + i + 2 * plane * displacement;
+    //             recv_buff[index] = (1.0 - fr) * lb->f[l0] + fr * lb->f[l1];
+    //         }
+    //     }
+
+    //     /* OTHER DIRECTION */
+    //     ic = lees_edw_plane_location(le, plane) + 1;
+    //     lees_edw_buffer_displacement(le, nhalo, t, &dy);
+    //     dy = fmod(-dy, ltot[Y]);
+    //     jdy = floor(dy);
+    //     fr = dy - jdy;
+
+    //     j1 = 1 + (jc + jdy - 1 + 2 * nlocal[Y]) % nlocal[Y];
+    //     j2 = 1 + (j1 % nlocal[Y]);
+
+    //     index0 = lees_edw_index(le, ic, j1, kc);
+    //     index1 = lees_edw_index(le, ic, j2, kc);
+
+    //     /* xdisp_fwd_cv[0] identifies cv[p][X] = -1 */
+
+    //     for (int n = 0; n < ndist; n++) {
+    //         for (int i = 0; i < negprop; i++) {
+    //             int l0 = LB_ADDR(lb->nsite, ndist, lb->model.nvel, index0, n, negative[i]);
+    //             int l1 = LB_ADDR(lb->nsite, ndist, lb->model.nvel, index1, n, negative[i]);
+    //             int index = ((jc-1)*nlocal[Z] + (kc-1))*ndist*negprop + n*negprop + i + (2 * plane + 1) * displacement;
+    //             recv_buff[index] = (1.0 - fr) * lb->f[l0] + fr * lb->f[l1];
+    //         }
+    //     }
+    // }
+
 }
 
 __global__ void copy_back(lb_t *lb, lees_edw_t *le, double *recv_buff, int *positive,  
-    int *negative, int nprop, int negprop, int displacement) {
+    int *negative, int nprop, int negprop, int displacement, kernel_ctxt_t * ktxt) {
     int plane, ic, jc, kc;
     int nhalo, ndist, nplane;
     int nlocal[3];
@@ -181,35 +243,72 @@ __global__ void copy_back(lb_t *lb, lees_edw_t *le, double *recv_buff, int *posi
     lees_edw_nhalo(le, &nhalo);
     nplane = lees_edw_nplane_local(le);
 
-    plane = blockIdx.x * blockDim.x + threadIdx.x;
-    jc = blockIdx.y * blockDim.y + threadIdx.y + 1;
-    kc = blockIdx.z * blockDim.z + threadIdx.z + 1;
+    int kindex;
+    int kiter;
+    assert(ktxt);
+    kiter = kernel_iterations(ktxt);
 
-    if (jc <= nlocal[Y] && kc <= nlocal[Z] && plane < nplane) {
-        ic = lees_edw_plane_location(le, plane);
-        index0 = lees_edw_index(le, ic, jc, kc);
+    for_simt_parallel(kindex, kiter, 1) {
+        plane = kernel_coords_ic(ktxt, kindex);
+        jc = kernel_coords_jc(ktxt, kindex);
+        kc = kernel_coords_kc(ktxt, kindex);
 
-        for (int n = 0; n < ndist; n++) {
-            for (int i = 0; i < nprop; i++) {
-                int index = ((jc-1)*nlocal[Z] + (kc-1))*ndist*nprop + n*nprop + i + 2 * plane * displacement;
-                int la = LB_ADDR(lb->nsite, ndist, lb->model.nvel, index0, n, positive[i]);
-                lb->f[la] = recv_buff[index];
+        if (jc <= nlocal[Y] && kc <= nlocal[Z] && plane < nplane) {
+            ic = lees_edw_plane_location(le, plane);
+            index0 = lees_edw_index(le, ic, jc, kc);
+
+            for (int n = 0; n < ndist; n++) {
+                for (int i = 0; i < nprop; i++) {
+                    int index = ((jc-1)*nlocal[Z] + (kc-1))*ndist*nprop + n*nprop + i + 2 * plane * displacement;
+                    int la = LB_ADDR(lb->nsite, ndist, lb->model.nvel, index0, n, positive[i]);
+                    lb->f[la] = recv_buff[index];
+                }
+            }
+
+            /* Another direction */
+
+            ic = lees_edw_plane_location(le, plane) + 1; 
+            index0 = lees_edw_index(le, ic, jc, kc);
+
+            for (int n = 0; n < ndist; n++) {
+                for (int i = 0; i < negprop; i++) {
+                    int index = ((jc-1)*nlocal[Z] + (kc-1))*ndist*negprop + n*negprop + i + (2 * plane + 1) * displacement;
+                    int la = LB_ADDR(lb->nsite, ndist, lb->model.nvel, index0, n, negative[i]);
+                    lb->f[la] = recv_buff[index];
+                }
             }
         }
+    }  
 
-        /* Another direction */
+    // plane = blockIdx.x * blockDim.x + threadIdx.x;
+    // jc = blockIdx.y * blockDim.y + threadIdx.y + 1;
+    // kc = blockIdx.z * blockDim.z + threadIdx.z + 1;
+    
+    // if (jc <= nlocal[Y] && kc <= nlocal[Z] && plane < nplane) {
+    //     ic = lees_edw_plane_location(le, plane);
+    //     index0 = lees_edw_index(le, ic, jc, kc);
 
-        ic = lees_edw_plane_location(le, plane) + 1; 
-        index0 = lees_edw_index(le, ic, jc, kc);
+    //     for (int n = 0; n < ndist; n++) {
+    //         for (int i = 0; i < nprop; i++) {
+    //             int index = ((jc-1)*nlocal[Z] + (kc-1))*ndist*nprop + n*nprop + i + 2 * plane * displacement;
+    //             int la = LB_ADDR(lb->nsite, ndist, lb->model.nvel, index0, n, positive[i]);
+    //             lb->f[la] = recv_buff[index];
+    //         }
+    //     }
 
-        for (int n = 0; n < ndist; n++) {
-            for (int i = 0; i < negprop; i++) {
-                int index = ((jc-1)*nlocal[Z] + (kc-1))*ndist*negprop + n*negprop + i + (2 * plane + 1) * displacement;
-                int la = LB_ADDR(lb->nsite, ndist, lb->model.nvel, index0, n, negative[i]);
-                lb->f[la] = recv_buff[index];
-            }
-        }
-    }
+    //     /* Another direction */
+
+    //     ic = lees_edw_plane_location(le, plane) + 1; 
+    //     index0 = lees_edw_index(le, ic, jc, kc);
+
+    //     for (int n = 0; n < ndist; n++) {
+    //         for (int i = 0; i < negprop; i++) {
+    //             int index = ((jc-1)*nlocal[Z] + (kc-1))*ndist*negprop + n*negprop + i + (2 * plane + 1) * displacement;
+    //             int la = LB_ADDR(lb->nsite, ndist, lb->model.nvel, index0, n, negative[i]);
+    //             lb->f[la] = recv_buff[index];
+    //         }
+    //     }
+    // }
 }
 
 /*****************************************************************************
@@ -474,20 +573,23 @@ void le_displace_and_interpolate(lb_t *lb, lees_edw_t *le) {
     tdpMemcpy(d_positive, positive, sizeof(int) * nprop, tdpMemcpyHostToDevice);
     tdpMemcpy(d_negative, negative, sizeof(int) * negprop, tdpMemcpyHostToDevice);
 
-    //define a Cuda model
-    dim3 numBlocks((nplane + 7) / 8, (nlocal[Y] + 7) / 8, (nlocal[Z] + 7) / 8);
-    dim3 threadsPerBlock(8, 8, 8);
+    //tdp
+    dim3 nblk, ntpb;
+    kernel_info_t limits;
+    kernel_ctxt_t * ctxt = NULL;
+    limits.imin = 0; limits.imax = nplane;
+    limits.jmin = 1; limits.jmax = nlocal[Y] + 1;
+    limits.kmin = 1; limits.kmax = nlocal[Z] + 1;
 
-    // interpolation<<<numBlocks, threadsPerBlock>>>(lb->target, le_target, recv_buff, 
-    //     d_positive, d_negative, nprop, negprop, displacement, t);
-    tdpLaunchKernel(interpolation, numBlocks, threadsPerBlock, 0, 0, lb->target, le_target, 
-        recv_buff, d_positive, d_negative, nprop, negprop, displacement, t);
+    kernel_ctxt_create(le->cs, NSIMDVL, limits, &ctxt);
+    kernel_ctxt_launch_param(ctxt, &nblk, &ntpb);
+
+    tdpLaunchKernel(interpolation, nblk, ntpb, 0, 0, lb->target, le_target, 
+        recv_buff, d_positive, d_negative, nprop, negprop, displacement, t, ctxt->target);
     tdpDeviceSynchronize();
 
-    // copy_back<<<numBlocks, threadsPerBlock>>>(lb->target, le_target, recv_buff, 
-    //     d_positive, d_negative, nprop, negprop, displacement);
-    tdpLaunchKernel(copy_back, numBlocks, threadsPerBlock, 0, 0, lb->target, le_target, 
-        recv_buff, d_positive, d_negative, nprop, negprop, displacement);
+    tdpLaunchKernel(copy_back, nblk, ntpb, 0, 0, lb->target, le_target, 
+        recv_buff, d_positive, d_negative, nprop, negprop, displacement, ctxt->target);
     tdpDeviceSynchronize();
 
     free(positive);
