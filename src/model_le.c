@@ -32,6 +32,7 @@
 #include "util.h"
 
 #include "leesedwards.h"
+#include "target.h"
 
 __global__ static void le_reproject(lb_t *lb, lees_edw_t *le);
 static void le_displace_and_interpolate(lb_t *lb, lees_edw_t *le);
@@ -419,7 +420,6 @@ void le_displace_and_interpolate(lb_t *lb, lees_edw_t *le) {
 
     assert(lb);
     assert(le);
-    
 
     lees_edw_ltot(le, ltot);
     lees_edw_nlocal(le, nlocal);
@@ -446,7 +446,7 @@ void le_displace_and_interpolate(lb_t *lb, lees_edw_t *le) {
     }
     displacement = ndist * nprop * nlocal[Y] * nlocal[Z];
     ndata = 2 * nplane * displacement;
-    cudaMalloc((void**)&recv_buff, ndata * sizeof(double));
+    tdpMalloc((void**)&recv_buff, ndata * sizeof(double));
 
     if (recv_buff == NULL) {
         pe_fatal(lb->pe, "malloc(recv_buff) failed\n");
@@ -469,47 +469,32 @@ void le_displace_and_interpolate(lb_t *lb, lees_edw_t *le) {
 
     // copy the displacement array to the device
     int *d_positive, *d_negative;
-    cudaMalloc((void**)&d_positive, sizeof(int) * nprop);
-    cudaMalloc((void**)&d_negative, sizeof(int) * negprop);
-    cudaMemcpy(d_positive, positive, sizeof(int) * nprop, cudaMemcpyHostToDevice);
-    cudaMemcpy(d_negative, negative, sizeof(int) * negprop, cudaMemcpyHostToDevice);
-    
+    tdpMalloc((void**)&d_positive, sizeof(int) * nprop);
+    tdpMalloc((void**)&d_negative, sizeof(int) * negprop);
+    tdpMemcpy(d_positive, positive, sizeof(int) * nprop, tdpMemcpyHostToDevice);
+    tdpMemcpy(d_negative, negative, sizeof(int) * negprop, tdpMemcpyHostToDevice);
+
     //define a Cuda model
     dim3 numBlocks((nplane + 7) / 8, (nlocal[Y] + 7) / 8, (nlocal[Z] + 7) / 8);
     dim3 threadsPerBlock(8, 8, 8);
-   
 
-    // for (plane = 0; plane < nplane; plane++) {
-        // ic = lees_edw_plane_location(le, plane);
-        // lees_edw_buffer_displacement(le, nhalo, t, &dy);
-        // dy = fmod(dy, ltot[Y]);
-        // jdy = floor(dy);
-        // fr = dy - jdy;
-    // printf("nplane=%d, nhalo=%d, ndist=%d, t=%.2f, nlocal[2]=%d, ltot[2]=%.2f \n\n", 
-    //         nplane, nhalo, ndist, t, nlocal[2], ltot[2]);
-    // return;
+    // interpolation<<<numBlocks, threadsPerBlock>>>(lb->target, le_target, recv_buff, 
+    //     d_positive, d_negative, nprop, negprop, displacement, t);
+    tdpLaunchKernel(interpolation, numBlocks, threadsPerBlock, 0, 0, lb->target, le_target, 
+        recv_buff, d_positive, d_negative, nprop, negprop, displacement, t);
+    tdpDeviceSynchronize();
 
-    interpolation<<<numBlocks, threadsPerBlock>>>(lb->target, le_target, recv_buff, 
-        d_positive, d_negative, nprop, negprop, displacement, t);
-    cudaDeviceSynchronize();
-    
-    copy_back<<<numBlocks, threadsPerBlock>>>(lb->target, le_target, recv_buff, 
-        d_positive, d_negative, nprop, negprop, displacement);
-    cudaDeviceSynchronize();
+    // copy_back<<<numBlocks, threadsPerBlock>>>(lb->target, le_target, recv_buff, 
+    //     d_positive, d_negative, nprop, negprop, displacement);
+    tdpLaunchKernel(copy_back, numBlocks, threadsPerBlock, 0, 0, lb->target, le_target, 
+        recv_buff, d_positive, d_negative, nprop, negprop, displacement);
+    tdpDeviceSynchronize();
 
-        /* OTHER DIRECTION */
-        // ic = lees_edw_plane_location(le, plane) + 1;
-        // lees_edw_buffer_displacement(le, nhalo, t, &dy);
-        // dy = fmod(-dy, ltot[Y]);
-        // jdy = floor(dy);
-        // fr = dy - jdy;
-
-        // interpolation<<<numBlocks, threadsPerBlock>>>(lb->target, le_target, recv_buff, d_negative, negprop, ic, jdy, ndist, fr);
-        // cudaDeviceSynchronize();
-
-        // copy_back<<<numBlocks, threadsPerBlock>>>(lb->target, le_target, recv_buff, d_negative, negprop, ic, ndist, fr);
-        // cudaDeviceSynchronize();
-    // }
+    free(positive);
+    free(negative);
+    tdpFree(recv_buff);
+    tdpFree(d_positive);
+    tdpFree(d_negative);
 
     return;
 }
