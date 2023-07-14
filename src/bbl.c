@@ -387,6 +387,18 @@ static int bbl_pass1(bbl_t * bbl, lb_t * lb, colloids_info_t * cinfo) {
   double fdist;
   LB_RCS2_DOUBLE(rcs2);
 
+  double *elabc;
+  double elc;
+  double ele,ele2;
+  double ela,ela2;
+  double elz,elz2;
+  double elr, sdotez;
+  double *quater;
+  double *elbz;
+  double denom, term1, term2;
+  double elrho[3],xi1,xi2,xi;
+  double diff1,diff2,gridin[3],elzin;
+
   physics_t * phys = NULL;
   colloid_t * pc = NULL;
   colloid_link_t * p_link = NULL;
@@ -405,6 +417,12 @@ static int bbl_pass1(bbl_t * bbl, lb_t * lb, colloids_info_t * cinfo) {
   for ( ; pc; pc = pc->nextall) {
 
     if (pc->s.type == COLLOID_TYPE_SUBGRID) continue;
+
+    elabc=pc->s.elabc;
+    elc=sqrt(elabc[0]*elabc[0]-elabc[1]*elabc[1]);
+    ele=elc/elabc[0];
+    ela = colloids_largest_dimension(pc);
+    quater=pc->s.quater;
 
     /* Diagnostic record of f0 before additions are made. */
     /* Really, f0 should not be used for dual purposes... */
@@ -456,8 +474,11 @@ static int bbl_pass1(bbl_t * bbl, lb_t * lb, colloids_info_t * cinfo) {
 	dm =  2.0*fdist - lb->model.wv[ij]*pc->deltam;
 	delta = 2.0*rcs2*lb->model.wv[ij]*rho0;
 
+
 	/* Squirmer section */
 	if (pc->s.type == COLLOID_TYPE_ACTIVE) {
+
+	  /*For spherical squirmer*/
 
 	  /* We expect s.m to be a unit vector, but for floating
 	   * point purposes, we must make sure here. */
@@ -469,14 +490,52 @@ static int bbl_pass1(bbl_t * bbl, lb_t * lb, colloids_info_t * cinfo) {
 	  if (cost*cost > 1.0) cost = 1.0;
 	  assert(cost*cost <= 1.0);
 	  sint = sqrt(1.0 - cost*cost);
+	  plegendre = -sint*(pc->s.b2*cost + pc->s.b1);
 
 	  cross_product(p_link->rb, pc->s.m, vector1);
 	  cross_product(vector1, p_link->rb, tans);
+          
+          /*Insertion - Sumesh*/
+	  /*Ellipsoidal squirmer*/
+	  elbz=pc->s.m;
+          elz=dot_product(p_link->rb,elbz);
+          for(int ia=0; ia<3; ia++) {elrho[ia]=p_link->rb[ia]-elz*elbz[ia];}
+	  elr = modulus(elrho);
+	  rmod = 0.0;
+	  if (elr != 0.0) rmod = 1.0/elr;
+          for(int ia=0; ia<3; ia++) {elrho[ia]=elrho[ia]*rmod;}
+	  ela2=ela*ela;
+          elz2=elz*elz;
+	  ele2=ele*ele;
+	  diff1=ela2-elz2;
+          diff2=ela2-ele2*elz2;
+	  /*Taking care of the unusual circumstances in which the grid point lies*/
+	  /*outside the particle and elz > ela. Then the tangent vector is calculated*/
+	  /*for the neighbouring grid point inside*/
+	  if(diff1<0.0){
+	    for(ia = 0; ia < 3; ia++) {
+	      gridin[ia] = p_link->rb[ia]+lb->model.cv[ij][ia];
+              elzin=dot_product(gridin,elbz);
+	      elz2=elzin*elzin;
+	      diff1=ela2-elz2;
+	    }
+	    /*diff1 is a more stringent criterion*/
+	    if(diff2<0.0) {diff2 = ela2-ele2*elz2;}
+	  }
+          denom=sqrt(diff2);
+          term1=-sqrt(diff1)/denom;
+          term2=sqrt(1.0-ele*ele)*elz/denom;
+	  for(int ia = 0; ia < 3; ia++) {tans[ia]=term1*elbz[ia]+term2*elrho[ia];}
+	  sdotez=dot_product(tans,elbz);
+	  xi1=sqrt(elr*elr+(elz+elc)*(elz+elc));
+	  xi2=sqrt(elr*elr+(elz-elc)*(elz-elc));
+	  xi=(xi1-xi2)/(2.0*elc);
+	  plegendre = -(pc->s.b1)*sdotez - (pc->s.b2)*xi*sdotez;
+	  /*Insertion Sumesh*/
 
 	  mod = modulus(tans);
 	  rmod = 0.0;
 	  if (mod != 0.0) rmod = 1.0/mod;
-	  plegendre = -sint*(pc->s.b2*cost + pc->s.b1);
 
 	  dm_a = 0.0;
 	  for (ia = 0; ia < 3; ia++) {
@@ -772,7 +831,8 @@ int bbl_update_colloids(bbl_t * bbl, wall_t * wall, colloids_info_t * cinfo) {
     if (pc->s.type == COLLOID_TYPE_SUBGRID) { 
       continue;
     }
-    else if (pc->s.type == COLLOID_TYPE_ELLIPSOID) {
+    else if ((pc->s.type == COLLOID_TYPE_ELLIPSOID)|(pc->s.type == COLLOID_TYPE_ACTIVE)) {
+    //else if (pc->s.type == COLLOID_TYPE_ELLIPSOID) {
       iret = bbl_update_ellipsoid(bbl, wall, pc, rho0, xb);
     }
     else {
@@ -924,6 +984,7 @@ int bbl_update_ellipsoid(bbl_t * bbl, wall_t * wall, colloid_t * pc, double rho0
   double quaternext[4];
   double owathalf[3];
   double qbar[4];
+  double v1[3]={1.0,0.0,0.0};
 
   assert(bbl);
   assert(wall);
@@ -933,14 +994,18 @@ int bbl_update_ellipsoid(bbl_t * bbl, wall_t * wall, colloid_t * pc, double rho0
    
   setter_ladd_ellipsoid(pc, wall, rho0, a, xb);
   iret = solver_Gausselimination(a,xb);
-
-  /* Finding the new quaternions */
-
+  
+  /* And then finding the new quaternions */
+  
   for(int i = 0; i < 3; i++) owathalf[i] = 0.5*(pc->s.w[i]+xb[3+i]);
-  quaternion_from_omega(owathalf,0.5,qbar);
-  quaternion_product(qbar,pc->s.quater,quaternext);
-  copy_vectortovector(pc->s.quater,pc->s.quaterold,4);
-  copy_vectortovector(quaternext,pc->s.quater,4);
+  if (pc->s.isfixeds == 0) {
+    quaternion_from_omega(owathalf,0.5,qbar);
+    quaternion_product(qbar,pc->s.quater,quaternext);
+    copy_vectortovector(pc->s.quater,pc->s.quaterold,4);
+    copy_vectortovector(quaternext,pc->s.quater,4);
+  }
+  /*Saving the orientation if it is active - can be converted to an if loop*/
+  rotate_tobodyframe_quaternion(pc->s.quater, v1, pc->s.m);
 
   /*Predictor*/
   /*Calculate the orientation based on the predictor*/
@@ -1046,7 +1111,11 @@ void setter_ladd_ellipsoid(colloid_t *pc, wall_t * wall, double rho0, double a[6
   double mI_P[3];  /* also assumes that for an ellipsoid */
   double mI[3][3];  /* also assumes that for an ellipsoid */
   double mIold[3][3];
-  double dwall[3];
+  double dIijdt[3][3];
+  double dwall[3]={0.0,0.0,0.0};
+  /*Flag = 0 dI/dt using quaternions d/dt(qqIqq)) */
+  /*Flag = 1 dI/dt from previous time step, I(t)-I(t-\Delta t)*/
+  int ddtmI_fd_flag = 0;
 
   double * elabc;
   double * zeta;
@@ -1069,7 +1138,6 @@ void setter_ladd_ellipsoid(colloid_t *pc, wall_t * wall, double rho0, double a[6
   inertia_tensor_quaternion(pc->s.quater, mI_P, mI);
 
   wall_lubr_sphere(wall, pc->s.ah, pc->s.r, dwall);
- 
   /* Add inertial terms to diagonal elements */
 
   a[0][0] = (mass/frn) +   zeta[0] - dwall[X];
@@ -1112,11 +1180,21 @@ void setter_ladd_ellipsoid(colloid_t *pc, wall_t * wall, double rho0, double a[6
   a[5][3] = a[3][5];
   a[5][4] = a[4][5];
     
-  /*Add unsteady moment of inertia terms*/
-  inertia_tensor_quaternion(pc->s.quaterold, &mI_P[0], mIold);
+  /*Add unsteady moment of inertia terms - pick one of the method*/
+  if(ddtmI_fd_flag==1) {
+    inertia_tensor_quaternion(pc->s.quaterold, &mI_P[0], mIold);
+    for(int i = 0; i < 3; i++) {
+      for(int j = 0; j < 3; j++) {
+        dIijdt[i][j] = (mI[i][j] - mIold[i][j]);
+      }
+    }
+  }
+  else {
+    unsteady_mI(pc->s.quater, mI_P, pc->s.w, dIijdt);
+  }
   for(int i = 0; i < 3; i++) {
     for(int j = 0; j < 3; j++) {
-      a[3+i][3+j] += (mI[i][j] - mIold[i][j]);
+      a[3+i][3+j] += dIijdt[i][j];
     }
   }
   
