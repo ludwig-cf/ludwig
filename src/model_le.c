@@ -34,7 +34,7 @@
 #include "leesedwards.h"
 #include "target.h"
 
-__global__ static void le_reproject(lb_t *lb, lees_edw_t *le);
+__global__ static void le_reproject(lb_t *lb, lees_edw_t *le, kernel_ctxt_t * ktxt);
 static void le_displace_and_interpolate(lb_t *lb, lees_edw_t *le);
 __global__ static void interpolation(lb_t *lb, lees_edw_t *le, int *positive,  
     int *negative, int nprop, int negprop, int displacement, double t, kernel_ctxt_t * ktxt);
@@ -49,30 +49,30 @@ void copyModelToDevice(lb_model_t *h_model, lb_model_t *d_model) {
     double *d_wv;
     double *d_na;
 
-    cudaMalloc((void**)&d_cv, sizeof(int8_t[3]) * nvel);
-    cudaMalloc((void**)&d_wv, sizeof(double) * nvel);
-    cudaMalloc((void**)&d_na, sizeof(double) * nvel);
+    tdpMalloc((void**)&d_cv, sizeof(int8_t[3]) * nvel);
+    tdpMalloc((void**)&d_wv, sizeof(double) * nvel);
+    tdpMalloc((void**)&d_na, sizeof(double) * nvel);
     
     // Copy the data from host to the GPU
-    cudaMemcpy(d_cv, h_model->cv, sizeof(int8_t[3]) * nvel, cudaMemcpyHostToDevice);
-    cudaMemcpy(d_wv, h_model->wv, sizeof(double) * nvel, cudaMemcpyHostToDevice);
-    cudaMemcpy(d_na, h_model->na, sizeof(double) * nvel, cudaMemcpyHostToDevice);
+    tdpMemcpy(d_cv, h_model->cv, sizeof(int8_t[3]) * nvel, tdpMemcpyHostToDevice);
+    tdpMemcpy(d_wv, h_model->wv, sizeof(double) * nvel, tdpMemcpyHostToDevice);
+    tdpMemcpy(d_na, h_model->na, sizeof(double) * nvel, tdpMemcpyHostToDevice);
     
     // Set the pointers in the struct to the newly allocated GPU memory
-    cudaMemcpy(&(d_model->cv), &d_cv, sizeof(int8_t(*)[3]), cudaMemcpyHostToDevice);
-    cudaMemcpy(&(d_model->wv), &d_wv, sizeof(double*), cudaMemcpyHostToDevice);
-    cudaMemcpy(&(d_model->na), &d_na, sizeof(double*), cudaMemcpyHostToDevice);
+    tdpMemcpy(&(d_model->cv), &d_cv, sizeof(int8_t(*)[3]), tdpMemcpyHostToDevice);
+    tdpMemcpy(&(d_model->wv), &d_wv, sizeof(double*), tdpMemcpyHostToDevice);
+    tdpMemcpy(&(d_model->na), &d_na, sizeof(double*), tdpMemcpyHostToDevice);
 
     //copy the rest data to gpu
-    cudaMemcpy(&(d_model->ndim), &(h_model->ndim), sizeof(int8_t), cudaMemcpyHostToDevice);
-    cudaMemcpy(&(d_model->nvel), &(h_model->nvel), sizeof(int8_t), cudaMemcpyHostToDevice);
-    cudaMemcpy(&(d_model->cs2), &(h_model->cs2), sizeof(double), cudaMemcpyHostToDevice);
+    tdpMemcpy(&(d_model->ndim), &(h_model->ndim), sizeof(int8_t), tdpMemcpyHostToDevice);
+    tdpMemcpy(&(d_model->nvel), &(h_model->nvel), sizeof(int8_t), tdpMemcpyHostToDevice);
+    tdpMemcpy(&(d_model->cs2), &(h_model->cs2), sizeof(double), tdpMemcpyHostToDevice);
 }
 
 cudaError_t copy_buffer_duy_to_device(lees_edw_s* d_lees_edw, int* h_buffer_duy, size_t nxbuffer) {
     // First, allocate memory on the device for the buffer_duy array
     int* d_buffer_duy;
-    cudaError_t err = cudaMalloc((void**) &d_buffer_duy, nxbuffer * sizeof(int));
+    cudaError_t err = tdpMalloc((void**) &d_buffer_duy, nxbuffer * sizeof(int));
 
     if (err != cudaSuccess) {
         fprintf(stderr, "Failed to allocate device memory for buffer_duy (error code %s)!\n", cudaGetErrorString(err));
@@ -80,7 +80,7 @@ cudaError_t copy_buffer_duy_to_device(lees_edw_s* d_lees_edw, int* h_buffer_duy,
     }
 
     // Then, copy the data from the host array to the newly allocated device array
-    err = cudaMemcpy(d_buffer_duy, h_buffer_duy, nxbuffer * sizeof(int), cudaMemcpyHostToDevice);
+    err = tdpMemcpy(d_buffer_duy, h_buffer_duy, nxbuffer * sizeof(int), tdpMemcpyHostToDevice);
     
     if (err != cudaSuccess) {
         fprintf(stderr, "Failed to copy buffer_duy from host to device (error code %s)!\n", cudaGetErrorString(err));
@@ -88,7 +88,7 @@ cudaError_t copy_buffer_duy_to_device(lees_edw_s* d_lees_edw, int* h_buffer_duy,
     }
 
     // Finally, update the pointer in the device structure to point to the new device array
-    err = cudaMemcpy(&(d_lees_edw->buffer_duy), &d_buffer_duy, sizeof(int*), cudaMemcpyHostToDevice);
+    err = tdpMemcpy(&(d_lees_edw->buffer_duy), &d_buffer_duy, sizeof(int*), tdpMemcpyHostToDevice);
 
     if (err != cudaSuccess) {
         fprintf(stderr, "Failed to copy buffer_duy pointer to device structure (error code %s)!\n", cudaGetErrorString(err));
@@ -264,14 +264,24 @@ __host__ int lb_le_apply_boundary_conditions(lb_t *lb, lees_edw_t *le) {
 
         copy_buffer_duy_to_device(le_target, le->buffer_duy, le->param->nxbuffer);
 
-        int nlocal[3];
+        int nlocal[3], nplane;
         lees_edw_nlocal(le, nlocal);
-        dim3 numBlocks(1, (nlocal[Y] + 15) / 16, (nlocal[Z] + 15) / 16);
-        dim3 threadsPerBlock(1, 16, 16);
-        le_reproject<<<numBlocks, threadsPerBlock>>>(lb->target, le_target);
-        cudaDeviceSynchronize();
-      
+        nplane = lees_edw_nplane_local(le);
 
+        //tdp
+        dim3 nblk, ntpb;
+        kernel_info_t limits;
+        kernel_ctxt_t * ctxt = NULL;
+        limits.imin = 0; limits.imax = 2 * nplane - 1;
+        limits.jmin = 1; limits.jmax = nlocal[Y];
+        limits.kmin = 1; limits.kmax = nlocal[Z];
+
+        kernel_ctxt_create(le->cs, NSIMDVL, limits, &ctxt);
+        kernel_ctxt_launch_param(ctxt, &nblk, &ntpb);
+
+        tdpLaunchKernel(le_reproject, nblk, ntpb, 0, 0, lb->target, le_target, ctxt->target);
+        tdpAssert(tdpPeekAtLastError());
+        tdpAssert(tdpDeviceSynchronize());
 
         if (mpi_cartsz[Y] > 1) {
             le_displace_and_interpolate_parallel(lb, le);
@@ -306,14 +316,13 @@ __host__ int lb_le_apply_boundary_conditions(lb_t *lb, lees_edw_t *le) {
  *
  *****************************************************************************/
 
-__global__ static void le_reproject(lb_t *lb, lees_edw_t *le) {
-    int ic, jc, kc, index;
-    int nplane, plane, side;
+__global__ static void le_reproject(lb_t *lb, lees_edw_t *le, kernel_ctxt_t * ktxt) {
+    int ic, jc, kc, side, index;
+    int nplane, plane;
     int ia, ib;
     int nlocal[3];
     int n, ndist;
     int8_t cx = 0;
-
     double rho, ds[3][3], udotc, sdotq;
     double g[3], du[3];
     double fnew;
@@ -322,80 +331,82 @@ __global__ static void le_reproject(lb_t *lb, lees_edw_t *le) {
 
     assert(lb);
     assert(le);
+    assert(ktxt);
 
     lb_ndist(lb, &ndist);
     nplane = lees_edw_nplane_local(le);
     physics_ref(&phys);
-
-    t = 1.0 * physics_control_timestep(phys);
     lees_edw_nlocal(le, nlocal);
+    t = 1.0 * physics_control_timestep(phys);
     
-    jc = blockIdx.y * blockDim.y + threadIdx.y + 1;
-    kc = blockIdx.z * blockDim.z + threadIdx.z + 1;
-    
+    int kindex;
+    int kiter;
+    kiter = kernel_iterations(ktxt);
 
-    if (jc <= nlocal[Y] && kc <= nlocal[Z]) {
-        for (plane = 0; plane < nplane; plane++) {
-            for (side = 0; side < 2; side++) {
+    for_simt_parallel(kindex, kiter, 1) {
+        side = kernel_coords_ic(ktxt, kindex);
+        jc = kernel_coords_jc(ktxt, kindex);
+        kc = kernel_coords_kc(ktxt, kindex);
 
-                du[X] = 0.0;
-                du[Y] = 0.0;
-                du[Z] = 0.0;
+        if (jc <= nlocal[Y] && kc <= nlocal[Z] && side < 2 * nplane) {
+            du[X] = 0.0;
+            du[Y] = 0.0;
+            du[Z] = 0.0;
 
-                if (side == 0) {
-                    /* Start with plane below Lees-Edwards BC */
-                    lees_edw_plane_uy_now(le, t, &du[Y]);
-                    du[Y] *= -1.0;
-                    ic = lees_edw_plane_location(le, plane);
-                    cx = +1;
+            plane = side / 2;
+            if (side % 2 == 0) {
+                /* Start with plane below Lees-Edwards BC */
+                lees_edw_plane_uy_now(le, t, &du[Y]);
+                du[Y] *= -1.0;
+                ic = lees_edw_plane_location(le, plane);
+                cx = +1;
+            }
+            else {
+                /* Finally, deal with plane above LEBC */
+                lees_edw_plane_uy_now(le, t, &du[Y]);
+                ic = lees_edw_plane_location(le, plane) + 1;
+                cx = -1;
+            }
+
+            index = lees_edw_index(le, ic, jc, kc);
+
+            for (n = 0; n < ndist; n++) {
+
+                /* Compute 0th and 1st moments */
+                lb_dist_enum_t ndn = (lb_dist_enum_t)n;
+                lb_0th_moment(lb, index, ndn, &rho);
+                lb_1st_moment(lb, index, ndn, g);
+
+                for (ia = 0; ia < 3; ia++) {
+                    for (ib = 0; ib < 3; ib++) {
+                        ds[ia][ib] = (g[ia] * du[ib] + du[ia] * g[ib] + rho * du[ia] * du[ib]);
+                    }
                 }
-                else {
-                    /* Finally, deal with plane above LEBC */
-                    lees_edw_plane_uy_now(le, t, &du[Y]);
-                    ic = lees_edw_plane_location(le, plane) + 1;
-                    cx = -1;
-                }
 
-                index = lees_edw_index(le, ic, jc, kc);
+                /* Now update the distribution */
+                for (int p = 1; p < lb->model.nvel; p++) {
 
-                for (n = 0; n < ndist; n++) {
+                    double cs2 = lb->model.cs2;
+                    double rcs2 = 1.0 / cs2;
+                    if (lb->model.cv[p][X] != cx)
+                        continue;
 
-                    /* Compute 0th and 1st moments */
-                    lb_dist_enum_t ndn = (lb_dist_enum_t)n;
-                    lb_0th_moment(lb, index, ndn, &rho);
-                    lb_1st_moment(lb, index, ndn, g);
+                    udotc = du[Y] * lb->model.cv[p][Y];
+                    sdotq = 0.0;
 
                     for (ia = 0; ia < 3; ia++) {
                         for (ib = 0; ib < 3; ib++) {
-                            ds[ia][ib] = (g[ia] * du[ib] + du[ia] * g[ib] + rho * du[ia] * du[ib]);
+                            double dab = cs2 * (ia == ib);
+                            double q = (lb->model.cv[p][ia] * lb->model.cv[p][ib] - dab);
+                            sdotq += ds[ia][ib] * q;
                         }
                     }
 
-                    /* Now update the distribution */
-                    for (int p = 1; p < lb->model.nvel; p++) {
+                    /* Project all this back to the distribution. */
 
-                        double cs2 = lb->model.cs2;
-                        double rcs2 = 1.0 / cs2;
-                        if (lb->model.cv[p][X] != cx)
-                            continue;
-
-                        udotc = du[Y] * lb->model.cv[p][Y];
-                        sdotq = 0.0;
-
-                        for (ia = 0; ia < 3; ia++) {
-                            for (ib = 0; ib < 3; ib++) {
-                                double dab = cs2 * (ia == ib);
-                                double q = (lb->model.cv[p][ia] * lb->model.cv[p][ib] - dab);
-                                sdotq += ds[ia][ib] * q;
-                            }
-                        }
-
-                        /* Project all this back to the distribution. */
-
-                        lb_f(lb, index, p, n, &fnew);
-                        fnew += lb->model.wv[p] * (rho * udotc * rcs2 + 0.5 * sdotq * rcs2 * rcs2);
-                        lb_f_set(lb, index, p, n, fnew);
-                    }
+                    lb_f(lb, index, p, n, &fnew);
+                    fnew += lb->model.wv[p] * (rho * udotc * rcs2 + 0.5 * sdotq * rcs2 * rcs2);
+                    lb_f_set(lb, index, p, n, fnew);
                 }
             }
         }
@@ -415,28 +426,20 @@ __global__ static void le_reproject(lb_t *lb, lees_edw_t *le) {
  *****************************************************************************/
 
 void le_displace_and_interpolate(lb_t *lb, lees_edw_t *le) {
-    int ic, jc, kc;
-    int index0;// index1;
+
     int nlocal[3];
-    int nplane, plane; // n
-    int jdy; // j1, j2;
+    int nplane;
     int ndist;
     int nprop, negprop;
-    int nhalo;
-    int ndata, displacement;
-    double dy, fr;
+    int displacement;
     double t;
-    double ltot[3];
-    // double *recv_buff;
     physics_t *phys = NULL;
     lees_edw_t * le_target;
 
     assert(lb);
     assert(le);
 
-    lees_edw_ltot(le, ltot);
     lees_edw_nlocal(le, nlocal);
-    lees_edw_nhalo(le, &nhalo);
     nplane = lees_edw_nplane_local(le);
     physics_ref(&phys);
     lb_ndist(lb, &ndist);
@@ -449,7 +452,6 @@ void le_displace_and_interpolate(lb_t *lb, lees_edw_t *le) {
      * determined by the size of the local domain, and the number
      * of plane-crossing distributions. */
 
-
     /* Allocate a buffer large enough for all cvp[][X] = +1 */
     nprop = 0;
     negprop = 0;
@@ -458,13 +460,6 @@ void le_displace_and_interpolate(lb_t *lb, lees_edw_t *le) {
         if (lb->model.cv[p][X] == -1) negprop += 1;
     }
     displacement = ndist * nprop * nlocal[Y] * nlocal[Z];
-    // ndata = 2 * nplane * displacement;
-    // tdpMalloc((void**)&recv_buff, ndata * sizeof(double));
-
-    // if (lb->recv_buff == NULL) {
-    //     pe_fatal(lb->pe, "malloc(recv_buff) failed\n");
-    // }
-    // assert(lb->recv_buff);
 
     // record the displacement of propgation
     int *positive = (int *)malloc(sizeof(int) * nprop);
@@ -500,15 +495,18 @@ void le_displace_and_interpolate(lb_t *lb, lees_edw_t *le) {
 
     tdpLaunchKernel(interpolation, nblk, ntpb, 0, 0, lb->target, le_target, 
         d_positive, d_negative, nprop, negprop, displacement, t, ctxt->target);
-    tdpDeviceSynchronize();
+    tdpAssert(tdpPeekAtLastError());
+    tdpAssert(tdpDeviceSynchronize());
 
     tdpLaunchKernel(copy_back, nblk, ntpb, 0, 0, lb->target, le_target, 
         d_positive, d_negative, nprop, negprop, displacement, ctxt->target);
-    tdpDeviceSynchronize();
+    tdpAssert(tdpPeekAtLastError());
+    tdpAssert(tdpDeviceSynchronize());
+
+    kernel_ctxt_free(ctxt);
 
     free(positive);
     free(negative);
-    // tdpFree(recv_buff);
     tdpFree(d_positive);
     tdpFree(d_negative);
 
