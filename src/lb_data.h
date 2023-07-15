@@ -125,7 +125,9 @@ struct lb_data_s {
 
   lb_data_options_t opts;       /* Copy of run time options */
   lb_halo_t h;                  /* halo information/buffers */
-
+  
+  double * recv_buff;
+  
   lb_t * target;                /* copy of this structure on target */
 };
 

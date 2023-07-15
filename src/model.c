@@ -168,7 +168,33 @@ int lb_data_create(pe_t * pe, cs_t * cs, const lb_data_options_t * options,
 				   &obj->output);
     if (ifail != 0) pe_fatal(pe, "lb_data: bad i/o output decomposition\n"); 
   }
+    
+    
+    int nplane = cs->leopts.nplanes;
+    if (nplane > 0) {
+        int nprop = 0;
+        for (int p = 1; p < obj->model.nvel; p++) {
+            if (obj->model.cv[p][X] == +1) nprop += 1;
+        }
 
+        int ndist = obj->ndist;
+        int nlocal[3];
+        cs_nlocal(cs, nlocal);
+
+        int displacement = ndist * nprop * nlocal[Y] * nlocal[Z];
+        int ndata = 2 * nplane * displacement;
+        obj->recv_buff = (double *)malloc(sizeof(double) * ndata);
+
+        int ndevice;
+        printf("ndevice = %d \n\n", ndevice);
+        tdpGetDeviceCount(&ndevice);
+        if (ndevice > 0) {
+            double *tmp;
+            tdpMalloc((void**)&tmp, ndata * sizeof(double));
+            tdpMemcpy(&(obj->target->recv_buff), &tmp, sizeof(double*), tdpMemcpyHostToDevice);
+        }
+    }
+    
   *lb = obj;
 
   return 0;
@@ -198,6 +224,11 @@ __host__ int lb_free(lb_t * lb) {
     tdpMemcpy(&tmp, &lb->target->fprime, sizeof(double *),
 	      tdpMemcpyDeviceToHost); 
     tdpFree(tmp);
+
+    tdpMemcpy(&tmp, &lb->target->recv_buff, sizeof(double *),
+	      tdpMemcpyDeviceToHost); 
+    tdpFree(tmp);
+
     tdpFree(lb->target);
   }
 
@@ -208,6 +239,8 @@ __host__ int lb_free(lb_t * lb) {
   if (lb->io_info) io_info_free(lb->io_info);
   if (lb->f) free(lb->f);
   if (lb->fprime) free(lb->fprime);
+
+    if (lb->recv_buff) free(lb->recv_buff);
 
   lb_halo_free(lb, &lb->h);
   lb_model_free(&lb->model);
