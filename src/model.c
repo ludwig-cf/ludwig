@@ -186,12 +186,11 @@ int lb_data_create(pe_t * pe, cs_t * cs, const lb_data_options_t * options,
         obj->recv_buff = (double *)malloc(sizeof(double) * ndata);
 
         int ndevice;
-        printf("ndevice = %d \n\n", ndevice);
         tdpGetDeviceCount(&ndevice);
         if (ndevice > 0) {
             double *tmp;
-            tdpMalloc((void**)&tmp, ndata * sizeof(double));
-            tdpMemcpy(&(obj->target->recv_buff), &tmp, sizeof(double*), tdpMemcpyHostToDevice);
+            tdpAssert(tdpMalloc((void**)&tmp, ndata * sizeof(double)));
+            tdpAssert(tdpMemcpy(&(obj->target->recv_buff), &tmp, sizeof(double*), tdpMemcpyHostToDevice));
         }
     }
     

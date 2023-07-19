@@ -257,12 +257,18 @@ __host__ int lb_le_apply_boundary_conditions(lb_t *lb, lees_edw_t *le) {
 
         /* Everything must be done on host at the moment (slowly) ... */
         /* ... and copy back at the end */
-        copyModelToDevice(&lb->model, &lb->target->model);
-       
         lees_edw_t * le_target;
-        lees_edw_target(le, &le_target);
-
-        copy_buffer_duy_to_device(le_target, le->buffer_duy, le->param->nxbuffer);
+        int ndevice;
+        tdpGetDeviceCount(&ndevice);
+        
+        if (ndevice > 0) {
+            copyModelToDevice(&lb->model, &lb->target->model);
+            
+            lees_edw_target(le, &le_target);
+            copy_buffer_duy_to_device(le_target, le->buffer_duy, le->param->nxbuffer);
+        }
+       
+        
 
         int nlocal[3], nplane;
         lees_edw_nlocal(le, nlocal);
