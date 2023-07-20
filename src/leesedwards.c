@@ -24,47 +24,47 @@
 #include "leesedwards.h"
 #include "util.h"
 
-// typedef struct lees_edw_param_s lees_edw_param_t;
+typedef struct lees_edw_param_s lees_edw_param_t;
 
-// struct lees_edw_s {
-//     pe_t *pe;        /* Parallel environment */
-//     cs_t *cs;        /* Coordinate system */
-//     physics_t *phys; /* Constants, time step */
+struct lees_edw_s {
+    pe_t *pe;        /* Parallel environment */
+    cs_t *cs;        /* Coordinate system */
+    physics_t *phys; /* Constants, time step */
 
-//     lees_edw_param_t *param; /* Parameters */
+    lees_edw_param_t *param; /* Parameters */
 
-//     int nref;            /* Reference count */
-//     int *icbuff_to_real; /* look up table */
-//     int *icreal_to_buff; /* look up table */
-//     int *buffer_duy;     /* look up table +/- uy as function of ib */
+    int nref;            /* Reference count */
+    int *icbuff_to_real; /* look up table */
+    int *icreal_to_buff; /* look up table */
+    int *buffer_duy;     /* look up table +/- uy as function of ib */
 
-//     MPI_Comm le_comm;       /* 1-d communicator */
-//     MPI_Comm le_plane_comm; /* 2-d communicator */
+    MPI_Comm le_comm;       /* 1-d communicator */
+    MPI_Comm le_plane_comm; /* 2-d communicator */
 
-//     lees_edw_t *target; /* Device memory */
-// };
+    lees_edw_t *target; /* Device memory */
+};
 
-// struct lees_edw_param_s {
-//     /* Local parameters */
-//     int nplanelocal; /* Number of planes local domain */
-//     int nxbuffer;    /* Size of buffer region in x */
-//     int index_real_nbuffer;
-//     /* For cs */
-//     int nhalo;
-//     int str[3];
-//     int nlocal[3];
-//     /* Global parameters */
-//     int nplanetotal; /* Total number of planes */
-//     int type;        /* Shear type */
-//     int period;      /* for oscillatory */
-//     int nt0;         /* time0 (input as integer) */
-//     int nsites;      /* Number of sites incl buffer planes */
-//     double uy;       /* u[Y] for all planes */
-//     double dx_min;   /* Position first plane */
-//     double dx_sep;   /* Plane separation */
-//     double omega;    /* u_y = u_le cos (omega t) for oscillatory */
-//     double time0;    /* time offset */
-// };
+struct lees_edw_param_s {
+    /* Local parameters */
+    int nplanelocal; /* Number of planes local domain */
+    int nxbuffer;    /* Size of buffer region in x */
+    int index_real_nbuffer;
+    /* For cs */
+    int nhalo;
+    int str[3];
+    int nlocal[3];
+    /* Global parameters */
+    int nplanetotal; /* Total number of planes */
+    int type;        /* Shear type */
+    int period;      /* for oscillatory */
+    int nt0;         /* time0 (input as integer) */
+    int nsites;      /* Number of sites incl buffer planes */
+    double uy;       /* u[Y] for all planes */
+    double dx_min;   /* Position first plane */
+    double dx_sep;   /* Plane separation */
+    double omega;    /* u_y = u_le cos (omega t) for oscillatory */
+    double time0;    /* time offset */
+};
 
 static int lees_edw_init(lees_edw_t *le, const lees_edw_options_t *info);
 static int lees_edw_checks(lees_edw_t *le);
