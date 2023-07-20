@@ -62,6 +62,7 @@ struct lees_edw_param_s {
     double omega;    /* u_y = u_le cos (omega t) for oscillatory */
     double time0;    /* time offset */
 };
+
 __host__ int lees_edw_create(pe_t * pe, cs_t * coords,
 			     const lees_edw_options_t * opts,
 			     lees_edw_t ** le);
