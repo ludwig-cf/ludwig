@@ -719,10 +719,13 @@ int test_field_io_write(pe_t * pe, cs_t * cs, const field_options_t * opts) {
   assert(opts);
 
   /* Establish data and test values. */
+  /* Because field_io_write() has a memcpyDeviceToHost, we need to make
+   * sure the test data is on the device before the write */
 
   field_create(pe, cs, NULL, "test-field-io", opts, &field);
 
   util_field_data_check_set(field);
+  field_memcpy(field, tdpMemcpyHostToDevice);
 
   /* Write */
 

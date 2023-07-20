@@ -9,7 +9,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2010-2022 The University of Edinburgh
+ *  (c) 2010-2023 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -33,13 +33,9 @@ struct lees_edw_s {
 
     lees_edw_param_t *param; /* Parameters */
 
-    int nref;            /* Reference count */
-    int *icbuff_to_real; /* look up table */
-    int *icreal_to_buff; /* look up table */
-    int *buffer_duy;     /* look up table +/- uy as function of ib */
-
-    MPI_Comm le_comm;       /* 1-d communicator */
-    MPI_Comm le_plane_comm; /* 2-d communicator */
+  int nref;                 /* Reference count */
+  MPI_Comm  le_comm;        /* 1-d communicator */
+  MPI_Comm  le_plane_comm;  /* 2-d communicator */
 
     lees_edw_t *target; /* Device memory */
 };
@@ -71,12 +67,6 @@ static int lees_edw_checks(lees_edw_t *le);
 static int lees_edw_init_tables(lees_edw_t *le);
 
 static __constant__ lees_edw_param_t static_param;
-
-__host__ __device__ int lees_edw_buffer_duy(lees_edw_t *le, int ib);
-
-/* Scheduled for removal */
-__host__ __device__ int lees_edw_index_real_to_buffer(lees_edw_t *le, int ic, int idisplace);
-__host__ __device__ int lees_edw_index_buffer_to_real(lees_edw_t *le, int ibuf);
 
 /*****************************************************************************
  *
@@ -175,14 +165,11 @@ __host__ int lees_edw_free(lees_edw_t *le) {
         if (le->target != le)
             tdpFree(le->target);
 
-        pe_free(le->pe);
-        cs_free(le->cs);
-        free(le->icbuff_to_real);
-        free(le->icreal_to_buff);
-        free(le->buffer_duy);
-        free(le->param);
-        free(le);
-    }
+    pe_free(le->pe);
+    cs_free(le->cs);
+    free(le->param);
+    free(le);
+  }
 
     return 0;
 }
@@ -220,76 +207,10 @@ __host__ int lees_edw_target(lees_edw_t *le, lees_edw_t **target) {
 
 /*****************************************************************************
  *
- * lees_edw_nplane_set
- *
- *****************************************************************************/
-
-int lees_edw_nplane_set(lees_edw_t *le, int nplanetotal) {
-
-    assert(le);
-
-    le->param->nplanetotal = nplanetotal;
-
-    return 0;
-}
-
-/*****************************************************************************
- *
- * lees_edw_plane_uy_set
- *
- *****************************************************************************/
-
-int lees_edw_plane_uy_set(lees_edw_t *le, double uy) {
-
-    assert(le);
-
-    le->param->uy = uy;
-
-    return 0;
-}
-
-/*****************************************************************************
- *
- *  lees_edw_oscillatory_set
- *
- *****************************************************************************/
-
-int lees_edw_oscillatory_set(lees_edw_t *le, int period) {
-
-    assert(le);
-
-    le->param->type = LE_SHEAR_TYPE_OSCILLATORY;
-    le->param->period = period;
-    le->param->omega = 2.0 * 4.0 * atan(1.0) / le->param->period;
-
-    return 0;
-}
-
-/*****************************************************************************
- *
- *  lees_edw_toffset_set
- *
- *****************************************************************************/
-
-int lees_edw_toffset_set(lees_edw_t *le, int nt0) {
-
-    assert(le);
-
-    le->param->nt0 = nt0;
-
-    return 0;
-}
-
-/*****************************************************************************
- *
  *  lees_edw_init
  *
  *  We assume there are a given number of equally-spaced planes
  *  all with the same speed.
- *
- *  Pending (KS):
- *   - dx should be integers, i.e, ntotal[X] % ntotal must be zero
- *   - look at displacement issue
  *
  *****************************************************************************/
 
@@ -317,10 +238,18 @@ static int lees_edw_init(lees_edw_t *le, const lees_edw_options_t *info) {
             pe_fatal(le->pe, "Number of planes must divide system size\n");
         }
 
-        le->param->dx_sep = 1.0 * ntotal[X] / le->param->nplanetotal;
-        le->param->dx_min = 0.5 * le->param->dx_sep;
-        le->param->time0 = 1.0 * le->param->nt0;
+    le->param->dx_sep = 1.0*ntotal[X] / le->param->nplanetotal;
+    le->param->dx_min = 0.5*le->param->dx_sep;
+    le->param->time0 = 1.0*le->param->nt0;
+
+    if (le->param->type == LE_SHEAR_TYPE_OSCILLATORY) {
+      if (info->period <= 0) {
+	pe_info(le->pe, "Oscillatory shear must have period > 0\n");
+	pe_fatal(le->pe, "Please check the input and try again.");
+      }
+      le->param->omega = 2.0*4.0*atan(1.0)/le->param->period;
     }
+  }
 
     lees_edw_checks(le);
 
@@ -434,11 +363,10 @@ __host__ int lees_edw_info(lees_edw_t *le) {
 
 static int lees_edw_init_tables(lees_edw_t *le) {
 
-    int ib, ic, ip, n, nb, nh, np;
-    int nhalo;
-    int rdims[3];
-    int cartsz[3];
-    MPI_Comm cartcomm;
+  int nhalo;
+  int rdims[3];
+  int cartsz[3];
+  MPI_Comm cartcomm;
 
     assert(le);
 
@@ -451,129 +379,8 @@ static int lees_edw_init_tables(lees_edw_t *le) {
     le->param->nhalo = nhalo;
     le->param->nplanelocal = le->param->nplanetotal / cartsz[X];
 
-    /* Look up table for buffer -> real index */
-
-    /* For each 'x' location in the buffer region, work out the corresponding
-     * x index in the real system:
-     *   - for each boundary there are 2*nhalo buffer planes
-     *   - the locations extend nhalo points either side of the boundary.
-     */
-
-    le->param->nxbuffer = 2 * nhalo * le->param->nplanelocal;
-
-    if (le->param->nxbuffer > 0) {
-        le->icbuff_to_real = (int *)calloc(le->param->nxbuffer, sizeof(int));
-        if (le->icbuff_to_real == NULL)
-            pe_fatal(le->pe, "calloc(le) failed\n");
-    }
-
-    ib = 0;
-    for (n = 0; n < le->param->nplanelocal; n++) {
-        ic = lees_edw_plane_location(le, n) - (nhalo - 1);
-        for (nh = 0; nh < 2 * nhalo; nh++) {
-            assert(ib < 2 * nhalo * le->param->nplanelocal);
-            le->icbuff_to_real[ib] = ic + nh;
-            ib++;
-        }
-    }
-
-    /* Look up table for real -> buffer index */
-
-    /* For each x location in the real system, work out the index of
-     * the appropriate x-location in the buffer region. This is more
-     * complex, as it depends on whether you are looking across an
-     * LE boundary, and if so, in which direction.
-     * ie., we need a look up table = function(x, +/- dx).
-     * Note that this table exists when no planes are present, ie.,
-     * there is no transformation, ie., f(x, dx) = x + dx for all dx.
-     */
-
-    n = (le->param->nlocal[X] + 2 * nhalo) * (2 * nhalo + 1);
-    le->param->index_real_nbuffer = n;
-
-    le->icreal_to_buff = (int *)calloc(n, sizeof(int));
-    assert(le->icreal_to_buff);
-    if (le->icreal_to_buff == NULL)
-        pe_fatal(le->pe, "calloc(le) failed\n");
-
-    /* Set table in abscence of planes. */
-    /* Note the elements of the table at the extreme edges of the local
-     * system point outside the system. Accesses must take care. */
-
-    for (ic = 1 - nhalo; ic <= le->param->nlocal[X] + nhalo; ic++) {
-        for (nh = -nhalo; nh <= nhalo; nh++) {
-            n = (ic + nhalo - 1) * (2 * nhalo + 1) + (nh + nhalo);
-            assert(n >= 0 && n < (le->param->nlocal[X] + 2 * nhalo) * (2 * nhalo + 1));
-            le->icreal_to_buff[n] = ic + nh;
-        }
-    }
-
-    /* For each position in the buffer, add appropriate
-     * corrections in the table. */
-
-    nb = le->param->nlocal[X] + nhalo + 1;
-
-    for (ib = 0; ib < le->param->nxbuffer; ib++) {
-        np = ib / (2 * nhalo);
-        ip = lees_edw_plane_location(le, np);
-
-        /* This bit of logic chooses the first nhalo points of the
-         * buffer region for each plane as the 'downward' looking part */
-
-        if ((ib - np * 2 * nhalo) < nhalo) {
-
-            /* Looking across the plane in the -ve x-direction */
-
-            for (ic = ip + 1; ic <= ip + nhalo; ic++) {
-                for (nh = -nhalo; nh <= -1; nh++) {
-                    if (ic + nh == le->icbuff_to_real[ib]) {
-                        n = (ic + nhalo - 1) * (2 * nhalo + 1) + (nh + nhalo);
-                        assert(n >= 0 && n < (le->param->nlocal[X] + 2 * nhalo) * (2 * nhalo + 1));
-                        le->icreal_to_buff[n] = nb + ib;
-                    }
-                }
-            }
-        }
-        else {
-            /* looking across the plane in the +ve x-direction */
-
-            for (ic = ip - (nhalo - 1); ic <= ip; ic++) {
-                for (nh = 1; nh <= nhalo; nh++) {
-                    if (ic + nh == le->icbuff_to_real[ib]) {
-                        n = (ic + nhalo - 1) * (2 * nhalo + 1) + (nh + nhalo);
-                        assert(n >= 0 && n < (le->param->nlocal[X] + 2 * nhalo) * (2 * nhalo + 1));
-                        le->icreal_to_buff[n] = nb + ib;
-                    }
-                }
-            }
-        }
-        /* Next buffer point */
-    }
-
-    /* Buffer velocity jumps. When looking from the real system across
-     * a boundary into a given buffer, what is the associated velocity
-     * jump? This is +1 for 'looking up' and -1 for 'looking down'.*/
-
-    if (le->param->nxbuffer > 0) {
-        le->buffer_duy = (int *)calloc(le->param->nxbuffer, sizeof(int));
-        assert(le->buffer_duy);
-        if (le->buffer_duy == NULL)
-            pe_fatal(le->pe, "calloc(buffer_duy) failed\n");
-    }
-
-    ib = 0;
-    for (n = 0; n < le->param->nplanelocal; n++) {
-        for (nh = 0; nh < nhalo; nh++) {
-            assert(ib < le->param->nxbuffer);
-            le->buffer_duy[ib] = -1;
-            ib++;
-        }
-        for (nh = 0; nh < nhalo; nh++) {
-            assert(ib < le->param->nxbuffer);
-            le->buffer_duy[ib] = +1;
-            ib++;
-        }
-    }
+  /* Number of buffer planes */
+  le->param->nxbuffer = 2*nhalo*le->param->nplanelocal;
 
     /* Set up a 1-dimensional communicator for transfer of data
      * along the y-direction. */
@@ -706,7 +513,7 @@ __host__ __device__ int lees_edw_steady_uy(lees_edw_t *le, int ic, double *uy) {
 
 /*****************************************************************************
  *
- *  lees_edw_get_block_uy
+ *  lees_edw_block_uy
  *
  *  Return the velocity of the LE 'block' at ic relative to the
  *  centre of the system.
@@ -765,9 +572,10 @@ __host__ __device__ int lees_edw_plane_uy_now(lees_edw_t *le, double t, double *
     tle = t - le->param->time0;
     assert(tle >= 0.0);
 
-    *uy = le->param->uy;
-    if (le->param->type == LE_SHEAR_TYPE_OSCILLATORY)
-        *uy *= cos(le->param->omega * tle);
+  *uy = le->param->uy;
+  if (le->param->type == LE_SHEAR_TYPE_OSCILLATORY) {
+    *uy *= cos(le->param->omega*tle);
+  }
 
     return 0;
 }
@@ -803,51 +611,6 @@ __host__ __device__ int lees_edw_plane_location(lees_edw_t *le, int np) {
 
 /*****************************************************************************
  *
- *  lees_edw_index_real_to_buffer
- *
- *  For x index 'ic' and step size 'idisplace', return the x index of the
- *  translated buffer.
- *
- *****************************************************************************/
-
-__host__ __device__ int lees_edw_index_real_to_buffer(lees_edw_t *le, int ic, int idisplace) {
-
-    int ib;
-
-    assert(le);
-    assert(le->icreal_to_buff);
-
-    assert(idisplace >= -le->param->nhalo && idisplace <= +le->param->nhalo);
-
-    ib = (ic + le->param->nhalo - 1) * (2 * le->param->nhalo + 1) + idisplace + le->param->nhalo;
-
-    assert(ib >= 0 && ib < le->param->index_real_nbuffer);
-
-    assert(le->icreal_to_buff[ib] == lees_edw_ic_to_buff(le, ic, idisplace));
-    return le->icreal_to_buff[ib];
-}
-
-/*****************************************************************************
- *
- *  lees_edw_index_buffer_to_real
- *
- *  For x index in the buffer region, return the corresponding
- *  x index in the real system.
- *
- *****************************************************************************/
-
-__host__ __device__ int lees_edw_index_buffer_to_real(lees_edw_t *le, int ib) {
-
-    assert(le);
-    assert(le->icbuff_to_real);
-    assert(ib >= 0 && ib < le->param->nxbuffer);
-
-    assert(le->icbuff_to_real[ib] == lees_edw_ibuff_to_real(le, ib));
-    return le->icbuff_to_real[ib];
-}
-
-/*****************************************************************************
- *
  *  lees_edw_buffer_displacement
  *
  *  Return the current displacement
@@ -864,15 +627,15 @@ __host__ __device__ int lees_edw_buffer_displacement(lees_edw_t *le, int ib, dou
     assert(le);
     assert(ib >= 0 && ib < le->param->nxbuffer);
 
-    tle = t - le->param->time0;
-    assert(tle >= 0.0);
+  if (t < 0.0) t = 0.0;
+  tle = t - le->param->time0;
+  assert(tle >= 0.0);
 
     *dy = 0.0;
 
-    if (le->param->type == LE_SHEAR_TYPE_STEADY) {
-        *dy = tle * le->param->uy * le->buffer_duy[ib];
-        assert(le->buffer_duy[ib] == lees_edw_buffer_duy(le, ib));
-    }
+  if (le->param->type == LE_SHEAR_TYPE_STEADY) {
+    *dy = tle*le->param->uy*lees_edw_buffer_duy(le, ib);
+  }
 
     if (le->param->type == LE_SHEAR_TYPE_OSCILLATORY) {
         *dy = le->param->uy * sin(le->param->omega * tle) / le->param->omega;
@@ -967,8 +730,9 @@ __host__ __device__ int lees_edw_shear_rate(lees_edw_t *le, double *gammadot) {
 
     double ltot[3];
 
-    assert(le);
-    cs_ltot(le->cs, ltot);
+  assert(le);
+
+  cs_ltot(le->cs, ltot);
 
     *gammadot = le->param->uy * le->param->nplanetotal / ltot[X];
 
@@ -1179,15 +943,14 @@ __host__ int lees_edw_buffer_du(lees_edw_t *le, int ib, double ule[3]) {
     assert(le);
     assert(ib >= 0 && ib < le->param->nxbuffer);
 
-    if (le->param->type == LE_SHEAR_TYPE_STEADY) {
-        ule[X] = 0.0;
-        ule[Y] = le->param->uy * le->buffer_duy[ib];
-        assert(le->buffer_duy[ib] == lees_edw_buffer_duy(le, ib));
-        ule[Z] = 0.0;
-    }
-    else {
-        assert(0); /* Check delta u as function of (ib,t) */
-    }
+  if (le->param->type == LE_SHEAR_TYPE_STEADY) {
+    ule[X] = 0.0;
+    ule[Y] = le->param->uy*lees_edw_buffer_duy(le, ib);
+    ule[Z] = 0.0;
+  }
+  else {
+    assert(0); /* Check delta u as function of (ib,t) */
+  }
 
     return 0;
 }
@@ -1256,22 +1019,32 @@ __host__ __device__ int lees_edw_ic_to_buff(lees_edw_t *le, int ic, int di) {
     return ib;
 }
 
-/******************************************************************************
+/*****************************************************************************
  *
  *  lees_edw_buffer_duy
  *
- ******************************************************************************/
+ *   This is the sign (-1 or +1) of the velocity change associated
+ *   with buffer location ib.
+ *
+ *  The picture is:
+ *
+ *     nplane = 0      nplane = 1      ...      x, ib ->
+ *    nhalo   nhalo   nhalo   nhalo
+ *     -1      +1      -1      +1
+ *
+ *****************************************************************************/
 
 __host__ __device__ int lees_edw_buffer_duy(lees_edw_t *le, int ib) {
 
-    int pm1;
+  int pm1  = +1;
 
-    assert(le);
-    assert(ib >= 0 && ib < le->param->nxbuffer);
+  assert(le);
+  assert(0 <= ib && ib < le->param->nxbuffer);
 
-    pm1 = +1;
-    if (ib % (2 * le->param->nhalo) < le->param->nhalo)
-        pm1 = -1;
+  /* The first nhalo values for each plane are -1  ... */
+  if (ib % (2*le->param->nhalo) < le->param->nhalo) pm1 = -1;
+
+  assert(pm1 == -1 || pm1 == +1);
 
     return pm1;
 }

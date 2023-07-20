@@ -30,14 +30,11 @@ Valency species 0:          1
 Diffusivity species 0:      1.0000000e-02
 Valency species 1:         -1
 Diffusivity species 1:      1.0000000e-02
-Number of multisteps:       1
-Number of skipsteps:        1
-Diffusive accuracy in NPE:  5.0000000e-01
 Relative tolerance:         1.0000000e-07
 Absolute tolerance:         1.0000000e-15
 Max. no. of iterations:              5000
-I/O decomposition:          1 1 1
-I/O format:                 BINARY
+Number of multisteps:       1
+Diffusive accuracy in NPE:  5.0000000e-01
 Force calculation:          stress_divergence
 
 System properties
@@ -128,6 +125,9 @@ Scalars - total mean variance min max
 [rho]  1.3381768e+02  1.0400000e-03  3.9840637e-01
 [rho]  1.3381768e+02  0.0000000e+00  4.1153145e-03
 [elc] -1.1347338e-11 -1.5376572e-03  1.9920319e-01
+
+Free energies - timestep f v f/v f_s a f_s/a
+[fe]              0 -1.1349791372e+03  3.2517000000e+04 -3.4904177422e-02  0.0000000000e+00
 
 Momentum - x y z
 [total   ]  0.0000000e+00  9.0252805e-13  0.0000000e+00

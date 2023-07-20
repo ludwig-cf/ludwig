@@ -7,7 +7,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2012-2022 The University of Edinburgh
+ *  (c) 2012-2023 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -22,21 +22,19 @@
 
 #include "pe.h"
 #include "coords.h"
-#include "control.h"
-#include "psi_s.h"
 #include "psi_sor.h"
-
 #include "util.h"
-#include "psi_stats.h"
-#include "tests.h"
 
 #define fe_fake_t void
 
-int test_psi_sor_poisson(pe_t * pe);
-int test_psi_sor_vare_poisson(pe_t * pe);
+int test_psi_solver_sor_create(pe_t * pe);
+int test_psi_solver_sor_solve(pe_t * pe);
+
+int test_psi_solver_sor_var_epsilon_create(pe_t * pe);
+int test_psi_solver_sor_var_epsilon_solve(pe_t * pe);
 
 static int test_charge1_set(psi_t * psi);
-static int test_charge1_exact(psi_t * obj, f_vare_t fepsilon);
+static int test_charge1_exact(psi_t * obj, var_epsilon_ft fepsilon);
 
 #define REF_PERMEATIVITY 1.0
 static int fepsilon_constant(fe_fake_t * fe, int index, double * epsilon);
@@ -53,20 +51,13 @@ int test_psi_sor_suite(void) {
 
   pe_create(MPI_COMM_WORLD, PE_QUIET, &pe);
 
-  {
-    int mpisz = pe_mpi_size(pe);
+  test_psi_solver_sor_create(pe);
+  test_psi_solver_sor_solve(pe);
 
-    if (mpisz > 4) {
-      /* It's really just a 1-d problem, so no large deompcositions */
-      pe_info(pe, "SKIP     ./unit/test_psi_sor\n");
-    }
-    else {
-      test_psi_sor_poisson(pe);
-      test_psi_sor_vare_poisson(pe);
+  test_psi_solver_sor_var_epsilon_create(pe);
+  test_psi_solver_sor_var_epsilon_solve(pe);
 
-      pe_info(pe, "PASS     ./unit/test_psi_sor\n");
-    }
-  }
+  pe_info(pe, "%-9s %s\n", "PASS", __FILE__);
 
   pe_free(pe);
 
@@ -75,21 +66,53 @@ int test_psi_sor_suite(void) {
 
 /*****************************************************************************
  *
- *  test_psi_sor_poisson
- *
- *  Set rho(z = 1)  = + (1/2NxNy)
- *      rho(z = Lz) = + (1/2NxNy)
- *      rho         = - 1/(NxNy*(Nz-2)) everywhere else.
- *
- *  This is a fully periodic system with zero total charge.
+ *  test_psi_solver_sor_create
  *
  *****************************************************************************/
 
-int test_psi_sor_poisson(pe_t * pe) {
+int test_psi_solver_sor_create(pe_t * pe) {
+
+  int ifail = 0;
+  int nhalo = 2;
 
   cs_t * cs = NULL;
   psi_t * psi = NULL;
-  int ntotal[3] = {4, 4, 64};
+  psi_options_t opts = psi_options_default(nhalo);
+
+  cs_create(pe, &cs);
+  cs_nhalo_set(cs, nhalo);
+  cs_init(cs);
+  psi_create(pe, cs, &opts, &psi);
+
+  {
+    psi_solver_sor_t * sor = NULL;
+
+    ifail = psi_solver_sor_create(psi, &sor);
+    assert(ifail == 0);
+    assert(sor->psi == psi);
+    assert(sor->super.impl->solve);
+
+    psi_solver_sor_free(&sor);
+    assert(sor == NULL);
+  }
+
+  return ifail;
+}
+
+/*****************************************************************************
+ *
+ *  test_psi_solver_sor_solve
+ *
+ *****************************************************************************/
+
+int test_psi_solver_sor_solve(pe_t * pe) {
+
+  int nhalo = 1;
+  int ntotal[3] = {4, 4, 64};  /* Always quasi-1d system in z */
+
+  cs_t * cs = NULL;
+  psi_t * psi = NULL;
+  psi_solver_sor_t * sor = NULL;
 
   assert(pe);
 
@@ -100,32 +123,36 @@ int test_psi_sor_poisson(pe_t * pe) {
     int dims[3] = {0,0,1};
 
     MPI_Dims_create(pe_mpi_size(pe), ndims, dims);
-    cs_nhalo_set(cs, 1);
+    cs_nhalo_set(cs, nhalo);
     cs_ntotal_set(cs, ntotal);
     cs_decomposition_set(cs, dims);
   }
   cs_init(cs);
 
-  psi_create(pe, cs, 2, &psi);
-  assert(psi);
-
-  psi_valency_set(psi, 0, +1);
-  psi_valency_set(psi, 1, -1);
-  psi_beta_set(psi, 1.0);
-  psi_epsilon_set(psi, REF_PERMEATIVITY);
+  {
+    psi_options_t opts = psi_options_default(nhalo);
+    opts.nk = 2;
+    opts.beta = 1.0;
+    opts.epsilon1 = REF_PERMEATIVITY;
+    psi_create(pe, cs, &opts, &psi);
+  }
 
   test_charge1_set(psi);
 
   psi_halo_psi(psi);
   psi_halo_rho(psi);
 
+  psi_solver_sor_create(psi, &sor);
+
   /* Time step is -1 for no output. */
 
-  psi_sor_poisson(psi, -1);
+  psi_solver_sor_solve(sor, -1);
 
   test_charge1_exact(psi, fepsilon_constant);
 
-  psi_free(psi);
+  /* Clear up */
+  psi_solver_sor_free(&sor);
+  psi_free(&psi);
   cs_free(cs);
 
   return 0;
@@ -133,7 +160,44 @@ int test_psi_sor_poisson(pe_t * pe) {
 
 /*****************************************************************************
  *
- *  test_psi_sor_vare_poisson
+ *  test_psi_solver_sor_var_epsilon_create
+ *
+ *****************************************************************************/
+
+int test_psi_solver_sor_var_epsilon_create(pe_t * pe) {
+
+  int ifail = 0;
+  int nhalo = 2;
+
+  cs_t * cs = NULL;
+  psi_t * psi = NULL;
+  psi_options_t opts = psi_options_default(nhalo);
+
+  cs_create(pe, &cs);
+  cs_nhalo_set(cs, nhalo);
+  cs_init(cs);
+  psi_create(pe, cs, &opts, &psi);
+
+  {
+    psi_solver_sor_t * sor = NULL;
+    var_epsilon_t user = {.fe = NULL, .epsilon = fepsilon_constant};
+
+    ifail = psi_solver_sor_var_epsilon_create(psi, user, &sor);
+    assert(ifail == 0);
+    assert(sor->psi == psi);
+    assert(sor->epsilon);
+    assert(sor->super.impl->solve);
+
+    psi_solver_sor_free(&sor);
+    assert(sor == NULL);
+  }
+
+  return ifail;
+}
+
+/*****************************************************************************
+ *
+ *  test_psi_solver_sor_var_epsilon_solve
  *
  *  Same problem as above, but use variable epsilon solver (albeit with
  *  fixed epsilon here).
@@ -143,27 +207,30 @@ int test_psi_sor_poisson(pe_t * pe) {
  *
  *****************************************************************************/
 
-int test_psi_sor_vare_poisson(pe_t * pe) {
+int test_psi_solver_sor_var_epsilon_solve(pe_t * pe) {
+
+  int nhalo = 1;
+  int ntotal[3] = {4, 4, 64};  /* Always quasi-1d system in z */
 
   cs_t * cs = NULL;
   psi_t * psi = NULL;
-  int ntotal[3] = {4, 4, 64};
+  psi_solver_sor_t * sor = NULL;
 
   assert(pe);
 
   cs_create(pe, &cs);
-  cs_nhalo_set(cs, 1);
+  cs_nhalo_set(cs, nhalo);
   cs_ntotal_set(cs, ntotal);
   cs_init(cs);
 
-  psi_create(pe, cs, 2, &psi);
-  assert(psi);
-
-  psi_valency_set(psi, 0, +1);
-  psi_valency_set(psi, 1, -1);
-  psi_beta_set(psi, 1.0);
-  psi_reltol_set(psi, 0.01*FLT_EPSILON);
-  psi_epsilon_set(psi, REF_PERMEATIVITY);
+  {
+    psi_options_t opts = psi_options_default(nhalo);
+    opts.nk = 2;
+    opts.beta = 1.0;
+    opts.epsilon1 = REF_PERMEATIVITY;
+    opts.solver.reltol = 0.01*FLT_EPSILON; /* Not the default */
+    psi_create(pe, cs, &opts, &psi);
+  }
 
   test_charge1_set(psi);
 
@@ -171,11 +238,17 @@ int test_psi_sor_vare_poisson(pe_t * pe) {
   psi_halo_rho(psi);
 
   /* Time step is -1 to avoid output */
-  psi_sor_vare_poisson(psi, NULL, fepsilon_constant, -1);
+  {
+    var_epsilon_t user = {.fe = NULL, .epsilon = fepsilon_constant};
+
+    psi_solver_sor_var_epsilon_create(psi, user, &sor);
+    psi_solver_sor_var_epsilon_solve(sor, -1);
+    psi_solver_sor_free(&sor);
+  }
 
   test_charge1_exact(psi, fepsilon_constant);
 
-  psi_free(psi);
+  psi_free(&psi);
   cs_free(cs);
 
   return 0;
@@ -204,10 +277,6 @@ static int test_charge1_set(psi_t * psi) {
   
   double ltot[3];
   double rho0, rho1;
-
-  double rho_min[4];  /* For psi_stats */
-  double rho_max[4];  /* For psi_stats */
-  double rho_tot[4];  /* For psi_stats */
   MPI_Comm comm;
 
   cs_ltot(psi->cs, ltot);
@@ -220,7 +289,7 @@ static int test_charge1_set(psi_t * psi) {
   rho1 = 1.0 / (ltot[X]*ltot[Y]*(ltot[Z] - 2.0));  /* Interior values */
 
   psi_nk(psi, &nk);
-  test_assert(nk == 2);
+  assert(nk == 2);
   
   /* Throughout set to rho1 */
 
@@ -265,27 +334,6 @@ static int test_charge1_set(psi_t * psi) {
     }
   }
 
-  psi_stats_reduce(psi, rho_min, rho_max, rho_tot, 0, comm);
-
-  if (pe_mpi_rank(psi->pe) == 0) {
-    /* psi all zero */
-    test_assert(fabs(rho_min[0] - 0.0) < DBL_EPSILON);
-    test_assert(fabs(rho_max[0] - 0.0) < DBL_EPSILON);
-    test_assert(fabs(rho_tot[0] - 0.0) < DBL_EPSILON);
-    /* First rho0 interior */
-    test_assert(fabs(rho_min[1] - 0.0) < DBL_EPSILON);
-    test_assert(fabs(rho_max[1] - rho0) < DBL_EPSILON);
-    test_assert(fabs(rho_tot[1] - 1.0) < DBL_EPSILON);
-    /* Next rho1 edge */
-    test_assert(fabs(rho_min[2] - 0.0) < DBL_EPSILON);
-    test_assert(fabs(rho_max[2] - rho1) < DBL_EPSILON);
-    test_assert(fabs(rho_tot[2] - 1.0) < FLT_EPSILON);
-    /* Total rho_elec */
-    test_assert(fabs(rho_min[3] + rho1) < DBL_EPSILON); /* + because valency is - */
-    test_assert(fabs(rho_max[3] - rho0) < DBL_EPSILON);
-    test_assert(fabs(rho_tot[3] - 0.0) < FLT_EPSILON);
-  }
-
   return 0;
 }
 
@@ -313,7 +361,7 @@ static int test_charge1_set(psi_t * psi) {
  *  We also recompute the RHS by differencing the SOR solution with
  *  a three point stencil in one dimension to provide a final check.
  *
- *  For variable epsilon, described by the f_vare_t fepsilon,
+ *  For variable epsilon, described by the var_epsilon_ft fepsilon,
  *  we set up a difference scheme using a three-point stencil:
  *
  *  e(i+1/2) psi(i+1) - [ e(i+1/2) + e(i-1/2) ] psi(i) + e(i-1/2) psi(i-1)
@@ -323,7 +371,7 @@ static int test_charge1_set(psi_t * psi) {
  *
  *****************************************************************************/
 
-static int test_charge1_exact(psi_t * obj, f_vare_t fepsilon) {
+static int test_charge1_exact(psi_t * obj, var_epsilon_ft fepsilon) {
 
   int k, kp1, km1, index;
   int nlocal[3];
@@ -401,7 +449,7 @@ static int test_charge1_exact(psi_t * obj, f_vare_t fepsilon) {
 
   /* Check the Gauss Jordan answer b[] against the answer from psi_t */
 
-  psi_abstol(obj, &tolerance);
+  tolerance = FLT_EPSILON;
   rhotot = 0.0;
   psi0 = 0.0;
 
@@ -440,7 +488,7 @@ static int test_charge1_exact(psi_t * obj, f_vare_t fepsilon) {
   }
 
   /* Total rho should be unchanged at zero. */
-  test_assert(fabs(rhotot) < tolerance);
+  assert(fabs(rhotot) < tolerance);
 
   free(b);
   free(a);
@@ -465,15 +513,3 @@ static int fepsilon_constant(fe_fake_t * fe, int index, double * epsilon) {
 
   return 0;
 }
-
-/*****************************************************************************
- *
- *  fepsilon_sinz
- *
- *  Permeativity is a function of z only:
- *
- *    e = e0 sin(pi z / Lz)
- *
- *  The - 0.5 is to make it symmetric about the centre line.
- *
- *****************************************************************************/

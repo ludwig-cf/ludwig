@@ -5,8 +5,9 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
+ *  (c) 2010-2023 The University of Edinburgh
+ *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
- *  (c) 2010-2022 The University of Edinburgh
  *
  *****************************************************************************/
 
@@ -70,4 +71,6 @@ __host__ __device__ int lees_edw_ic_to_buff(lees_edw_t * le, int ic, int di);
 __host__ __device__ void lees_edw_index_v(lees_edw_t * le, int ic[NSIMDVL],
 					  int jc[NSIMDVL], int kc[NSIMDVL],
 					  int index[NSIMDVL]);
+
+__host__ __device__ int lees_edw_buffer_duy(lees_edw_t * le, int ib);
 #endif

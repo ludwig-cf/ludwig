@@ -7,7 +7,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2010-2022 The University of Edinburgh
+ *  (c) 2010-2023 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -29,6 +29,12 @@
 
 static int test_parallel1(pe_t * pe, cs_t * cs);
 static int test_le_parallel2(pe_t * pe, cs_t * cs);
+
+int test_lees_edw_create(pe_t * pe, cs_t * cs);
+int test_lees_edw_buffer_displacement(pe_t * pe, cs_t * cs);
+int test_lees_edw_buffer_du(pe_t * pe, cs_t * cs);
+int test_lees_edw_buffer_duy(pe_t * pe, cs_t * cs);
+int test_lees_edw_plane_uy_now(pe_t * pe, cs_t * cs);
 
 int test_lees_edw_type_to_string(void);
 int test_lees_edw_type_from_string(void);
@@ -54,6 +60,12 @@ int test_le_suite(void) {
 
   physics_create(pe, &phys);
 
+  test_lees_edw_create(pe, cs);
+  test_lees_edw_buffer_displacement(pe, cs);
+  test_lees_edw_buffer_du(pe, cs);
+  test_lees_edw_buffer_duy(pe, cs);
+  test_lees_edw_plane_uy_now(pe, cs);
+
   test_parallel1(pe, cs);
   test_le_parallel2(pe, cs);
 
@@ -69,6 +81,228 @@ int test_le_suite(void) {
   pe_free(pe);
 
   return 0;
+}
+
+/*****************************************************************************
+ *
+ *  test_lees_edw_create
+ *
+ *****************************************************************************/
+
+int test_lees_edw_create(pe_t * pe, cs_t * cs) {
+
+  int ifail = 0;
+
+  /* No planes */
+  {
+    lees_edw_options_t opts = {.nplanes = 0};
+    lees_edw_t * le = NULL;
+
+    ifail = lees_edw_create(pe, cs, &opts, &le);
+    assert(le);
+    assert(lees_edw_nplane_total(le) == 0);
+    assert(lees_edw_nplane_local(le) == 0);
+    lees_edw_free(le);
+  }
+
+  /* Two planes */
+  {
+    lees_edw_options_t opts = {.nplanes = 2, .type = LE_SHEAR_TYPE_STEADY,
+                               .nt0 = 0, .uy = 0.01};
+    lees_edw_t * le = NULL;
+    ifail = lees_edw_create(pe, cs, &opts, &le);
+    assert(ifail == 0);
+    assert(lees_edw_nplane_total(le) == 2);
+    lees_edw_free(le);
+  }
+
+  return ifail;
+}
+
+/*****************************************************************************
+ *
+ *  test_lees_edw_buffer_displacement
+ *
+ *****************************************************************************/
+
+int test_lees_edw_buffer_displacement(pe_t * pe, cs_t * cs) {
+
+  int ifail = 0;
+
+  /* Steady displacement is uy.t, with a sign dependent on buffer ib */
+  {
+    int ib = 0;
+    double t = 2.0;
+    double dy = 0.0;
+
+    lees_edw_options_t opts = {.nplanes = 1, .type = LE_SHEAR_TYPE_STEADY,
+                               .nt0 = 0, .uy = 0.01};
+    lees_edw_t * le = NULL;
+
+    ifail = lees_edw_create(pe, cs, &opts, &le);
+    assert(ifail == 0);
+    lees_edw_buffer_displacement(le, ib, t, &dy);
+    if (fabs(dy + t*opts.uy) > DBL_EPSILON) ifail = -1; /* ib = 0 is -ve */
+    assert(ifail == 0);
+    lees_edw_free(le);
+  }
+
+  /* Oscillatory displacement */
+  /* The uy is just set to fix up the displacement at time t = 0.5;
+   * it's  not realistic */
+  {
+    lees_edw_options_t opts = {.nplanes = 1, .type = LE_SHEAR_TYPE_OSCILLATORY,
+                               .period = 2, .nt0 = 0, .uy = 4.0*atan(1.0)};
+    lees_edw_t * le = NULL;
+    int ib = 0;
+    double t = 0.5;
+    double dy = 0.0;
+
+    ifail = lees_edw_create(pe, cs, &opts, &le);
+    assert(ifail == 0);
+    lees_edw_buffer_displacement(le, ib, t, &dy);
+    if (fabs(dy - 1.0) > FLT_EPSILON) ifail = -1;
+    assert(ifail == 0);
+    lees_edw_free(le);
+  }
+
+  return ifail;
+}
+/*****************************************************************************
+ *
+ *  test_lees_edw_buffer_du
+ *
+ *****************************************************************************/
+
+int test_lees_edw_buffer_du(pe_t * pe, cs_t * cs) {
+
+  int ifail = 0;
+
+  lees_edw_options_t opts = {.nplanes = 1, .type = LE_SHEAR_TYPE_STEADY,
+                             .nt0 = 0, .uy = 0.01};
+  lees_edw_t * le = NULL;
+
+  ifail = lees_edw_create(pe, cs, &opts, &le);
+  assert(ifail == 0);
+
+  /* This follows duy */
+  {
+    int ib = 0;
+    int nhalo = -1;
+
+    lees_edw_nhalo(le, &nhalo);
+
+    for (int p = 0; p < lees_edw_nplane_local(le); p++) {
+      for (int nh = 0; nh < nhalo; nh++) {
+	int isgn = -1;
+	double u[3] = {-1.0, -1.0, -1.0};
+	lees_edw_buffer_du(le, ib, u);
+	assert(u[X] == 0.0 && u[Z] == 0.0);
+	if (fabs(u[Y] - opts.uy*isgn) > DBL_EPSILON) ifail = -1;
+	assert(ifail == 0);
+	ib++;
+      }
+      for (int nh = 0; nh < nhalo; nh++) {
+	int isgn = +1;
+	double u[3] = {-1.0, -1.0, -1.0};
+	lees_edw_buffer_du(le, ib, u);
+	assert(u[X] == 0.0 && u[Z] == 0.0);
+	if (fabs(u[Y] - opts.uy*isgn) > DBL_EPSILON) ifail = -1;
+	assert(ifail == 0);
+	ib++;
+      }
+    }
+  }
+
+  lees_edw_free(le);
+
+  return ifail;
+}
+
+/*****************************************************************************
+ *
+ *  test_lees_edw_buffer_duy
+ *
+ *****************************************************************************/
+
+int test_lees_edw_buffer_duy(pe_t * pe, cs_t * cs) {
+
+  int ifail = 0;
+
+  lees_edw_options_t opts = {.nplanes = 2, .type = LE_SHEAR_TYPE_STEADY,
+                             .nt0 = 0, .uy = 0.01};
+  lees_edw_t * le = NULL;
+
+  ifail = lees_edw_create(pe, cs, &opts, &le);
+  assert(ifail == 0);
+
+  /* Check pattern using alternative initialisation code */
+
+  {
+    int nhalo = -1;
+    int ib = 0; /* Increments by +1 moving along the buffer */
+
+    lees_edw_nhalo(le, &nhalo);
+
+    for (int p = 0; p < lees_edw_nplane_local(le); p++) {
+      for (int nh = 0; nh < nhalo; nh++) {
+	assert(lees_edw_buffer_duy(le, ib) == -1);
+	ib++;
+      }
+      for (int nh = 0; nh < nhalo; nh++) {
+	assert(lees_edw_buffer_duy(le, ib) == +1);
+	ib++;
+      }
+    }
+  }
+
+  lees_edw_free(le);
+
+  return ifail;
+}
+
+/*****************************************************************************
+ *
+ *  test_lees_edw_plane_uy_now
+ *
+ *****************************************************************************/
+
+int test_lees_edw_plane_uy_now(pe_t * pe, cs_t * cs) {
+
+  int ifail = 0;
+
+  /* Steady shear */
+  {
+    lees_edw_options_t opts = {.nplanes = 1, .type = LE_SHEAR_TYPE_STEADY,
+                               .nt0 = 0, .uy = 0.01};
+    lees_edw_t * le = NULL;
+    double t  = 0.5;           /* Steady result independent of t */
+    double uy = 0.0;
+
+    ifail = lees_edw_create(pe, cs, &opts, &le);
+    lees_edw_plane_uy_now(le, t, &uy);
+    if (fabs(uy - opts.uy) > DBL_EPSILON) ifail = -1;
+    assert(ifail == 0);
+    lees_edw_free(le);
+  }
+
+  /* Oscillatory shear */
+  /* Parameters are to get uy cos(omega.t) = 1 ... */
+  {
+    lees_edw_options_t opts = {.nplanes = 1, LE_SHEAR_TYPE_OSCILLATORY,
+                               .period = 3, .nt0 = 100, .uy = -2.0};
+    lees_edw_t * le = NULL;
+    double t  = 1.0 + 1.0*opts.nt0;
+    double uy = 0.0;
+
+    ifail = lees_edw_create(pe, cs, &opts, &le);
+    lees_edw_plane_uy_now(le, t, &uy);
+    if (fabs(uy - 1.0) > FLT_EPSILON) ifail = -1;
+    assert(ifail == 0);
+    lees_edw_free(le);
+  }
+
+  return ifail;
 }
 
 /*****************************************************************************

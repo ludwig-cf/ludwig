@@ -32,3 +32,4 @@ test:	mpi_tests.c $(LIBNAME) Makefile
 
 clean:
 	rm -rf mpi_serial.o $(LIBNAME) a.out
+	rm -f *gcno *gcda

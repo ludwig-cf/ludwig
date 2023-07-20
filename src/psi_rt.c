@@ -10,7 +10,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2012-2022 The University of Edinburgh
+ *  (c) 2012-2023 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -24,153 +24,10 @@
 
 #include "pe.h"
 #include "runtime.h"
+#include "io_info_args_rt.h"
 #include "psi_rt.h"
 #include "psi_init.h"
-#include "io_harness.h"
 #include "util_bits.h"
-
-/*****************************************************************************
- *
- *  psi_rt_param_init
- *
- *****************************************************************************/
-
-int psi_rt_init_param(pe_t * pe, rt_t * rt, psi_t * obj) {
-
-  int n;
-  int nk;
-  int nfreq;
-
-  int valency[2] = {+1, -1};  /* Valencies (should be +/-!)*/
-  double diffusivity[2] = {0.01, 0.01};
-
-  double eunit = 1.0;         /* Unit charge */
-  double temperature, beta;   /* Temperature (set by fluctuations) */
-  double epsilon = 0.0;       /* Reference permittivity */
-  double lbjerrum;            /* Bjerrum length; derived, not input */
-  double tolerance;           /* Numerical tolerance for SOR and Krylov subspace solver */
-  int    niteration;          /* Max. number of iterations */ 
-
-  int io_grid[3] = {1,1,1};
-  int io_format_in = IO_FORMAT_DEFAULT;
-  int io_format_out = IO_FORMAT_DEFAULT;
-  char value[BUFSIZ] = "BINARY";
-
-  int multisteps;             /* Number of substeps in NPE */
-  int skipsteps;              /* Poisson equation solved every skipstep timesteps */ 
-  double diffacc;             /* Relative accuracy of diffusion in NPE */
-
-  assert(pe);
-  assert(rt);
-
-  psi_nk(obj, &nk);
-  assert(nk == 2); /* nk must be two for the time being */
-
-  rt_int_parameter(rt, "electrokinetics_z0", valency);
-  rt_int_parameter(rt, "electrokinetics_z1", valency + 1);
-  rt_double_parameter(rt, "electrokinetics_d0", diffusivity);
-  rt_double_parameter(rt, "electrokinetics_d1", diffusivity + 1);
-
-  for (n = 0; n < nk; n++) {
-    psi_valency_set(obj, n, valency[n]);
-    psi_diffusivity_set(obj, n, diffusivity[n]);
-  }
-
-  rt_double_parameter(rt, "electrokinetics_eunit", &eunit);
-  rt_double_parameter(rt, "electrokinetics_epsilon", &epsilon);
-
-  psi_unit_charge_set(obj, eunit);
-  psi_epsilon_set(obj, epsilon);
-  psi_epsilon2_set(obj, epsilon); /* Default is no dielectric contrast */
-
-  n = rt_double_parameter(rt, "temperature", &temperature);
-
-  if (n == 0 || temperature <= 0.0) {
-    pe_fatal(pe, "Please set a temperature to use electrokinetics\n");
-  }
-
-  beta = 1.0/temperature;
-
-  psi_beta_set(obj, beta);
-  psi_bjerrum_length(obj, &lbjerrum);
-
-  pe_info(pe, "Electrokinetic species:    %2d\n", nk);
-  pe_info(pe, "Boltzmann factor:          %14.7e (T = %14.7e)\n", beta, temperature);
-  pe_info(pe, "Unit charge:               %14.7e\n", eunit);
-  pe_info(pe, "Permittivity:              %14.7e\n", epsilon);
-  pe_info(pe, "Bjerrum length:            %14.7e\n", lbjerrum);
-
-  for (n = 0; n < nk; n++) {
-    pe_info(pe, "Valency species %d:         %2d\n", n, valency[n]);
-    pe_info(pe, "Diffusivity species %d:     %14.7e\n", n, diffusivity[n]);
-  }
-
-  /* Multisteps and diffusive accuracy in NPE */
-
-  n = rt_int_parameter(rt, "electrokinetics_multisteps", &multisteps);
-  if (n == 1) psi_multisteps_set(obj, multisteps);
-  n = rt_int_parameter(rt, "electrokinetics_skipsteps", &skipsteps);
-  if (n == 1) psi_skipsteps_set(obj, skipsteps);
-  n = rt_double_parameter(rt, "electrokinetics_diffacc", &diffacc);
-  if (n == 1) psi_diffacc_set(obj, diffacc);
-
-  psi_multisteps(obj, &multisteps);
-  pe_info(pe, "Number of multisteps:       %d\n", multisteps);
-  pe_info(pe, "Number of skipsteps:        %d\n", psi_skipsteps(obj));
-  psi_diffacc(obj, &diffacc);
-  pe_info(pe, "Diffusive accuracy in NPE: %14.7e\n", diffacc);
-
-  /* Tolerances and Iterations */
-
-  n = rt_double_parameter(rt, "electrokinetics_rel_tol", &tolerance);
-  if (n == 1) psi_reltol_set(obj, tolerance);
-  n = rt_double_parameter(rt, "electrokinetics_abs_tol", &tolerance);
-  if (n == 1) psi_abstol_set(obj, tolerance);
-  n = rt_int_parameter(rt, "electrokinetics_maxits", &niteration);
-  if (n == 1) psi_maxits_set(obj, niteration);
-
-  psi_reltol(obj, &tolerance);
-  pe_info(pe, "Relative tolerance:  %20.7e\n", tolerance);
-  psi_abstol(obj, &tolerance);
-  pe_info(pe, "Absolute tolerance:  %20.7e\n", tolerance);
-  psi_maxits(obj, &niteration);
-  pe_info(pe, "Max. no. of iterations:  %16d\n", niteration);
-
-  /* External electric field */
-
-  {
-    double e0[3] = {0};
-    rt_double_parameter_vector(rt, "electric_e0", e0);
-    psi_e0_set(obj, e0);
-  }
-
-  /* Output */
-
-  n = 0;
-  n += rt_int_parameter(rt, "freq_statistics", &nfreq);
-  n += rt_int_parameter(rt, "freq_psi_resid", &nfreq);
-  if (n > 0) psi_nfreq_set(obj, nfreq);;
-
-
-  /* I/O */
-
-  rt_int_parameter_vector(rt, "default_io_grid", io_grid);
-  rt_string_parameter(rt, "psi_format", value, BUFSIZ);
-
-  if (strcmp(value, "ASCII") == 0) {
-    io_format_in = IO_FORMAT_ASCII;
-    io_format_out = IO_FORMAT_ASCII;
-  }
-
-  pe_info(pe, "I/O decomposition:          %d %d %d\n",
-	  io_grid[0], io_grid[1],
-       io_grid[2]);
-  pe_info(pe, "I/O format:                 %s\n", value);
-
-  psi_init_io_info(obj, io_grid, io_format_in, io_format_out);
-
-  return 0;
-}
 
 /*****************************************************************************
  *
@@ -197,10 +54,11 @@ int psi_rt_init_rho(pe_t * pe, rt_t * rt, psi_t * obj, map_t * map) {
   double ld2;                 /* Second Debye length for dielectric contrast */
   double eps1, eps2;          /* Dielectric permittivities */
 
-  io_info_t * iohandler;
-
   assert(pe);
   assert(rt);
+
+  psi_options_t opts = {.e = obj->e, .beta = obj->beta,
+			.epsilon1 = obj->epsilon, .epsilon2 = obj->epsilon2};
 
   /* Initial charge densities */
 
@@ -211,19 +69,30 @@ int psi_rt_init_rho(pe_t * pe, rt_t * rt, psi_t * obj, map_t * map) {
   rt_string_parameter(rt, "electrokinetics_init", value, BUFSIZ);
 
   if (strcmp(value, "gouy_chapman") == 0) {
+    double ld_actual = 0.0;
     pe_info(pe, "Initial conditions:         %s\n", "Gouy Chapman");
 
     n = rt_double_parameter(rt, "electrokinetics_init_rho_el", &rho_el);
     if (n == 0) pe_fatal(pe, "... please set electrokinetics_init_rho_el\n");
-    pe_info(pe, "Initial condition rho_el:  %14.7e\n", rho_el);
-    psi_debye_length(obj, rho_el, &ld);
-    pe_info(pe, "Debye length:              %14.7e\n", ld);
 
     n = rt_double_parameter(rt, "electrokinetics_init_sigma", &sigma);
     if (n == 0) pe_fatal(pe, "... please set electrokinetics_init_sigma\n");
-    pe_info(pe, "Initial condition sigma:   %14.7e\n", sigma);
 
+    psi_debye_length1(&opts, rho_el, &ld);
     psi_init_gouy_chapman(obj, map, rho_el, sigma);
+
+    {
+      /* We want a real Debye length from the actual charge/countercharge
+	 densities that have been initialisated in the fluid. */
+      int index = cs_index(obj->cs, 2, 1, 1);
+      double rho_actual = 0.0;
+      psi_ionic_strength(obj, index, &rho_actual);
+      psi_debye_length1(&opts, rho_actual, &ld_actual);
+    }
+    pe_info(pe, "Initial condition rho_el:  %14.7e\n", rho_el);
+    pe_info(pe, "Debye length:              %14.7e\n", ld);
+    pe_info(pe, "Debye length (actual):     %14.7e\n", ld_actual);
+    pe_info(pe, "Initial condition sigma:   %14.7e\n", sigma);
   }
 
   if (strcmp(value, "liquid_junction") == 0) {
@@ -232,12 +101,24 @@ int psi_rt_init_rho(pe_t * pe, rt_t * rt, psi_t * obj, map_t * map) {
     n = rt_double_parameter(rt, "electrokinetics_init_rho_el", &rho_el);
     if (n == 0) pe_fatal(pe, "... please set electrokinetics_init_rho_el\n");
     pe_info(pe, "Initial condition rho_el: %14.7e\n", rho_el);
-    psi_debye_length(obj, rho_el, &ld);
+    psi_debye_length1(&opts, rho_el, &ld);
     pe_info(pe, "Debye length:             %14.7e\n", ld);
 
     n = rt_double_parameter(rt, "electrokinetics_init_delta_el", &delta_el);
     if (n == 0) pe_fatal(pe, "... please set electrokinetics_init_delta_el\n");
     pe_info(pe, "Initial condition delta_el: %14.7e\n", delta_el);
+
+    {
+      /* psi_p is the saturation potential */
+      double beta   = obj->beta;
+      double e      = obj->e;
+      double dplus  = obj->diffusivity[0];
+      double dminus = obj->diffusivity[1];
+      double psi_p  = dplus*dminus*delta_el/(beta*e*(dplus + dminus)*rho_el);
+      double tau_e  = obj->epsilon/(beta*e*e*(dplus + dminus)*rho_el);
+      pe_info(pe, "Saturation potential:        %14.7e\n", psi_p);
+      pe_info(pe, "Saturation timescale:        %14.7e\n", tau_e);
+    }
 
     psi_init_liquid_junction(obj, rho_el, delta_el);
   }
@@ -248,7 +129,7 @@ int psi_rt_init_rho(pe_t * pe, rt_t * rt, psi_t * obj, map_t * map) {
     n = rt_double_parameter(rt, "electrokinetics_init_rho_el", &rho_el);
     if (n == 0) pe_fatal(pe, "... please set electrokinetics_init_rho_el\n");
     pe_info(pe, "Initial condition rho_el: %14.7e\n", rho_el);
-    psi_debye_length(obj, rho_el, &ld);
+    psi_debye_length1(&opts, rho_el, &ld);
     pe_info(pe, "Debye length:             %14.7e\n", ld);
 
     /* Call permittivities and check for dielectric contrast */
@@ -258,7 +139,7 @@ int psi_rt_init_rho(pe_t * pe, rt_t * rt, psi_t * obj, map_t * map) {
 
     /* Unless really the same number ... */
     if (0 == util_double_same(eps1, eps2)) {
-      psi_debye_length2(obj, rho_el, &ld2);
+      psi_debye_length2(&opts, rho_el, &ld2);
       pe_info(pe, "Second Debye length:      %14.7e\n", ld2);
     }
 
@@ -266,12 +147,11 @@ int psi_rt_init_rho(pe_t * pe, rt_t * rt, psi_t * obj, map_t * map) {
   }
 
   if (strcmp(value, "from_file") == 0) {
-
-    sprintf(filestub, "%s", "psi-00000000");	 
-    pe_info(pe, "Initialisation requested from file %s.001-001\n", filestub);
-    psi_io_info(obj, &iohandler);	 
-    io_read_data(iohandler, filestub, obj);
-
+    io_event_t event1 = {0};
+    io_event_t event2 = {0};
+    pe_info(pe, "Initialisation requested from file(s)\n");
+    field_io_read(obj->psi, 0, &event1);
+    field_io_read(obj->rho, 0, &event2);
   }
 
   if (strcmp(value, "point_charges") == 0) {
@@ -281,7 +161,7 @@ int psi_rt_init_rho(pe_t * pe, rt_t * rt, psi_t * obj, map_t * map) {
     n = rt_double_parameter(rt, "electrokinetics_init_rho_el", &rho_el);
     if (n == 0) pe_fatal(pe, "... please set electrokinetics_init_rho_el\n");
     pe_info(pe, "Initial condition rho_el: %14.7e\n", rho_el);
-    psi_debye_length(obj, rho_el, &ld);
+    psi_debye_length1(&opts, rho_el, &ld);
     pe_info(pe, "Debye length:             %14.7e\n", ld);
 
     /* Call permittivities and check for dielectric contrast */
@@ -290,7 +170,7 @@ int psi_rt_init_rho(pe_t * pe, rt_t * rt, psi_t * obj, map_t * map) {
 
     /* Unless really the same number... */
     if (0 == util_double_same(eps1, eps2)) {
-      psi_debye_length2(obj, rho_el, &ld2);
+      psi_debye_length1(&opts, rho_el, &ld2);
       pe_info(pe, "Second Debye length:      %14.7e\n", ld2);
     }
     /* Set background charge densities */
@@ -302,6 +182,178 @@ int psi_rt_init_rho(pe_t * pe, rt_t * rt, psi_t * obj, map_t * map) {
     pe_info(pe, "\nInitialisation of point or surface charges from file %s.001-001\n", filestub);
     psi_init_sigma(obj,map);
   }
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  psi_options_rt
+ *
+ *****************************************************************************/
+
+int psi_options_rt(pe_t * pe, cs_t * cs, rt_t * rt, psi_options_t * popts) {
+
+  psi_options_t opts = psi_options_default(cs->param->nhalo);
+
+  assert(pe);
+  assert(cs);
+  assert(rt);
+
+  /* Physics */
+  /* The Boltzmann factor comes from the temperature */
+  /* Can use "epsilon" or specific keys "epsilon1" and "epsilon2" */
+
+  rt_double_parameter(rt, "electrokinetics_eunit", &opts.e);
+
+  {
+    double t = -1.0;
+    rt_double_parameter(rt, "temperature", &t);
+    if (t <= 0.0) pe_fatal(pe, "Please use a +ve temperature for electro\n");
+    opts.beta = 1.0/t;
+  }
+
+  rt_double_parameter(rt, "electrokinetics_epsilon", &opts.epsilon1);
+  rt_double_parameter(rt, "electrokinetics_epsilon", &opts.epsilon2);
+  rt_double_parameter(rt, "electrokinetics_epsilon1", &opts.epsilon1);
+  rt_double_parameter(rt, "electrokinetics_epsilon2", &opts.epsilon2);
+
+  rt_double_parameter_vector(rt, "electric_e0", opts.e0);
+
+  rt_double_parameter(rt, "electrokinetics_d0", &opts.diffusivity[0]);
+  rt_double_parameter(rt, "electrokinetics_d1", &opts.diffusivity[1]);
+
+  rt_int_parameter(rt,    "electrokinetics_z0", &opts.valency[0]);
+  rt_int_parameter(rt,    "electrokinetics_z1", &opts.valency[1]);
+
+  /* Poisson solver */
+  /* There are two possible sources of nfreq */
+
+  {
+    /* Solver type */
+    char str[BUFSIZ] = {0};
+    strcpy(str, psi_poisson_solver_to_string(psi_poisson_solver_default()));
+    rt_string_parameter(rt, "electrokinetics_solver_type", str, BUFSIZ);
+    opts.solver.psolver = psi_poisson_solver_from_string(str);
+    switch (opts.solver.psolver) {
+    case (PSI_POISSON_SOLVER_INVALID):
+      /* Not recognised */
+      pe_info(pe, "electrokinetics_solver_type: %s\n", str);
+      pe_info(pe, "is not recongnised\n");
+      pe_fatal(pe, "Please check and try again!\n");
+      break;
+    case (PSI_POISSON_SOLVER_PETSC):
+      /* Check Petsc is actually available */
+      {
+	int isAvailable = 0;
+	PetscInitialised(&isAvailable);
+	if (isAvailable == 0) {
+	  pe_info(pe, "electrokinetics_solver_type:  petsc\n");
+	  pe_info(pe, "Petsc has not been compiled in this build\n");
+	  pe_info(pe, "Please use the `sor` solver.\n");
+	  pe_fatal(pe, "Please check the input and try again!\n");
+	}
+      }
+      break;
+    default:
+      ; /* ok */
+    }
+  }
+
+  /* Stencil must be available. */
+  if (rt_int_parameter(rt, "electrokinetics_solver_stencil",
+		       &opts.solver.nstencil)) {
+    stencil_t * s = NULL;
+    int ifail = stencil_create(opts.solver.nstencil, &s);
+    if (ifail != 0) {
+      pe_info(pe, "electroknietics_solver_stencil: %d\n", opts.solver.nstencil);
+      pe_fatal(pe, "Not supported. Please check and try again!\n");
+    }
+    if (s) stencil_free(&s);
+  }
+
+  rt_int_parameter(rt, "electrokinetics_maxits",  &opts.solver.maxits);
+  rt_int_parameter(rt, "freq_statistics", &opts.solver.nfreq);
+  rt_int_parameter(rt, "freq_psi_resid",  &opts.solver.nfreq);
+
+  /* Accept either form (older "rel_tol" "abs_tol" to be removed) */
+  rt_double_parameter(rt, "electrokinetics_rel_tol", &opts.solver.reltol);
+  rt_double_parameter(rt, "electrokinetics_abs_tol", &opts.solver.abstol);
+  rt_double_parameter(rt, "electrokinetics_solver_reltol", &opts.solver.reltol);
+  rt_double_parameter(rt, "electrokinetics_solver_abstol", &opts.solver.abstol);
+
+  /* NPE time splitting and criteria */
+
+  rt_int_parameter(rt, "electrokinetics_multisteps", &opts.nsmallstep);
+  rt_double_parameter(rt, "electrokinetics_diffacc", &opts.diffacc);
+
+  /* Field quantites */
+  /* At the moment there are two fields (potential and charge densities)
+   * but only one input key "psi" involved */
+
+  {
+    opts.psi = field_options_ndata_nhalo(1, cs->param->nhalo);
+    opts.rho = field_options_ndata_nhalo(opts.nk, cs->param->nhalo);
+
+    io_info_args_rt(rt, RT_FATAL, "psi", IO_INFO_READ_WRITE, &opts.psi.iodata);
+    io_info_args_rt(rt, RT_FATAL, "psi", IO_INFO_READ_WRITE, &opts.rho.iodata);
+
+    if (opts.psi.iodata.input.mode != IO_MODE_MPIIO) {
+      pe_fatal(pe, "Electrokinetics i/o must use psi_io_mode mpiio\n");
+    }
+  }
+
+  *popts = opts;
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  psi_info
+ *
+ *  Could be moved elsewhere.
+ *
+ *****************************************************************************/
+
+int psi_info(pe_t * pe, const psi_t * psi) {
+
+  double lbjerrum = 0.0;
+
+  assert(pe);
+  assert(psi);
+
+  /* Refactoring has casued a slight awkwardnesss here... */
+  {
+    psi_options_t opts = {.e = psi->e, .beta = psi->beta,
+			  .epsilon1 = psi->epsilon};
+    psi_bjerrum_length1(&opts, &lbjerrum);
+  }
+
+  /* Information */
+
+  pe_info(pe, "Electrokinetic species:    %2d\n", psi->nk);
+  pe_info(pe, "Boltzmann factor:          %14.7e (T = %14.7e)\n",
+	  psi->beta, 1.0/psi->beta);
+  pe_info(pe, "Unit charge:               %14.7e\n", psi->e);
+  pe_info(pe, "Permittivity:              %14.7e\n", psi->epsilon);
+  pe_info(pe, "Bjerrum length:            %14.7e\n", lbjerrum);
+
+  for (int n = 0; n < psi->nk; n++) {
+    pe_info(pe, "Valency species %d:         %2d\n", n, psi->valency[n]);
+    pe_info(pe, "Diffusivity species %d:     %14.7e\n", n, psi->diffusivity[n]);
+  }
+
+  /* Add full information ... */
+  pe_info(pe, "Solver type:         %20s\n",
+	  psi_poisson_solver_to_string(psi->solver.psolver));
+  pe_info(pe, "Solver stencil points:   %16d\n", psi->solver.nstencil);
+  pe_info(pe, "Relative tolerance:  %20.7e\n",   psi->solver.reltol);
+  pe_info(pe, "Absolute tolerance:  %20.7e\n",   psi->solver.abstol);
+  pe_info(pe, "Max. no. of iterations:  %16d\n", psi->solver.maxits);
+
+  pe_info(pe, "Number of multisteps:       %d\n", psi->multisteps);
+  pe_info(pe, "Diffusive accuracy in NPE: %14.7e\n", psi->diffacc);
 
   return 0;
 }

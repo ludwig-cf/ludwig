@@ -12,7 +12,7 @@
 #  Edinburgh Soft Matter and Statistical Physics Group and
 #  Edinburgh Parallel Computing Centre
 #
-#  (c) 2010-2022 The University of Edinburgh
+#  (c) 2010-2023 The University of Edinburgh
 #
 #  Contributing authors:
 #  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -45,6 +45,11 @@ LIBS = $(BLIBS) $(SRC)/libludwig.a -lm
 
 MPI_RUN = $(LAUNCH_MPIRUN_CMD) $(MPIRUN_NTASK_FLAG) $(MPIRUN_NTASKS)
 
+ifdef HAVE_PETSC
+INCL += $(PETSC_INCL)
+LIBS += $(PETSC_LIB)
+endif
+
 #------------------------------------------------------------------------------
 #  Rules
 #------------------------------------------------------------------------------
@@ -61,6 +66,7 @@ test:
 
 clean:
 	$(RM) core *.o a.out
+	$(RM) -f *gcno *gcda
 
 #------------------------------------------------------------------------------
 #  Implicit Rules

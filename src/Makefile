@@ -99,3 +99,4 @@ util_sum.o:	util_sum.c
 .PHONY : clean
 clean:
 	rm -f *.o $(EXECUTABLE) $(LIBRARY)
+	rm -f *.gcno *.gcda

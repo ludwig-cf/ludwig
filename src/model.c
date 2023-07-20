@@ -10,7 +10,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2010-2022 The University of Edinburgh
+ *  (c) 2010-2023 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -113,6 +113,7 @@ int lb_data_create(pe_t * pe, cs_t * cs, const lb_data_options_t * options,
       if (obj->fprime == NULL) pe_fatal(pe, "malloc(lb->fprime) failed\n");
       if (options->usefirsttouch) {
 	lb_data_touch(obj);
+	pe_info(pe, "Host data:        first touch\n");
       }
       else {
 	memset(obj->f, 0, sz);
@@ -541,9 +542,11 @@ __host__ void lb_data_touch_kernel(cs_limits_t lim, lb_t * lb) {
     int kc = lim.kmin + (ik % stry)/strz;
     int index = cs_index(lb->cs, ic, jc, kc);
     for (int p = 0; p < lb->nvel; p++) {
-      int lindex = LB_ADDR(lb->nsite, lb->ndist, lb->nvel, index, 1, p);
-      lb->f[lindex] = 0.0;
-      lb->fprime[lindex] = 0.0;
+      for (int n = 0; n < lb->ndist; n++) {
+	int lindex = LB_ADDR(lb->nsite, lb->ndist, lb->nvel, index, n, p);
+	lb->f[lindex] = 0.0;
+	lb->fprime[lindex] = 0.0;
+      }
     }
   }
 
@@ -1604,7 +1607,7 @@ int lb_io_write(lb_t * lb, int timestep, io_event_t * event) {
   if (meta->iswriten == 0) {
     /* No comments at the moment */
     cJSON * comments = NULL;
-    int ifail = io_metadata_write(meta, "dist", comments);
+    int ifail = io_metadata_write(meta, "dist", NULL, comments);
     if (ifail == 0) lb->output.iswriten = 1;
   }
 

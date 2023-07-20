@@ -8,7 +8,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2010-2021 The University of Edinburgh
+ *  (c) 2010-2023 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -102,7 +102,7 @@ enum timer_id {TIMER_TOTAL = 0,
 	       TIMER_ELECTRO_POISSON,
 	       TIMER_ELECTRO_NPEQ,
 	       TIMER_LAP,
-	       TIMER_FREE1,
+	       TIMER_DIAGNOSTIC_OUTPUT,
 	       TIMER_FREE2,
                TIMER_FREE3,
 	       TIMER_FREE4,
