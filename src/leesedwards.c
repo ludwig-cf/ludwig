@@ -207,6 +207,21 @@ __host__ int lees_edw_target(lees_edw_t *le, lees_edw_t **target) {
 
 /*****************************************************************************
  *
+ \*  lees_edw_cs
+ *
+ *****************************************************************************/
+
+__host__ int lees_edw_cs(lees_edw_t * le, cs_t ** cs) {
+    assert(le);
+    assert(cs);
+
+    *cs = le->cs;
+
+    return 0;
+}
+
+/*****************************************************************************
+ *
  *  lees_edw_init
  *
  *  We assume there are a given number of equally-spaced planes

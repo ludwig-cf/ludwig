@@ -67,34 +67,34 @@ void copyModelToDevice(lb_model_t *h_model, lb_model_t *d_model) {
     tdpMemcpy(&(d_model->cs2), &(h_model->cs2), sizeof(double), tdpMemcpyHostToDevice);
 }
 
-cudaError_t copy_buffer_duy_to_device(lees_edw_s* d_lees_edw, int* h_buffer_duy, size_t nxbuffer) {
-    // First, allocate memory on the device for the buffer_duy array
-    int* d_buffer_duy;
-    cudaError_t err = tdpMalloc((void**) &d_buffer_duy, nxbuffer * sizeof(int));
+// cudaError_t copy_buffer_duy_to_device(lees_edw_s* d_lees_edw, int* h_buffer_duy, size_t nxbuffer) {
+//     // First, allocate memory on the device for the buffer_duy array
+//     int* d_buffer_duy;
+//     cudaError_t err = tdpMalloc((void**) &d_buffer_duy, nxbuffer * sizeof(int));
 
-    if (err != cudaSuccess) {
-        fprintf(stderr, "Failed to allocate device memory for buffer_duy (error code %s)!\n", cudaGetErrorString(err));
-        return err;
-    }
+//     if (err != cudaSuccess) {
+//         fprintf(stderr, "Failed to allocate device memory for buffer_duy (error code %s)!\n", cudaGetErrorString(err));
+//         return err;
+//     }
 
-    // Then, copy the data from the host array to the newly allocated device array
-    err = tdpMemcpy(d_buffer_duy, h_buffer_duy, nxbuffer * sizeof(int), tdpMemcpyHostToDevice);
+//     // Then, copy the data from the host array to the newly allocated device array
+//     err = tdpMemcpy(d_buffer_duy, h_buffer_duy, nxbuffer * sizeof(int), tdpMemcpyHostToDevice);
     
-    if (err != cudaSuccess) {
-        fprintf(stderr, "Failed to copy buffer_duy from host to device (error code %s)!\n", cudaGetErrorString(err));
-        return err;
-    }
+//     if (err != cudaSuccess) {
+//         fprintf(stderr, "Failed to copy buffer_duy from host to device (error code %s)!\n", cudaGetErrorString(err));
+//         return err;
+//     }
 
-    // Finally, update the pointer in the device structure to point to the new device array
-    err = tdpMemcpy(&(d_lees_edw->buffer_duy), &d_buffer_duy, sizeof(int*), tdpMemcpyHostToDevice);
+//     // Finally, update the pointer in the device structure to point to the new device array
+//     err = tdpMemcpy(&(d_lees_edw->buffer_duy), &d_buffer_duy, sizeof(int*), tdpMemcpyHostToDevice);
 
-    if (err != cudaSuccess) {
-        fprintf(stderr, "Failed to copy buffer_duy pointer to device structure (error code %s)!\n", cudaGetErrorString(err));
-        return err;
-    }
+//     if (err != cudaSuccess) {
+//         fprintf(stderr, "Failed to copy buffer_duy pointer to device structure (error code %s)!\n", cudaGetErrorString(err));
+//         return err;
+//     }
 
-    return cudaSuccess;
-}
+//     return cudaSuccess;
+// }
 
 __global__ void interpolation(lb_t *lb, lees_edw_t *le, double t, kernel_ctxt_t * ktxt) {
     int plane, ic, jc, kc;
@@ -281,14 +281,17 @@ __host__ int lb_le_apply_boundary_conditions(lb_t *lb, lees_edw_t *le) {
         /* Everything must be done on host at the moment (slowly) ... */
         /* ... and copy back at the end */
         lees_edw_t * le_target;
+        cs_t *cs;
         int ndevice;
         tdpGetDeviceCount(&ndevice);
+
         
         if (ndevice > 0) {
             copyModelToDevice(&lb->model, &lb->target->model);
             
             lees_edw_target(le, &le_target);
-            copy_buffer_duy_to_device(le_target, le->buffer_duy, le->param->nxbuffer);
+            lees_edw_cs(le_target, &cs);
+           // copy_buffer_duy_to_device(le_target, le->buffer_duy, le->param->nxbuffer);
         }
        
         
@@ -305,7 +308,7 @@ __host__ int lb_le_apply_boundary_conditions(lb_t *lb, lees_edw_t *le) {
         limits.jmin = 1; limits.jmax = nlocal[Y];
         limits.kmin = 1; limits.kmax = nlocal[Z];
 
-        kernel_ctxt_create(le->cs, NSIMDVL, limits, &ctxt);
+        kernel_ctxt_create(cs, NSIMDVL, limits, &ctxt);
         kernel_ctxt_launch_param(ctxt, &nblk, &ntpb);
 
         tdpLaunchKernel(le_reproject, nblk, ntpb, 0, 0, lb->target, le_target, ctxt->target);
@@ -459,11 +462,10 @@ void le_displace_and_interpolate(lb_t *lb, lees_edw_t *le) {
     int nlocal[3];
     int nplane;
     int ndist;
-    int nprop;
-    int displacement;
     double t;
     physics_t *phys = NULL;
     lees_edw_t * le_target;
+    cs_t * cs;
 
     assert(lb);
     assert(le);
@@ -473,6 +475,7 @@ void le_displace_and_interpolate(lb_t *lb, lees_edw_t *le) {
     physics_ref(&phys);
     lb_ndist(lb, &ndist);
     lees_edw_target(le, &le_target);
+    lees_edw_cs(le, &cs);
 
     t = 1.0 * physics_control_timestep(phys);
 
@@ -489,7 +492,7 @@ void le_displace_and_interpolate(lb_t *lb, lees_edw_t *le) {
     limits.jmin = 1; limits.jmax = nlocal[Y];
     limits.kmin = 1; limits.kmax = nlocal[Z];
 
-    kernel_ctxt_create(le->cs, NSIMDVL, limits, &ctxt);
+    kernel_ctxt_create(cs, NSIMDVL, limits, &ctxt);
     kernel_ctxt_launch_param(ctxt, &nblk, &ntpb);
 
     tdpLaunchKernel(interpolation, nblk, ntpb, 0, 0, lb->target, le_target, t, ctxt->target);
