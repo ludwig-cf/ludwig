@@ -27,6 +27,7 @@
 #include "colloid_sums.h"
 #include "util.h"
 #include "util_ellipsoid.h"
+#include "util_vector.h"
 #include "wall.h"
 #include "bbl.h"
 #include "colloid.h"
@@ -1039,8 +1040,8 @@ int bbl_update_ellipsoid(bbl_t * bbl, wall_t * wall, colloid_t * pc,
   if (pc->s.isfixeds == 0) {
     quaternion_from_omega(owathalf,0.5,qbar);
     quaternion_product(qbar,pc->s.quater,quaternext);
-    copy_vectortovector(pc->s.quater,pc->s.quaterold,4);
-    copy_vectortovector(quaternext,pc->s.quater,4);
+    util_vector_copy(4, pc->s.quater, pc->s.quaterold);
+    util_vector_copy(4, quaternext, pc->s.quater);
   }
   /*Saving the orientation if it is active - can be converted to an if loop*/
   rotate_tobodyframe_quaternion(pc->s.quater, v1, pc->s.m);

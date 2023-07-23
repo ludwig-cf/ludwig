@@ -23,6 +23,7 @@
 #include "util.h"
 #include "util_bits.h"
 #include "util_ellipsoid.h"
+#include "util_vector.h"
 #include "coords.h"
 #include "runtime.h"
 #include "physics.h"
@@ -644,7 +645,7 @@ int colloids_rt_state_stub(pe_t * pe, rt_t * rt, colloids_info_t * cinfo,
   }
 
   quaternions_from_eulerangles(euler[X],euler[Y], euler[Z], state->quater);
-  copy_vectortovector(state->quater,state->quaterold,4);
+  util_vector_copy(4, state->quater, state->quaterold);
 
   /* If active and ellipsoid, assign the squirmer orientation as along the
    * long axis*/

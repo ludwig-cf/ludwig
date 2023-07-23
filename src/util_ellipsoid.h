@@ -24,7 +24,6 @@
 
 __host__ __device__ void print_vector_onscreen(const double *a, const int n);
 __host__ __device__ void print_matrix_onscreen(const double a[3][3]);
-__host__ __device__ void normalise_unit_vector(double *a, const int n);
 __host__ __device__ void orthonormalise_vector_b_to_a(double *a, double *b);
 __host__ __device__ void matrix_product(const double a[3][3], const double b[3][3], double result[3][3]);
 __host__ __device__ void matrix_transpose(const double a[3][3], double result[3][3]);
@@ -34,7 +33,6 @@ __host__ __device__ void quaternion_product(const double a[4], const double b[4]
 __host__ __device__ void rotate_tobodyframe_quaternion(const double q[4], const double a[3], double      b[3]);
 __host__ __device__ void inertia_tensor_quaternion(const double q[4], const double a[3], double      b[3][3]);
 __host__ __device__ void quaternion_from_omega(const double omega[3], const double f, double qbar[4]);
-__host__ __device__ void copy_vectortovector(double const a[3], double b[3], const int n);
 __host__ __device__ void Jeffery_omega_predicted(double const r, double const quater[4], double const gdot, double opred[3], double angpred[2]);
 __host__ __device__ void ellipsoid_nearwall_predicted(double const r, double const h, double const quater[4], double opred[3], double angpred[2]);
  __host__ __device__ void settling_velocity_prolate(double const r, double const f, double const mu, double const ela, double U[2]);

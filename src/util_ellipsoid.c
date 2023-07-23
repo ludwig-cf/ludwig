@@ -16,16 +16,10 @@
 
 #include <assert.h>
 #include <stdio.h>
-#include <stdlib.h>
 #include <math.h>
-#include <float.h>
-#include <stdio.h>
-#include <stdlib.h>
-
-#include <ctype.h>
-#include <string.h>
 
 #include "util.h"
+#include "util_vector.h"
 #include "util_ellipsoid.h"
 
 /*****************************************************************************
@@ -48,22 +42,6 @@
   b[1]=b[1]/mag;
   b[2]=b[2]/mag;
   return ;
-}
-
-
-/*****************************************************************************
- *
- *  Normalise a vector a unit vector
- *
- *****************************************************************************/
-
-__host__ __device__ void normalise_unit_vector(double *a ,const int n){
-  
-  double magsum = 0.0;
-  for(int i = 0; i < n; i++) {magsum+=a[i]*a[i];}
-  double mag = sqrt(magsum);
-  for(int i = 0; i < n; i++) {a[i]=a[i]/mag;}
-  return ; 
 }
 
 /*****************************************************************************
@@ -265,18 +243,6 @@ __host__ __device__ void quaternions_from_eulerangles(const double phi, const do
   }
 
 /*****************************************************************************
- *
- *  Copy a vector to another
- *
- ****************************************************************************/
-__host__ __device__ void copy_vectortovector(const double a[3], double b[3], int n){
-  for(int i=0; i < n; i++){
-    b[i]=a[i];
-  }
-  return ;
-  }
-
-/*****************************************************************************
 *
 *  Far field predictions of Mitchell and Spagnolie
 *
@@ -357,7 +323,7 @@ __host__ __device__ void Jeffery_omega_predicted(double const r, double const qu
 __host__ __device__ void euler_from_vectors(double a[3], double b[3], double *euler) {
 
   double c[3],r[3][3];
-  normalise_unit_vector(a, 3);
+  util_vector_normalise(3, a);
   orthonormalise_vector_b_to_a(a, b);
   cross_product(a,b,c);
   dcm_from_vectors(a,b,c,r);

@@ -28,6 +28,7 @@
 #include "psi_colloid.h"
 #include "util.h"
 #include "util_ellipsoid.h"
+#include "util_vector.h"
 #include "wall.h"
 #include "build.h"
 #include "blue_phase.h"
@@ -258,7 +259,9 @@ __host__ int is_site_inside_colloid(colloid_t * pc, double rsep[3]) {
     rotate_tobodyframe_quaternion(quater, worldv1, elev1);
     rotate_tobodyframe_quaternion(quater, worldv2, elev2);
     cross_product(elev1,elev2,elev3);
-    normalise_unit_vector(elev3,3);
+
+    util_vector_normalise(3, elev3);
+
     for(int i = 0; i < 3; i++) {
       elQ[i][0]=elev1[i];
     }
