@@ -10,7 +10,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2007-2022 The University of Edinburgh.
+ *  (c) 2007-2023 The University of Edinburgh.
  *
  *  Contributing authors:
  *  Grace Kim
@@ -368,7 +368,7 @@ static int ewald_sum_sin_cos_terms(ewald_t * ewald) {
 
     int kn = 0;
 		
-    if (pc->s.type == COLLOID_TYPE_SUBGRID) continue;
+    if (pc->s.magnetic == 0) continue;
 
     ewald_set_kr_table(ewald, pc->s.r);
 
@@ -525,7 +525,7 @@ int ewald_real_space_sum(ewald_t * ewald) {
 
 	for ( ; p_c1; p_c1 = p_c1->next) {
 
-          if (p_c1->s.type == COLLOID_TYPE_SUBGRID) continue;
+	  if (p_c1->s.magnetic == 0) continue;
 
 	  for (dx = -1; dx <= +1; dx++) {
 	    for (dy = -1; dy <= +1; dy++) {
@@ -539,7 +539,7 @@ int ewald_real_space_sum(ewald_t * ewald) {
 
 		for ( ; p_c2; p_c2 = p_c2->next) {
 
-		  if (p_c2->s.type == COLLOID_TYPE_SUBGRID) continue;
+		  if (p_c2->s.magnetic == 0) continue;
 
 		  if (p_c1->s.index < p_c2->s.index) {
 		    double r;
@@ -673,7 +673,7 @@ int ewald_fourier_space_sum(ewald_t * ewald) {
 
 	for ( ; p_colloid; p_colloid = p_colloid->next) {
 
-          if (p_colloid->s.type == COLLOID_TYPE_SUBGRID) continue;
+	  if (p_colloid->s.magnetic == 0) continue;
 
 	  /* Sum over k to get the force/torque. */
 

@@ -7,7 +7,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2010-2021 The University of Edinburgh
+ *  (c) 2010-2023 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -66,9 +66,9 @@ int stats_colloid_momentum(colloids_info_t * cinfo, double g[3]) {
 	colloids_info_cell_list_head(cinfo, ic, jc, kc, &pc);
 
 	while (pc) {
+	  /* FIXME: mass as a function of shape */
 	  mass = 4.0*pi*pow(pc->s.a0, 3)*rho0/3.0;
-	  if (pc->s.type == COLLOID_TYPE_SUBGRID) mass = 0.0; /* No inertia */
-
+          if (pc->s.bc == COLLOID_BC_SUBGRID) mass = 0.0; /* No inertia */
 	  glocal[X] += mass*pc->s.v[X];
 	  glocal[Y] += mass*pc->s.v[Y];
 	  glocal[Z] += mass*pc->s.v[Z];

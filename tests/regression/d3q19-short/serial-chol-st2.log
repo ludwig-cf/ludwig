@@ -116,7 +116,6 @@ Output format:                ascii
 Single file read flag:        0
 
 Requested one colloid via input:
-colloid_one                   inactive
 colloid_one_a0                2.3000000e+00
 colloid_one_ah                2.3000000e+00
 colloid_one_r                 3.3100000e+00  1.2000000e+01  1.2000000e+01

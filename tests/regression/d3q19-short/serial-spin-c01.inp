@@ -51,7 +51,6 @@ fd_gradient_calculation 3d_27pt_solid
 colloid_init        input_random
 
 colloid_random_no   20
-colloid_random_type default
 colloid_random_a0   2.3
 colloid_random_ah   2.3
 

@@ -64,6 +64,12 @@ int colloid_state_read_ascii(colloid_state_t * ps, FILE * fp) {
   }
 
   nread += fscanf(fp, isformat, &ps->inter_type);
+  nread += fscanf(fp, isformat, &ps->ioversion);
+  nread += fscanf(fp, isformat, &ps->bc);
+  nread += fscanf(fp, isformat, &ps->shape);
+  nread += fscanf(fp, isformat, &ps->active);
+  nread += fscanf(fp, isformat, &ps->magnetic);
+  nread += fscanf(fp, isformat, &ps->attr);
 
   for (n = 0; n < NPAD_INT; n++) {
     nread += fscanf(fp, isformat, &ps->intpad[n]);
@@ -196,6 +202,12 @@ int colloid_state_write_ascii(const colloid_state_t * s, FILE * fp) {
   }
 
   nwrite += fprintf(fp, isformat, s->inter_type);
+  nwrite += fprintf(fp, isformat, s->ioversion);
+  nwrite += fprintf(fp, isformat, s->bc);
+  nwrite += fprintf(fp, isformat, s->shape);
+  nwrite += fprintf(fp, isformat, s->active);
+  nwrite += fprintf(fp, isformat, s->magnetic);
+  nwrite += fprintf(fp, isformat, s->attr);
 
   for (n = 0; n < NPAD_INT; n++) {
     nwrite += fprintf(fp, isformat, s->intpad[n]);

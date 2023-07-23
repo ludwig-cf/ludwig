@@ -106,13 +106,11 @@ Single file read flag:        0
 
 Requested one colloid via input:
 colloid_one_isfixedrxyz       1 1 1
-colloid_one                   inactive
 colloid_one_a0                2.3000000e+00
 colloid_one_ah                2.3000000e+00
 colloid_one_r                 1.6250000e+01  1.5000000e+01  1.5000000e+01
 colloid_one_v                 0.0000000e+00  0.0000000e+00  0.0000000e+00
 Requested second colloid via input:
-colloid_two                   inactive
 colloid_two_a0                2.3000000e+00
 colloid_two_ah                2.3000000e+00
 colloid_two_r                 2.1305000e+01  1.5000000e+01  1.5000000e+01

@@ -413,7 +413,7 @@ int colloids_update_forces_external(colloids_info_t * cinfo, psi_t * psi) {
 	  pc->force[Y] += g[Y];
 	  pc->force[Z] += g[Z];
 
-          if (pc->s.type == COLLOID_TYPE_SUBGRID) continue;
+          if (pc->s.bc == COLLOID_BC_SUBGRID) continue;
 
 	  btorque[X] = pc->s.s[Y]*b0[Z] - pc->s.s[Z]*b0[Y];
 	  btorque[Y] = pc->s.s[Z]*b0[X] - pc->s.s[X]*b0[Z];

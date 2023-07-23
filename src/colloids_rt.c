@@ -7,7 +7,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2014-2022 The University of Edinburgh
+ *  (c) 2014-2023 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -21,6 +21,7 @@
 
 #include "pe.h"
 #include "util.h"
+#include "util_bits.h"
 #include "util_ellipsoid.h"
 #include "coords.h"
 #include "runtime.h"
@@ -71,7 +72,7 @@ int colloids_rt_cell_list_checks(pe_t * pe, cs_t * cs, colloids_info_t ** pinfo,
 /*****************************************************************************
  *
  *  colloids_init_rt
- * 
+ *
  *  Driver routine for colloid initialisation.
  *
  *  (a) Read source (input file, or external file)
@@ -114,7 +115,7 @@ int colloids_init_rt(pe_t * pe, rt_t * rt, cs_t * cs, colloids_info_t ** pinfo,
 
   /* Trap old input files */
   if (strcmp(keyvalue, "random") == 0) pe_fatal(pe, "check input file: random\n");
-  
+
   if ((init_one + init_two + init_three + init_random + init_from_file) < 1)
     return 0;
 
@@ -185,7 +186,7 @@ int colloids_init_rt(pe_t * pe, rt_t * rt, cs_t * cs, colloids_info_t ** pinfo,
   }
 
   pe_info(pe, "\n");
-  
+
   return 0;
 }
 
@@ -201,13 +202,18 @@ int colloids_rt_dynamics(cs_t * cs, colloids_info_t * cinfo, wall_t * wall,
   int nsubgrid_local = 0;
   int nsubgrid = 0;
   MPI_Comm comm;
+  colloid_t * pc = NULL;
 
   assert(cs);
   assert(cinfo);
 
   /* Find out if we have any sub-grid particles */
 
-  colloids_info_count_local(cinfo, COLLOID_TYPE_SUBGRID, &nsubgrid_local);
+  colloids_info_local_head(cinfo, &pc);
+
+  for ( ; pc; pc = pc->nextlocal) {
+    if (pc->s.bc == COLLOID_BC_SUBGRID) nsubgrid_local += 1;
+  }
 
   cs_cart_comm(cs, &comm);
   MPI_Allreduce(&nsubgrid_local, &nsubgrid, 1, MPI_INT, MPI_SUM, comm);
@@ -394,7 +400,6 @@ int colloids_rt_state_stub(pe_t * pe, rt_t * rt, colloids_info_t * cinfo,
   double elev1[3];
   double elev2[3];
   double euler[3];
-  double v1[3]={1.0,0.0,0.0};
 
   assert(pe);
   assert(rt);
@@ -468,11 +473,71 @@ int colloids_rt_state_stub(pe_t * pe, rt_t * rt, colloids_info_t * cinfo,
   snprintf(key, BUFSIZ-1, "%s_%s", stub, "type");
   nrt = rt_string_parameter(rt, key, value, BUFSIZ);
 
-  state->type = COLLOID_TYPE_DEFAULT;
-  if (strcmp(value, "active") == 0) state->type = COLLOID_TYPE_ACTIVE;
-  if (strcmp(value, "subgrid") == 0) state->type = COLLOID_TYPE_SUBGRID;
-  if (strcmp(value, "ellipsoid") == 0) state->type = COLLOID_TYPE_ELLIPSOID;/*sumesh-ell*/
-  if (nrt) pe_info(pe, format_s1, stub, value);
+  if (nrt) {
+    /* Trap old regime */
+    pe_info(pe, "You have %s in the input file\n", key);
+    pe_info(pe, "Please replace *_type by *_bc *_shape *_active etc\n");
+    pe_fatal(pe, "Please check and try again\n");
+  }
+  else {
+    /* New regime */
+    /* Default */
+
+    state->bc    = COLLOID_BC_BBL;
+    state->shape = COLLOID_SHAPE_SPHERE;
+    state->active = 0;
+    state->magnetic = 0;
+
+    /* Boundary conditions */
+    {
+      int nbc = 0;
+      snprintf(key, BUFSIZ-1, "%s_%s", stub, "bc");
+      nbc = rt_string_parameter(rt, key, value, BUFSIZ);
+      if (nbc) {
+	pe_info(pe, format_s1, stub, value);
+	if (strcmp(value, "bbl") == 0) {
+	  state->bc = COLLOID_BC_BBL;
+	}
+	else if (strcmp(value, "subgrid") == 0) {
+	  state->bc = COLLOID_BC_SUBGRID;
+	}
+	else {
+	  pe_fatal(pe, "colloid bc %s not recognised\n", value);
+	}
+      }
+    }
+
+    /* Shape */
+    {
+      int nshape = 0;
+      snprintf(key, BUFSIZ-1, "%s_%s", stub, "shape");
+      nshape = rt_string_parameter(rt, key, value, BUFSIZ);
+      if (nshape) {
+	pe_info(pe, format_s1, stub, value);
+	if (strcmp(value, "disk") == 0) {
+	  state->shape = COLLOID_SHAPE_DISK;
+	}
+	else if (strcmp(value, "sphere") == 0) {
+	  state->shape = COLLOID_SHAPE_SPHERE;
+	}
+	else if (strcmp(value, "ellipsoid") == 0) {
+	  state->shape = COLLOID_SHAPE_ELLIPSOID;
+	}
+	else {
+	  pe_fatal(pe, "colloid shape %s not recognised\n", value);
+	}
+      }
+    }
+
+    /* Active */
+    snprintf(key, BUFSIZ-1, "%s_%s", stub, "active");
+    state->active = rt_switch(rt, key);
+    if (state->active) pe_info(pe, format_s1, stub, "active");
+
+    /* Magnetic */
+    snprintf(key, BUFSIZ-1, "%s_%s", stub, "magnetic");
+    state->magnetic = rt_switch(rt, key);
+  }
 
   snprintf(key, BUFSIZ-1, "%s_%s", stub, "rng");
   nrt = rt_int_parameter(rt, key, &state->rng);
@@ -551,7 +616,7 @@ int colloids_rt_state_stub(pe_t * pe, rt_t * rt, colloids_info_t * cinfo,
     printf("It should be a > b > c\n");
     return 1;
   }
- 
+
   snprintf(key, BUFSIZ-1, "%s_%s", stub, "euler");/*sumesh-ell*/
   nrt = rt_double_parameter_vector(rt, key, euler);
   if (nrt) {
@@ -581,9 +646,17 @@ int colloids_rt_state_stub(pe_t * pe, rt_t * rt, colloids_info_t * cinfo,
   quaternions_from_eulerangles(euler[X],euler[Y], euler[Z], state->quater);
   copy_vectortovector(state->quater,state->quaterold,4);
 
-  /*If active and ellipsoid, assign the squirmer orientation as along the long axis*/
+  /* If active and ellipsoid, assign the squirmer orientation as along the
+   * long axis*/
+
+  /* KS. FIXME I'm going to comment this out for the time being
+   * as it is upsetting the tests ... */
+  /*
+  double v1[3]={1.0,0.0,0.0};
   rotate_tobodyframe_quaternion(state->quater, v1, state->m);
-  printf("Spheroidal squirmer oriented along the major axis, %f, %f, %f\n",state->m[X],state->m[Y],state->m[Z]);
+  printf("Spheroidal squirmer oriented along the major axis, %f, %f, %f\n",
+  state->m[X],state->m[Y],state->m[Z]);
+  */
 
   return 0;
 }
@@ -626,7 +699,7 @@ int colloids_rt_gravity(pe_t * pe, rt_t * rt, colloids_info_t * cinfo) {
 
   if (nc) {
     colloids_info_rho0_set(cinfo, rho0);
-    pe_info(pe, "Colloid density:             %14.7e\n", rho0);    
+    pe_info(pe, "Colloid density:             %14.7e\n", rho0);
   }
 
   return 0;
@@ -673,7 +746,7 @@ int colloids_rt_cell_list_checks(pe_t * pe, cs_t * cs,
   /* For nhalo = 1, we require an additional + 0.5 to identify BBL;
    * for nhalo > 1, the constraint is on the colloid map in the
    * halo region, begin an additional nhalo - 0.5.
-   * The aboslute minimum is 2 units to accomodate subgrid partciles
+   * The absolute minimum is 2 units to accommodate subgrid partciles
    * an associated interpolations onto lattice. */
 
   a0max = dmax(1.0, a0max);
@@ -753,7 +826,7 @@ int colloids_init_ewald_rt(pe_t * pe, rt_t * rt, cs_t * cs,
 
     ewald_create(pe, cs, mu, rc, cinfo, pewald);
     assert(*pewald);
-    ewald_info(*pewald); 
+    ewald_info(*pewald);
   }
 
   return 0;
@@ -786,7 +859,7 @@ int lubrication_init(pe_t * pe, cs_t * cs, rt_t * rt, interact_t * inter) {
     n = rt_double_parameter(rt, "lubrication_normal_cutoff", &rcnorm);
     pe_info(pe, (n == 0) ? "[Default] " : "[User   ] ");
     pe_info(pe, "Normal force cutoff is %f\n", rcnorm);
-    
+
     n = rt_double_parameter(rt, "lubrication_tangential_cutoff", &rctang);
     pe_info(pe, (n == 0) ? "[Default] " : "[User   ] ");
     pe_info(pe, "Tangential force cutoff is %f\n", rctang);
@@ -1051,7 +1124,7 @@ int angle_cosine_init(pe_t * pe, cs_t * cs, rt_t * rt, interact_t * interact) {
  *  colloids_init_halo_range_check
  *
  *  Examine the current system (e.g., from user input) and check
- *  message passing for BBL based on input radii a0. This is indepedent
+ *  message passing for BBL based on input radii a0. This is independent
  *  of any colloid-colloid interaction considerations.
  *
  *  1) 2a0 < nlocal - 1 ensures links for a single particle are
@@ -1177,7 +1250,7 @@ int wall_ss_cut_init(pe_t * pe, cs_t * cs, rt_t * rt, wall_t * wall,
  *****************************************************************************/
 
   int check_the_order(const double a,const double b,const double c) {
-  
+
   return ((b-a)>1.0e-12)|((c-b)>1.0e-12);
   }
  /*****************************************************************************/

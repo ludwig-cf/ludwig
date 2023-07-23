@@ -7,11 +7,12 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2010-2021 The University of Edinburgh
+ *  (c) 2010-2023 The University of Edinburgh
  *
  *  Contributing Authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *  Squimer code from Isaac Llopis and Ricard Matas Navarro (U. Barcelona).
+ *  Ellipsoids (including active ellipsoids) by Sumesh Thampi.
  *
  *****************************************************************************/
 
@@ -51,6 +52,15 @@ __global__ void bbl_pass0_kernel(kernel_ctxt_t * ktxt, cs_t * cs, lb_t * lb,
 				 colloids_info_t * cinfo);
 
 static __constant__ lb_collide_param_t lbp;
+
+int bbl_update_colloid_default(bbl_t * bbl, wall_t * wall, colloid_t * pc,
+			       double rho0, double xb[6]);
+int bbl_update_ellipsoid(bbl_t * bbl, wall_t * wall, colloid_t * pc,
+			 double rho0, double xb[6]);
+
+void setter_ladd_ellipsoid(colloid_t *pc, wall_t * wall,double rho0,
+			   double a[6][6], double xb[6]);
+void record_force_torque(colloid_t * pc);
 
 /*****************************************************************************
  *
@@ -101,18 +111,27 @@ int bbl_free(bbl_t * bbl) {
  *
  *  bbl_active_set
  *
+ *  Set a single global flag to see if any active particles are present.
+ *  If there is none, we can avoid the additional communication steps
+ *  associated with active particles.
+ *
  *****************************************************************************/
 
 int bbl_active_set(bbl_t * bbl, colloids_info_t * cinfo) {
 
-  int nactive;
-  int nactive_local;
-  MPI_Comm comm;
+  int nactive = 0;
+  int nactive_local = 0;
+  MPI_Comm comm = MPI_COMM_NULL;
+  colloid_t * pc = NULL;
 
   assert(bbl);
   assert(cinfo);
 
-  colloids_info_count_local(cinfo, COLLOID_TYPE_ACTIVE, &nactive_local);
+  colloids_info_local_head(cinfo, &pc);
+
+  for ( ; pc; pc = pc->nextlocal) {
+    if (pc->s.active) nactive_local += 1;
+  }
 
   cs_cart_comm(bbl->cs, &comm);
   MPI_Allreduce(&nactive_local, &nactive, 1, MPI_INT, MPI_SUM, comm);
@@ -211,7 +230,7 @@ static int bbl_active_conservation(bbl_t * bbl, lb_t * lb,
 
   for ( ; pc; pc = pc->nextall) {
 
-    if (pc->s.type != COLLOID_TYPE_ACTIVE) continue;
+    if (pc->s.active == 0) continue;
 
     pc->sump /= pc->sumw;
     p_link = pc->lnk;
@@ -325,8 +344,8 @@ __global__ void bbl_pass0_kernel(kernel_ctxt_t * ktxt, cs_t * cs, lb_t * lb,
     index = kernel_coords_index(ktxt, ic, jc, kc);
 
     pc = cinfo->map_new[index];
-	
-    if (pc && pc->s.type != COLLOID_TYPE_SUBGRID) { 
+
+    if (pc && (pc->s.bc == COLLOID_BC_BBL)) {
       cs_nlocal_offset(cs, noffset);
       r[X] = 1.0*(noffset[X] + ic);
       r[Y] = 1.0*(noffset[Y] + jc);
@@ -382,7 +401,7 @@ static int bbl_pass1(bbl_t * bbl, lb_t * lb, colloids_info_t * cinfo) {
   double c[3];
   double rbxc[3];
   double rho0;
-  double mod, rmod, dm_a, cost, plegendre, sint;
+  double mod, rmod, cost, plegendre, sint;
   double tans[3], vector1[3];
   double fdist;
   LB_RCS2_DOUBLE(rcs2);
@@ -392,12 +411,6 @@ static int bbl_pass1(bbl_t * bbl, lb_t * lb, colloids_info_t * cinfo) {
   double ele,ele2;
   double ela,ela2;
   double elz,elz2;
-  double elr, sdotez;
-  double *quater;
-  double *elbz;
-  double denom, term1, term2;
-  double elrho[3],xi1,xi2,xi;
-  double diff1,diff2,gridin[3],elzin;
 
   physics_t * phys = NULL;
   colloid_t * pc = NULL;
@@ -416,13 +429,13 @@ static int bbl_pass1(bbl_t * bbl, lb_t * lb, colloids_info_t * cinfo) {
 
   for ( ; pc; pc = pc->nextall) {
 
-    if (pc->s.type == COLLOID_TYPE_SUBGRID) continue;
+    if (pc->s.bc != COLLOID_BC_BBL) continue;
 
-    elabc=pc->s.elabc;
-    elc=sqrt(elabc[0]*elabc[0]-elabc[1]*elabc[1]);
-    ele=elc/elabc[0];
+
+    elabc = pc->s.elabc;
+    elc = sqrt(elabc[0]*elabc[0] - elabc[1]*elabc[1]);
+    ele = elc/elabc[0];
     ela = colloids_largest_dimension(pc);
-    quater=pc->s.quater;
 
     /* Diagnostic record of f0 before additions are made. */
     /* Really, f0 should not be used for dual purposes... */
@@ -449,7 +462,7 @@ static int bbl_pass1(bbl_t * bbl, lb_t * lb, colloids_info_t * cinfo) {
     pc->deltam   *= rsumw;
     pc->s.deltaphi *= rsumw;
 
-    /* Sum over the links */ 
+    /* Sum over the links */
 
     for (; p_link; p_link = p_link->next) {
 
@@ -470,15 +483,16 @@ static int bbl_pass1(bbl_t * bbl, lb_t * lb, colloids_info_t * cinfo) {
 	 * arising from changes in shape at previous step.
 	 * Note minus sign. */
 
+	double dm_a = 0.0;
+
 	lb_f(lb, i, ij, 0, &fdist);
 	dm =  2.0*fdist - lb->model.wv[ij]*pc->deltam;
 	delta = 2.0*rcs2*lb->model.wv[ij]*rho0;
 
 
 	/* Squirmer section */
-	if (pc->s.type == COLLOID_TYPE_ACTIVE) {
 
-	  /*For spherical squirmer*/
+	if (pc->s.active && pc->s.shape == COLLOID_SHAPE_SPHERE) {
 
 	  /* We expect s.m to be a unit vector, but for floating
 	   * point purposes, we must make sure here. */
@@ -490,67 +504,93 @@ static int bbl_pass1(bbl_t * bbl, lb_t * lb, colloids_info_t * cinfo) {
 	  if (cost*cost > 1.0) cost = 1.0;
 	  assert(cost*cost <= 1.0);
 	  sint = sqrt(1.0 - cost*cost);
-	  plegendre = -sint*(pc->s.b2*cost + pc->s.b1);
 
 	  cross_product(p_link->rb, pc->s.m, vector1);
 	  cross_product(vector1, p_link->rb, tans);
-          
-          /*Insertion - Sumesh*/
-	  /*Ellipsoidal squirmer*/
-	  elbz=pc->s.m;
-          elz=dot_product(p_link->rb,elbz);
-          for(int ia=0; ia<3; ia++) {elrho[ia]=p_link->rb[ia]-elz*elbz[ia];}
+
+	  mod = modulus(tans);
+	  rmod = 0.0;
+	  if (mod != 0.0) rmod = 1.0/mod;
+	  plegendre = -sint*(pc->s.b2*cost + pc->s.b1);
+
+	  /* Compute correction to bbl for a sphere: */
+	  dm_a = 0.0;
+	  for (ia = 0; ia < 3; ia++) {
+	    dm_a += -delta*plegendre*rmod*tans[ia]*lb->model.cv[ij][ia];
+	  }
+	}
+
+	/* Ellipsoidal squirmer */
+
+	if (pc->s.active && pc->s.shape == COLLOID_SHAPE_ELLIPSOID) {
+	  double elr, sdotez;
+	  double *elbz;
+	  double denom, term1, term2;
+	  double elrho[3], xi1, xi2, xi;
+	  double diff1, diff2, gridin[3], elzin;
+	  elbz = pc->s.m;
+	  elz = dot_product(p_link->rb, elbz);
+	  for (int ia = 0; ia < 3; ia++) {
+	    elrho[ia] = p_link->rb[ia] - elz*elbz[ia];
+	  }
 	  elr = modulus(elrho);
 	  rmod = 0.0;
 	  if (elr != 0.0) rmod = 1.0/elr;
-          for(int ia=0; ia<3; ia++) {elrho[ia]=elrho[ia]*rmod;}
-	  ela2=ela*ela;
-          elz2=elz*elz;
-	  ele2=ele*ele;
-	  diff1=ela2-elz2;
-          diff2=ela2-ele2*elz2;
-	  /*Taking care of the unusual circumstances in which the grid point lies*/
-	  /*outside the particle and elz > ela. Then the tangent vector is calculated*/
-	  /*for the neighbouring grid point inside*/
-	  if(diff1<0.0){
-	    for(ia = 0; ia < 3; ia++) {
-	      gridin[ia] = p_link->rb[ia]+lb->model.cv[ij][ia];
-              elzin=dot_product(gridin,elbz);
-	      elz2=elzin*elzin;
-	      diff1=ela2-elz2;
-	    }
-	    /*diff1 is a more stringent criterion*/
-	    if(diff2<0.0) {diff2 = ela2-ele2*elz2;}
+	  for (int ia = 0; ia < 3; ia++) {
+	    elrho[ia] = elrho[ia]*rmod;
 	  }
-          denom=sqrt(diff2);
-          term1=-sqrt(diff1)/denom;
-          term2=sqrt(1.0-ele*ele)*elz/denom;
-	  for(int ia = 0; ia < 3; ia++) {tans[ia]=term1*elbz[ia]+term2*elrho[ia];}
-	  sdotez=dot_product(tans,elbz);
-	  xi1=sqrt(elr*elr+(elz+elc)*(elz+elc));
-	  xi2=sqrt(elr*elr+(elz-elc)*(elz-elc));
-	  xi=(xi1-xi2)/(2.0*elc);
+	  ela2 = ela*ela;
+	  elz2 = elz*elz;
+	  ele2 = ele*ele;
+	  diff1 = ela2-elz2;
+	  diff2 = ela2-ele2*elz2;
+
+	  /* Taking care of the unusual circumstances in which the grid
+	   * point lies outside the particle and elz > ela. Then the
+	   * tangent vector is calculated for the neighbouring grid
+	   * point inside*/
+
+	  if (diff1 < 0.0) {
+	    for (ia = 0; ia < 3; ia++) {
+	      gridin[ia] = p_link->rb[ia]+lb->model.cv[ij][ia];
+	      elzin = dot_product(gridin, elbz);
+	      elz2 = elzin*elzin;
+	      diff1 = ela2-elz2;
+	    }
+	    /* diff1 is a more stringent criterion */
+	    if (diff2 < 0.0) diff2 = ela2 - ele2*elz2;
+	  }
+	  denom = sqrt(diff2);
+	  term1 = -sqrt(diff1)/denom;
+	  term2 = sqrt(1.0-ele*ele)*elz/denom;
+	  for (int ia = 0; ia < 3; ia++) {
+	    tans[ia] = term1*elbz[ia] + term2*elrho[ia];
+	  }
+	  sdotez = dot_product(tans, elbz);
+	  xi1 = sqrt(elr*elr+(elz+elc)*(elz+elc));
+	  xi2 = sqrt(elr*elr+(elz-elc)*(elz-elc));
+	  xi = (xi1 - xi2)/(2.0*elc);
 	  plegendre = -(pc->s.b1)*sdotez - (pc->s.b2)*xi*sdotez;
-	  /*Insertion Sumesh*/
 
 	  mod = modulus(tans);
 	  rmod = 0.0;
 	  if (mod != 0.0) rmod = 1.0/mod;
 
+	  /* Compute contribution to bbl - dm_a - for an ellipsoid */
 	  dm_a = 0.0;
 	  for (ia = 0; ia < 3; ia++) {
 	    dm_a += -delta*plegendre*rmod*tans[ia]*lb->model.cv[ij][ia];
 	  }
-
-	  lb_f(lb, i, ij, 0, &fdist);
-	  fdist += dm_a;
-	  lb_f_set(lb, i, ij, 0, fdist);
-
-	  dm += dm_a;
-
-	  /* needed for mass conservation   */
-	  pc->sump += dm_a;
 	}
+
+	lb_f(lb, i, ij, 0, &fdist);
+	fdist += dm_a;
+	lb_f_set(lb, i, ij, 0, fdist);
+
+	dm += dm_a;
+
+	/* needed for mass conservation   */
+	pc->sump += dm_a;
       }
       else {
 	/* Virtual momentum transfer for solid->solid links,
@@ -569,7 +609,7 @@ static int bbl_pass1(bbl_t * bbl, lb_t * lb, colloids_info_t * cinfo) {
 
       cross_product(p_link->rb, c, rbxc);
 
-      /* Now add contribution to the sums required for 
+      /* Now add contribution to the sums required for
        * self-consistent evaluation of new velocities. */
 
       for (ia = 0; ia < 3; ia++) {
@@ -676,7 +716,7 @@ static int bbl_pass2(bbl_t * bbl, lb_t * lb, colloids_info_t * cinfo) {
 
   for ( ; pc; pc = pc->nextall) {
 
-    if (pc->s.type == COLLOID_TYPE_SUBGRID) continue;
+    if (pc->s.bc != COLLOID_BC_BBL) continue;
 
     /* Set correction for phi arising from previous step */
 
@@ -725,7 +765,7 @@ static int bbl_pass2(bbl_t * bbl, lb_t * lb, colloids_info_t * cinfo) {
 
 	/* Contribution to mass conservation from squirmer */
 
-	df += lb->model.wv[ij]*pc->sump; 
+	df += lb->model.wv[ij]*pc->sump;
 
 	/* Correction owing to missing links "squeeze term" */
 
@@ -809,13 +849,10 @@ static int bbl_pass2(bbl_t * bbl, lb_t * lb, colloids_info_t * cinfo) {
 
 int bbl_update_colloids(bbl_t * bbl, wall_t * wall, colloids_info_t * cinfo) {
 
-  int ia;
-  int iret;
-
+  int iret = 0;
   double rho0;
-  double xb[6];
-
-  colloid_t * pc;
+  double xb[6] = {0};
+  colloid_t * pc = NULL;
 
   assert(bbl);
   assert(cinfo);
@@ -828,33 +865,31 @@ int bbl_update_colloids(bbl_t * bbl, wall_t * wall, colloids_info_t * cinfo) {
 
   for ( ; pc; pc = pc->nextall) {
 
-    if (pc->s.type == COLLOID_TYPE_SUBGRID) { 
-      continue;
-    }
-    else if ((pc->s.type == COLLOID_TYPE_ELLIPSOID)|(pc->s.type == COLLOID_TYPE_ACTIVE)) {
-    //else if (pc->s.type == COLLOID_TYPE_ELLIPSOID) {
-      iret = bbl_update_ellipsoid(bbl, wall, pc, rho0, xb);
-    }
-    else {
+    if (pc->s.bc != COLLOID_BC_BBL) continue;
+
+    if (pc->s.shape == COLLOID_SHAPE_SPHERE) {
       iret = bbl_update_colloid_default(bbl, wall, pc, rho0, xb);
     }
 
-    if(iret!=0) {
+    if (pc->s.shape == COLLOID_SHAPE_ELLIPSOID) {
+      iret = bbl_update_ellipsoid(bbl, wall, pc, rho0, xb);
+    }
+
+    if (iret != 0) {
       pe_fatal(bbl->pe, "Gaussian elimination failed in bbl_update\n");
     }
-     
+
     /* Set the position update, but don't actually move
      * the particles. This is deferred until the next
      * call to coll_update() and associated cell list
      * update.
      * We use mean of old and new velocity. */
 
-    for (ia = 0; ia < 3; ia++) {
+    for (int ia = 0; ia < 3; ia++) {
       if (pc->s.isfixedrxyz[ia] == 0) pc->s.dr[ia] = 0.5*(pc->s.v[ia] + xb[ia]);
       if (pc->s.isfixedvxyz[ia] == 0) pc->s.v[ia] = xb[ia];
       if (pc->s.isfixedw == 0) pc->s.w[ia] = xb[3+ia];
     }
-
 
     if (pc->s.isfixeds == 0) {
       rotate_vector(pc->s.m, xb + 3);
@@ -882,10 +917,12 @@ int bbl_update_colloids(bbl_t * bbl, wall_t * wall, colloids_info_t * cinfo) {
  *  Calculate the velocity of each particle for the default case, spheres.
  *
  *****************************************************************************/
-int bbl_update_colloid_default(bbl_t * bbl, wall_t * wall, colloid_t * pc, double rho0, double xb[6]) {
+
+int bbl_update_colloid_default(bbl_t * bbl, wall_t * wall, colloid_t * pc,
+			       double rho0, double xb[6]) {
 
   int ia;
-  int iret=0;
+  int iret = 0;
 
   double mass;    /* Assumes (4/3) rho pi r^3 */
   double moment;  /* also assumes (2/5) mass r^2 for sphere */
@@ -933,7 +970,7 @@ int bbl_update_colloid_default(bbl_t * bbl, wall_t * wall, colloid_t * pc, doubl
   a[4][5] =          pc->zeta[19];
   a[5][5] = moment + pc->zeta[20];
 
-    /* Lower triangle */
+  /* Lower triangle */
 
   a[1][0] = a[0][1];
   a[2][0] = a[0][2];
@@ -965,7 +1002,7 @@ int bbl_update_colloid_default(bbl_t * bbl, wall_t * wall, colloid_t * pc, doubl
     xb[3+ia] += pc->tc0[ia];
   }
 
-  iret = solver_Gausselimination(a,xb);
+  iret = bbl_6x6_gaussian_elimination(a, xb);
 
   return iret;
 }
@@ -976,7 +1013,8 @@ int bbl_update_colloid_default(bbl_t * bbl, wall_t * wall, colloid_t * pc, doubl
  *
  *****************************************************************************/
 
-int bbl_update_ellipsoid(bbl_t * bbl, wall_t * wall, colloid_t * pc, double rho0, double xb[6]) {
+int bbl_update_ellipsoid(bbl_t * bbl, wall_t * wall, colloid_t * pc,
+			 double rho0, double xb[6]) {
 
   int iret = 0;
 
@@ -989,14 +1027,14 @@ int bbl_update_ellipsoid(bbl_t * bbl, wall_t * wall, colloid_t * pc, double rho0
   assert(bbl);
   assert(wall);
   assert(pc);
-  
+
   /* Set up the matrix problem and solve it here. */
-   
+
   setter_ladd_ellipsoid(pc, wall, rho0, a, xb);
-  iret = solver_Gausselimination(a,xb);
-  
+  iret = bbl_6x6_gaussian_elimination(a, xb);
+
   /* And then finding the new quaternions */
-  
+
   for(int i = 0; i < 3; i++) owathalf[i] = 0.5*(pc->s.w[i]+xb[3+i]);
   if (pc->s.isfixeds == 0) {
     quaternion_from_omega(owathalf,0.5,qbar);
@@ -1105,7 +1143,7 @@ return;
  *  Setting up  6 x 6 equations of Ladd for an ellipsoid
  *
 *****************************************************************************/
-void setter_ladd_ellipsoid(colloid_t *pc, wall_t * wall, double rho0, double a[6][6], double xb[3]) {
+void setter_ladd_ellipsoid(colloid_t *pc, wall_t * wall, double rho0, double a[6][6], double xb[6]) {
 
   double mass;    /* Assumes (4/3) rho pi abc */
   double mI_P[3];  /* also assumes that for an ellipsoid */
@@ -1120,10 +1158,9 @@ void setter_ladd_ellipsoid(colloid_t *pc, wall_t * wall, double rho0, double a[6
   double * elabc;
   double * zeta;
   double frn = 1.0;
-  
-  int ia,j;
+
   double IijOj;
-    
+
   assert(pc);
   PI_DOUBLE(pi);
 
@@ -1179,11 +1216,11 @@ void setter_ladd_ellipsoid(colloid_t *pc, wall_t * wall, double rho0, double a[6
   a[5][2] = a[2][5];
   a[5][3] = a[3][5];
   a[5][4] = a[4][5];
-    
+
   /*Add unsteady moment of inertia terms - pick one of the method*/
-  if(ddtmI_fd_flag==1) {
+  if (ddtmI_fd_flag == 1) {
     inertia_tensor_quaternion(pc->s.quaterold, &mI_P[0], mIold);
-    for(int i = 0; i < 3; i++) {
+    for (int i = 0; i < 3; i++) {
       for(int j = 0; j < 3; j++) {
         dIijdt[i][j] = (mI[i][j] - mIold[i][j]);
       }
@@ -1192,24 +1229,27 @@ void setter_ladd_ellipsoid(colloid_t *pc, wall_t * wall, double rho0, double a[6
   else {
     unsteady_mI(pc->s.quater, mI_P, pc->s.w, dIijdt);
   }
-  for(int i = 0; i < 3; i++) {
-    for(int j = 0; j < 3; j++) {
+
+  for (int i = 0; i < 3; i++) {
+    for (int j = 0; j < 3; j++) {
       a[3+i][3+j] += dIijdt[i][j];
     }
   }
-  
+
   /* Form the right-hand side */
 
-  for (ia = 0; ia < 3; ia++) {
+  for (int ia = 0; ia < 3; ia++) {
     xb[ia] = (mass/frn)*pc->s.v[ia] + pc->f0[ia] + pc->force[ia];
     IijOj  = 0.0;
-    for(j = 0; j < 3; j++) {IijOj += mI[ia][j]*pc->s.w[j];}
+    for (int j = 0; j < 3; j++) {
+      IijOj += mI[ia][j]*pc->s.w[j];
+    }
     xb[3+ia] = IijOj/frn + pc->t0[ia] + pc->torque[ia];
   }
 
   /* Contribution to mass conservation from squirmer */
 
-  for (ia = 0; ia < 3; ia++) {
+  for (int ia = 0; ia < 3; ia++) {
     xb[ia] += pc->fc0[ia];
     xb[3+ia] += pc->tc0[ia];
   }
@@ -1219,17 +1259,25 @@ void setter_ladd_ellipsoid(colloid_t *pc, wall_t * wall, double rho0, double a[6
 
 /*****************************************************************************
  *
- *  Gaussian elimination of 6 x 6 equations of Ladd
+ *  bbl_6x6_gaussian_elimination
  *
-*****************************************************************************/
-int solver_Gausselimination(double a[6][6], double xb[6]) {
+ *  Gaussian elimination for 6 x 6 system of equations
+ *
+ *  a[6][6] is destroyed on exit
+ *  xb[6] is the rhs on entry and the solution on successful exit.
+ *
+ *  Returns 0 on success.
+ *
+ *****************************************************************************/
+
+int bbl_6x6_gaussian_elimination(double a[6][6], double xb[6]) {
 
   int ipivot[6];
   int iprow = 0;
   int idash,j,k;
-
   double tmp;
-    /* Begin the Gaussian elimination */
+
+  /* Begin the Gaussian elimination */
 
     for (k = 0; k < 6; k++) {
       ipivot[k] = -1;
@@ -1252,7 +1300,7 @@ int solver_Gausselimination(double a[6][6], double xb[6]) {
       /* divide pivot row by the pivot element a[iprow][k] */
 
       if (a[iprow][k] == 0.0) {
-        return(1);
+        return -1;
       }
 
       tmp = 1.0 / a[iprow][k];
@@ -1285,8 +1333,9 @@ int solver_Gausselimination(double a[6][6], double xb[6]) {
       }
       xb[iprow] = tmp;
     }
-  return(0);
- }
+
+  return 0;
+}
 
 /*****************************************************************************
  *
@@ -1315,7 +1364,7 @@ static int bbl_wall_lubrication_account(bbl_t * bbl, wall_t * wall,
   colloids_info_local_head(cinfo, &pc);
 
   for (; pc; pc = pc->nextlocal) {
-    if (pc->s.type == COLLOID_TYPE_SUBGRID) continue;
+    if (pc->s.bc != COLLOID_BC_BBL) continue;
     wall_lubr_sphere(wall, pc->s.ah, pc->s.r, dwall);
     f[X] -= pc->s.v[X]*dwall[X];
     f[Y] -= pc->s.v[Y]*dwall[Y];

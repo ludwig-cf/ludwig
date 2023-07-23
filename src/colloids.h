@@ -7,7 +7,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2010-2021 The University of Edinburgh
+ *  (c) 2010-2023 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -167,8 +167,7 @@ __host__ int colloids_info_list_local_build(colloids_info_t * cinfo);
 __host__ int colloids_info_climits(colloids_info_t * cinfo, int ia, int ic, int * lim);
 __host__ int colloids_info_a0max(colloids_info_t * cinfo, double * a0max);
 __host__ int colloids_info_ahmax(colloids_info_t * cinfo, double * ahmax);
-__host__ int colloids_info_count_local(colloids_info_t * cinfo, colloid_type_enum_t it,
-			      int * count);
+
 __host__ int colloids_number_sites(colloids_info_t *cinfo);
 __host__ void colloids_list_sites(int* colloidSiteList, colloids_info_t *cinfo);
 __host__ void colloids_q_boundary_normal(colloids_info_t * cinfo,

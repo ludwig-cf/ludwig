@@ -22,25 +22,36 @@
 
 /* Tag to describe I/O format version appearing in files */
 
-enum colloid_io_version {COLLOID_IO_VERSION = 0200};
+enum colloid_io_version {COLLOID_IO_VERSION = 0210};
 typedef enum colloid_io_version colloid_io_version_t;
+
+typedef enum colloid_bc_enum {
+  COLLOID_BC_INVALID = 0,
+  COLLOID_BC_BBL,
+  COLLOID_BC_SUBGRID
+} colloid_bc_enum_t;
+
+typedef enum colloid_shape_enum {
+  COLLOID_SHAPE_INVALID = 0,
+  COLLOID_SHAPE_DISK,
+  COLLOID_SHAPE_SPHERE,
+  COLLOID_SHAPE_ELLIPSOID
+} colloid_shape_enum_t;
+
+/* Additional attributes bitmask */
+
+#define COLLOID_ATTR_JANUS   (1 << 0)
 
 /* These describe the padding etc, and are really for internal
  * unit test consumption. The total number of variables is
  * useful to know to check the ASCII read/write. */
 
 #define NTOT_VAR (32+48)
-#define NPAD_INT  13
+#define NPAD_INT  7
 #define NPAD_DBL  4
 #define NBOND_MAX  2
 
-enum colloid_type_enum {COLLOID_TYPE_DEFAULT = 0,
-			COLLOID_TYPE_ACTIVE,
-			COLLOID_TYPE_SUBGRID,
-			COLLOID_TYPE_JANUS,
-			COLLOID_TYPE_ELLIPSOID};
 
-typedef enum colloid_type_enum colloid_type_enum_t;
 typedef struct colloid_state_type colloid_state_t;
 
 struct colloid_state_type {
@@ -55,7 +66,7 @@ struct colloid_state_type {
   int isfixedw;         /* Set to 1 for no angular velocity update */
   int isfixeds;         /* Set to zero for no s, m update */
 
-  int type;             /* Particle type */
+  int type;             /* Particle type NO LONGER USED; see "shape" etc */
   int bond[NBOND_MAX];  /* Bonded neighbours ids (index) */
 
   int rng;              /* Random number state */
@@ -63,7 +74,14 @@ struct colloid_state_type {
   int isfixedrxyz[3];   /* Position update in specific coordinate directions */
   int isfixedvxyz[3];   /* Velocity update in specific coordinate directions */
 
-  int inter_type;         /* Interaction type of a particle */
+  int inter_type;       /* Interaction type of a particle */
+
+  int ioversion;        /* For internal use */
+  int bc;               /* Broadly, boundary condition (bbl, subgrid) */
+  int shape;            /* Particle shape (2d disk, sphere, ellipsoid) */
+  int active;           /* Particle is active */
+  int magnetic;         /* Particle is magnetic */
+  int attr;             /* Additional attributes bitmask */
 
   /* New integer additions can be immediately before the padding */
   /* This should allow existing binary files to be read correctly */

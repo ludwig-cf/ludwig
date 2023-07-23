@@ -149,7 +149,7 @@ int build_update_map(cs_t * cs, colloids_info_t * cinfo, map_t * map) {
 
 	for ( ; p_colloid; p_colloid = p_colloid->next) {
 
-          if (p_colloid->s.type == COLLOID_TYPE_SUBGRID) continue;
+	  if (p_colloid->s.bc != COLLOID_BC_BBL) continue;
 
 	  /* Set actual position and size of the cube to be checked */
 
@@ -202,7 +202,8 @@ int build_update_map(cs_t * cs, colloids_info_t * cinfo, map_t * map) {
 		   * with s[3] pointing to the 'north pole' */
 
 		  cosine = 1.0;
-		  if (p_colloid->s.type == COLLOID_TYPE_JANUS) {
+
+		  if (p_colloid->s.attr & COLLOID_ATTR_JANUS) {
 		    mod = modulus(rsep);
 		    if (mod > 0.0) {
 		      cosine = dot_product(p_colloid->s.s, rsep)/mod;
@@ -232,42 +233,48 @@ int build_update_map(cs_t * cs, colloids_info_t * cinfo, map_t * map) {
  *  Compute whether the given grid point is inside the colloid
  *
  *****************************************************************************/
+
 __host__ int is_site_inside_colloid(colloid_t * pc, double rsep[3]) {
 
-double radius;
-double lhs,rhs;
+  double radius;
+  double lhs,rhs;
 
-double * elabc, *quater;
-double elev1[3], elev2[3], elev3[3];
-double worldv1[3]={1.0,0.0,0.0};
-double worldv2[3]={0.0,1.0,0.0};
-double elL[3][3] = {{0.0,0.0,0.0},{0.0,0.0,0.0},{0.0,0.0,0.0}};
-double elQ[3][3], elQT[3][3], elA[3][3], elAp[3][3];
+  double * elabc, *quater;
+  double elev1[3], elev2[3], elev3[3];
+  double worldv1[3]={1.0,0.0,0.0};
+  double worldv2[3]={0.0,1.0,0.0};
+  double elL[3][3] = {{0.0,0.0,0.0},{0.0,0.0,0.0},{0.0,0.0,0.0}};
+  double elQ[3][3], elQT[3][3], elA[3][3], elAp[3][3];
 
-int i;
-
-//  if (pc->s.type == COLLOID_TYPE_ELLIPSOID) {
-  if ((pc->s.type == COLLOID_TYPE_ELLIPSOID)|(pc->s.type == COLLOID_TYPE_ACTIVE)) {
+  if (pc->s.shape == COLLOID_SHAPE_ELLIPSOID) {
 
     /*Constructing Lambda matrix*/
     elabc  = pc->s.elabc;
-    for(i=0; i<3; i++) elL[i][i]=1.0/(elabc[i]*elabc[i]);
+    for (int i = 0; i < 3; i++) {
+      elL[i][i]=1.0/(elabc[i]*elabc[i]);
+    }
     /*Constructing Q matrix*/
     quater = pc->s.quater;
     rotate_tobodyframe_quaternion(quater, worldv1, elev1);
     rotate_tobodyframe_quaternion(quater, worldv2, elev2);
     cross_product(elev1,elev2,elev3);
     normalise_unit_vector(elev3,3);
-    for(i=0; i<3; i++) elQ[i][0]=elev1[i];
-    for(i=0; i<3; i++) elQ[i][1]=elev2[i];
-    for(i=0; i<3; i++) elQ[i][2]=elev3[i];
+    for(int i = 0; i < 3; i++) {
+      elQ[i][0]=elev1[i];
+    }
+    for (int i = 0; i < 3; i++) {
+      elQ[i][1]=elev2[i];
+    }
+    for (int i = 0; i < 3; i++) {
+      elQ[i][2]=elev3[i];
+    }
     /*Constructing A matrix*/
     matrix_product(elQ,elL,elAp);
     matrix_transpose(elQ,elQT);
     matrix_product(elAp,elQT,elA);
     /*Evaluating quadratic equation*/
-    lhs = elA[0][0]*rsep[X]*rsep[X] 
-	+ elA[1][1]*rsep[Y]*rsep[Y] 
+    lhs = elA[0][0]*rsep[X]*rsep[X]
+	+ elA[1][1]*rsep[Y]*rsep[Y]
 	+ elA[2][2]*rsep[Z]*rsep[Z]
 	+ (elA[0][1]+elA[1][0])*rsep[X]*rsep[Y]
 	+ (elA[0][2]+elA[2][0])*rsep[X]*rsep[Z]
@@ -279,7 +286,7 @@ int i;
     radius = pc->s.a0;
     rhs    = radius*radius;
   }
-return (lhs < rhs);
+  return (lhs < rhs);
 }
 /*****************************************************************************
  *
@@ -292,9 +299,9 @@ __host__ double colloids_largest_dimension(colloid_t * pc) {
   double ela,elb,elc;
   double large;
   assert(pc);
-	  
-  //if (pc->s.type == COLLOID_TYPE_ELLIPSOID) {
-  if ((pc->s.type == COLLOID_TYPE_ELLIPSOID)|(pc->s.type == COLLOID_TYPE_ACTIVE)) {
+
+  /* FIXME: elabc[0] must be set in input as largest dimension */
+  if (pc->s.shape == COLLOID_SHAPE_ELLIPSOID) {
     ela    = pc->s.elabc[0];
     elb    = pc->s.elabc[1];
     elc    = pc->s.elabc[2];
@@ -339,8 +346,8 @@ int build_update_links(cs_t * cs, colloids_info_t * cinfo, wall_t * wall,
 	colloids_info_cell_list_head(cinfo, ic, jc, kc, &pc);
 
 	for (; pc; pc = pc->next) {
-        
-          if (pc->s.type == COLLOID_TYPE_SUBGRID) continue;
+
+	  if (pc->s.bc != COLLOID_BC_BBL) continue; 
 
 	  pc->sumw   = 0.0;
 	  for (ia = 0; ia < 3; ia++) {
@@ -566,7 +573,7 @@ int build_reconstruct_links(cs_t * cs, colloids_info_t * cinfo,
  *    There is no assumption here about the form of the position update,
  *    so the separation is recomputed. For Euler update, one could just
  *    subtract the current velocity to get the new boundary link vector
- *    from the old one; however, no assumption is prefered.
+ *    from the old one; however, no assumption is preferred.
  *
  ****************************************************************************/
 
@@ -802,7 +809,7 @@ int build_remove_replace_policy_local(cs_t * cs, colloids_info_t * cinfo,
  *
  *  build_remove_fluid
  *
- *  Remove denisty, momentum at site inode.
+ *  Remove density, momentum at site inode.
  *
  *  Corrections to the mass, force, and torque updates to the relevant
  *  colloid are required.
@@ -994,7 +1001,7 @@ static int build_replace_fluid(lb_t * lb, colloids_info_t * cinfo, int index,
       /* ... and remember the new fluid properties */
       newrho += newf[p];
 
-      /* minus sign is approprite for upcoming ...
+      /* minus sign is appropriate for upcoming ...
 	 ... correction to colloid momentum */
 
       for (ia = 0; ia < 3; ia++) {
@@ -1257,7 +1264,7 @@ int build_replace_q_local(fe_t * fe, colloids_info_t * info, colloid_t * pc,
   double amplitude = (1.0/3.0);
 
   fe_lc_t * fe_lc = (fe_lc_t *) fe;
-  fe_lc_param_t * lc_param = fe_lc->param; 
+  fe_lc_param_t * lc_param = fe_lc->param;
 
   KRONECKER_DELTA_CHAR(d);
 
@@ -1284,7 +1291,7 @@ int build_replace_q_local(fe_t * fe, colloids_info_t * info, colloid_t * pc,
 
     util_random_unit_vector(&pc->s.rng, rhat);
 
-    rhat_dot_rb = dot_product(rhat,rb); 
+    rhat_dot_rb = dot_product(rhat,rb);
     rbp[0] = rhat[0] - rhat_dot_rb*rb[0];
     rbp[1] = rhat[1] - rhat_dot_rb*rb[1];
     rbp[2] = rhat[2] - rhat_dot_rb*rb[2];
@@ -1348,10 +1355,10 @@ static void build_link_mean(colloid_t * pc, double wv, const int8_t cv[3],
  *
  *  This is intended for the inbuilt walls, which occupy the halo
  *  regions. Initialisation with coll_recontruct_links will not
- *  indentify BOUNDARY links because it does not look into the
+ *  identify BOUNDARY links because it does not look into the
  *  halo region. This routine does.
  *
- *  coll_reset_links() examines exsiting links and sets the
+ *  coll_reset_links() examines existing links and sets the
  *  BOUNDARY status as appropriate. See issue 871.
  *
  *****************************************************************************/
@@ -1408,7 +1415,7 @@ int build_colloid_wall_links(cs_t * cs, colloids_info_t * cinfo,
   k_min = imax(1,         (int) floor(r0[Z] - largestdimn));
   k_max = imin(ntotal[Z], (int) ceil (r0[Z] + largestdimn));
 
-  for (i = i_min; i <= i_max; i++) { 
+  for (i = i_min; i <= i_max; i++) {
     for (j = j_min; j <= j_max; j++) {
       for (k = k_min; k <= k_max; k++) {
 
@@ -1583,7 +1590,7 @@ int build_conservation(colloids_info_t * cinfo, field_t * phi, psi_t * psi,
  *
  *  Ensure fluid charge is conserved following remove / replace.
  *
- *  Charge has the additonal constraint that quantitiy of charge must
+ *  Charge has the additional constraint that quantity of charge must
  *  not fall below zero. This means some correction may be carried
  *  forward to future steps.
  *
@@ -1664,7 +1671,7 @@ int build_conservation_psi(colloids_info_t * cinfo, psi_t * psi,
     colloid->s.deltaq0 = colloid->dq[0];
     colloid->s.deltaq1 = colloid->dq[1];
     colloid->dq[0] = 0.0;
-    colloid->dq[1] = 0.0; 
+    colloid->dq[1] = 0.0;
   }
 
   return 0;
