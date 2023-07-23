@@ -12,11 +12,17 @@
 
 version 0.20.0
 
+- IMPORTANT: The input file can no longer be specified as a command
+  line argument. It must be called "input" in the current directory.
+- The electrokinetics sector has been updated and information is
+  available at
+  https://ludwig.epcc.ed.ac.uk/tutorials/electrokinetics/electrokinetics.html
+- A D3Q27 model is available
 - Added coverage via https://about.codecov.io/
 - The free energy is now reported at t = 0 for the initial state.
 - An extra "first touch" option has been added. For details, see
   https://ludwig.epcc.ed.ac.uk/inputs/parallel.html
-
+- Various minor changes and code quality improvements.
 
 version 0.19.1
 - Fix bug in io_subfile to prevent failure at iogrid > 1.

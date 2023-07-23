@@ -137,7 +137,7 @@ int util_jacobi_check(void) {
     assert(ifail == 0);
   }
 
-  return 0;
+  return ifail;
 }
 
 /*****************************************************************************

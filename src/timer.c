@@ -90,7 +90,7 @@ static const char * timer_name[] = {"Total",
 				    "Poisson equation",
 				    "Nernst Planck",
 				    "Lap timer (no report)",
-				    "Diagnostics / output ",
+				    "Diagnostics / output",
 				    "Free2",
                                     "Free3", "Free4", "Free5", "Free6"
 };

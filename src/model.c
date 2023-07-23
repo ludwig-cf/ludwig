@@ -1575,7 +1575,7 @@ int lb_io_write(lb_t * lb, int timestep, io_event_t * event) {
   if (meta->iswriten == 0) {
     /* No comments at the moment */
     cJSON * comments = NULL;
-    int ifail = io_metadata_write(meta, "dist", comments);
+    int ifail = io_metadata_write(meta, "dist", NULL, comments);
     if (ifail == 0) lb->output.iswriten = 1;
   }
 

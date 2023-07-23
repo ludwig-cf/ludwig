@@ -9,7 +9,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2012-2022 The University of Edinburgh
+ *  (c) 2012-2023 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -18,109 +18,143 @@
  *****************************************************************************/
 
 #include <assert.h>
-#include <stdio.h>
-#include <stdlib.h>
 #include <math.h>
-#include <float.h>
 #include <limits.h>
-#include <mpi.h>
 
-#include "pe.h"
-#include "coords.h"
-#include "coords_field.h"
-#include "io_harness.h"
-#include "util.h"
-#include "map.h"
-#include "psi_s.h"
-#include "psi_gradients.h"
-
-static const double  e_unit_default = 1.0;              /* Default unit charge */
-static const double  reltol_default = FLT_EPSILON;      /* Solver tolerance */
-static const double  abstol_default = 0.01*FLT_EPSILON;
-static const int     maxits_default = 10000;            /* Default number of iterations in Poisson solver */
-static const int multisteps_default = 1;                /* Default number of multisteps in NPE */
-static const int  skipsteps_default = 1;                /* Default number of skipped timesteps in Poisson solver */
-static const double diffacc_default = 0;                /* Default diffusive accuracy in NPE for constant no. of multisteps */ 
-
-static int psi_read(FILE * fp, int index, void * self);
-static int psi_write(FILE * fp, int index, void * self);
-static int psi_read_ascii(FILE * fp, int index, void * self);
-static int psi_write_ascii(FILE * fp, int index, void * self);
+#include "psi.h"
 
 /*****************************************************************************
  *
  *  psi_create
  *
- *  Initialise the electric potential, nk charge density fields.
+ *****************************************************************************/
+
+int psi_create(pe_t * pe, cs_t * cs, const psi_options_t * opts,
+	       psi_t ** pobj) {
+
+  int ifail = 0;
+  psi_t * psi = NULL;
+
+  assert(pobj);
+
+  psi = (psi_t *) calloc(1, sizeof(psi_t));
+  if (psi == NULL) goto err;
+
+  ifail = psi_initialise(pe, cs, opts, psi);
+  if (ifail != 0) goto err;
+  
+  *pobj = psi;
+
+  return 0;
+
+ err:
+  if (psi) free(psi);
+  return -1;
+}
+
+/*****************************************************************************
+ *
+ *  psi_free
  *
  *****************************************************************************/
 
-int psi_create(pe_t * pe, cs_t * cs, int nk, psi_t ** pobj) {
+int psi_free(psi_t ** psi) {
 
-  int nsites;
-  int nhalo;
-  psi_t * psi = NULL;
-
-  assert(pe);
-  assert(cs);
-  assert(pobj);
-  assert(nk > 1);
-  assert(nk <= PSI_NKMAX);
-
-  cs_nsites(cs, &nsites);
-  cs_nhalo(cs, &nhalo);
-
-  psi = (psi_t *) calloc(1, sizeof(psi_t));
   assert(psi);
-  if (psi == NULL) pe_fatal(pe, "Allocation of psi failed\n");
+  assert(*psi);
 
-  psi->pe = pe;
-  psi->cs = cs;
-
-  psi->nk = nk;
-  psi->nsites = nsites;
-  psi->psi = (double *) calloc(nsites, sizeof(double));
-  psi->rho = (double *) calloc((size_t) nk*nsites, sizeof(double));
-  psi->diffusivity = (double *) calloc(nk, sizeof(double));
-  psi->valency = (int *) calloc(nk, sizeof(int));
-
-  if (psi->psi == NULL) pe_fatal(pe, "Allocation of psi->psi failed\n");
-  if (psi->rho == NULL) pe_fatal(pe, "Allocation of psi->rho failed\n");
-  if (psi->diffusivity == NULL) pe_fatal(pe, "psi->diffusivity failed\n");
-  if (psi->valency == NULL) pe_fatal(pe, "calloc(psi->valency) failed\n");
-
-  psi->e = e_unit_default;
-  psi->reltol = reltol_default;
-  psi->abstol = abstol_default;
-  psi->maxits = maxits_default;
-  psi->multisteps = multisteps_default;
-  psi->skipsteps = skipsteps_default;
-  psi->diffacc = diffacc_default;
-
-  psi->nfreq_io = INT_MAX;
-  psi->nfreq = INT_MAX;
-  psi->beta = 1.0;                      /* Not zero default */
-
-  coords_field_init_mpi_indexed(cs, nhalo, 1, MPI_DOUBLE, psi->psihalo);
-  coords_field_init_mpi_indexed(cs, nhalo, psi->nk, MPI_DOUBLE, psi->rhohalo);
-
-  *pobj = psi; 
+  psi_finalise(*psi);
+  free(*psi);
+  *psi = NULL;
 
   return 0;
 }
 
 /*****************************************************************************
  *
- *  psi_io_info
+ *  psi_initialise
  *
  *****************************************************************************/
 
-int psi_io_info(psi_t * obj, io_info_t ** info) {
+int psi_initialise(pe_t * pe, cs_t * cs, const psi_options_t * opts,
+		   psi_t * psi) {
 
-  assert(obj);
-  assert(info);
+  int ifail = 0;
 
-  *info = obj->info;
+  assert(pe);
+  assert(cs);
+  assert(opts);
+  assert(psi);
+
+  psi->pe = pe;
+  psi->cs = cs;
+
+  psi->nk = opts->nk;
+  cs_nsites(cs, &psi->nsites);
+
+  psi->e = opts->e;
+  psi->beta = opts->beta;
+  psi->epsilon = opts->epsilon1;
+  psi->epsilon2 = opts->epsilon2;
+
+  psi->e0[X] = opts->e0[X];
+  psi->e0[Y] = opts->e0[Y];
+  psi->e0[Z] = opts->e0[Z];
+
+  psi->diffusivity = (double *) calloc(opts->nk, sizeof(double));
+  psi->valency = (int *) calloc(opts->nk, sizeof(int));
+
+  if (psi->diffusivity == NULL) pe_fatal(pe, "psi->diffusivity failed\n");
+  if (psi->valency == NULL) pe_fatal(pe, "calloc(psi->valency) failed\n");
+
+  for (int n = 0; n < opts->nk; n++) {
+    psi->diffusivity[n] = opts->diffusivity[n];
+    psi->valency[n]     = opts->valency[n];
+  }
+
+  /* Solver options */
+  psi->solver = opts->solver;
+  ifail = stencil_create(opts->solver.nstencil, &psi->stencil);
+
+  /* Nernst-Planck */
+  psi->multisteps = opts->nsmallstep;
+  psi->diffacc = opts->diffacc;
+
+  /* Other */
+  {
+    /* Unfortunately, "rho" is not available for the charge density,
+     * as it would conflict with the fluid density. */
+    lees_edw_t * le = NULL;
+    field_create(pe, cs, le, "psi", &opts->psi, &psi->psi);
+    field_create(pe, cs, le, "qsi", &opts->rho, &psi->rho);
+  }
+
+  psi->nfreq_io = INT_MAX;
+
+  /* Copy of the options structure */
+  psi->options = *opts;
+
+  return ifail;
+}
+
+/*****************************************************************************
+ *
+ *  psi_finalise
+ *
+ *****************************************************************************/
+
+int psi_finalise(psi_t * psi) {
+
+  assert(psi->psi);
+
+  stencil_free(&psi->stencil);
+  field_free(psi->rho);
+  field_free(psi->psi);
+
+  free(psi->valency);
+  free(psi->diffusivity);
+
+  *psi = (psi_t) {0};
 
   return 0;
 }
@@ -133,12 +167,9 @@ int psi_io_info(psi_t * obj, io_info_t ** info) {
 
 int psi_halo_psi(psi_t * psi) {
 
-  int nh;
-
   assert(psi);
 
-  cs_nhalo(psi->cs, &nh); /* Swap full halo */
-  coords_field_halo_rank1(psi->cs, psi->nsites, nh, 1, psi->psi, MPI_DOUBLE);
+  field_halo(psi->psi);
 
   return 0;
 }
@@ -151,13 +182,10 @@ int psi_halo_psi(psi_t * psi) {
 
 int psi_halo_rho(psi_t * psi) {
 
-  int nh;
-
   assert(psi);
 
-  cs_nhalo(psi->cs, &nh); /* Swap full halo */
-  coords_field_halo_rank1(psi->cs, psi->nsites, nh, psi->nk, psi->rho,
-			  MPI_DOUBLE);
+  field_halo(psi->rho);
+
   return 0;
 }
 
@@ -172,22 +200,6 @@ int psi_nk(psi_t * obj, int * nk) {
   assert(obj);
 
   *nk = obj->nk;
-
-  return 0;
-}
-
-/*****************************************************************************
- *
- *  psi_valency_set
- *
- *****************************************************************************/
-
-int psi_valency_set(psi_t * obj, int n, int iv) {
-
-  assert(obj);
-  assert(n < obj->nk);
-
-  obj->valency[n] = iv;
 
   return 0;
 }
@@ -211,22 +223,6 @@ int psi_valency(psi_t * obj, int n, int * iv) {
 
 /*****************************************************************************
  *
- *  psi_diffusivity_set
- *
- *****************************************************************************/
-
-int psi_diffusivity_set(psi_t * obj, int n, double diff) {
-
-  assert(obj);
-  assert(n < obj->nk);
-
-  obj->diffusivity[n] = diff;
-
-  return 0;
-}
-
-/*****************************************************************************
- *
  *  psi_diffusivity
  *
  *****************************************************************************/
@@ -244,252 +240,6 @@ int psi_diffusivity(psi_t * obj, int n, double * diff) {
 
 /*****************************************************************************
  *
- *  psi_e0_set
- *
- *  Set external electric field.
- *
- *****************************************************************************/
-
-int psi_e0_set(psi_t * psi, const double e0[3]) {
-
-  assert(psi);
-
-  psi->e0[X] = e0[X];
-  psi->e0[Y] = e0[Y];
-  psi->e0[Z] = e0[Z];
-
-  return 0;
-}
-
-/*****************************************************************************
- *
- *  psi_init_io_info
- *
- *  The I/O grid will be requested with Cartesian extent as given.
- *
- *  Register all the I/O functions, and set the input/output format
- *  appropriately.
- *
- *****************************************************************************/
-
-int psi_init_io_info(psi_t * obj, int grid[3], int form_in, int form_out) {
-
-  io_info_args_t args = io_info_args_default();
-
-  assert(obj);
-  assert(grid);
-  assert(obj->info == NULL);
-
-  args.grid[X] = grid[X];
-  args.grid[Y] = grid[Y];
-  args.grid[Z] = grid[Z];
-
-  io_info_create(obj->pe, obj->cs, &args, &obj->info);
-  if (obj->info == NULL) pe_fatal(obj->pe, "io_info_create(psi) failed\n");
-
-  io_info_set_name(obj->info, "Potential and charge densities");
-
-  io_info_read_set(obj->info, IO_FORMAT_BINARY, psi_read);
-  io_info_read_set(obj->info, IO_FORMAT_ASCII, psi_read_ascii);
-  io_info_write_set(obj->info, IO_FORMAT_BINARY, psi_write);
-  io_info_write_set(obj->info, IO_FORMAT_ASCII, psi_write_ascii);
-
-  io_info_set_bytesize(obj->info, IO_FORMAT_BINARY, (2+obj->nk)*sizeof(double));
-  io_info_set_bytesize(obj->info, IO_FORMAT_ASCII, (2+obj->nk)*23 + 1);
-
-  io_info_format_set(obj->info, form_in, form_out);
-  io_info_metadata_filestub_set(obj->info, "psi");
-
-  return 0;
-}
-
-/*****************************************************************************
- *
- *  psi_free
- *
- *****************************************************************************/
-
-void psi_free(psi_t * obj) {
-
-  int n;
-
-  assert(obj);
-
-  for (n = 0; n < 3; n++) {
-    MPI_Type_free(&obj->psihalo[n]);
-    MPI_Type_free(&obj->rhohalo[n]);
-  }
-
-  if (obj->info) io_info_free(obj->info);
-
-  free(obj->valency);
-  free(obj->diffusivity);
-  free(obj->rho);
-  free(obj->psi);
-  free(obj);
-  obj = NULL;
-
-  return;
-}
-
-/*****************************************************************************
- *
- *  psi_write_ascii
- *
- *  Returns 0 on success.
- *
- *****************************************************************************/
-
-static int psi_write_ascii(FILE * fp, int index, void * self) {
-
-  int n, nwrite;
-  int nsites;
-  double rho_el;
-  psi_t * obj = (psi_t*) self;
-
-  assert(obj);
-  assert(fp);
-
-  cs_nsites(obj->cs, &nsites);
-
-  nwrite = fprintf(fp, "%22.15e ", obj->psi[addr_rank0(nsites,index)]);
-  if (nwrite != 23) {
-    pe_fatal(obj->pe, "fprintf(psi) failed at index %d\n", index);
-  }
-
-  for (n = 0; n < obj->nk; n++) {
-    nwrite = fprintf(fp, "%22.15e ", obj->rho[addr_rank1(nsites, obj->nk, index, n)]);
-    if (nwrite != 23) pe_fatal(obj->pe, "fprintf(rho) failed at index %d %d\n", index, n);
-  }
-  
-  psi_rho_elec(obj, index, &rho_el);
-  nwrite = fprintf(fp, "%22.15e ", rho_el);
-  if (nwrite != 23) {
-    pe_fatal(obj->pe, "fprintf(rho_el) failed at index %d\n", index);
-  }
-
-  nwrite = fprintf(fp, "\n");
-  if (nwrite != 1) pe_fatal(obj->pe, "fprintf() failed at index %d\n", index);
-
-  return 0;
-}
-
-/*****************************************************************************
- *
- *  psi_read_ascii
- *
- *  Returns 0 on success.
- *
- *****************************************************************************/
-
-static int psi_read_ascii(FILE * fp, int index, void * self) {
-
-  int n, nread;
-  int nsites;
-  int indexf;
-  double rho_el;
-  psi_t * obj = (psi_t*) self;
-
-  assert(fp);
-  assert(self);
-
-  cs_nsites(obj->cs, &nsites);
-
-  indexf = addr_rank0(nsites, index);
-  nread = fscanf(fp, "%le", obj->psi + indexf);
-  if (nread != 1) pe_fatal(obj->pe, "fscanf(psi) failed %d\n", index);
-
-  for (n = 0; n < obj->nk; n++) {
-    indexf = addr_rank1(nsites, obj->nk, index, n);
-    nread = fscanf(fp, "%le", obj->rho + indexf);
-    if (nread != 1) pe_fatal(obj->pe, "fscanf(rho) failed %d %d\n", index, n);
-  }
-
-  nread = fscanf(fp, "%le", &rho_el);
-  if (nread != 1) pe_fatal(obj->pe, "fscanf(rho_el) failed %d %d\n", index, n);
-
-  return 0;
-}
-
-/*****************************************************************************
- *
- *  psi_write
- *
- *  Returns 0 on success.
- *
- *****************************************************************************/
-
-static int psi_write(FILE * fp, int index, void * self) {
-
-  int n;
-  int na;
-  int nsites;
-  int indexf;
-  double rho_el;
-  psi_t * obj = (psi_t*) self;
-
-  assert(fp);
-  assert(obj);
-
-  cs_nsites(obj->cs, &nsites);
-
-  indexf = addr_rank0(nsites, index);
-  n = fwrite(obj->psi + indexf, sizeof(double), 1, fp);
-  if (n != 1) pe_fatal(obj->pe, "fwrite(psi) failed at index %d\n", index);
-
-  for (na = 0; na < obj->nk; na++) {
-    indexf = addr_rank1(nsites, obj->nk, index, na);
-    n = fwrite(obj->rho + indexf, sizeof(double), 1, fp);
-    if (n != 1) pe_fatal(obj->pe, "fwrite(rho) failed at index %d\n", index);
-  }
-
-  psi_rho_elec(obj, index, &rho_el);
-  n = fwrite(&rho_el, sizeof(double), 1, fp);
-  if (n != 1) pe_fatal(obj->pe, "fwrite(rho_el) failed at index %d", index);
-
-  return 0;
-}
-
-/*****************************************************************************
- *
- *  psi_read
- *
- *  Returns 0 on success.
- *
- *****************************************************************************/
-
-static int psi_read(FILE * fp, int index, void * self) {
-
-  int n;
-  int na;
-  int nsites;
-  int indexf;
-  double rho_el;
-  psi_t * obj = (psi_t*) self;
-
-  assert(fp);
-  assert(obj);
-
-  cs_nsites(obj->cs, &nsites);
-
-  indexf = addr_rank0(nsites, index);
-  n = fread(obj->psi + indexf, sizeof(double), 1, fp);
-  if (n != 1) pe_fatal(obj->pe, "fread(psi) failed at index %d\n", index);
-
-  for (na = 0; na < obj->nk; na++) {
-    indexf = addr_rank1(nsites, obj->nk, index, na);
-    n = fread(obj->rho + indexf, sizeof(double), 1, fp);
-    if (n != 1) pe_fatal(obj->pe, "fread(rho) failed at index %d\n", index);
-  }
-
-  n = fread(&rho_el, sizeof(double), 1, fp);
-  if (n != 1) pe_fatal(obj->pe, "fread(rho_el) failed at index %d\n", index);
-
-  return 0;
-}
-
-/*****************************************************************************
- *
  *  psi_rho_elec
  *
  *  Return the total electric charge density at a point.
@@ -498,14 +248,14 @@ static int psi_read(FILE * fp, int index, void * self) {
 
 int psi_rho_elec(psi_t * obj, int index, double * rho) {
 
-  int n;
   double rho_elec = 0.0;
 
   assert(obj);
   assert(rho);
 
-  for (n = 0; n < obj->nk; n++) {
-    rho_elec += obj->e*obj->valency[n]*obj->rho[addr_rank1(obj->nsites, obj->nk, index, n)];
+  for (int n = 0; n < obj->nk; n++) {
+    int irho = addr_rank1(obj->nsites, obj->nk, index, n);
+    rho_elec += obj->e*obj->valency[n]*obj->rho->data[irho];
   }
   *rho = rho_elec;
 
@@ -524,7 +274,7 @@ int psi_rho(psi_t * obj, int index, int n, double * rho) {
   assert(rho);
   assert(n < obj->nk);
 
-  *rho = obj->rho[addr_rank1(obj->nsites, obj->nk, index, n)];
+  *rho = obj->rho->data[addr_rank1(obj->nsites, obj->nk, index, n)];
 
   return 0;
 }
@@ -540,7 +290,7 @@ int psi_rho_set(psi_t * obj, int index, int n, double rho) {
   assert(obj);
   assert(n < obj->nk);
 
-  obj->rho[addr_rank1(obj->nsites, obj->nk, index, n)] = rho;
+  obj->rho->data[addr_rank1(obj->nsites, obj->nk, index, n)] = rho;
 
   return 0;
 }
@@ -556,7 +306,7 @@ int psi_psi(psi_t * obj, int index, double * psi) {
   assert(obj);
   assert(psi);
 
-  *psi = obj->psi[addr_rank0(obj->nsites, index)];
+  *psi = obj->psi->data[addr_rank0(obj->nsites, index)];
 
   return 0;
 }
@@ -571,7 +321,7 @@ int psi_psi_set(psi_t * obj, int index, double psi) {
 
   assert(obj);
 
-  obj->psi[addr_rank0(obj->nsites, index)] = psi;
+  obj->psi->data[addr_rank0(obj->nsites, index)] = psi;
 
   return 0;
 }
@@ -594,21 +344,6 @@ int psi_unit_charge(psi_t * obj, double * eunit) {
 
 /*****************************************************************************
  *
- *  psi_unit_charge_set
- *
- *****************************************************************************/
-
-int psi_unit_charge_set(psi_t * obj, double eunit) {
-
-  assert(obj);
-
-  obj->e = eunit;
-
-  return 0;
-}
-
-/*****************************************************************************
- *
  *  psi_beta
  *
  *****************************************************************************/
@@ -619,21 +354,6 @@ int psi_beta(psi_t * obj, double * beta) {
   assert(beta);
 
   *beta = obj->beta;
-
-  return 0;
-}
-
-/*****************************************************************************
- *
- *  psi_beta_set
- *
- *****************************************************************************/
-
-int psi_beta_set(psi_t * obj, double beta) {
-
-  assert(obj);
-
-  obj->beta = beta;
 
   return 0;
 }
@@ -656,21 +376,6 @@ int psi_epsilon(psi_t * obj, double * epsilon) {
 
 /*****************************************************************************
  *
- *  psi_epsilon_set
- *
- *****************************************************************************/
-
-int psi_epsilon_set(psi_t * obj, double epsilon) {
-
-  assert(obj);
-
-  obj->epsilon = epsilon;
-
-  return 0;
-}
-
-/*****************************************************************************
- *
  *  psi_epsilon2
  *
  *****************************************************************************/
@@ -681,22 +386,6 @@ int psi_epsilon2(psi_t * obj, double * epsilon2) {
   assert(epsilon2);
 
   *epsilon2 = obj->epsilon2;
-
-  return 0;
-}
-
-
-/*****************************************************************************
- *
- *  psi_epsilon2_set
- *
- *****************************************************************************/
-
-int psi_epsilon2_set(psi_t * obj, double epsilon2) {
-
-  assert(obj);
-
-  obj->epsilon2 = epsilon2;
 
   return 0;
 }
@@ -712,106 +401,14 @@ int psi_epsilon2_set(psi_t * obj, double epsilon2) {
 
 int psi_ionic_strength(psi_t * psi, int index, double * sion) {
 
-  int n;
   assert(psi);
   assert(sion);
 
   *sion = 0.0;
-  for (n = 0; n < psi->nk; n++) {
+  for (int n = 0; n < psi->nk; n++) {
     *sion += 0.5*psi->valency[n]*psi->valency[n]
-      *psi->rho[addr_rank1(psi->nsites, psi->nk, index, n)];
+      *psi->rho->data[addr_rank1(psi->nsites, psi->nk, index, n)];
   }
-
-  return 0;
-}
-
-/*****************************************************************************
- *
- *  psi_bjerrum_length
- *
- *  Is equal to e^2 / 4 pi epsilon k_B T
- *
- *****************************************************************************/
-
-int psi_bjerrum_length(psi_t * obj, double * lb) {
-
-  PI_DOUBLE(pi);
-
-  assert(obj);
-  assert(lb);
-
-  *lb = obj->e*obj->e*obj->beta / (4.0*pi*obj->epsilon);
-
-  return 0;
-}
-
-
-/*****************************************************************************
- *
- *  psi_bjerrum_length2
- *
- *  Is equal to e^2 / 4 pi epsilon2 k_B T if we have
- *  a dielectric contrast between the electrolytes.
- *
- *****************************************************************************/
-
-int psi_bjerrum_length2(psi_t * obj, double * lb) {
-
-  PI_DOUBLE(pi);
-
-  assert(obj);
-  assert(lb);
-
-  *lb = obj->e*obj->e*obj->beta / (4.0*pi*obj->epsilon2);
-
-  return 0;
-}
-
-/*****************************************************************************
- *
- *  psi_debye_length
- *
- *  Returns the Debye length for a simple, symmetric electrolyte.
- *  An ionic strength is required as input (see above); this
- *  accounts for the factor of 8 in the denominator.
- *
- *****************************************************************************/
-
-int psi_debye_length(psi_t * obj, double rho_b, double * ld) {
-
-  double lb;
-  PI_DOUBLE(pi);
-
-  assert(obj);
-  assert(ld);
-
-  psi_bjerrum_length(obj, &lb);
-  *ld = 1.0 / sqrt(8.0*pi*lb*rho_b);
-
-  return 0;
-}
-
-/*****************************************************************************
- *
- *  psi_debye_length2
- *
- *  Returns the Debye length for the second phase if we
- *  have a dielectric contrast between the electrolytes.
- *  An ionic strength is required as input (see above); this
- *  accounts for the factor of 8 in the denominator.
- *
- *****************************************************************************/
-
-int psi_debye_length2(psi_t * obj, double rho_b, double * ld) {
-
-  double lb;
-  PI_DOUBLE(pi);
-
-  assert(obj);
-  assert(ld);
-
-  psi_bjerrum_length2(obj, &lb);
-  *ld = 1.0 / sqrt(8.0*pi*lb*rho_b);
 
   return 0;
 }
@@ -859,7 +456,7 @@ int psi_reltol(psi_t * obj, double * reltol) {
   assert(obj);
   assert(reltol);
 
-  *reltol = obj->reltol;
+  *reltol = obj->solver.reltol;
 
   return 0;
 }
@@ -877,53 +474,7 @@ int psi_abstol(psi_t * obj, double * abstol) {
   assert(obj);
   assert(abstol);
 
-  *abstol = obj->abstol;
-
-  return 0;
-}
-
-/*****************************************************************************
- *
- *  psi_reltol_set
- *
- *****************************************************************************/
-
-int psi_reltol_set(psi_t * obj, double reltol) {
-
-  assert(obj);
-
-  obj->reltol = reltol;
-
-  return 0;
-}
-
-/*****************************************************************************
- *
- *  psi_abstol_set
- *
- *****************************************************************************/
-
-int psi_abstol_set(psi_t * obj, double abstol) {
-
-  assert(obj);
-
-  obj->abstol = abstol;
-
-  return 0;
-}
-
-/*****************************************************************************
- *
- *  psi_multisteps_set
- *
- *****************************************************************************/
-
-int psi_multisteps_set(psi_t * obj, int multisteps) {
-
-  assert(obj);
-  assert(multisteps);
-
-  obj->multisteps = multisteps;
+  *abstol = obj->solver.abstol;
 
   return 0;
 }
@@ -961,22 +512,6 @@ int psi_multistep_timestep(psi_t * obj, double * dt) {
 
 /*****************************************************************************
  *
- *  psi_maxits_set
- *
- *****************************************************************************/
-
-int psi_maxits_set(psi_t * obj, int maxits) {
-
-  assert(obj);
-  assert(maxits);
-
-  obj->maxits = maxits;
-
-  return 0;
-}
-
-/*****************************************************************************
- *
  *  psi_maxits
  *
  *****************************************************************************/
@@ -986,7 +521,7 @@ int psi_maxits(psi_t * obj, int * maxits) {
   assert(obj);
   assert(maxits);
 
-  *maxits = obj->maxits;
+  *maxits = obj->solver.maxits;
 
   return 0;
 }
@@ -1021,35 +556,6 @@ int psi_diffacc(psi_t * obj, double * diffacc) {
   *diffacc = obj->diffacc;
 
   return 0;
-}
-
-/*****************************************************************************
- *
- *  psi_skipsteps_set
- *
- *****************************************************************************/
-
-int psi_skipsteps_set(psi_t * obj, double skipsteps) {
-
-  assert(obj);
-  assert(skipsteps>=1);
-
-  obj->skipsteps = skipsteps;
-
-  return 0;
-}
-
-/*****************************************************************************
- *
- *  psi_skipsteps
- *
- *****************************************************************************/
-
-int psi_skipsteps(psi_t * obj) {
-
-  assert(obj);
-
-  return obj->skipsteps;
 }
 
 /*****************************************************************************
@@ -1139,6 +645,8 @@ int psi_halo_psijump(psi_t * psi) {
   double eps;
   double beta;
 
+  double * psidata = psi->psi->data;
+
   assert(psi);
 
   cs_nhalo(psi->cs, &nhalo);
@@ -1162,13 +670,13 @@ int psi_halo_psijump(psi_t * psi) {
 
 	  if (periodic[X]) {
 	    /* Add external potential */
-	    psi->psi[addr_rank0(psi->nsites, index)] += psi->e0[X]*ntotal[X];
+	    psidata[addr_rank0(psi->nsites, index)] += psi->e0[X]*ntotal[X];
 	  }
 	  else{
 	    /* Borrow fluid site ic = 1 */
 	    index1 = cs_index(psi->cs, 1, jc, kc);
-	    psi->psi[addr_rank0(psi->nsites, index)] =
-	      psi->psi[addr_rank0(psi->nsites, index1)];   
+	    psidata[addr_rank0(psi->nsites, index)] =
+	      psidata[addr_rank0(psi->nsites, index1)];   
 	  }
 	}
       }
@@ -1186,13 +694,13 @@ int psi_halo_psijump(psi_t * psi) {
 
 	  if (periodic[X]) {
 	    /* Subtract external potential */
-	    psi->psi[addr_rank0(psi->nsites, index)] -= psi->e0[X]*ntotal[X];
+	    psidata[addr_rank0(psi->nsites, index)] -= psi->e0[X]*ntotal[X];
 	  }
 	  else {
 	    /* Borrow fluid site at end ... */
 	    index1 = cs_index(psi->cs, nlocal[X], jc, kc);
-	    psi->psi[addr_rank0(psi->nsites, index)] =
-	      psi->psi[addr_rank0(psi->nsites, index1)];   
+	    psidata[addr_rank0(psi->nsites, index)] =
+	      psidata[addr_rank0(psi->nsites, index1)];   
 	  }
 	}
       }
@@ -1209,13 +717,13 @@ int psi_halo_psijump(psi_t * psi) {
 
 	    if (periodic[Y]) {
 	      /* Add external potential */
-	      psi->psi[addr_rank0(psi->nsites, index)] += psi->e0[Y]*ntotal[Y];
+	      psidata[addr_rank0(psi->nsites, index)] += psi->e0[Y]*ntotal[Y];
 	    }
 	    else {
 	      /* Not periodic ... just borrow from fluid site jc = 1 */
 	      index1 = cs_index(psi->cs, ic, 1, kc);
-	      psi->psi[addr_rank0(psi->nsites, index)] =
-		psi->psi[addr_rank0(psi->nsites, index1)];   
+	      psidata[addr_rank0(psi->nsites, index)] =
+		psidata[addr_rank0(psi->nsites, index1)];   
 	    }
 	}
       }
@@ -1233,13 +741,13 @@ int psi_halo_psijump(psi_t * psi) {
 
 	  if (periodic[Y]) {
 	    /* Subtract external potential */
-	    psi->psi[addr_rank0(psi->nsites, index)] -= psi->e0[Y]*ntotal[Y];
+	    psidata[addr_rank0(psi->nsites, index)] -= psi->e0[Y]*ntotal[Y];
 	  }
 	  else {
 	    /* Borrow fluid site at end */
 	    index1 = cs_index(psi->cs, ic, nlocal[Y], kc);
-	    psi->psi[addr_rank0(psi->nsites, index)] =
-	      psi->psi[addr_rank0(psi->nsites, index1)];   
+	    psidata[addr_rank0(psi->nsites, index)] =
+	      psidata[addr_rank0(psi->nsites, index1)];   
 	  }
 	}
       }
@@ -1257,13 +765,13 @@ int psi_halo_psijump(psi_t * psi) {
 
 	  if (periodic[Z]) {
 	    /* Add external potential */
-	    psi->psi[addr_rank0(psi->nsites, index)] += psi->e0[Z]*ntotal[Z];
+	    psidata[addr_rank0(psi->nsites, index)] += psi->e0[Z]*ntotal[Z];
 	  }
 	  else {
 	    /* Borrow fluid site kc = 1 */
 	    index1 = cs_index(psi->cs, ic, jc, 1);
-	    psi->psi[addr_rank0(psi->nsites, index)] =
-	      psi->psi[addr_rank0(psi->nsites, index1)];   
+	    psidata[addr_rank0(psi->nsites, index)] =
+	      psidata[addr_rank0(psi->nsites, index1)];   
 	  }
 	}
       }
@@ -1281,13 +789,13 @@ int psi_halo_psijump(psi_t * psi) {
 
 	  if (periodic[Z]) {
 	    /* Subtract external potential */
-	    psi->psi[addr_rank0(psi->nsites, index)] -= psi->e0[Z]*ntotal[Z];
+	    psidata[addr_rank0(psi->nsites, index)] -= psi->e0[Z]*ntotal[Z];
 	  }
 	  else {
 	    /* Borrow fluid site at end ... */
 	    index1 = cs_index(psi->cs, ic, jc, nlocal[Z]);
-	    psi->psi[addr_rank0(psi->nsites, index)] =
-	      psi->psi[addr_rank0(psi->nsites, index1)];   
+	    psidata[addr_rank0(psi->nsites, index)] =
+	      psidata[addr_rank0(psi->nsites, index1)];   
 	  }
 	}
       }
@@ -1325,21 +833,6 @@ int psi_force_method_set(psi_t * psi, int flag) {
   assert(flag >= 0 && flag < PSI_FORCE_NTYPES);
 
   psi->method = flag;
-
-  return 0;
-}
-
-/*****************************************************************************
- *
- *  psi_nfreq_set
- *
- *****************************************************************************/
-
-int psi_nfreq_set(psi_t * psi, int nfreq) {
-
-  assert(psi);
-
-  psi->nfreq = nfreq;
 
   return 0;
 }
@@ -1467,3 +960,34 @@ int psi_electroneutral(psi_t * psi, map_t * map) {
   return 0;
 }
 
+/*****************************************************************************
+ *
+ *  psi_io_write
+ *
+ *  Convenience to write both psi, rho with extra information.
+ *
+ *****************************************************************************/
+
+int psi_io_write(psi_t * psi, int nstep) {
+
+  int ifail = 0;
+  io_event_t io1 = {0};
+  io_event_t io2 = {0};
+  const char * extra = "electrokinetics";
+  cJSON * json = NULL;
+
+  ifail = psi_options_to_json(&psi->options, &json);
+  if (ifail == 0) {
+    io1.extra_name = extra;
+    io2.extra_name = extra;
+    io1.extra_json  = json;
+    io2.extra_json  = json;
+  }
+
+  ifail += field_io_write(psi->psi, nstep, &io1);
+  ifail += field_io_write(psi->rho, nstep, &io2);
+
+  cJSON_Delete(json);
+
+  return ifail;
+}

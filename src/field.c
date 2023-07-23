@@ -1666,9 +1666,8 @@ int field_io_write(field_t * field, int timestep, io_event_t * event) {
 
   /* Metadata */
   if (meta->iswriten == 0) {
-    /* No extra comments at the moment */
-    cJSON * comments = NULL;
-    int ifail = io_metadata_write(meta, field->name, comments);
+    int ifail = io_metadata_write(meta, field->name, event->extra_name,
+				  event->extra_json);
     if (ifail == 0) field->iometadata_out.iswriten = 1;
   }
 

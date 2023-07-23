@@ -1,6 +1,5 @@
 Welcome to Ludwig v0.7.33 (Serial version running on 1 process)
 
-The SVN revision details are: 3210M
 Note assertions via standard C assert() are on.
 
 Read 25 user parameters from serial-le2d-lb1.inp
@@ -85,6 +84,9 @@ Initial conditions.
 Scalars - total mean variance min max
 [rho]        4096.00  1.00000000000  0.0000000e+00  1.00000000000  1.00000000000
 [phi] -1.1802440e-02 -2.8814551e-06 8.2680383e-04 -4.9977721e-02 4.9988335e-02
+
+Free energy density - timestep total fluid
+[fed]              0 -2.0247427840e-05 -2.0247427840e-05
 
 Momentum - x y z
 [total   ]  1.7763568e-15  1.3322676e-15  0.0000000e+00

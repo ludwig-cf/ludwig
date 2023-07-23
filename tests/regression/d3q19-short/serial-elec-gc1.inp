@@ -1,0 +1,132 @@
+##############################################################################
+#
+#  Guoy-Chapman electrokinetics
+#
+#  This is a sample input file for the problem described at
+#  https://ludwig.epcc.ed.ac.uk/tutorials/electrokinetics/electrokinetics.html
+#
+#  We have a quasi-one dimensional system in the x-direction and we
+#  use the special initialisation
+#
+#  electrokinetics_init          gouy_chapman
+#
+#  to provide walls at x = 1 and x = Lx. We arrange for the system to
+#  have a surface charge (0.3125, 0.03125, or 0.003125) and zero
+#  co-ion concentration (counter-charge only). The whole system is
+#  electroneutral. E.g.,
+#
+#  electrokinetics_init_rho_el   0.0
+#  electrokinetics_init_sigma    0.003125
+#
+#  For the purposes of this test, only 100 time steps are used,
+#  and the SOR residual reporting is switch off to allow the test
+#  to pass (the residual can be sensitive to the platform/compiler
+#  at the level of the test tolerance).
+#
+#  For the results presented, 100,000 steps were used, and the
+#  final configuration file is used to provide the charge density.
+#  Statistics and residual reporting can be used at 1000 steps
+#  interval.
+#
+##############################################################################
+
+##############################################################################
+#
+#  Run duration
+#
+###############################################################################
+
+N_cycles 100
+
+##############################################################################
+#
+#  System and MPI
+# 
+##############################################################################
+
+size               64_4_4
+periodicity        1_1_1
+lb_halo_scheme     lb_halo_openmp_reduced
+
+##############################################################################
+#
+#  Fluid parameters
+#
+#  The temperature is relevant for k_B T in the electrokinetics context.
+#
+##############################################################################
+
+viscosity           0.1
+
+isothermal_fluctuations off
+temperature 3.33333333333333333e-5
+
+
+##############################################################################
+#
+#  Free energy parameters
+#
+###############################################################################
+
+free_energy               fe_electro
+fe_force_method           phi_gradmu_correction
+
+fd_advection_scheme_order 3
+
+###############################################################################
+#
+#  Colloid parameters
+#
+###############################################################################
+
+colloid_init        none
+
+###############################################################################
+#
+#  Walls / boundaries
+#
+###############################################################################
+
+boundary_walls 0_0_0
+
+###############################################################################
+#
+#  Output frequency and type
+#
+###############################################################################
+
+freq_statistics               100
+freq_psi_resid                1000
+config_at_end                 no
+
+psi_io_mode                   mpiio
+psi_io_format                 ascii
+psi_io_report                 no
+
+###############################################################################
+#
+#  Electrokinetics
+#
+###############################################################################
+
+electrokinetics_z0              +1
+electrokinetics_z1              -1
+electrokinetics_d0               0.01
+electrokinetics_d1               0.01
+electrokinetics_eunit            1.0
+electrokinetics_epsilon          3.3e3
+
+electrokinetics_init             gouy_chapman
+electrokinetics_init_rho_el      0.0
+electrokinetics_init_sigma       0.003125
+
+electrokinetics_solver_type      sor
+electrokinetics_solver_stencil   7
+
+###############################################################################
+#
+#  Miscellaneous
+#
+###############################################################################
+
+random_seed 8361235
