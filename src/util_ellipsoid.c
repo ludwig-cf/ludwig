@@ -217,20 +217,7 @@ __host__ __device__ void rotate_tobodyframe_quaternion(const double q[4], const 
    for(int i = 0; i < 3; i++) {b[i]=s1*a[i] + 2.0*s2*q[i+1] + 2.0*q[0]*s3[i];}
  return;
  }
-/*****************************************************************************
- *
- *  Rotate to world frame by quaternion
- *
- ****************************************************************************/
-/*__host__ __device__ void rotate_toworldframe_quaternion(const double q[4], const double a[3], double b[3]) {
-   double qstar[4];
-   qstar[0]=q[0];
-   for(int i = 1; i < 4; i++) {qstar[i] = -q[i];}
-   rotate_tobodyframe_quaternion(qstar,a,b);
- return;
- }
 
-*/
 /*****************************************************************************
  *
  *  Determining Euler angles from quaternions

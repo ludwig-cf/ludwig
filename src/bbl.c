@@ -530,13 +530,13 @@ static int bbl_pass1(bbl_t * bbl, lb_t * lb, colloids_info_t * cinfo) {
 	  double diff1, diff2, gridin[3], elzin;
 	  elbz = pc->s.m;
 	  elz = dot_product(p_link->rb, elbz);
-	  for (int ia = 0; ia < 3; ia++) {
+	  for (ia = 0; ia < 3; ia++) {
 	    elrho[ia] = p_link->rb[ia] - elz*elbz[ia];
 	  }
 	  elr = modulus(elrho);
 	  rmod = 0.0;
 	  if (elr != 0.0) rmod = 1.0/elr;
-	  for (int ia = 0; ia < 3; ia++) {
+	  for (ia = 0; ia < 3; ia++) {
 	    elrho[ia] = elrho[ia]*rmod;
 	  }
 	  ela2 = ela*ela;
@@ -563,7 +563,7 @@ static int bbl_pass1(bbl_t * bbl, lb_t * lb, colloids_info_t * cinfo) {
 	  denom = sqrt(diff2);
 	  term1 = -sqrt(diff1)/denom;
 	  term2 = sqrt(1.0-ele*ele)*elz/denom;
-	  for (int ia = 0; ia < 3; ia++) {
+	  for (ia = 0; ia < 3; ia++) {
 	    tans[ia] = term1*elbz[ia] + term2*elrho[ia];
 	  }
 	  sdotez = dot_product(tans, elbz);
