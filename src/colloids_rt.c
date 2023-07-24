@@ -1251,7 +1251,7 @@ int wall_ss_cut_init(pe_t * pe, cs_t * cs, rt_t * rt, wall_t * wall,
  *****************************************************************************/
 
   int check_the_order(const double a,const double b,const double c) {
-
-  return ((b-a)>1.0e-12)|((c-b)>1.0e-12);
+  
+  return (((b-a)>1.0e-12)|((c-b)>1.0e-12));
   }
  /*****************************************************************************/

@@ -1225,7 +1225,6 @@ static int build_replace_order_parameter(fe_t * fe, lb_t * lb,
       weight += lb->model.wv[p];
       nweight += 1;
     }
-
     if (nweight == 0) {
       /* No information. For phi, use existing (solid) value. */
       if (fe->id == FE_LC) build_replace_q_local(fe, cinfo, pc, index, f);
@@ -1263,6 +1262,8 @@ int build_replace_q_local(fe_t * fe, colloids_info_t * info, colloid_t * pc,
   double rb[3], rbp[3], rhat[3];
   double rbmod, rhat_dot_rb;
   double qnew[3][3];
+  double posvector[3];
+  int isphere=0;
 
   double amplitude = (1.0/3.0);
 
@@ -1281,6 +1282,11 @@ int build_replace_q_local(fe_t * fe, colloids_info_t * info, colloid_t * pc,
   /* For normal anchoring we determine the radial unit vector rb */
 
   colloid_rb(info, pc, index, rb);
+  util_vector_copy(3,rb,posvector);
+  if (pc->s.shape == COLLOID_SHAPE_ELLIPSOID) {
+    isphere=check_whether_sphere(pc);
+    if(!isphere) {surface_normal_spheroid(pc,posvector,rb);}
+  }
 
   rbmod = 1.0/sqrt(rb[X]*rb[X] + rb[Y]*rb[Y] + rb[Z]*rb[Z]);
   rb[0] *= rbmod;
@@ -1739,3 +1745,113 @@ int build_conservation_phi(colloids_info_t * cinfo, field_t * phi,
 
   return 0;
 }
+
+/*****************************************************************************
+ *
+ *  Calculate surface normal on an ellipsoid at a point posvector
+ *
+ ****************************************************************************/
+__host__ __device__ void surface_normal_spheroid(colloid_t * pc,const double * posvector, double * rb) {
+
+  surface_vector_spheroid(pc,posvector, rb,0);
+  return;
+ }
+
+/*****************************************************************************
+ *
+ *  Calculate surface tangent on an ellipsoid at a point posvector
+ *
+ ****************************************************************************/
+__host__ __device__ void surface_tangent_spheroid(colloid_t * pc,const double * posvector, double * rb) {
+
+  surface_vector_spheroid(pc,posvector, rb,1);
+  return;
+ }
+
+/*****************************************************************************
+ *
+ *  Calculate surface vector on an ellipsoid at a point posvector
+ *
+ ****************************************************************************/
+__host__ __device__ void surface_vector_spheroid(colloid_t * pc,const double * posvector, double * rb,const int tn) {
+
+  PI_DOUBLE(pi);
+
+  double *elabc;
+  double elc;
+  double ele,ele2;
+  double ela,ela2;
+  double elz,elz2;
+  double elr, sdotez;
+  double rmod;
+  double *quater;
+  double *elbz;
+  double denom, term1, term2;
+  double elrho[3],xi1,xi2,xi;
+  double diff1,diff2,gridin[3],elzin,dr[3];
+ 
+  elabc=pc->s.elabc;
+  elc=sqrt(elabc[0]*elabc[0]-elabc[1]*elabc[1]);
+  ele=elc/elabc[0];
+  ela = colloids_largest_dimension(pc);
+  quater=pc->s.quater;
+  elbz=pc->s.m;
+  elz=dot_product(posvector,elbz);
+  for(int ia=0; ia<3; ia++) {elrho[ia]=posvector[ia]-elz*elbz[ia];}
+  elr = modulus(elrho);
+  rmod = 0.0; 
+  if (elr != 0.0) rmod = 1.0/elr;
+  for(int ia=0; ia<3; ia++) {elrho[ia]=elrho[ia]*rmod;}
+  ela2=ela*ela;
+  elz2=elz*elz;
+  ele2=ele*ele;
+  diff1=ela2-elz2;
+  diff2=ela2-ele2*elz2;
+  /*Taking care of the unusual circumstances in which the grid point lies*/
+  /*outside the particle and elz > ela. Then the tangent vector is calculated*/
+  /*for the neighbouring grid point inside*/
+  if(diff1<0.0){
+    elr = modulus(posvector);
+    rmod = 0.0; 
+    if (elr != 0.0) rmod = 1.0/elr;
+    for(int ia=0; ia<3; ia++) {dr[ia]=posvector[ia]*rmod;}
+    for(int ia = 0; ia < 3; ia++) {
+      gridin[ia] = posvector[ia]-dr[ia];
+      elzin=dot_product(gridin,elbz);
+      elz2=elzin*elzin;
+      diff1=ela2-elz2;
+    }   
+  /*diff1 is a more stringent criterion*/
+    if(diff2<0.0) {diff2 = ela2-ele2*elz2;}
+  }   
+  denom=sqrt(diff2);
+  term1=sqrt(diff1)/denom;
+  term2=sqrt(1.0-ele*ele)*elz/denom;
+  if(tn==1) {/*Tangent vector*/
+    for(int ia = 0; ia < 3; ia++) {rb[ia]=-term1*elbz[ia]+term2*elrho[ia];}
+  }
+  else {/*Normal vector*/
+    for(int ia = 0; ia < 3; ia++) {rb[ia]= term2*elbz[ia]+term1*elrho[ia];}
+  }
+
+  return;
+
+}
+
+/*****************************************************************************
+*  
+*  Ordering 3 numbers in the ascending order
+*
+*****************************************************************************/
+
+int check_whether_sphere(colloid_t * pc) {
+
+double a,b,c;
+
+a=pc->s.elabc[0];
+b=pc->s.elabc[1];
+c=pc->s.elabc[2];
+
+return ((fabs(b-a)<1.0e-12)&&(fabs(c-b)<1.0e-12));
+}
+/*****************************************************************************/

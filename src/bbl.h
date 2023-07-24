@@ -33,5 +33,4 @@ int bbl_6x6_gaussian_elimination(double a[6][6], double xb[6]);
 
 int bbl_surface_stress(bbl_t * bbl, double slocal[3][3]);
 int bbl_order_parameter_deficit(bbl_t * bbl, double * delta);
-
 #endif

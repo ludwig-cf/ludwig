@@ -534,6 +534,7 @@ static int bbl_pass1(bbl_t * bbl, lb_t * lb, colloids_info_t * cinfo) {
 	  for (ia = 0; ia < 3; ia++) {
 	    elrho[ia] = p_link->rb[ia] - elz*elbz[ia];
 	  }
+	  /*Replace the first part with surface tangent calculation but discuss with Kevin about going inside the particle in a different way*/
 	  elr = modulus(elrho);
 	  rmod = 0.0;
 	  if (elr != 0.0) rmod = 1.0/elr;
