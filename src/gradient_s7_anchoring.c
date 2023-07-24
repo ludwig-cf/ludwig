@@ -53,6 +53,9 @@
 
 #include "pe.h"
 #include "util.h"
+#include "util_vector.h"
+#include "util_ellipsoid.h"
+#include "build.h"
 #include "coords.h"
 #include "kernel.h"
 #include "colloids.h"
@@ -773,6 +776,9 @@ __host__ __device__ int grad_s7_boundary_c(fe_lc_param_t * param,
 					   double c[3][3]) {
 
 
+  double posvector[3];
+  int isphere=0;
+
   assert(status != MAP_FLUID);
 
   if (status == MAP_BOUNDARY) {
@@ -794,6 +800,11 @@ __host__ __device__ int grad_s7_boundary_c(fe_lc_param_t * param,
 	dr[X] = 1.0*(noffset[X] + ic) - pc->s.r[X];
 	dr[Y] = 1.0*(noffset[Y] + jc) - pc->s.r[Y];
 	dr[Z] = 1.0*(noffset[Z] + kc) - pc->s.r[Z];
+        util_vector_copy(3,dr,posvector);
+	if (pc->s.shape == COLLOID_SHAPE_ELLIPSOID) {
+	  isphere=check_whether_sphere(pc);
+	  if(!isphere) {surface_normal_spheroid(pc,posvector,dr);}
+	} 
 	grad_s7_boundary_coll(param, qs, dr, c);
       }
       else {

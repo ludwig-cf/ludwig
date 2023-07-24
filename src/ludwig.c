@@ -954,6 +954,8 @@ void ludwig_run(const char * inputfile) {
 	wall_is_pm(ludwig->wall, &is_pm);
 	hydro_memcpy(ludwig->hydro, tdpMemcpyDeviceToHost);
 	stats_velocity_minmax(&statvel, ludwig->hydro, ludwig->map);
+	//stats_colloid_write_velocities(ludwig->pe, ludwig->collinfo);
+	stats_colloid_write_info(ludwig->pe, ludwig->collinfo,step);
       }
 
       lb_collision_stats_kt(ludwig->lb, ludwig->noise_rho, ludwig->map);
@@ -962,6 +964,30 @@ void ludwig_run(const char * inputfile) {
     }
 
     stats_ahydro_accumulate(ludwig->stat_ah, step);
+
+/*Checking the status of the map, whether its a colloid - To be deleted-start*/
+/*if( is_colloid_io_step()) {
+printf("writing at %d",step);
+int ic, jc, kc, index;
+int nlocal[3];
+int status;
+cs_nlocal(ludwig->cs, nlocal);
+FILE *fptr;
+sprintf(filename,"map_status-%8.8d",step);
+fptr=fopen(filename,"w");
+for (ic = 1; ic <= nlocal[X]; ic++) {
+for (jc = 1; jc <= nlocal[Y]; jc++) {
+for (kc = 1; kc <= nlocal[Z]; kc++) {
+
+index = cs_index(ludwig->cs, ic, jc, kc);
+map_status(ludwig->map, index, &status);
+fprintf(fptr,"%d %d %d %d\n",ic,jc,kc,status);
+}
+}
+}
+fclose(fptr);
+}*/
+/*Checking the status of the map, whether its a colloid - To be deleted-end*/
 
     TIMER_stop(TIMER_DIAGNOSTIC_OUTPUT);
     TIMER_stop(TIMER_STEPS); /* inclusive of diagnostic/io */
