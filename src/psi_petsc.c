@@ -172,6 +172,18 @@ int psi_solver_petsc_solve(psi_solver_petsc_t * solver, int ntimestep) {
   return -1;
 }
 
+/*****************************************************************************
+ *
+ *  psi_solver_petsc_var_epsilon_solve
+ *
+ *****************************************************************************/
+
+int psi_solver_petsc_var_epsilon_solve(psi_solver_petsc_t * solver, int nt) {
+
+  /* No implementation */
+  return -1;
+}
+
 #else
 
 #include "petscdmda.h"

@@ -1,6 +1,10 @@
 
 ### Changes
 
+version 0.20.1
+- Issue 271: missing stub prevents compilation at some compiler optimisation
+             levels.
+
 version 0.20.0
 
 - IMPORTANT: The input file can no longer be specified as a command
