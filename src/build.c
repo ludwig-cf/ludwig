@@ -271,10 +271,10 @@ __host__ int is_site_inside_colloid(colloid_t * pc, double rsep[3]) {
     for (int i = 0; i < 3; i++) {
       elQ[i][2]=elev3[i];
     }
-    /*Constructing A matrix*/
-    matrix_product(elQ,elL,elAp);
-    matrix_transpose(elQ,elQT);
-    matrix_product(elAp,elQT,elA);
+    /*Constructing A matrix*//*Note type castings*/
+    matrix_product((const double (*)[])elQ,(const double (*)[])elL,elAp);
+    matrix_transpose((const double (*)[])elQ,elQT);
+    matrix_product((const double (*)[])elAp,(const double (*)[])elQT,elA);
     /*Evaluating quadratic equation*/
     lhs = elA[0][0]*rsep[X]*rsep[X]
 	+ elA[1][1]*rsep[Y]*rsep[Y]

@@ -424,7 +424,7 @@ __host__ __device__ void euler_from_vectors(double a[3], double b[3], double *eu
   orthonormalise_vector_b_to_a(a, b);
   cross_product(a,b,c);
   dcm_from_vectors(a,b,c,r);
-  euler_from_dcm(r,&euler[0],&euler[1],&euler[2]);
+  euler_from_dcm((const double (*)[])r,&euler[0],&euler[1],&euler[2]);
 
  return;
 }
