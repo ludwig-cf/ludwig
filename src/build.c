@@ -1775,26 +1775,22 @@ __host__ __device__ void surface_tangent_spheroid(colloid_t * pc,const double * 
  ****************************************************************************/
 __host__ __device__ void surface_vector_spheroid(colloid_t * pc,const double * posvector, double * rb,const int tn) {
 
-  PI_DOUBLE(pi);
-
   double *elabc;
   double elc;
   double ele,ele2;
   double ela,ela2;
   double elz,elz2;
-  double elr, sdotez;
+  double elr;
   double rmod;
-  double *quater;
   double *elbz;
   double denom, term1, term2;
-  double elrho[3],xi1,xi2,xi;
+  double elrho[3];
   double diff1,diff2,gridin[3],elzin,dr[3];
  
   elabc=pc->s.elabc;
   elc=sqrt(elabc[0]*elabc[0]-elabc[1]*elabc[1]);
   ele=elc/elabc[0];
   ela = colloids_largest_dimension(pc);
-  quater=pc->s.quater;
   elbz=pc->s.m;
   elz=dot_product(posvector,elbz);
   for(int ia=0; ia<3; ia++) {elrho[ia]=posvector[ia]-elz*elbz[ia];}
