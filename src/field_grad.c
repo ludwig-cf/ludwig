@@ -102,7 +102,7 @@ static int field_grad_init(field_grad_t * obj) {
   }
 
   if (obj->level >= 2) {
-    if (INT_MAX/NVECTOR < nfsz || nfsz < 1) return -1;
+    if (INT_MAX/NVECTOR < nfsz) return -1;
     obj->grad  = (double *) calloc(NVECTOR*nfsz, sizeof(double));
     obj->delsq = (double *) calloc(nfsz, sizeof(double));
 
@@ -123,7 +123,7 @@ static int field_grad_init(field_grad_t * obj) {
   }
 
   if (obj->level == 3) {
-    if (INT_MAX/NSYMM < nfsz || nfsz < 1) return -1;
+    if (INT_MAX/NSYMM < nfsz) return -1;
     obj->d_ab = (double*) calloc(NSYMM*nfsz, sizeof(double));
     if (obj->d_ab == NULL) pe_fatal(obj->pe, "calloc(fieldgrad->d_ab) failed\n");
 
