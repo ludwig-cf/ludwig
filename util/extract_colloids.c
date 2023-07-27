@@ -189,7 +189,6 @@ int main(int argc, char ** argv) {
       fprintf(fp_vtk, format3wocommaend_, s1.r[0]-1.0, s1.r[1]-1.0, s1.r[2]-1.0);
       /* Write Orientations to vtk file*/
       colloids_to_vtk_inbetween(fp_vtk);
-      printf("reached here\n");
       quater = s1.quater;
       rotate_tobodyframe_quaternion(quater, worldv1, elev1);
       rotate_tobodyframe_quaternion(quater, worldv2, elev2);
