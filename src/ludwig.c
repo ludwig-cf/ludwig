@@ -510,6 +510,9 @@ void ludwig_run(const char * inputfile) {
   if (ludwig->p)   field_memcpy(ludwig->p, tdpMemcpyHostToDevice);
   if (ludwig->q)   field_memcpy(ludwig->q, tdpMemcpyHostToDevice);
 
+  colloids_info_ntotal(ludwig->collinfo, &ncolloid);
+  if (ncolloid) colloids_memcpy(ludwig->collinfo, tdpMemcpyHostToDevice);
+
   /* Lap timer: include initial statistics in first trip */
   TIMER_start(TIMER_LAP);
 
@@ -536,8 +539,6 @@ void ludwig_run(const char * inputfile) {
     if (ludwig->hydro) {
       hydro_f_zero(ludwig->hydro, fzero);
     }
-
-    colloids_info_ntotal(ludwig->collinfo, &ncolloid);
 
     if ((step % ludwig->collinfo->rebuild_freq) == 0) {
       ludwig_colloids_update(ludwig);
