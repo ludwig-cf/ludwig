@@ -16,6 +16,7 @@
 
 #include <assert.h>
 #include <stdio.h>
+#include <math.h>
 
 #include "colloid.h"
 
@@ -99,7 +100,7 @@ int colloid_state_read_ascii(colloid_state_t * ps, FILE * fp) {
   nread += fscanf(fp, sformat, &ps->saf);
   nread += fscanf(fp, sformat, &ps->al);
 
-  /* For backwards compatability, these are read one line at a time */
+  /* For backwards compatibility, these are read one line at a time */
   nread += fscanf(fp, sformat, &ps->elabc[0]);
   nread += fscanf(fp, sformat, &ps->elabc[1]);
   nread += fscanf(fp, sformat, &ps->elabc[2]);
@@ -191,7 +192,7 @@ int colloid_state_write_ascii(const colloid_state_t * s, FILE * fp) {
 
   nwrite += fprintf(fp, isformat, s->rng);
 
-  /* isfixedrxyz and isfixedvxyz are writen as 3 x scalars as they
+  /* isfixedrxyz and isfixedvxyz are written as 3 x scalars as they
    * have replaced padding */
 
   for (n = 0; n < 3; n++) {
@@ -286,4 +287,36 @@ int colloid_state_write_binary(const colloid_state_t * s, FILE * fp) {
   nwrite = fwrite(s, sizeof(colloid_state_t), 1, fp);
 
   return (1 - nwrite);
+}
+
+/*****************************************************************************
+ *
+ *  colloid_state_mass
+ *
+ *  Depends on shape and density.
+ *
+ *****************************************************************************/
+
+int colloid_state_mass(const colloid_state_t * s, double rho0, double * mass) {
+
+  int ifail = 0;
+  const double pi = 4.0*atan(1.0);
+
+  assert(s);
+  assert(mass);
+
+  if (s->shape == COLLOID_SHAPE_SPHERE) {
+    *mass = 4.0*pi*pow(s->a0, 3)*rho0/3.0;
+  }
+  else if (s->shape == COLLOID_SHAPE_ELLIPSOID) {
+    *mass = (4.0/3.0)*pi*rho0*s->elabc[0]*s->elabc[1]*s->elabc[2];
+  }
+  else if (s->shape == COLLOID_SHAPE_DISK) {
+    *mass = pi*rho0*pow(s->a0, 2);
+  }
+  else {
+    ifail = -1;
+  }
+
+  return ifail;
 }
