@@ -1,6 +1,8 @@
 
 ### Changes
 
+version 0.21.0
+
 - "colloid_type" has been split into a number of more general
   properties including: boundary condition (bc) either bbl or
   subgrid; shale either "disk", "sphere", or "ellipsoid";
@@ -8,7 +10,12 @@
   The default is: bc = bbl, shape = sphere, active = no, magnetic = no.
   There are some conditions, e.g., "disk" expects a 2D D2Q9 model.
   This affects the way colloid details are specified in the input.
-  See X
+  See REFERENCE PENDING
+
+
+version 0.20.1
+- Issue 271: missing stub prevents compilation at some compiler optimisation
+             levels.
 
 version 0.20.0
 
