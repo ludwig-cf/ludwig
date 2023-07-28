@@ -608,17 +608,29 @@ int colloids_rt_state_stub(pe_t * pe, rt_t * rt, colloids_info_t * cinfo,
   nrt = rt_double_parameter(rt, key, &state->epsilon);
   if (nrt) pe_info(pe, format_e1, key, state->epsilon);
 
-  snprintf(key, BUFSIZ-1, "%s_%s", stub, "elabc");/*sumesh-ell*/
+  snprintf(key, BUFSIZ-1, "%s_%s", stub, "elabc");
   nrt = rt_double_parameter_vector(rt, key, state->elabc);
-  if (nrt) pe_info(pe, format_e3, key, state->elabc[X], state->elabc[Y], state->elabc[Z]);
 
-  if(check_the_order(state->elabc[X],state->elabc[Y],state->elabc[Z])) {
-    printf("Correct the order in which the dimensions of the ellipoid is specified\n");
-    printf("It should be a > b > c\n");
-    return 1;
+  if (nrt) {
+    /* An ellipsoid is defined by (a,b,c), and we expect a >= b >= c */
+    double a = state->elabc[0];
+    double b = state->elabc[1];
+    double c = state->elabc[2];
+    pe_info(pe, format_e3, key, a, b, c);
+
+    if (a < b || b < c)  {
+      pe_info(pe, "Error specifying principal semi-axes of ellipse\n");
+      pe_info(pe, "Please specify a_b_c with a >= b >= c\n");
+      pe_fatal(pe, "Please check and try again\n");
+    }
+
+    if (state->shape != COLLOID_SHAPE_ELLIPSOID) {
+      pe_info(pe, "Key elabc requires shape to be ellipsoidal\n");
+      pe_fatal(pe, "Please check colloid input and try again\n");
+    }
   }
 
-  snprintf(key, BUFSIZ-1, "%s_%s", stub, "euler");/*sumesh-ell*/
+  snprintf(key, BUFSIZ-1, "%s_%s", stub, "euler");
   nrt = rt_double_parameter_vector(rt, key, euler);
   if (nrt) {
     pe_info(pe, format_e3, key, euler[X], euler[Y], euler[Z]);
@@ -639,16 +651,16 @@ int colloids_rt_state_stub(pe_t * pe, rt_t * rt, colloids_info_t * cinfo,
   if (nrteuler&&nrtv1&&nrtv2) {
     printf("Over writing the Euler angles with that of given vectors\nNew ");
   }
-  if(nrtv1 && nrtv2) {
+  if (nrtv1 && nrtv2) {
     euler_from_vectors(elev1, elev2, euler);
     pe_info(pe, format_e3, "Euler angles", euler[X], euler[Y], euler[Z]);
   }
 
-  quaternions_from_eulerangles(euler[X],euler[Y], euler[Z], state->quater);
+  util_q4_from_euler_angles(euler[X], euler[Y], euler[Z], state->quater);
   util_vector_copy(4, state->quater, state->quaterold);
 
   /* If active and ellipsoid, assign the squirmer orientation as along the
-   * long axis*/
+   * long axis */
 
   /* KS. FIXME I'm going to comment this out for the time being
    * as it is upsetting the tests ... */
@@ -1243,15 +1255,3 @@ int wall_ss_cut_init(pe_t * pe, cs_t * cs, rt_t * rt, wall_t * wall,
 
   return 0;
 }
-
-/*****************************************************************************
- *
- *  Ordering 3 numbers in the ascending order
- *
- *****************************************************************************/
-
-  int check_the_order(const double a,const double b,const double c) {
-  
-  return (((b-a)>1.0e-12)|((c-b)>1.0e-12));
-  }
- /*****************************************************************************/

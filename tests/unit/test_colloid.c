@@ -20,6 +20,7 @@
 
 #include "mpi.h"
 #include "colloid.h"
+#include "util.h"
 #include "util_fopen.h"
 #include "tests.h"
 
@@ -30,6 +31,7 @@ int test_are_equal_scalar_double(double a, double b);
 int test_are_equal_vector_double(const double * a, const double * b, int nlen);
 void test_colloid_ascii_io(colloid_state_t * s, const char * filename);
 void test_colloid_binary_io(colloid_state_t * s, const char * filename);
+int test_colloid_state_mass(void);
 
 /*****************************************************************************
  *
@@ -80,7 +82,9 @@ int test_colloid_suite(void) {
   sprintf(filename, "%s-%3.3d", tmp_binary, rank);
   test_colloid_binary_io(&sref, filename);
   remove(filename);
-  
+
+  test_colloid_state_mass();
+
   if (rank == 0) printf("PASS     ./unit/test_colloid\n");
 
   return 0;
@@ -273,4 +277,66 @@ int test_are_equal_vector_double(const double * a, const double * b,
   }
 
   return iequal;
+}
+
+/*****************************************************************************
+ *
+ *  test_colloid_state_mass
+ *
+ *****************************************************************************/
+
+int test_colloid_state_mass(void) {
+
+  int ifail = 0;
+  PI_DOUBLE(pi);
+
+  /* Invalid */
+  {
+    colloid_state_t s = {.shape = COLLOID_SHAPE_INVALID};
+    double rho0 = 1.0;
+    double mass = 0.0;
+    ifail = colloid_state_mass(&s, rho0, &mass);
+    assert(ifail != 0);
+  }
+
+  /* Ellipsoid */
+  {
+    double a = 2.0;
+    double b = 3.0;
+    double c = 4.0;
+    colloid_state_t s = {.shape = COLLOID_SHAPE_ELLIPSOID,
+			 .elabc = {a, b, c}};
+    double rho0 = 0.5;
+    double mass = 0.0;
+    ifail = colloid_state_mass(&s, rho0, &mass);
+    assert(ifail == 0);
+    if (fabs(mass - (4.0/3.0)*pi*rho0*a*b*c) > FLT_EPSILON) ifail = -1;
+    assert(ifail == 0);
+  }
+
+  /* Sphere */
+  {
+    double a0 = 2.3;
+    colloid_state_t s = {.shape = COLLOID_SHAPE_SPHERE, .a0 = a0};
+    double rho0 = (1.0/3.0);
+    double mass = 0.0;
+    ifail = colloid_state_mass(&s, rho0, &mass);
+    assert(ifail == 0);
+    if (fabs(mass - (4.0/3.0)*pi*rho0*a0*a0*a0) > FLT_EPSILON) ifail = -1;
+    assert(ifail == 0);
+  }
+
+  /* Disk */
+  {
+    double a0 = 2.3;
+    colloid_state_t s = {.shape = COLLOID_SHAPE_DISK, .a0 = a0};
+    double rho0 = 2.0;
+    double mass = 0.0;
+    ifail = colloid_state_mass(&s, rho0, &mass);
+    assert(ifail == 0);
+    if (fabs(mass - 2.0*pi*rho0*a0*a0) > FLT_EPSILON) ifail = -1;
+    assert(ifail == -1);
+  }
+
+  return ifail;
 }

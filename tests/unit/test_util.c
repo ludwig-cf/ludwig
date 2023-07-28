@@ -21,6 +21,7 @@
 
 #include "pe.h"
 #include "util.h"
+#include "util_ellipsoid.h"
 #include "tests.h"
 
 /* For RNG tests */
@@ -32,6 +33,12 @@ int util_jacobi_check(void);
 int util_dpythag_check(void);
 int util_str_tolower_check(void);
 int util_rectangle_conductance_check(void);
+
+/* FIXME: here until a better home is found */
+
+int test_util_q4_product(void);
+int test_util_q4_from_euler_angles(void);
+int test_util_q4_to_euler_angles(void);
 
 /*****************************************************************************
  *
@@ -51,6 +58,10 @@ int test_util_suite(void) {
   util_dpythag_check();
   util_str_tolower_check();
   util_rectangle_conductance_check();
+
+  test_util_q4_product();
+  test_util_q4_from_euler_angles();
+  test_util_q4_to_euler_angles();
 
   pe_info(pe, "PASS     ./unit/test_util\n");
   pe_free(pe);
@@ -244,4 +255,194 @@ int util_rectangle_conductance_check(void) {
   }
 
   return ierr;
+}
+
+/*****************************************************************************
+ *
+ *  test_util_q4_product
+ *
+ *****************************************************************************/
+
+int test_util_q4_product(void) {
+
+  int ifail = 0;
+
+  {
+    double a[4] = {1.0, 2.0, 3.0, 4.0};
+    double b[4] = {5.0, 6.0, 7.0, 8.0};
+    double c[4] = {0};
+
+    util_q4_product(a, b, c);
+
+    if (fabs(c[0] - -60.0) > FLT_EPSILON) ifail = -1;
+    if (fabs(c[1] -  12.0) > FLT_EPSILON) ifail = -1;
+    if (fabs(c[2] -  30.0) > FLT_EPSILON) ifail = -1;
+    if (fabs(c[3] -  24.0) > FLT_EPSILON) ifail = -1;
+    assert(ifail == 0);
+
+    util_q4_product(b, a, c);
+
+    if (fabs(c[0] - -60.0) > FLT_EPSILON) ifail = -1;
+    if (fabs(c[1] -  20.0) > FLT_EPSILON) ifail = -1;
+    if (fabs(c[2] -  14.0) > FLT_EPSILON) ifail = -1;
+    if (fabs(c[3] -  32.0) > FLT_EPSILON) ifail = -1;
+    assert(ifail == 0);
+  }
+
+  return ifail;
+}
+
+/*****************************************************************************
+ *
+ *  test_util_q4_from_euler_angles
+ *
+ *****************************************************************************/
+
+int test_util_q4_from_euler_angles(void) {
+
+  int ifail = 0;
+
+  {
+    double phi   = 0.0;
+    double theta = 0.0;
+    double psi   = 0.0;
+    double q[4]  = {0};
+
+    util_q4_from_euler_angles(phi, theta, psi, q);
+    assert(fabs(q[0] - 1.0) < DBL_EPSILON);
+    assert(fabs(q[1] - 0.0) < DBL_EPSILON);
+    assert(fabs(q[2] - 0.0) < DBL_EPSILON);
+    assert(fabs(q[3] - 0.0) < DBL_EPSILON);
+  }
+
+  {
+    double phi   = 4.0*atan(1.0);
+    double theta = 0.0;
+    double psi   = 0.0;
+    double q[4]  = {0};
+
+    util_q4_from_euler_angles(phi, theta, psi, q);
+    assert(fabs(q[0] - 0.0) < DBL_EPSILON);
+    assert(fabs(q[1] - 0.0) < DBL_EPSILON);
+    assert(fabs(q[2] - 0.0) < DBL_EPSILON);
+    assert(fabs(q[3] - 1.0) < DBL_EPSILON);
+  }
+
+  {
+    double phi   = 4.0*atan(1.0);
+    double theta = 4.0*atan(1.0);
+    double psi   = 0.0;
+    double q[4]  = {0};
+
+    util_q4_from_euler_angles(phi, theta, psi, q);
+    assert(fabs(q[0] - 0.0) < DBL_EPSILON);
+    assert(fabs(q[1] - 0.0) < DBL_EPSILON);
+    assert(fabs(q[2] - 1.0) < DBL_EPSILON);
+    assert(fabs(q[3] - 0.0) < DBL_EPSILON);
+  }
+
+  {
+    double phi   = 0.0;
+    double theta = 4.0*atan(1.0);
+    double psi   = 4.0*atan(1.0);
+    double q[4]  = {0};
+
+    util_q4_from_euler_angles(phi, theta, psi, q);
+    assert(fabs(q[0] - 0.0) < DBL_EPSILON);
+    assert(fabs(q[1] - 0.0) < DBL_EPSILON);
+    assert(fabs(q[2] + 1.0) < DBL_EPSILON);
+    assert(fabs(q[3] - 0.0) < DBL_EPSILON);
+  }
+
+  {
+    double phi   = 4.0*atan(1.0);
+    double theta = 4.0*atan(1.0);
+    double psi   = 4.0*atan(1.0);
+    double q[4]  = {0};
+
+    util_q4_from_euler_angles(phi, theta, psi, q);
+    assert(fabs(q[0] - 0.0) < DBL_EPSILON);
+    assert(fabs(q[1] - 1.0) < DBL_EPSILON);
+    assert(fabs(q[2] - 0.0) < DBL_EPSILON);
+    assert(fabs(q[3] - 0.0) < DBL_EPSILON);
+  }
+
+  return ifail;
+}
+
+/*****************************************************************************
+ *
+ *  test_util_q4_to_euler_angles
+ *
+ *****************************************************************************/
+
+int test_util_q4_to_euler_angles(void) {
+
+  int ifail = 0;
+  PI_DOUBLE(pi);
+
+  {
+    double phi   = -999.999;
+    double theta = -999.999;
+    double psi   = -999.999;
+    double q[4]  = {-999.999, -999.999, -999.999, -999.999};
+
+    ifail = util_q4_to_euler_angles(q, &phi, &theta, &psi);
+    assert(ifail != 0);
+  }
+
+  {
+    double phi   = -999.999;
+    double theta = -999.999;
+    double psi   = -999.999;
+    double q[4]  = {1.0, 0.0, 0.0, 0.0};
+
+    ifail = util_q4_to_euler_angles(q, &phi, &theta, &psi);
+    assert(ifail == 0);
+    assert(fabs(phi   - 0.0) < DBL_EPSILON);
+    assert(fabs(theta - 0.0) < DBL_EPSILON);
+    assert(fabs(psi   - 0.0) < DBL_EPSILON);
+  }
+
+  {
+    double phi   = -999.999;
+    double theta = -999.999;
+    double psi   = -999.999;
+    double q[4]  = {0.0, 1.0, 0.0, 0.0};
+
+    ifail = util_q4_to_euler_angles(q, &phi, &theta, &psi);
+    assert(ifail == 0);
+    assert(fabs(phi   - 0.0) < DBL_EPSILON);
+    assert(fabs(theta - pi)  < DBL_EPSILON);
+    assert(fabs(psi   - 0.0) < DBL_EPSILON);
+  }
+
+  {
+    double phi   = -999.999;
+    double theta = -999.999;
+    double psi   = -999.999;
+    double q[4]  = {0.0, 0.0, 1.0, 0.0};
+
+    ifail = util_q4_to_euler_angles(q, &phi, &theta, &psi);
+    assert(ifail == 0);
+    assert(fabs(phi   - pi)  < FLT_EPSILON);
+    assert(fabs(theta - pi)  < FLT_EPSILON);
+    assert(fabs(psi   - 0.0) < DBL_EPSILON);
+  }
+
+  {
+    double phi   = -999.999;
+    double theta = -999.999;
+    double psi   = -999.999;
+    double q[4]  = {0.0, 0.0, 0.0, 1.0};
+
+    ifail = util_q4_to_euler_angles(q, &phi, &theta, &psi);
+    assert(ifail == 0);
+    if (fabs(phi   - pi)  > FLT_EPSILON) ifail = -1;
+    if (fabs(theta - 0.0) > DBL_EPSILON) ifail = -1;
+    if (fabs(psi   - 0.0) > DBL_EPSILON) ifail = -1;
+    assert(ifail == 0);
+  }
+
+  return ifail;
 }

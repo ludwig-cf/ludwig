@@ -350,7 +350,7 @@ int build_update_links(cs_t * cs, colloids_info_t * cinfo, wall_t * wall,
 
 	for (; pc; pc = pc->next) {
 
-	  if (pc->s.bc != COLLOID_BC_BBL) continue; 
+	  if (pc->s.bc != COLLOID_BC_BBL) continue;
 
 	  pc->sumw   = 0.0;
 	  for (ia = 0; ia < 3; ia++) {
@@ -1775,31 +1775,27 @@ __host__ __device__ void surface_tangent_spheroid(colloid_t * pc,const double * 
  ****************************************************************************/
 __host__ __device__ void surface_vector_spheroid(colloid_t * pc,const double * posvector, double * rb,const int tn) {
 
-  PI_DOUBLE(pi);
-
   double *elabc;
   double elc;
   double ele,ele2;
   double ela,ela2;
   double elz,elz2;
-  double elr, sdotez;
+  double elr;
   double rmod;
-  double *quater;
   double *elbz;
   double denom, term1, term2;
-  double elrho[3],xi1,xi2,xi;
+  double elrho[3];
   double diff1,diff2,gridin[3],elzin,dr[3];
- 
+
   elabc=pc->s.elabc;
   elc=sqrt(elabc[0]*elabc[0]-elabc[1]*elabc[1]);
   ele=elc/elabc[0];
   ela = colloids_largest_dimension(pc);
-  quater=pc->s.quater;
   elbz=pc->s.m;
   elz=dot_product(posvector,elbz);
   for(int ia=0; ia<3; ia++) {elrho[ia]=posvector[ia]-elz*elbz[ia];}
   elr = modulus(elrho);
-  rmod = 0.0; 
+  rmod = 0.0;
   if (elr != 0.0) rmod = 1.0/elr;
   for(int ia=0; ia<3; ia++) {elrho[ia]=elrho[ia]*rmod;}
   ela2=ela*ela;
@@ -1812,7 +1808,7 @@ __host__ __device__ void surface_vector_spheroid(colloid_t * pc,const double * p
   /*for the neighbouring grid point inside*/
   if(diff1<0.0){
     elr = modulus(posvector);
-    rmod = 0.0; 
+    rmod = 0.0;
     if (elr != 0.0) rmod = 1.0/elr;
     for(int ia=0; ia<3; ia++) {dr[ia]=posvector[ia]*rmod;}
     for(int ia = 0; ia < 3; ia++) {
@@ -1820,10 +1816,10 @@ __host__ __device__ void surface_vector_spheroid(colloid_t * pc,const double * p
       elzin=dot_product(gridin,elbz);
       elz2=elzin*elzin;
       diff1=ela2-elz2;
-    }   
+    }
   /*diff1 is a more stringent criterion*/
     if(diff2<0.0) {diff2 = ela2-ele2*elz2;}
-  }   
+  }
   denom=sqrt(diff2);
   term1=sqrt(diff1)/denom;
   term2=sqrt(1.0-ele*ele)*elz/denom;
@@ -1839,9 +1835,9 @@ __host__ __device__ void surface_vector_spheroid(colloid_t * pc,const double * p
 }
 
 /*****************************************************************************
-*  
-*  Ordering 3 numbers in the ascending order
 *
+*  Ordering 3 numbers in the ascending order
+*  FIXME: please replace
 *****************************************************************************/
 
 int check_whether_sphere(colloid_t * pc) {

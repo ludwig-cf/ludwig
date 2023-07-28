@@ -7,14 +7,16 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2010-2022 The University of Edinburgh
+ *  (c) 2023 The University of Edinburgh
  *
  *  Contributing authors:
+ *  Sumesh Thampi
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *
  *****************************************************************************/
 
 #include <assert.h>
+#include <float.h>
 #include <stdio.h>
 #include <math.h>
 
@@ -50,17 +52,18 @@
  *
  *****************************************************************************/
 
-__host__ __device__
-void matrix_product(const double a[3][3], const double b[3][3], double result[3][3]) {
+void matrix_product(const double a[3][3], const double b[3][3],
+		    double result[3][3]) {
 
-  for(int i = 0; i < 3; i++){
-    for(int j = 0; j < 3; j++){
-      result[i][j]=0.0;
-      for(int k=0; k < 3; k++){
-        result[i][j]+=a[i][k]*b[k][j];
-      }   
-    }   
+  for (int i = 0; i < 3; i++) {
+    for (int j = 0; j < 3; j++) {
+      result[i][j] = 0.0;
+      for (int k = 0; k < 3; k++) {
+        result[i][j] += a[i][k]*b[k][j];
+      }
+    }
   }
+
   return;
 }
 
@@ -70,53 +73,16 @@ void matrix_product(const double a[3][3], const double b[3][3], double result[3]
  *
  *****************************************************************************/
 
-__host__ __device__
 void matrix_transpose(const double a[3][3], double result[3][3]) {
 
-  for(int i = 0; i < 3; i++){
-    for(int j = 0; j < 3; j++){
-      result[i][j]=a[j][i];
-    }   
+  for (int i = 0; i < 3; i++) {
+    for (int j = 0; j < 3; j++) {
+      result[i][j] = a[j][i];
+    }
   }
   return;
 }
 
-/*****************************************************************************
- *
- *  Printing vector on the screen
- *
- ****************************************************************************/
-__host__ __device__ void print_vector_onscreen(const double *a, const int n){
-  for(int i = 0; i < n; i++) printf("%22.15e, ",a[i]);
-  printf("\n");
-  return ;
-  }
-/*****************************************************************************
- *
- *  Printing matrix on the screen
- *
- ****************************************************************************/
-__host__ __device__ void print_matrix_onscreen(const double a[3][3]){
-  for(int i = 0; i < 3; i++) {
-    for(int j = 0; j < 3; j++) {
-      printf("%22.15e, ",a[i][j]);
-    }
-    printf("\n");
-  }
-  return ;
-  }
-/*****************************************************************************
- *
- *  Multiplying quaternions
- *
- ****************************************************************************/
-__host__ __device__ void quaternion_product(const double a[4], const double b[4], double result[4]) {
-  result[1]= a[0]*b[1] - a[3]*b[2] + a[2]*b[3] + a[1]*b[0];
-  result[2]= a[3]*b[1] + a[0]*b[2] - a[1]*b[3] + a[2]*b[0];
-  result[3]=-a[2]*b[1] + a[1]*b[2] + a[0]*b[3] + a[3]*b[0];
-  result[0]=-a[1]*b[1] - a[2]*b[2] - a[3]*b[3] + a[0]*b[0];
-  return;
-  }
 /*****************************************************************************
  *
  *  Determining a quaternion from the angular velocity
@@ -134,7 +100,7 @@ __host__ __device__ void quaternion_from_omega(const double omega[3], const doub
   qbar[0]=1.0;
   for (int i = 1; i < 4; i++) {qbar[i] = 0.0;}
  }
-  
+
   return;
   }
 
@@ -198,49 +164,103 @@ __host__ __device__ void rotate_tobodyframe_quaternion(const double q[4], const 
 
 /*****************************************************************************
  *
- *  Determining Euler angles from quaternions
+ *  util_q4_from_euler_angles
  *
- ****************************************************************************/
-__host__ __device__ void eulerangles_from_quaternions(const double *q, double *phi, double *theta, double *psi) {
+ *  The Euler angles are:
+ *    phi   a rotation around z-axis
+ *    theta a rotation around new x' axis
+ *    psi   a rotation around new z'' axis
+ *
+ *  Returns a unit quaternion describing the equivalent rotation.
+ *  See e.g., Rapaport "The Art of Molecular Dynamics" Chapter 8.2.
+ *  Note Rapaport has (q1, q2, q3, q4). We have (q1, q2, q3, q0).
+ *
+ *****************************************************************************/
 
-  double st,ct,sp,cp,ss,cs;
-  st=2.0*sqrt((q[1]*q[1]+q[2]*q[2])*(1.0-q[1]*q[1]-q[2]*q[2]));
-  ct=1-2.0*(q[1]*q[1]+q[2]*q[2]);
-  if(fabs(st)>1.0e-12) {
-    sp=2.0*(q[1]*q[3]+q[2]*q[0])/st;
-    cp=2.0*(q[1]*q[0]-q[2]*q[3])/st;
-    ss=2.0*(q[1]*q[3]-q[2]*q[0])/st;
-    cs=2.0*(q[1]*q[0]+q[2]*q[3])/st;
-    *phi = atan2(sp,cp);
-    *theta = atan2(st,ct);
-    *psi = atan2(ss,cs);
-  }
-  else {
-    st=sqrt(q[1]*q[1]+q[2]*q[2]);
-    ct=sqrt(q[3]*q[3]+q[0]*q[0]);
-    sp=sqrt(q[2]*q[2]+q[3]*q[3]);
-    cp=sqrt(q[1]*q[1]+q[0]*q[0]);
-    *phi=2*atan2(sp,cp);
-    *theta=2*atan2(st,ct);
-    *psi = 0.0;
-  }
-  return;
-  }
+int util_q4_from_euler_angles(double phi, double theta, double psi,
+			      double q[4]) {
 
+  theta = 0.5*theta;
+  q[1] = sin(theta)*cos(0.5*(phi - psi));
+  q[2] = sin(theta)*sin(0.5*(phi - psi));
+  q[3] = cos(theta)*sin(0.5*(phi + psi));
+  q[0] = cos(theta)*cos(0.5*(phi + psi));
+
+  return 0;
+}
 
 /*****************************************************************************
  *
- *  Determining quaternions from Euler angles
+ *  util_q4_to_euler_angles
+ *
+ *  This produces Euler angles from a unit quaternion.
+ *  See note above.
+ *
+ *****************************************************************************/
+
+int util_q4_to_euler_angles(const double q[4], double * phi, double * theta,
+			    double * psi) {
+  assert(phi);
+  assert(theta);
+  assert(psi);
+
+  int ifail = 0;
+  double q1 = q[1];
+  double q2 = q[2];
+  double q3 = q[3];
+  double q4 = q[0];
+
+  /* Check sign of 1 - q1^2 - q2^2 */
+
+  if (1.0 - q1*q1 - q2*q2 < 0.0) {
+    ifail = -1;
+  }
+  else {
+
+    /* sin(theta) and cos(theta) */
+    double st = 2.0*sqrt((q1*q1 + q2*q2)*(1.0 - q1*q1 - q2*q2));
+    double ct = 1.0 - 2.0*(q1*q1 + q2*q2);
+
+    if (st > DBL_EPSILON) {
+      double sp = 2.0*(q1*q3 + q2*q4)/st;
+      double cp = 2.0*(q1*q4 - q2*q3)/st;
+      double ss = 2.0*(q1*q3 - q2*q4)/st;
+      double cs = 2.0*(q1*q4 + q2*q3)/st;
+      *phi   = atan2(sp, cp);
+      *theta = atan2(st, ct);
+      *psi   = atan2(ss, cs);
+    }
+    else {
+      double st1 = sqrt(q1*q1 + q2*q2);
+      double ct1 = sqrt(q3*q3 + q4*q4);
+      double sp1 = sqrt(q2*q2 + q3*q3);
+      double cp1 = sqrt(q1*q1 + q4*q4);
+      *phi   = 2.0*atan2(sp1, cp1);
+      *theta = 2.0*atan2(st1, ct1);
+      *psi   = 0.0;
+    }
+  }
+
+  return ifail;
+}
+
+/*****************************************************************************
+ *
+ *  util_q4_product
+ *
+ *  Quaternion product (is not commutative, recall, ...)
  *
  ****************************************************************************/
-__host__ __device__ void quaternions_from_eulerangles(const double phi, const double theta, const double psi, double q[4]){
 
-  q[0]=cos(theta/2.0)*cos((phi+psi)/2.0);
-  q[1]=sin(theta/2.0)*cos((phi-psi)/2.0);
-  q[2]=sin(theta/2.0)*sin((phi-psi)/2.0);
-  q[3]=cos(theta/2.0)*sin((phi+psi)/2.0);
+void util_q4_product(const double a[4], const double b[4], double c[4]) {
+
+  c[0] = a[0]*b[0] - a[1]*b[1] - a[2]*b[2] - a[3]*b[3];
+  c[1] = a[0]*b[1] + a[1]*b[0] + a[2]*b[3] - a[3]*b[2];
+  c[2] = a[0]*b[2] + a[2]*b[0] - a[1]*b[3] + a[3]*b[1];
+  c[3] = a[0]*b[3] + a[3]*b[0] + a[1]*b[2] - a[2]*b[1];
+
   return;
-  }
+}
 
 /*****************************************************************************
 *
@@ -280,7 +300,7 @@ __host__ __device__ void ellipsoid_nearwall_predicted(double const elabc[3], dou
   Ya = 16.0*ecc2/Yad;
   XamYa = Xa - Ya;
   XaYa = Xa*Ya;
-  eulerangles_from_quaternions(quater, &phi, &theta, &psi);
+  util_q4_to_euler_angles(quater, &phi, &theta, &psi);
   ctheta = cos(phi);
   stheta = cos(phi);
   c2theta = cos(2*phi);
@@ -521,7 +541,7 @@ return;
   double denom, term1, term2;
   double elrho[3],xi1,xi2,xi;
   double diff1,diff2,gridin[3],elzin,dr[3];
-  
+
   elabc=pc->s.elabc;
   elc=sqrt(elabc[0]*elabc[0]-elabc[1]*elabc[1]);
   ele=elc/elabc[0];
@@ -531,7 +551,7 @@ return;
   elz=dot_product(posvector,elbz);
   for(int ia=0; ia<3; ia++) {elrho[ia]=posvector[ia]-elz*elbz[ia];}
   elr = modulus(elrho);
-  rmod = 0.0; 
+  rmod = 0.0;
   if (elr != 0.0) rmod = 1.0/elr;
   for(int ia=0; ia<3; ia++) {elrho[ia]=elrho[ia]*rmod;}
   ela2=ela*ela;
@@ -541,7 +561,7 @@ return;
   diff2=ela2-ele2*elz2;
   if(diff1<0.0){
     elr = modulus(posvector);
-    rmod = 0.0; 
+    rmod = 0.0;
     if (elr != 0.0) rmod = 1.0/elr;
     for(int ia=0; ia<3; ia++) {dr[ia]=posvector[ia]*rmod;}
     for(int ia = 0; ia < 3; ia++) {
@@ -549,9 +569,9 @@ return;
       elzin=dot_product(gridin,elbz);
       elz2=elzin*elzin;
       diff1=ela2-elz2;
-    }    
+    }
     if(diff2<0.0) {diff2 = ela2-ele2*elz2;}
-  }    
+  }
   denom=sqrt(diff2);
   term1=-sqrt(diff1)/denom;
   term2=sqrt(1.0-ele*ele)*elz/denom;
@@ -562,18 +582,6 @@ return;
 }
 
 */
-/*****************************************************************************
- *
- *  Calculate the mass of an ellipsoid
- *
- ****************************************************************************/
-__host__ __device__ double mass_ellipsoid(const double dim[3], const double density){
-
-  PI_DOUBLE(pi);
-  return (4.0/3.0)*pi*(dim[0]*dim[1]*dim[2]);
-
-}
-
 /*****************************************************************************
  *
  *  Calculate the unsteady term dIij/dt
@@ -607,7 +615,7 @@ F[2][0] = -4.0*Izz*(q[0]*q[2] + q[1]*q[3])*(q[0]*(ox*q[1] + oy*q[2]) + (oy*q[1] 
 
 F[2][1] = 4.0*Izz*(q[0]*q[1] - q[2]*q[3])*(q[0]*(ox*q[1] + oy*q[2]) + (oy*q[1] - ox*q[2])*q[3]) - 4.0*Iyy*(q[0]*q[1] + q[2]*q[3])*(q[2]*(-(oz*q[1]) + ox*q[3]) + q[0]*(ox*q[1] + oz*q[3])) + Iyy*(-1.0 + 2.0*q[0]*q[0] + 2.0*q[2]*q[2])*(ox*q[0]*q[0] - ox*q[1]*q[1] - 2.0*oy*q[1]*q[2] + 2.0*oy*q[0]*q[3] + ox*(q[2]*q[2] - q[3]*q[3])) - Izz*(-1.0 + 2.0*q[0]*q[0] + 2.0*q[3]*q[3])*(ox*q[0]*q[0] - ox*q[1]*q[1] - 2.0*oz*q[0]*q[2] - 2.0*oz*q[1]*q[3] + ox*(-q[2]*q[2] + q[3]*q[3])) - 2.0*Ixx*(q[0]*q[0]*q[0]*(oz*q[2] + oy*q[3]) + q[0]*q[0]*(q[1]*(oy*q[2] - oz*q[3]) + 2.0*ox*(q[2]*q[2] - q[3]*q[3])) + q[0]*(-8*ox*q[1]*q[2]*q[3] + q[1]*q[1]*(oz*q[2] + oy*q[3]) - (oz*q[2] + oy*q[3])*(q[2]*q[2] + q[3]*q[3])) + q[1]*(q[1]*q[1]*(oy*q[2] - oz*q[3]) + 2.0*ox*q[1]*(-q[2]*q[2] + q[3]*q[3]) - (oy*q[2] - oz*q[3])*(q[2]*q[2] + q[3]*q[3])));
 
-F[2][2] = -4.0*Izz*(q[0]*(ox*q[1] + oy*q[2]) + (oy*q[1] - ox*q[2])*q[3])*(-1.0 + 2.0*q[0]*q[0] + 2.0*q[3]*q[3]) + 4.0*Iyy*(q[0]*q[1] + q[2]*q[3])*(ox*q[0]*q[0] - ox*q[1]*q[1] - 2.0*oy*q[1]*q[2] + 2.0*oy*q[0]*q[3] + ox*(q[2]*q[2] - q[3]*q[3])) + 4.0*Ixx*(q[0]*q[2] - q[1]*q[3])*(oy*q[0]*q[0] + oy*q[1]*q[1] - 2.0*ox*q[1]*q[2] - 2.0*ox*q[0]*q[3] - oy*(q[2]*q[2] + q[3]*q[3])); 
+F[2][2] = -4.0*Izz*(q[0]*(ox*q[1] + oy*q[2]) + (oy*q[1] - ox*q[2])*q[3])*(-1.0 + 2.0*q[0]*q[0] + 2.0*q[3]*q[3]) + 4.0*Iyy*(q[0]*q[1] + q[2]*q[3])*(ox*q[0]*q[0] - ox*q[1]*q[1] - 2.0*oy*q[1]*q[2] + 2.0*oy*q[0]*q[3] + ox*(q[2]*q[2] - q[3]*q[3])) + 4.0*Ixx*(q[0]*q[2] - q[1]*q[3])*(oy*q[0]*q[0] + oy*q[1]*q[1] - 2.0*ox*q[1]*q[2] - 2.0*ox*q[0]*q[3] - oy*(q[2]*q[2] + q[3]*q[3]));
 
 return;
 }

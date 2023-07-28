@@ -1040,7 +1040,7 @@ int bbl_update_ellipsoid(bbl_t * bbl, wall_t * wall, colloid_t * pc,
   for(int i = 0; i < 3; i++) owathalf[i] = 0.5*(pc->s.w[i]+xb[3+i]);
   if (pc->s.isfixeds == 0) {
     quaternion_from_omega(owathalf,0.5,qbar);
-    quaternion_product(qbar,pc->s.quater,quaternext);
+    util_q4_product(qbar, pc->s.quater, quaternext);
     util_vector_copy(4, pc->s.quater, pc->s.quaterold);
     util_vector_copy(4, quaternext, pc->s.quater);
   }

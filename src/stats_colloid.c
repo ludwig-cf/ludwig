@@ -38,57 +38,33 @@
 
 int stats_colloid_momentum(colloids_info_t * cinfo, double g[3]) {
 
-  int ic, jc, kc;
-  int ntotal;
-  int ncell[3];
-
+  int ntotal = 0;
   double glocal[3] = {0.0, 0.0, 0.0};
   double rho0;
-  double mass;
-  PI_DOUBLE(pi);
 
   colloid_t * pc = NULL;
-  MPI_Comm comm;
+  MPI_Comm comm = MPI_COMM_NULL;
 
   assert(cinfo);
 
   colloids_info_ntotal(cinfo, &ntotal);
   if (ntotal == 0) return 0;
 
-  colloids_info_ncell(cinfo, ncell);
   colloids_info_rho0(cinfo, &rho0);
   pe_mpi_comm(cinfo->pe, &comm);
 
-  for (ic = 1; ic <= ncell[X]; ic++) {
-    for (jc = 1; jc <= ncell[Y]; jc++) {
-      for (kc = 1; kc <= ncell[Z]; kc++) {
+  colloids_info_local_head(cinfo, &pc);
 
-	colloids_info_cell_list_head(cinfo, ic, jc, kc, &pc);
+  for (; pc; pc = pc->nextlocal) {
 
-	while (pc) {
-	  if (pc->s.shape == COLLOID_SHAPE_SPHERE) {
-	    mass = 4.0*pi*pow(pc->s.a0, 3)*rho0/3.0;
-	  }
-	  else if (pc->s.shape == COLLOID_SHAPE_ELLIPSOID) {
-	    mass = mass_ellipsoid(pc->s.elabc, rho0);
-	  }
-	  else {
-	  /* FIXME: mass as a function of shape */
- 	  }
+    double mass = 0.0;
 
-          if (pc->s.bc == COLLOID_BC_SUBGRID) mass = 0.0; /* No inertia */
+    colloid_state_mass(&pc->s, rho0, &mass);
+    if (pc->s.bc == COLLOID_BC_SUBGRID) mass = 0.0; /* No inertia */
 
-	  glocal[X] += mass*pc->s.v[X];
-	  glocal[Y] += mass*pc->s.v[Y];
-	  glocal[Z] += mass*pc->s.v[Z];
-
-	  /* Next colloid */
-	  pc = pc->next;
-	}
-
-	/* Next cell */
-      }
-    }
+    glocal[X] += mass*pc->s.v[X];
+    glocal[Y] += mass*pc->s.v[Y];
+    glocal[Z] += mass*pc->s.v[Z];
   }
 
   MPI_Reduce(glocal, g, 3, MPI_DOUBLE, MPI_SUM, 0, comm);
@@ -102,7 +78,7 @@ int stats_colloid_momentum(colloids_info_t * cinfo, double g[3]) {
  *
  *  Report stats on particle speeds. Accumulate min(-v) for maximum.
  *
- ****************************************************************************/ 
+ ****************************************************************************/
 
 int stats_colloid_velocity_minmax(colloids_info_t * cinfo) {
 
@@ -182,14 +158,11 @@ int stats_colloid_write_info(pe_t * pe, colloids_info_t * info, double const t) 
 
   colloid_t * pc = NULL;
   double phi,theta,psi;
-  double r,h;
-  double opred[3]={0.0,0.0,0.0},angpred[2];
-  double gammadot=(0.002/32.0);
-  double force=-0.01;
-  double mu=0.1;
+  double r;
+  double force = -0.01;
+  double mu = 0.1;
   double U[2];
-  double Upred[3];
-  double elc,tau0,sqU;
+
   colloids_info_all_head(info, &pc);
 
   PI_DOUBLE(pi);
@@ -199,15 +172,15 @@ int stats_colloid_write_info(pe_t * pe, colloids_info_t * info, double const t) 
   for ( ; pc; pc = pc->nextlocal) {
 
     printf("%22.15e %22.15e %22.15e position \n", pc->s.r[X], pc->s.r[Y], pc->s.r[Z]);
-    eulerangles_from_quaternions(pc->s.quater, &phi, &theta, &psi);
+    util_q4_to_euler_angles(pc->s.quater, &phi, &theta, &psi);
     printf("%22.15e, %22.15e, %22.15e\n",phi*180.0/pi,theta*180.0/pi,psi*180.0/pi);
     r = pc->s.elabc[0]/pc->s.elabc[1];
     //Jeffery_omega_predicted(r,pc->s.quater, gammadot,opred,angpred);
     settling_velocity_prolate(r, force, mu, pc->s.elabc[0], U);
     //printf("%22.15e,\t%22.15e, Predicted U\n",U[0],U[1]);
-    elc=(sqrt(pc->s.elabc[0]*pc->s.elabc[0]-pc->s.elabc[1]*pc->s.elabc[1]))/pc->s.elabc[0];
-    tau0=1.0/elc;
-    sqU=tau0*(tau0-(tau0*tau0-1.0)*atanh(elc));
+    //elc=(sqrt(pc->s.elabc[0]*pc->s.elabc[0]-pc->s.elabc[1]*pc->s.elabc[1]))/pc->s.elabc[0];
+    //tau0=1.0/elc;
+    //sqU=tau0*(tau0-(tau0*tau0-1.0)*atanh(elc));
     //printf("%22.15e, Predicted U of squirmer\n",pc->s.b1*sqU);
     //ellipsoid_nearwall_predicted(pc->s.elabc,pc->s.r[1],pc->s.quater, Upred,opred);
     //printf("%22.15e,\t%22.15e,\t%22.15e Predicted U\n",Upred[0],Upred[1],Upred[2]);
