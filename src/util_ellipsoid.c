@@ -402,7 +402,7 @@ __host__ __device__ void Jeffery_omega_predicted(double const r, double const qu
   beta=(r*r-1.0)/(r*r+1.0);
   /*Determining p, the orientation of the long axis*/
   rotate_tobodyframe_quaternion(quater,v1,p);
-  /*Determing pdot in Guazzeli's convention*/
+  /*Determine pdot in Guazzeli's convention*/
   pdoty=p[0]*v2[0]+p[1]*v2[1]+p[2]*v2[2];
   phiar=(p[0]-pdoty*v2[0])*v3[0]+
         (p[1]-pdoty*v2[1])*v3[1]+
@@ -417,11 +417,11 @@ __host__ __device__ void Jeffery_omega_predicted(double const r, double const qu
   pxdotj= gammadot*((beta+1.0)*pyj/2.0-beta*pxj*pxj*pyj);
   pydotj= gammadot*((beta-1.0)*pxj/2.0-beta*pyj*pyj*pxj);
   pzdotj=-gammadot*beta*pxj*pyj*pzj;
-  /*Determing pdot in Ludwig's convention*/
+  /*Determine pdot in Ludwig's convention*/
   pdot[0]=pxdotj;
   pdot[1]=-pzdotj;
   pdot[2]=pydotj;
-  /*Determing the spinning velocity*/
+  /*Determine the spinning velocity*/
   op[1]= gammadot/2.0;
   omp=dot_product(op,p);
   /*Determining the tumbling velocity*/
@@ -444,7 +444,7 @@ __host__ __device__ void euler_from_vectors(double a[3], double b[3], double *eu
   orthonormalise_vector_b_to_a(a, b);
   cross_product(a,b,c);
   dcm_from_vectors(a,b,c,r);
-  euler_from_dcm(r,&euler[0],&euler[1],&euler[2]);
+  euler_from_dcm((const double (*)[])r,&euler[0],&euler[1],&euler[2]);
 
  return;
 }

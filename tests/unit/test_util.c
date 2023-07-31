@@ -444,5 +444,21 @@ int test_util_q4_to_euler_angles(void) {
     assert(ifail == 0);
   }
 
+  {
+    double phi   = -999.999;
+    double theta = -999.999;
+    double psi   = -999.999;
+    double q[4]  = {0.0, 0.5, 0.5, 0.0};
+
+    ifail = util_q4_to_euler_angles(q, &phi, &theta, &psi);
+    assert(ifail == 0);
+
+    printf("phi = %7.2f theta = %7.2f psi = %7.2f\n", phi, theta, psi);
+    if (fabs(phi   - 0.0)    > DBL_EPSILON) ifail = -1;
+    if (fabs(theta - 0.5*pi) > FLT_EPSILON) ifail = -1;
+    if (fabs(psi   - 0.0)    > DBL_EPSILON) ifail = -1;
+    assert(ifail == 0);
+  }
+
   return ifail;
 }
