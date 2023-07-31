@@ -306,8 +306,8 @@ int colloids_rt_init_from_file(pe_t * pe, rt_t * rt, colloids_info_t * cinfo,
   pe_subdirectory(pe, subdirectory);
   physics_ref(&phys);
 
+  /* Expected stub name: */
   strcpy(stub, "config.cds.init");
-  rt_string_parameter(rt, "colloid_file_stub", stub, BUFSIZ);
 
   ntstep = physics_control_timestep(phys);
 
