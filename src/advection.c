@@ -22,7 +22,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2010-2021  The University of Edinburgh
+ *  (c) 2010-2023  The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -31,6 +31,7 @@
  *****************************************************************************/
 
 #include <assert.h>
+#include <limits.h>
 #include <stdlib.h>
 
 #include "advection_s.h"
@@ -170,6 +171,11 @@ __host__ int advflux_create(pe_t * pe, cs_t * cs, lees_edw_t * le, int nf,
   obj->le = le;
   obj->nf = nf;
   obj->nsite = nsites;
+
+  if (nf < 1 || nsites < 1 || INT_MAX/nf < nsites) {
+    pe_info(pe,  "advflux_create: failure in int32_t indexing\n");
+    return -1;
+  }
 
   if (obj->le == NULL) {
     /* If no Lees Edwards, we only require an fx = fw */
