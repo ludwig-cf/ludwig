@@ -41,6 +41,7 @@
  *****************************************************************************/
 
 #include <assert.h>
+#include <limits.h>
 #include <stdlib.h>
 #include <math.h>
 
@@ -124,6 +125,11 @@ __host__ int beris_edw_create(pe_t * pe, cs_t * cs, lees_edw_t * le,
   assert(flx);
 
   lees_edw_nsites(le, &obj->nall);
+  if (obj->nall < 1 || INT_MAX/NQAB < obj->nall) {
+    pe_info(pe, "beris_edw_create: failure in int32_t indexing\n");
+    return -1;
+  }
+
   obj->h = (double *) calloc(obj->nall*NQAB, sizeof(double));
   assert(obj->h);
 
