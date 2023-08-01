@@ -293,9 +293,7 @@ int colloids_rt_init_from_file(pe_t * pe, rt_t * rt, colloids_info_t * cinfo,
 			       colloid_io_t * cio) {
 
   int ntstep;
-  char subdirectory[BUFSIZ];
-  char filename[3*BUFSIZ];
-  char stub[BUFSIZ];
+  char filename[BUFSIZ] = {0};
   physics_t * phys = NULL;
 
   assert(pe);
@@ -303,21 +301,14 @@ int colloids_rt_init_from_file(pe_t * pe, rt_t * rt, colloids_info_t * cinfo,
   assert(cinfo);
   assert(cio);
 
-  pe_subdirectory(pe, subdirectory);
   physics_ref(&phys);
-
-  /* Expected stub name: */
-  strcpy(stub, "config.cds.init");
-
   ntstep = physics_control_timestep(phys);
 
   if (ntstep == 0) {
-    snprintf(filename, 3*BUFSIZ, "%s%s", subdirectory, stub);
+    snprintf(filename, BUFSIZ-1, "config.cds.init");
   }
   else {
-    strcpy(stub, "config.cds");
-    rt_string_parameter(rt, "colloid_file_stub", stub, BUFSIZ);
-    snprintf(filename, 3*BUFSIZ, "%s%s%8.8d", subdirectory, stub, ntstep);
+    snprintf(filename, BUFSIZ-1, "config.cds%8.8d", ntstep);
   }
 
   colloid_io_read(cio, filename);
