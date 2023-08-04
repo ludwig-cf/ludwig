@@ -413,7 +413,7 @@ int colloids_update_forces_external(colloids_info_t * cinfo, psi_t * psi) {
 	  pc->force[Y] += g[Y];
 	  pc->force[Z] += g[Z];
 
-          if (pc->s.bc == COLLOID_BC_SUBGRID) continue;
+          if (pc->s.type == COLLOID_TYPE_SUBGRID) continue;
 
 	  btorque[X] = pc->s.s[Y]*b0[Z] - pc->s.s[Z]*b0[Y];
 	  btorque[Y] = pc->s.s[Z]*b0[X] - pc->s.s[X]*b0[Z];
@@ -844,13 +844,26 @@ int interact_range_check(interact_t * obj, colloids_info_t * cinfo) {
 
 int colloids_update_forces_ext(colloids_info_t * cinfo) {
 
+  double volume, f0[3]; 
+
   colloid_t * pc = NULL;
+  physics_t * phys = NULL;
 
   assert(cinfo);
 
-  colloids_info_all_head(cinfo, &pc);
+  colloids_info_local_head(cinfo, &pc);
+
+  physics_ref(&phys);
+  physics_fbody(phys, f0);
 
   for (; pc; pc = pc->nextall) {
+
+    util_discrete_volume_sphere(pc->s.r, pc->s.a0, &volume);
+
+    pc->force[X] += f0[X] * volume;
+    pc->force[Y] += f0[Y] * volume;
+    pc->force[Z] += f0[Z] * volume;
+
     pc->fex[X] = pc->force[X];
     pc->fex[Y] = pc->force[Y];
     pc->fex[Z] = pc->force[Z];
