@@ -33,6 +33,7 @@
 
 #include "leesedwards.h"
 #include "target.h"
+#include "nvToolsExt.h"
 
 __global__ static void le_reproject(lb_t *lb, lees_edw_t *le, kernel_ctxt_t * ktxt);
 static void le_displace_and_interpolate(lb_t *lb, lees_edw_t *le);
@@ -116,7 +117,6 @@ __global__ void interpolation(lb_t *lb, lees_edw_t *le, double t, kernel_ctxt_t 
         if (lb->model.cv[p][X] == +1) nprop += 1;
     }
     displacement = ndist * nprop * nlocal[Y] * nlocal[Z];
-
 
     int kindex;
     int kiter;
@@ -268,6 +268,7 @@ __global__ void copy_back(lb_t *lb, lees_edw_t *le, kernel_ctxt_t * ktxt) {
  *****************************************************************************/
 
 __host__ int lb_le_apply_boundary_conditions(lb_t *lb, lees_edw_t *le) {
+    nvtxRangeId_t id = nvtxRangeStartA("MY ASCII LABEL");
     int mpi_cartsz[3];
 
     assert(lb);
@@ -276,26 +277,20 @@ __host__ int lb_le_apply_boundary_conditions(lb_t *lb, lees_edw_t *le) {
     lees_edw_cartsz(le, mpi_cartsz);
 
     if (lees_edw_nplane_local(le) > 0) {
+        int ndevice;
         TIMER_start(TIMER_LE);
-
-        /* Everything must be done on host at the moment (slowly) ... */
-        /* ... and copy back at the end */
         lees_edw_t * le_target;
         cs_t *cs;
-        int ndevice;
-        tdpGetDeviceCount(&ndevice);
 
-        
+        tdpGetDeviceCount(&ndevice);
+        lees_edw_cs(le, &cs);
+
         if (ndevice > 0) {
             copyModelToDevice(&lb->model, &lb->target->model);
-            
             lees_edw_target(le, &le_target);
-            lees_edw_cs(le_target, &cs);
            // copy_buffer_duy_to_device(le_target, le->buffer_duy, le->param->nxbuffer);
         }
        
-        
-
         int nlocal[3], nplane;
         lees_edw_nlocal(le, nlocal);
         nplane = lees_edw_nplane_local(le);
@@ -311,7 +306,12 @@ __host__ int lb_le_apply_boundary_conditions(lb_t *lb, lees_edw_t *le) {
         kernel_ctxt_create(cs, NSIMDVL, limits, &ctxt);
         kernel_ctxt_launch_param(ctxt, &nblk, &ntpb);
 
-        tdpLaunchKernel(le_reproject, nblk, ntpb, 0, 0, lb->target, le_target, ctxt->target);
+        if (ndevice > 0) {
+            tdpLaunchKernel(le_reproject, nblk, ntpb, 0, 0, lb->target, le_target, ctxt->target);
+        }
+        else {
+            tdpLaunchKernel(le_reproject, nblk, ntpb, 0, 0, lb, le, ctxt);
+        }
         tdpAssert(tdpPeekAtLastError());
         tdpAssert(tdpDeviceSynchronize());
 
@@ -321,10 +321,12 @@ __host__ int lb_le_apply_boundary_conditions(lb_t *lb, lees_edw_t *le) {
         else {
             le_displace_and_interpolate(lb, le);
         }
-        
+        kernel_ctxt_free(ctxt);
+
         TIMER_stop(TIMER_LE);
     }
-
+    nvtxRangeEnd(id);
+    
     return 0;
 }
 
@@ -462,6 +464,7 @@ void le_displace_and_interpolate(lb_t *lb, lees_edw_t *le) {
     int nlocal[3];
     int nplane;
     int ndist;
+    int ndevice;
     double t;
     physics_t *phys = NULL;
     lees_edw_t * le_target;
@@ -476,6 +479,7 @@ void le_displace_and_interpolate(lb_t *lb, lees_edw_t *le) {
     lb_ndist(lb, &ndist);
     lees_edw_target(le, &le_target);
     lees_edw_cs(le, &cs);
+    tdpGetDeviceCount(&ndevice);
 
     t = 1.0 * physics_control_timestep(phys);
 
@@ -495,14 +499,25 @@ void le_displace_and_interpolate(lb_t *lb, lees_edw_t *le) {
     kernel_ctxt_create(cs, NSIMDVL, limits, &ctxt);
     kernel_ctxt_launch_param(ctxt, &nblk, &ntpb);
 
-    tdpLaunchKernel(interpolation, nblk, ntpb, 0, 0, lb->target, le_target, t, ctxt->target);
-    tdpAssert(tdpPeekAtLastError());
-    tdpAssert(tdpDeviceSynchronize());
+    if (ndevice > 0) {
+        tdpLaunchKernel(interpolation, nblk, ntpb, 0, 0, lb->target, le_target, t, ctxt->target);
+        tdpAssert(tdpPeekAtLastError());
+        tdpAssert(tdpDeviceSynchronize());
 
-    tdpLaunchKernel(copy_back, nblk, ntpb, 0, 0, lb->target, le_target, ctxt->target);
-    tdpAssert(tdpPeekAtLastError());
-    tdpAssert(tdpDeviceSynchronize());
+        tdpLaunchKernel(copy_back, nblk, ntpb, 0, 0, lb->target, le_target, ctxt->target);
+        tdpAssert(tdpPeekAtLastError());
+        tdpAssert(tdpDeviceSynchronize());
+    } 
+    else {
+        tdpLaunchKernel(interpolation, nblk, ntpb, 0, 0, lb, le, t, ctxt);
+        tdpAssert(tdpPeekAtLastError());
+        tdpAssert(tdpDeviceSynchronize());
 
+        tdpLaunchKernel(copy_back, nblk, ntpb, 0, 0, lb, le, ctxt);
+        tdpAssert(tdpPeekAtLastError());
+        tdpAssert(tdpDeviceSynchronize());
+    }
+    
     kernel_ctxt_free(ctxt);
 
     return;
