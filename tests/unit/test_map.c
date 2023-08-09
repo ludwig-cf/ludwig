@@ -21,7 +21,6 @@
 
 #include "pe.h"
 #include "coords.h"
-#include "coords_field.h"
 #include "map.h"
 
 #include "test_coords_field.h"
