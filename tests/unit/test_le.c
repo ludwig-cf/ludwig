@@ -4,6 +4,9 @@
  *
  *  Lees Edwards structure
  *
+ *  Tests for nplanes = 1 would need to ensure that there is no
+ *  decomposition in the x-direction.
+ *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
@@ -135,7 +138,7 @@ int test_lees_edw_buffer_displacement(pe_t * pe, cs_t * cs) {
     double t = 2.0;
     double dy = 0.0;
 
-    lees_edw_options_t opts = {.nplanes = 1, .type = LE_SHEAR_TYPE_STEADY,
+    lees_edw_options_t opts = {.nplanes = 2, .type = LE_SHEAR_TYPE_STEADY,
                                .nt0 = 0, .uy = 0.01};
     lees_edw_t * le = NULL;
 
@@ -151,7 +154,7 @@ int test_lees_edw_buffer_displacement(pe_t * pe, cs_t * cs) {
   /* The uy is just set to fix up the displacement at time t = 0.5;
    * it's  not realistic */
   {
-    lees_edw_options_t opts = {.nplanes = 1, .type = LE_SHEAR_TYPE_OSCILLATORY,
+    lees_edw_options_t opts = {.nplanes = 2, .type = LE_SHEAR_TYPE_OSCILLATORY,
                                .period = 2, .nt0 = 0, .uy = 4.0*atan(1.0)};
     lees_edw_t * le = NULL;
     int ib = 0;
@@ -178,7 +181,7 @@ int test_lees_edw_buffer_du(pe_t * pe, cs_t * cs) {
 
   int ifail = 0;
 
-  lees_edw_options_t opts = {.nplanes = 1, .type = LE_SHEAR_TYPE_STEADY,
+  lees_edw_options_t opts = {.nplanes = 2, .type = LE_SHEAR_TYPE_STEADY,
                              .nt0 = 0, .uy = 0.01};
   lees_edw_t * le = NULL;
 
@@ -273,7 +276,7 @@ int test_lees_edw_plane_uy_now(pe_t * pe, cs_t * cs) {
 
   /* Steady shear */
   {
-    lees_edw_options_t opts = {.nplanes = 1, .type = LE_SHEAR_TYPE_STEADY,
+    lees_edw_options_t opts = {.nplanes = 2, .type = LE_SHEAR_TYPE_STEADY,
                                .nt0 = 0, .uy = 0.01};
     lees_edw_t * le = NULL;
     double t  = 0.5;           /* Steady result independent of t */
@@ -289,7 +292,7 @@ int test_lees_edw_plane_uy_now(pe_t * pe, cs_t * cs) {
   /* Oscillatory shear */
   /* Parameters are to get uy cos(omega.t) = 1 ... */
   {
-    lees_edw_options_t opts = {.nplanes = 1, LE_SHEAR_TYPE_OSCILLATORY,
+    lees_edw_options_t opts = {.nplanes = 2, LE_SHEAR_TYPE_OSCILLATORY,
                                .period = 3, .nt0 = 100, .uy = -2.0};
     lees_edw_t * le = NULL;
     double t  = 1.0 + 1.0*opts.nt0;
