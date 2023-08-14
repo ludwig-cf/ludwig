@@ -33,7 +33,6 @@
 
 #include "leesedwards.h"
 #include "target.h"
-#include "nvToolsExt.h"
 
 __global__ static void le_reproject(lb_t *lb, lees_edw_t *le, kernel_ctxt_t * ktxt);
 static void le_displace_and_interpolate(lb_t *lb, lees_edw_t *le);
@@ -67,35 +66,6 @@ void copyModelToDevice(lb_model_t *h_model, lb_model_t *d_model) {
     tdpMemcpy(&(d_model->nvel), &(h_model->nvel), sizeof(int8_t), tdpMemcpyHostToDevice);
     tdpMemcpy(&(d_model->cs2), &(h_model->cs2), sizeof(double), tdpMemcpyHostToDevice);
 }
-
-// cudaError_t copy_buffer_duy_to_device(lees_edw_s* d_lees_edw, int* h_buffer_duy, size_t nxbuffer) {
-//     // First, allocate memory on the device for the buffer_duy array
-//     int* d_buffer_duy;
-//     cudaError_t err = tdpMalloc((void**) &d_buffer_duy, nxbuffer * sizeof(int));
-
-//     if (err != cudaSuccess) {
-//         fprintf(stderr, "Failed to allocate device memory for buffer_duy (error code %s)!\n", cudaGetErrorString(err));
-//         return err;
-//     }
-
-//     // Then, copy the data from the host array to the newly allocated device array
-//     err = tdpMemcpy(d_buffer_duy, h_buffer_duy, nxbuffer * sizeof(int), tdpMemcpyHostToDevice);
-    
-//     if (err != cudaSuccess) {
-//         fprintf(stderr, "Failed to copy buffer_duy from host to device (error code %s)!\n", cudaGetErrorString(err));
-//         return err;
-//     }
-
-//     // Finally, update the pointer in the device structure to point to the new device array
-//     err = tdpMemcpy(&(d_lees_edw->buffer_duy), &d_buffer_duy, sizeof(int*), tdpMemcpyHostToDevice);
-
-//     if (err != cudaSuccess) {
-//         fprintf(stderr, "Failed to copy buffer_duy pointer to device structure (error code %s)!\n", cudaGetErrorString(err));
-//         return err;
-//     }
-
-//     return cudaSuccess;
-// }
 
 __global__ void interpolation(lb_t *lb, lees_edw_t *le, double t, kernel_ctxt_t * ktxt) {
     int plane, ic, jc, kc;
@@ -169,7 +139,6 @@ __global__ void interpolation(lb_t *lb, lees_edw_t *le, double t, kernel_ctxt_t 
             index1 = lees_edw_index(le, ic, j2, kc);
 
             /* xdisp_fwd_cv[0] identifies cv[p][X] = -1 */
-
             for (int n = 0; n < ndist; n++) {
                 for (int p = 1, i = 0; p < lb->model.nvel; p++) {
                     if (lb->model.cv[p][X] == -1) {
@@ -268,7 +237,6 @@ __global__ void copy_back(lb_t *lb, lees_edw_t *le, kernel_ctxt_t * ktxt) {
  *****************************************************************************/
 
 __host__ int lb_le_apply_boundary_conditions(lb_t *lb, lees_edw_t *le) {
-    nvtxRangeId_t id = nvtxRangeStartA("MY ASCII LABEL");
     int mpi_cartsz[3];
 
     assert(lb);
@@ -288,7 +256,6 @@ __host__ int lb_le_apply_boundary_conditions(lb_t *lb, lees_edw_t *le) {
         if (ndevice > 0) {
             copyModelToDevice(&lb->model, &lb->target->model);
             lees_edw_target(le, &le_target);
-           // copy_buffer_duy_to_device(le_target, le->buffer_duy, le->param->nxbuffer);
         }
        
         int nlocal[3], nplane;
@@ -325,7 +292,6 @@ __host__ int lb_le_apply_boundary_conditions(lb_t *lb, lees_edw_t *le) {
 
         TIMER_stop(TIMER_LE);
     }
-    nvtxRangeEnd(id);
     
     return 0;
 }
@@ -437,7 +403,6 @@ __global__ static void le_reproject(lb_t *lb, lees_edw_t *le, kernel_ctxt_t * kt
                     }
 
                     /* Project all this back to the distribution. */
-
                     lb_f(lb, index, p, n, &fnew);
                     fnew += lb->model.wv[p] * (rho * udotc * rcs2 + 0.5 * sdotq * rcs2 * rcs2);
                     lb_f_set(lb, index, p, n, fnew);
@@ -482,11 +447,6 @@ void le_displace_and_interpolate(lb_t *lb, lees_edw_t *le) {
     tdpGetDeviceCount(&ndevice);
 
     t = 1.0 * physics_control_timestep(phys);
-
-    /* We need to interpolate into a temporary buffer to make sure we
-     * don't overwrite distributions taking part. The size is just
-     * determined by the size of the local domain, and the number
-     * of plane-crossing distributions. */
 
     //tdp
     dim3 nblk, ntpb;
