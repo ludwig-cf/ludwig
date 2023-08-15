@@ -190,8 +190,8 @@ int main(int argc, char ** argv) {
       /* Write Orientations to vtk file*/
       colloids_to_vtk_inbetween(fp_vtk);
       quater = s1.quater;
-      rotate_tobodyframe_quaternion(quater, worldv1, elev1);
-      rotate_tobodyframe_quaternion(quater, worldv2, elev2);
+      util_q4_rotate_vector(quater, worldv1, elev1);
+      util_q4_rotate_vector(quater, worldv2, elev2);
       cross_product(elev1,elev2,elev3);
       util_vector_normalise(3, elev3);
       fprintf(fp_vtk, format3wocomma_, 2.0*s1.elabc[0]*elev1[0], 2.0*s1.elabc[0]*elev1[1],2.0*s1.elabc[0]*elev1[2]);
