@@ -89,4 +89,4 @@ jobs:
     - name: Check
       run: |
         make unit
-	make -C tests d3q27
+        make -C tests d3q27
