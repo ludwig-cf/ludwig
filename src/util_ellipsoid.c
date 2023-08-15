@@ -496,7 +496,7 @@ __host__ __device__ void euler_from_vectors(double a[3], double b[3], double *eu
   orthonormalise_vector_b_to_a(a, b);
   cross_product(a,b,c);
   dcm_from_vectors(a,b,c,r);
-  euler_from_dcm((const double (*)[])r,&euler[0],&euler[1],&euler[2]);
+  euler_from_dcm(r,&euler[0],&euler[1],&euler[2]);
 
  return;
 }
@@ -505,7 +505,7 @@ __host__ __device__ void euler_from_vectors(double a[3], double b[3], double *eu
 *  Calculating Euler angles from Direction Cosine Matrix
 *
 *****************************************************************************/
-__host__ __device__ void euler_from_dcm(double const r[3][3], double *phi, double *theta, double *psi) {
+__host__ __device__ void euler_from_dcm(const double r[3][3], double *phi, double *theta, double *psi) {
 
   *theta=acos(r[2][2]);
   if(fabs(fabs(r[2][2])-1.0)>1e-12) {
@@ -523,7 +523,7 @@ return;
 *  Calculating Direction Cosine Matrix from a given set of orientation vectors
 *
 *****************************************************************************/
-__host__ __device__ void dcm_from_vectors(double const a[3], double const b[3], double const c[3], double r[3][3]) {
+__host__ __device__ void dcm_from_vectors(const double a[3], const double b[3], const double c[3], double r[3][3]) {
 
 double v1[3]={1.0,0.0,0.0};
 double v2[3]={0.0,1.0,0.0};

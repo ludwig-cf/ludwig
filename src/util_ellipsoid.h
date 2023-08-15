@@ -35,8 +35,8 @@ __host__ __device__ void Jeffery_omega_predicted(double const r, double const qu
 __host__ __device__ void ellipsoid_nearwall_predicted(double const elabc[3], double const h, double const quater[4], double Upred[3], double opred[3]);
  __host__ __device__ void settling_velocity_prolate(double const r, double const f, double const mu, double const ela, double U[2]);
 __host__ __device__ void euler_from_vectors(double a[3], double b[3], double *euler);
- __host__ __device__ void euler_from_dcm(double const r[3][3], double *phi, double *theta, double *psi);
-__host__ __device__ void dcm_from_vectors(double const a[3], double const b[3], double const c[3], double r[3][3]);
+ __host__ __device__ void euler_from_dcm(const double r[3][3], double *phi, double *theta, double *psi);
+__host__ __device__ void dcm_from_vectors(const double a[3], const double b[3], const double c[3], double r[3][3]);
 __host__ __device__ void unsteady_mI(const double q[4], const double I[3], const double omega[3], double F[3][3]);
 
 #endif
