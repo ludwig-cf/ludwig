@@ -87,8 +87,14 @@ void matrix_transpose(const double a[3][3], double result[3][3]) {
  *
  *  Determining a quaternion from the angular velocity
  *
+ *  See, e.g., Zhao and Wachem Acta Mech 224 3091--3109 (2013)
+ *  Eq 49
+ *  The factor (1/2) is replaced by the general fraction f.
+&
  ****************************************************************************/
-__host__ __device__ void quaternion_from_omega(const double omega[3], const double f, double qbar[4]) {
+
+__host__ __device__ void quaternion_from_omega(const double omega[3],
+					       const double f, double qbar[4]) {
 
  double omag;
  omag=sqrt(omega[0]*omega[0]+omega[1]*omega[1]+omega[2]*omega[2]);
@@ -108,8 +114,17 @@ __host__ __device__ void quaternion_from_omega(const double omega[3], const doub
  *
  *  Calculate the moment of inerita tensor from the specified quaternion
  *
+ *  The moment of interia tensor in the lab frame is moment[3].
+ *  This must be rotated by the quaternion.
+ *
+ *  See Zhao and Wachem Acta Mech 224, 2331--2358 (2013) [different!]
+ *  The full operation is Eq 22.
+ *
+ *  The result mI_ab is the inertia tensor in the rotated frame.
+ *
  ****************************************************************************/
-__host__ __device__ void inertia_tensor_quaternion(const double q[4], const double moment[3], double mI[3][3]) {
+__host__ __device__ void inertia_tensor_quaternion(const double q[4],
+						   const double moment[3], double mI[3][3]) {
 
   /*Construting the moment of inertia tensor in the principal coordinates*/
   double mIP[3][3];
@@ -118,49 +133,66 @@ __host__ __device__ void inertia_tensor_quaternion(const double q[4], const doub
       mIP[i][j] = 0.0;
     }
   }
-  for(int i = 0; i < 3; i++) {mIP[i][i] = moment[i];}
-  /*Rotating it to the body frame, eqn 13*/
+  /* Set the diagonal elements */
+  for (int i = 0; i < 3; i++) {
+    mIP[i][i] = moment[i];
+  }
+  /* Rotating it to the body frame */
   double Mi[3],Mdi[3],Mdd[3][3];
   /*First column transform and fill as first row*/
   for(int i = 0; i < 3; i++) {Mi[i] = mIP[i][0];}
-  rotate_tobodyframe_quaternion(q,Mi,Mdi);
+  util_q4_rotate_vector(q,Mi,Mdi);
   for(int i = 0; i < 3; i++) {Mdd[0][i] = Mdi[i];}
   /*Second column transform and fill as second row*/
   for(int i = 0; i < 3; i++) {Mi[i] = mIP[i][1];}
-  rotate_tobodyframe_quaternion(q,Mi,Mdi);
+  util_q4_rotate_vector(q,Mi,Mdi);
   for(int i = 0; i < 3; i++) {Mdd[1][i] = Mdi[i];}
   /*Third column transform and fill as third row*/
   for(int i = 0; i < 3; i++) {Mi[i] = mIP[i][2];}
-  rotate_tobodyframe_quaternion(q,Mi,Mdi);
+  util_q4_rotate_vector(q,Mi,Mdi);
   for(int i = 0; i < 3; i++) {Mdd[2][i] = Mdi[i];}
+
   /*Repeat the entire procedure*/
   /*First column transform and fill as first row*/
   for(int i = 0; i < 3; i++) {Mi[i] = Mdd[i][0];}
-  rotate_tobodyframe_quaternion(q,Mi,Mdi);
+  util_q4_rotate_vector(q,Mi,Mdi);
   for(int i = 0; i < 3; i++) {mI[0][i] = Mdi[i];}
   /*Second column transform and fill as second row*/
   for(int i = 0; i < 3; i++) {Mi[i] = Mdd[i][1];}
-  rotate_tobodyframe_quaternion(q,Mi,Mdi);
+  util_q4_rotate_vector(q,Mi,Mdi);
   for(int i = 0; i < 3; i++) {mI[1][i] = Mdi[i];}
   /*Third column transform and fill as third row*/
   for(int i = 0; i < 3; i++) {Mi[i] = Mdd[i][2];}
-  rotate_tobodyframe_quaternion(q,Mi,Mdi);
+  util_q4_rotate_vector(q,Mi,Mdi);
   for(int i = 0; i < 3; i++) {mI[2][i] = Mdi[i];}
   return;
-  }
+}
+
 /*****************************************************************************
  *
- *  Rotate to body frame by quaternion
+ *  util_q4_rotate_vector
+ *
+ *  Rotate vector a[3] by the quaternion to give vector b.
+ *
+ *  E.g., Rapaport Eq 8.2.8 with q = [q_0, q = (q_1, q_2, q_3)]
+ *  that is, b = (2q_0^2 - 1)a + 2(q.a)q + 2q_0 q x a
  *
  ****************************************************************************/
-__host__ __device__ void rotate_tobodyframe_quaternion(const double q[4], const double a[3], double b[3]) {
-   double s1, s2, s3[3];
-   s1=(2.0*q[0]*q[0]-1.0);
-   s2=dot_product(&q[1],a);
-   cross_product(&q[1],a,s3);
-   for(int i = 0; i < 3; i++) {b[i]=s1*a[i] + 2.0*s2*q[i+1] + 2.0*q[0]*s3[i];}
- return;
- }
+
+void util_q4_rotate_vector(const double q[4], const double a[3], double b[3]) {
+
+  double q0    = q[0];
+  double qdota = dot_product(q + 1, a);
+  double qxb[3] = {0};
+
+  cross_product(q + 1, a, qxb);
+
+  for (int i = 0; i < 3; i++) {
+    b[i] = (2.0*q0*q0 - 1.0)*a[i] + 2.0*qdota*q[i+1] + 2.0*q0*qxb[i];
+  }
+
+  return;
+}
 
 /*****************************************************************************
  *
@@ -263,10 +295,11 @@ void util_q4_product(const double a[4], const double b[4], double c[4]) {
 }
 
 /*****************************************************************************
-*
-*  Far field predictions of Mitchell and Spagnolie
-*
-*****************************************************************************/
+ *
+ *  Far field predictions of Mitchell and Spagnolie
+ *  PENDING CONFIRMATION
+ *
+ *****************************************************************************/
 __host__ __device__ void ellipsoid_nearwall_predicted(double const elabc[3], double const h, double const quater[4], double Upred[3], double opred[3]) {
 
   double ecc,ecc2,ecc3,ecc4,K;
@@ -381,10 +414,21 @@ return;
 }
 
 /*****************************************************************************
-*
-*  Jeffery's predictions for a spheroid
-*
-*****************************************************************************/
+ *
+ *  Jeffery's predictions for a spheroid
+ *
+ *  Originally from Jeffrey (1922).
+ *
+ *  See, e.g., E. Guazzelli, A Physical Introduction to Suspension Dynamics
+ *  Cambridge (2012) Chapter 3.
+ *
+ *  r is the aspect ratio of the ellipsoid
+ *  q is the orientation (quaternion)
+ *  gammadot is the shear rate
+ *  opred[3]    predicted angular velocity
+ *  angpred[2]  (theta_1, phi_1) See Figure 3.13.
+ *
+ *****************************************************************************/
 __host__ __device__ void Jeffery_omega_predicted(double const r, double const quater[4], double const gammadot, double opred[3], double angpred[2]) {
 
   double beta;
@@ -401,7 +445,8 @@ __host__ __device__ void Jeffery_omega_predicted(double const r, double const qu
 
   beta=(r*r-1.0)/(r*r+1.0);
   /*Determining p, the orientation of the long axis*/
-  rotate_tobodyframe_quaternion(quater,v1,p);
+  util_q4_rotate_vector(quater,v1,p);
+
   /*Determine pdot in Guazzeli's convention*/
   pdoty=p[0]*v2[0]+p[1]*v2[1]+p[2]*v2[2];
   phiar=(p[0]-pdoty*v2[0])*v3[0]+
@@ -409,8 +454,10 @@ __host__ __device__ void Jeffery_omega_predicted(double const r, double const qu
         (p[2]-pdoty*v2[2])*v3[2];
   the1=acos(-pdoty);
   phi1=acos(phiar);
+
   angpred[0]=phi1;
   angpred[1]=the1;
+
   pxj= sin(the1)*sin(phi1);
   pyj= sin(the1)*cos(phi1);
   pzj=-cos(the1);
@@ -426,17 +473,22 @@ __host__ __device__ void Jeffery_omega_predicted(double const r, double const qu
   omp=dot_product(op,p);
   /*Determining the tumbling velocity*/
   cross_product(p,pdot,pcpdot);
-  /*Determining the total angular velocity*/
-  for(int i = 0; i < 3; i++) {opred[i]=omp*p[i]+pcpdot[i];}
 
-  return ;
+  /*Determining the total angular velocity*/
+  for (int i = 0; i < 3; i++) {
+    opred[i] = omp*p[i]+pcpdot[i];
   }
 
+  return;
+}
+
 /*****************************************************************************
-*
-*  Calculating Euler angles from vectors
-*
-*****************************************************************************/
+ *
+ *  Calculating Euler angles from vectors
+ *
+ *  If a and b are not at right angles, b is adjusted to be so.
+ *
+ *****************************************************************************/
 __host__ __device__ void euler_from_vectors(double a[3], double b[3], double *euler) {
 
   double c[3],r[3][3];
@@ -491,11 +543,24 @@ return;
 }
 
 /*****************************************************************************
-*
-*  Settling velocity of a prolate spheroid, Leal pg 559
-*
+ *
+ *  Settling velocity of a prolate spheroid
+ *
+ *  L.G. Leal Advanced Transport phemomena, Cambridge 2007
+ *  See page 559
+ *
+ *  r is the apect ratio
+ *  f is the force (magnitude)
+ *  mu is the dynamic viscosity (LB. units)
+ *  ela  principle semi-major axis
+ *  u[2] velocity in parallel and perpenduclar directions
+ *
 *****************************************************************************/
-__host__ __device__ void settling_velocity_prolate(double const r, double const f, double const mu, double const ela, double U[2]) {
+__host__ __device__ void settling_velocity_prolate(double const r,
+						   double const f,
+						   double const mu,
+						   double const ela,
+						   double U[2]) {
 
 double ecc,logecc;
 double cfterm1,cfterm21,cf1br,cf1;
@@ -519,75 +584,23 @@ U[0] = f/(dcoef*cf1);
 U[1] = f/(dcoef*cf2);
 return;
 }
-
-/*****************************************************************************
- *
- *  Calculate surface tangent on an ellipsoid at a point ijk
- *
- ****************************************************************************/
-/*__host__ __device__ void surface_tangent_spheroid(colloid_t * pc,const double posvector[3], double rb[3]) {
-
-  PI_DOUBLE(pi);
-
-  double *elabc;
-  double elc;
-  double ele,ele2;
-  double ela,ela2;
-  double elz,elz2;
-  double elr, sdotez;
-  double rmod;
-  double *quater;
-  double *elbz;
-  double denom, term1, term2;
-  double elrho[3],xi1,xi2,xi;
-  double diff1,diff2,gridin[3],elzin,dr[3];
-
-  elabc=pc->s.elabc;
-  elc=sqrt(elabc[0]*elabc[0]-elabc[1]*elabc[1]);
-  ele=elc/elabc[0];
-  ela = colloids_largest_dimension(pc);
-  quater=pc->s.quater;
-  elbz=pc->s.m;
-  elz=dot_product(posvector,elbz);
-  for(int ia=0; ia<3; ia++) {elrho[ia]=posvector[ia]-elz*elbz[ia];}
-  elr = modulus(elrho);
-  rmod = 0.0;
-  if (elr != 0.0) rmod = 1.0/elr;
-  for(int ia=0; ia<3; ia++) {elrho[ia]=elrho[ia]*rmod;}
-  ela2=ela*ela;
-  elz2=elz*elz;
-  ele2=ele*ele;
-  diff1=ela2-elz2;
-  diff2=ela2-ele2*elz2;
-  if(diff1<0.0){
-    elr = modulus(posvector);
-    rmod = 0.0;
-    if (elr != 0.0) rmod = 1.0/elr;
-    for(int ia=0; ia<3; ia++) {dr[ia]=posvector[ia]*rmod;}
-    for(int ia = 0; ia < 3; ia++) {
-      gridin[ia] = posvector[ia]-dr[ia];
-      elzin=dot_product(gridin,elbz);
-      elz2=elzin*elzin;
-      diff1=ela2-elz2;
-    }
-    if(diff2<0.0) {diff2 = ela2-ele2*elz2;}
-  }
-  denom=sqrt(diff2);
-  term1=-sqrt(diff1)/denom;
-  term2=sqrt(1.0-ele*ele)*elz/denom;
-  for(int ia = 0; ia < 3; ia++) {rb[ia]=term1*elbz[ia]+term2*elrho[ia];}
-
-  return;
-
-}
-
-*/
 /*****************************************************************************
  *
  *  Calculate the unsteady term dIij/dt
  *
+ *  Compute rate of change of the moment of inertia tensor from
+ *  the curent quaternion, I_ab being the moment of inertia
+ *  in the principle co-ordinate frame, and the angular velocity
+ *  at (t - delta t) the previous time step (emega in the lab frame).
+ *
+ *  This horrific expression is the analytical result from Mathematica.
+ *
+ *  Using this avoids any finite time derivative.
+ *
  ****************************************************************************/
-__host__ __device__ void unsteady_mI(const double q[4], const double I[3], const double omega[3], double F[3][3]){
+__host__ __device__ void unsteady_mI(const double q[4],
+				     const double I[3],
+				     const double omega[3], double F[3][3]){
 
 double Ixx, Iyy, Izz;
 double ox, oy, oz;

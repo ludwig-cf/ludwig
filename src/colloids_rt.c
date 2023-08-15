@@ -15,6 +15,7 @@
  *****************************************************************************/
 
 #include <assert.h>
+#include <float.h>
 #include <math.h>
 #include <stdlib.h>
 #include <string.h>
@@ -628,6 +629,14 @@ int colloids_rt_state_stub(pe_t * pe, rt_t * rt, colloids_info_t * cinfo,
       pe_info(pe, "Key elabc requires shape to be ellipsoidal\n");
       pe_fatal(pe, "Please check colloid input and try again\n");
     }
+
+    /* Active ellipsoids must have b == c for tangent computation */
+    /* Also need b == c if surface anchoring required. */
+
+    if (state->active && (fabs(b - c) > FLT_EPSILON)) {
+      pe_info(pe,  "Active ellipsoids must have b == c\n");
+      pe_fatal(pe, "Please check and try again\n");
+    }
   }
 
   snprintf(key, BUFSIZ-1, "%s_%s", stub, "euler");
@@ -662,14 +671,13 @@ int colloids_rt_state_stub(pe_t * pe, rt_t * rt, colloids_info_t * cinfo,
   /* If active and ellipsoid, assign the squirmer orientation as along the
    * long axis */
 
-  /* KS. FIXME I'm going to comment this out for the time being
-   * as it is upsetting the tests ... */
-  /*
-  double v1[3]={1.0,0.0,0.0};
-  rotate_tobodyframe_quaternion(state->quater, v1, state->m);
-  printf("Spheroidal squirmer oriented along the major axis, %f, %f, %f\n",
-  state->m[X],state->m[Y],state->m[Z]);
-  */
+  if (state->shape == COLLOID_SHAPE_ELLIPSOID && state->active) {
+    double v1[3] = {1.0, 0.0, 0.0}; /* x-axis */
+    util_q4_rotate_vector(state->quater, v1, state->m);
+    pe_info(pe,
+	    "Squirmer swimming direction: %14.7e %14.7e %14.7e\n",
+	    state->m[X], state->m[Y], state->m[Z]);
+  }
 
   return 0;
 }

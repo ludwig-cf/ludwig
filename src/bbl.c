@@ -529,12 +529,15 @@ static int bbl_pass1(bbl_t * bbl, lb_t * lb, colloids_info_t * cinfo) {
 	  double denom, term1, term2;
 	  double elrho[3], xi1, xi2, xi;
 	  double diff1, diff2, gridin[3], elzin;
+
+	  /* This is the tangent calculation, which might be replaced
+	   * by the surface_tanget function ... to be confirmed ... */
 	  elbz = pc->s.m;
 	  elz = dot_product(p_link->rb, elbz);
 	  for (ia = 0; ia < 3; ia++) {
 	    elrho[ia] = p_link->rb[ia] - elz*elbz[ia];
 	  }
-	  /*Replace the first part with surface tangent calculation but discuss with Kevin about going inside the particle in a different way*/
+
 	  elr = modulus(elrho);
 	  rmod = 0.0;
 	  if (elr != 0.0) rmod = 1.0/elr;
@@ -572,6 +575,7 @@ static int bbl_pass1(bbl_t * bbl, lb_t * lb, colloids_info_t * cinfo) {
 	  xi1 = sqrt(elr*elr+(elz+elc)*(elz+elc));
 	  xi2 = sqrt(elr*elr+(elz-elc)*(elz-elc));
 	  xi = (xi1 - xi2)/(2.0*elc);
+
 	  plegendre = -(pc->s.b1)*sdotez - (pc->s.b2)*xi*sdotez;
 
 	  mod = modulus(tans);
@@ -1038,43 +1042,17 @@ int bbl_update_ellipsoid(bbl_t * bbl, wall_t * wall, colloid_t * pc,
   /* And then finding the new quaternions */
 
   for(int i = 0; i < 3; i++) owathalf[i] = 0.5*(pc->s.w[i]+xb[3+i]);
+
   if (pc->s.isfixeds == 0) {
     quaternion_from_omega(owathalf,0.5,qbar);
     util_q4_product(qbar, pc->s.quater, quaternext);
     util_vector_copy(4, pc->s.quater, pc->s.quaterold);
     util_vector_copy(4, quaternext, pc->s.quater);
   }
-  /*Saving the orientation if it is active - can be converted to an if loop*/
-  rotate_tobodyframe_quaternion(pc->s.quater, v1, pc->s.m);
 
-  /*Predictor*/
-  /*Calculate the orientation based on the predictor*/
-  /*Calculate the moment of inertia at n+1th time step*/
-  /*Corrector*/
-/*
-    setter_ladd_Gausselmn_LHS(0.5, pc->zeta, &dwall[0], mass, mI, a);
-    setter_ladd_Gausselmn_RHS(0.5, mass, mI, pc->s.v, pc->s.w, pc->f0, pc->t0, pc->force, pc->torque, pc->fc0, pc->tc0, xb);
+  /* Re-orient swimming direction */
 
-    if(pc->s.type==COLLOID_TYPE_ELLIPSOID) {
-      setter_ladd_LHS_ellipsoid(pc->s.quaterold, &mI_P[0],mI,a);
-    }
-    solver_ladd_Gausselmn(bbl,a, xb);
-    copy_vectortovector(&xb[3],owathalf,3);
-    quaternion_from_omega(owathalf,0.5,qbar);
-    quaternion_product(qbar,quatern,quaternext);
-    copy_vectortovector(pc->s.quater,pc->s.quaterold,4);
-    copy_vectortovector(quaternext,pc->s.quater,4);
-
-    quatern = pc->s.quater;
-    inertia_tensor_quaternion(quatern, mI_P, mI);
-    setter_ladd_Gausselmn_LHS(1.0, pc->zeta, &dwall[0], mass, mI, a);
-    setter_ladd_Gausselmn_RHS(1.0, mass, mI, pc->s.v, pc->s.w, pc->f0, pc->t0, pc->force, pc->torque, pc->fc0, pc->tc0, xb);
-
-    if(pc->s.type==COLLOID_TYPE_ELLIPSOID) {
-      setter_ladd_LHS_ellipsoid(pc->s.quaterold, &mI_P[0],mI,a);
-    }
-    solver_ladd_Gausselmn(bbl,a, xb);
-*/
+  util_q4_rotate_vector(pc->s.quater, v1, pc->s.m);
 
   return iret;
 }

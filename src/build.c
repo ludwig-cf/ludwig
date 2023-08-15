@@ -256,9 +256,9 @@ __host__ int is_site_inside_colloid(colloid_t * pc, double rsep[3]) {
     }
     /*Constructing Q matrix*/
     quater = pc->s.quater;
-    rotate_tobodyframe_quaternion(quater, worldv1, elev1);
-    rotate_tobodyframe_quaternion(quater, worldv2, elev2);
-    cross_product(elev1,elev2,elev3);
+    util_q4_rotate_vector(quater, worldv1, elev1);
+    util_q4_rotate_vector(quater, worldv2, elev2);
+    cross_product(elev1, elev2, elev3);
 
     util_vector_normalise(3, elev3);
 
@@ -304,6 +304,8 @@ __host__ double colloids_largest_dimension(colloid_t * pc) {
   assert(pc);
 
   /* FIXME: elabc[0] must be set in input as largest dimension */
+  /* This is enforced for user input, but not from colloid file
+     sources PEDNING */
   if (pc->s.shape == COLLOID_SHAPE_ELLIPSOID) {
     ela    = pc->s.elabc[0];
     elb    = pc->s.elabc[1];
@@ -1282,16 +1284,20 @@ int build_replace_q_local(fe_t * fe, colloids_info_t * info, colloid_t * pc,
   /* For normal anchoring we determine the radial unit vector rb */
 
   colloid_rb(info, pc, index, rb);
+
   util_vector_copy(3,rb,posvector);
   if (pc->s.shape == COLLOID_SHAPE_ELLIPSOID) {
+    /* Compute correct spheroid normal ... */
     isphere=check_whether_sphere(pc);
     if(!isphere) {surface_normal_spheroid(pc,posvector,rb);}
   }
 
+  /* Make sure we have a unit vector */
   rbmod = 1.0/sqrt(rb[X]*rb[X] + rb[Y]*rb[Y] + rb[Z]*rb[Z]);
   rb[0] *= rbmod;
   rb[1] *= rbmod;
   rb[2] *= rbmod;
+
 
   /* For planar degenerate anchoring we subtract the projection of a
      randomly oriented unit vector on rb and renormalise the result   */
@@ -1753,7 +1759,7 @@ int build_conservation_phi(colloids_info_t * cinfo, field_t * phi,
  ****************************************************************************/
 __host__ __device__ void surface_normal_spheroid(colloid_t * pc,const double * posvector, double * rb) {
 
-  surface_vector_spheroid(pc,posvector, rb,0);
+  surface_vector_spheroid(pc,posvector, rb, 0);
   return;
  }
 
@@ -1764,16 +1770,27 @@ __host__ __device__ void surface_normal_spheroid(colloid_t * pc,const double * p
  ****************************************************************************/
 __host__ __device__ void surface_tangent_spheroid(colloid_t * pc,const double * posvector, double * rb) {
 
-  surface_vector_spheroid(pc,posvector, rb,1);
+  surface_vector_spheroid(pc,posvector, rb, 1);
   return;
  }
 
 /*****************************************************************************
  *
- *  Calculate surface vector on an ellipsoid at a point posvector
+ *  Calculate surface normal vector on an ellipsoid at a point posvector
+ *
+ *  Note
+ *  "Speheroid" has a != b and b = c (for oblate or prolate case).
+ *
+ *  See, e.g., S.R. Keller and T.Y.T. Wu, J. Fluid Mech. 80, 259--278 (1977).
+ *
+ *  CHECK Does this always produce a unit vector?
+ *  CHECK what happens in the oblate case?
  *
  ****************************************************************************/
-__host__ __device__ void surface_vector_spheroid(colloid_t * pc,const double * posvector, double * rb,const int tn) {
+__host__ __device__ void surface_vector_spheroid(colloid_t * pc,
+						 const double * posvector,
+						 double * rb,
+						 const int tn) {
 
   double *elabc;
   double elc;
@@ -1823,11 +1840,18 @@ __host__ __device__ void surface_vector_spheroid(colloid_t * pc,const double * p
   denom=sqrt(diff2);
   term1=sqrt(diff1)/denom;
   term2=sqrt(1.0-ele*ele)*elz/denom;
-  if(tn==1) {/*Tangent vector*/
-    for(int ia = 0; ia < 3; ia++) {rb[ia]=-term1*elbz[ia]+term2*elrho[ia];}
+
+  if (tn == 1) {
+    /*Tangent vector*/
+    for (int ia = 0; ia < 3; ia++) {
+      rb[ia] = -term1*elbz[ia] + term2*elrho[ia];
+    }
   }
-  else {/*Normal vector*/
-    for(int ia = 0; ia < 3; ia++) {rb[ia]= term2*elbz[ia]+term1*elrho[ia];}
+  else {
+    /*Normal vector*/
+    for (int ia = 0; ia < 3; ia++) {
+      rb[ia] =  term2*elbz[ia] + term1*elrho[ia];
+    }
   }
 
   return;
@@ -1838,6 +1862,8 @@ __host__ __device__ void surface_vector_spheroid(colloid_t * pc,const double * p
 *
 *  Ordering 3 numbers in the ascending order
 *  FIXME: please replace
+*  Specifically, if an ellipsoid has a == b == c, the normal computation
+*  will fail.
 *****************************************************************************/
 
 int check_whether_sphere(colloid_t * pc) {
