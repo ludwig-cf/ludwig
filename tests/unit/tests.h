@@ -110,6 +110,7 @@ int test_stencils_suite(void);
 int test_timer_suite(void);
 int test_util_suite(void);
 int test_util_bits_suite(void);
+int test_util_ellipsoid_suite(void);
 int test_util_fopen_suite(void);
 int test_util_io_suite(void);
 int test_util_json_suite(void);

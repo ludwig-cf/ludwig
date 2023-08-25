@@ -85,30 +85,34 @@ void matrix_transpose(const double a[3][3], double result[3][3]) {
 
 /*****************************************************************************
  *
- *  Determining a quaternion from the angular velocity
+ *  util_q4_from_omega
+ *
+ *  Angular velocity update as a quaternion.
  *
  *  See, e.g., Zhao and Wachem Acta Mech 224 3091--3109 (2013)
- *  Eq 49
- *  The factor (1/2) is replaced by the general fraction f.
-&
- ****************************************************************************/
+ *  Eq 49. The factor (1/2)\delta t is replaced by the general
+ *  fractional time step dt.
+ *
+ *  q = [ cos(|w|dt), sin(|w|dt) w/|w| ]
+ *
+ *****************************************************************************/
 
-__host__ __device__ void quaternion_from_omega(const double omega[3],
-					       const double f, double qbar[4]) {
+void util_q4_from_omega(const double omega[3], double dt, double q[4]) {
 
- double omag;
- omag=sqrt(omega[0]*omega[0]+omega[1]*omega[1]+omega[2]*omega[2]);
- if(omag>1e-12) {
-   qbar[0]=cos(omag*f);
-   for(int i = 0; i < 3; i++) {qbar[i+1]=sin(omag*f)*(omega[i]/omag);}
+ double omag = sqrt(omega[0]*omega[0] + omega[1]*omega[1] + omega[2]*omega[2]);
+
+ if (omag < DBL_EPSILON) {
+   q[0] = 1.0; q[1] = 0.0; q[2] = 0.0; q[3] = 0.0;
  }
  else {
-  qbar[0]=1.0;
-  for (int i = 1; i < 4; i++) {qbar[i] = 0.0;}
+   q[0] = cos(omag*dt);
+   for (int i = 0; i < 3; i++) {
+     q[i+1] = sin(omag*dt)*omega[i]/omag;
+   }
  }
 
   return;
-  }
+}
 
 /*****************************************************************************
  *
@@ -183,12 +187,12 @@ void util_q4_rotate_vector(const double q[4], const double a[3], double b[3]) {
 
   double q0    = q[0];
   double qdota = dot_product(q + 1, a);
-  double qxb[3] = {0};
+  double qxa[3] = {0};
 
-  cross_product(q + 1, a, qxb);
+  cross_product(q + 1, a, qxa);
 
   for (int i = 0; i < 3; i++) {
-    b[i] = (2.0*q0*q0 - 1.0)*a[i] + 2.0*qdota*q[i+1] + 2.0*q0*qxb[i];
+    b[i] = (2.0*q0*q0 - 1.0)*a[i] + 2.0*qdota*q[i+1] + 2.0*q0*qxa[i];
   }
 
   return;
@@ -591,7 +595,7 @@ return;
  *  Compute rate of change of the moment of inertia tensor from
  *  the curent quaternion, I_ab being the moment of inertia
  *  in the principle co-ordinate frame, and the angular velocity
- *  at (t - delta t) the previous time step (emega in the lab frame).
+ *  at (t - delta t) the previous time step (omega in the lab frame).
  *
  *  This horrific expression is the analytical result from Mathematica.
  *

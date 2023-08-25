@@ -167,6 +167,23 @@ __host__ int grad_s7_anchoring_cinfo_set(colloids_info_t * cinfo) {
 			sizeof(colloids_info_t *), tdpMemcpyHostToDevice));
   }
 
+  /* Any ellispsoidal particles must have b == c */
+
+  {
+    colloid_t * pc = NULL;
+
+    colloids_info_local_head(cinfo, &pc);
+
+    for ( ; pc; pc = pc->nextlocal) {
+      if (pc->s.shape == COLLOID_SHAPE_ELLIPSOID) {
+	if (fabs(pc->s.elabc[1] - pc->s.elabc[2]) > DBL_EPSILON) {
+	  pe_info(cinfo->pe, "s7_anchoring: ellispoid must have b == c\n");
+	  pe_fatal(cinfo->pe, "Please check te input and try again\n");
+	}
+      }
+    }
+  }
+
   return 0;
 }
 
