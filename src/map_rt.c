@@ -128,6 +128,7 @@ int map_init_porous_media_from_file(pe_t * pe, cs_t * cs, rt_t * rt,
 
     rt_string_parameter(rt, "porous_media_type", status, BUFSIZ);
 
+    ndata = 0;
     if (strcmp(status, "status_only") == 0) ndata = 0;
     if (strcmp(status, "status_with_h") == 0) ndata = 1;
     if (strcmp(status, "status_with_sigma") == 0) ndata = 1;
