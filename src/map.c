@@ -16,6 +16,7 @@
  *****************************************************************************/
 
 #include <assert.h>
+#include <limits.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -57,7 +58,7 @@ __host__ int map_create(pe_t * pe, cs_t * cs, int ndata, map_t ** pobj) {
   cs_nsites(cs, &nsites);
   cs_nhalo(cs, &nhalo);
 
-  obj = (map_t*) calloc(1, sizeof(map_t));
+  obj = (map_t *) calloc(1, sizeof(map_t));
   assert(obj);
   if (obj == NULL) pe_fatal(pe, "calloc(map_t) failed\n");
 
@@ -70,11 +71,19 @@ __host__ int map_create(pe_t * pe, cs_t * cs, int ndata, map_t ** pobj) {
   obj->nsite = nsites;
   obj->ndata = ndata;
 
-  /* Could be zero-sized array */
+  /* Avoid overflow in allocation */
+  if (INT_MAX/(nsites*imax(1, obj->ndata)) < 1) {
+    pe_info(pe, "map_init: failure in int32_t allocation\n");
+    return -1;
+  }
 
-  obj->data = (double*) calloc((size_t) ndata*nsites, sizeof(double));
-  assert(obj->data);
-  if (ndata > 0 && obj->data == NULL) pe_fatal(pe, "calloc(map->data) failed\n");
+      /* ndata may be zero, but avoid zero-sized allocations */
+
+  if (ndata > 0) {
+    obj->data = (double *) calloc((size_t) ndata*nsites, sizeof(double));
+    assert(obj->data);
+    if (obj->data == NULL) pe_fatal(pe, "calloc(map->data) failed\n");
+  }
 
   /* Allocate target copy of structure (or alias) */
 
