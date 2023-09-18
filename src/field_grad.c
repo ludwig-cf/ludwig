@@ -7,7 +7,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2012-2021 The University of Edinburgh
+ *  (c) 2012-2023 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -16,6 +16,7 @@
  *****************************************************************************/
 
 #include <assert.h>
+#include <limits.h>
 #include <stdlib.h>
 
 #include "pe.h"
@@ -34,6 +35,7 @@ static int field_grad_init(field_grad_t * obj);
 __host__ int field_grad_create(pe_t * pe, field_t * f, int level,
 			       field_grad_t ** pobj) {
 
+  int ifail = 0;
   field_grad_t * obj =  (field_grad_t *) NULL;
 
   assert(pe);
@@ -51,10 +53,15 @@ __host__ int field_grad_create(pe_t * pe, field_t * f, int level,
   field_nf(f, &obj->nf);
   assert(obj->nf > 0);
 
-  field_grad_init(obj);
+  ifail = field_grad_init(obj);
+  if (ifail != 0) {
+    pe_info(pe, "field_grad: failure in int32_t indexing\n");
+    pe_fatal(pe, "The local doamin size is too large\n");
+  }
+
   *pobj = obj;
 
-  return 0;
+  return ifail;
 }
 
 /*****************************************************************************
@@ -76,6 +83,9 @@ static int field_grad_init(field_grad_t * obj) {
   obj->nsite = nsites;
   nfsz = (size_t) obj->nf*nsites;
 
+  /* Failure in int32_t indexing ... */
+  if (INT_MAX < nfsz || nfsz < 1) return -1;
+
   tdpGetDeviceCount(&ndevice);
 
   if (ndevice == 0) {
@@ -92,7 +102,7 @@ static int field_grad_init(field_grad_t * obj) {
   }
 
   if (obj->level >= 2) {
-
+    if (INT_MAX/NVECTOR < nfsz) return -1;
     obj->grad  = (double *) calloc(NVECTOR*nfsz, sizeof(double));
     obj->delsq = (double *) calloc(nfsz, sizeof(double));
 
@@ -113,6 +123,7 @@ static int field_grad_init(field_grad_t * obj) {
   }
 
   if (obj->level == 3) {
+    if (INT_MAX/NSYMM < nfsz) return -1;
     obj->d_ab = (double*) calloc(NSYMM*nfsz, sizeof(double));
     if (obj->d_ab == NULL) pe_fatal(obj->pe, "calloc(fieldgrad->d_ab) failed\n");
 

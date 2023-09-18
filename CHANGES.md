@@ -1,6 +1,11 @@
 
 ### Changes
 
+version 0.21.0
+- Issue 268: if using wetting information read from porous media files,
+             the form of the key words in the input file has been
+	     adjusted. See https://ludwig.epcc.ed.ac.uk/inputs/porous.html
+
 version 0.20.1
 - Issue 271: missing stub prevents compilation at some compiler optimisation
              levels.

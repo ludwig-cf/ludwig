@@ -23,6 +23,7 @@
  *****************************************************************************/
 
 #include <assert.h>
+#include <limits.h>
 #include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -206,6 +207,11 @@ __host__ int field_init(field_t * obj, int nhcomm, lees_edw_t * le) {
   obj->nhcomm = nhcomm;
   obj->nsites = nsites;
   nfsz = (size_t) obj->nf*nsites;
+
+  if (nfsz < 1 || INT_MAX/nfsz < 1) {
+    pe_info(obj->pe, "field_init: failure in int32_t indexing\n");
+    return -1;
+  }
 
   if (obj->opts.usefirsttouch) {
 
