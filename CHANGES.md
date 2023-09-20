@@ -4,6 +4,9 @@
 
 version 0.21.0
 
+- Ellipsoids. A feature which allows ellipsoidal particles to be
+  used has been added by Sumesh Thampi.
+
 - "colloid_type" has been split into a number of more general
   properties including: boundary condition (bc) either bbl or
   subgrid; shale either "disk", "sphere", or "ellipsoid";
@@ -11,8 +14,12 @@ version 0.21.0
   The default is: bc = bbl, shape = sphere, active = no, magnetic = no.
   There are some conditions, e.g., "disk" expects a 2D D2Q9 model.
   This affects the way colloid details are specified in the input.
-  See REFERENCE PENDING
+  Older colloid state files should still work.
+  See https://ludwig.epcc.ed.ac.uk
 
+- Issue 268: if using wetting information read from porous media files,
+             the form of the key words in the input file has been
+	     adjusted. See https://ludwig.epcc.ed.ac.uk/inputs/porous.html
 
 version 0.20.1
 - Issue 271: missing stub prevents compilation at some compiler optimisation

@@ -169,7 +169,10 @@ int psi_halo_psi(psi_t * psi) {
 
   assert(psi);
 
+  /* Fudge device implmentation at the moment */
+  field_memcpy(psi->psi, tdpMemcpyHostToDevice);
   field_halo(psi->psi);
+  field_memcpy(psi->psi, tdpMemcpyDeviceToHost);
 
   return 0;
 }
@@ -184,7 +187,9 @@ int psi_halo_rho(psi_t * psi) {
 
   assert(psi);
 
+  field_memcpy(psi->rho, tdpMemcpyHostToDevice);
   field_halo(psi->rho);
+  field_memcpy(psi->rho, tdpMemcpyDeviceToHost);
 
   return 0;
 }

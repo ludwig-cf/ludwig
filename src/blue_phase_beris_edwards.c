@@ -41,6 +41,7 @@
  *****************************************************************************/
 
 #include <assert.h>
+#include <limits.h>
 #include <stdlib.h>
 #include <math.h>
 
@@ -105,6 +106,7 @@ __host__ int beris_edw_create(pe_t * pe, cs_t * cs, lees_edw_t * le,
 			      beris_edw_t ** pobj) {
 
   int ndevice;
+  int nsites = 0;
   advflux_t * flx = NULL;
   beris_edw_t * obj = NULL;
 
@@ -123,8 +125,15 @@ __host__ int beris_edw_create(pe_t * pe, cs_t * cs, lees_edw_t * le,
   advflux_le_create(pe, cs, le, NQAB, &flx);
   assert(flx);
 
-  lees_edw_nsites(le, &obj->nall);
-  obj->h = (double *) calloc(obj->nall*NQAB, sizeof(double));
+  lees_edw_nsites(le, &nsites);
+  obj->nall = nsites;
+
+  if (nsites < 1 || INT_MAX/NQAB < nsites) {
+    pe_info(pe, "beris_edw_create: failure in int32_t indexing\n");
+    return -1;
+  }
+
+  obj->h = (double *) calloc(nsites*NQAB, sizeof(double));
   assert(obj->h);
 
   obj->cs = cs;
@@ -159,7 +168,7 @@ __host__ int beris_edw_create(pe_t * pe, cs_t * cs, lees_edw_t * le,
 
     tdpAssert(tdpMemcpy(&obj->target->nall, &obj->nall, sizeof(int),
 			tdpMemcpyHostToDevice));
-    tdpAssert(tdpMalloc((void **) &htmp, obj->nall*NQAB*sizeof(double)));
+    tdpAssert(tdpMalloc((void **) &htmp, nsites*NQAB*sizeof(double)));
     tdpAssert(tdpMemcpy(&obj->target->h, &htmp, sizeof(double *),
 			tdpMemcpyHostToDevice));
   }

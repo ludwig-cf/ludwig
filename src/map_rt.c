@@ -103,12 +103,13 @@ int map_init_porous_media_from_file(pe_t * pe, cs_t * cs, rt_t * rt,
 				    map_t ** pmap) {
 
   int ndata = 0;
-  int have_ndata = 0;
+  int have_data = 0;
   int form_in = IO_FORMAT_DEFAULT;
   int form_out = IO_FORMAT_DEFAULT;
   int grid[3] = {1, 1, 1};
 
   char format[BUFSIZ] = "";
+  char status[BUFSIZ] = "";
 
   io_info_t * iohandler = NULL;
   map_t * map = NULL;
@@ -116,17 +117,9 @@ int map_init_porous_media_from_file(pe_t * pe, cs_t * cs, rt_t * rt,
   assert(pe);
   assert(rt);
 
-  have_ndata = rt_int_parameter(rt, "porous_media_ndata", &ndata);
+  have_data = rt_string_parameter(rt, "porous_media_data", status, BUFSIZ);
 
-  if (have_ndata) {
-    /* This is now the preferred mechanism */
-  }
-  else {
-
-    /* Work out ndata from the key. This method will be removed in future. */
-    char status[BUFSIZ] = "";
-
-    rt_string_parameter(rt, "porous_media_type", status, BUFSIZ);
+  if (have_data) {
 
     if (strcmp(status, "status_only") == 0) ndata = 0;
     if (strcmp(status, "status_with_h") == 0) ndata = 1;
