@@ -63,9 +63,9 @@
 #include "util.h"
 #include "util_vector.h"
 #include "util_ellipsoid.h"
-#include "build.h"
 #include "lc_anchoring.h"
 #include "gradient_3d_7pt_solid.h"
+
 
 struct grad_lc_anch_s {
   pe_t * pe;
@@ -678,9 +678,6 @@ __host__ __device__ int grad_3d_7pt_bc(grad_lc_anch_t * anch,
   double amp;
   KRONECKER_DELTA_CHAR(d);
 
-  double posvector[3];
-  int isphere=0;
-
   fe_lc_amplitude_compute(fep, &amp);
 
   /* Default -> outward normal, ie., flat wall */
@@ -709,12 +706,15 @@ __host__ __device__ int grad_3d_7pt_bc(grad_lc_anch_t * anch,
     dnhat[X] = 1.0*(noffset[X] + ic) - pc->s.r[X];
     dnhat[Y] = 1.0*(noffset[Y] + jc) - pc->s.r[Y];
     dnhat[Z] = 1.0*(noffset[Z] + kc) - pc->s.r[Z];
-    
-    util_vector_copy(3,dnhat,posvector);
+
     if (pc->s.shape == COLLOID_SHAPE_ELLIPSOID) {
-      isphere=check_whether_sphere(pc);
-      if(!isphere) {surface_normal_spheroid(pc,posvector,dnhat);}
-    }                         
+      int isphere = util_ellipsoid_is_sphere(pc->s.elabc);
+      double rs[3] = {0};
+      util_vector_copy(3, dnhat, rs);
+      if (!isphere) {
+	util_spheroid_surface_normal(pc->s.elabc, pc->s.m, rs, dnhat);
+      }
+    }
 
     /* unit vector */
     rd = 1.0/sqrt(dnhat[X]*dnhat[X] + dnhat[Y]*dnhat[Y] + dnhat[Z]*dnhat[Z]);
