@@ -137,5 +137,9 @@ int colloid_state_read_binary(colloid_state_t * ps, FILE * fp);
 int colloid_state_write_ascii(const colloid_state_t * ps, FILE * fp);
 int colloid_state_write_binary(const colloid_state_t * ps, FILE * fp);
 int colloid_state_mass(const colloid_state_t * s, double rho0, double * mass);
+int colloid_type_check(colloid_state_t * s);
+int colloid_r_inside(const colloid_state_t * s, const double r[3]);
+
+double colloid_principal_radius(const colloid_state_t * s);
 
 #endif
