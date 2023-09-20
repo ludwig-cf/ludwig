@@ -443,7 +443,8 @@ int colloid_io_read(colloid_io_t * cio, const char * filename) {
   if (cio->single_file_read) {
     /* All groups read for single 'serial' file */
     snprintf(filename_io, FILENAME_MAX-1, "%s.%3.3d-%3.3d", filename, 1, 1);
-    pe_info(cio->pe, "colloid_io_read: reading from single file %s\n", filename_io);
+    pe_info(cio->pe, "colloid_io_read: reading from single file %s\n",
+	    filename_io);
   }
   else {
     pe_info(cio->pe, "colloid_io_read: reading from %s etc\n", filename_io);
@@ -465,6 +466,24 @@ int colloid_io_read(colloid_io_t * cio, const char * filename) {
   fclose(fp_state);
 
   colloid_io_check_read(cio, ngroup);
+  {
+    /* Check for old 'type' component */
+    int ntype = 0;
+    int ntype_updates = colloids_type_check(cio->info);
+    MPI_Allreduce(&ntype_updates, &ntype, 1, MPI_INT, MPI_SUM, cio->comm);
+    if (ntype > 0) {
+      pe_info(cio->pe, "One or more colloids were updated as this looks\n");
+      pe_info(cio->pe, "like an old formet input file. See note at\n");
+      pe_info(cio->pe, "https://ludwig.epcc.ed.ac.uk/outputs/colloid.html\n");
+    }
+  }
+  {
+    /* Any ellipsoids must be checked. */
+    int nbad = colloids_ellipsoid_abc_check(cio->info);
+    if (nbad > 0) {
+      pe_exit(cio->pe, "One or more ellipses in input file fail checks\n");
+    }
+  }
 
   return 0;
 }
