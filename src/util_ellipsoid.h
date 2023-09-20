@@ -26,6 +26,14 @@ int  util_q4_from_euler_angles(double phi, double theta, double psi,
 			       double q[4]);
 int  util_q4_to_euler_angles(const double q[4], double * phi, double * theta,
 			     double * psi);
+int  util_q4_is_inside_ellipsoid(const double q[4], const double elabc[3],
+				 const double r[3]);
+
+int util_ellipsoid_is_sphere(const double elabc[3]);
+int util_spheroid_surface_normal(const double elabc[3], const double m[3],
+				 const double r[3], double v[3]);
+int util_spheroid_surface_tangent(const double elabc[3], const double m[3],
+				  const double r[3], double vt[3]);
 
 __host__ __device__ void orthonormalise_vector_b_to_a(double *a, double *b);
 __host__ __device__ void matrix_product(const double a[3][3], const double b[3][3], double result[3][3]);
