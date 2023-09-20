@@ -436,7 +436,7 @@ static int bbl_pass1(bbl_t * bbl, lb_t * lb, colloids_info_t * cinfo) {
     elabc = pc->s.elabc;
     elc = sqrt(elabc[0]*elabc[0] - elabc[1]*elabc[1]);
     ele = elc/elabc[0];
-    ela = colloids_largest_dimension(pc);
+    ela = colloid_principal_radius(&pc->s);
 
     /* Diagnostic record of f0 before additions are made. */
     /* Really, f0 should not be used for dual purposes... */

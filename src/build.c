@@ -154,7 +154,7 @@ int build_update_map(cs_t * cs, colloids_info_t * cinfo, map_t * map) {
 
 	  /* Set actual position and size of the cube to be checked */
 
-	  largestdimn = colloids_largest_dimension(p_colloid);
+	  largestdimn = colloid_principal_radius(&p_colloid->s);
 
 	  /* Need to translate the colloid position to "local"
 	   * coordinates, so that the correct range of lattice
@@ -191,7 +191,7 @@ int build_update_map(cs_t * cs, colloids_info_t * cinfo, map_t * map) {
 
 		/* Are we inside? */
 
-		if (is_site_inside_colloid(p_colloid, rsep)) {
+		if (colloid_r_inside(&p_colloid->s, rsep)) {
 
 		  /* Set index */
 		  index = cs_index(cs, i, j, k);
@@ -228,95 +228,6 @@ int build_update_map(cs_t * cs, colloids_info_t * cinfo, map_t * map) {
   }
 
   return 0;
-}
-/*****************************************************************************
- *
- *  Compute whether the given grid point is inside the colloid
- *
- *****************************************************************************/
-
-__host__ int is_site_inside_colloid(colloid_t * pc, double rsep[3]) {
-
-  double radius;
-  double lhs,rhs;
-
-  double * elabc, *quater;
-  double elev1[3], elev2[3], elev3[3];
-  double worldv1[3]={1.0,0.0,0.0};
-  double worldv2[3]={0.0,1.0,0.0};
-  double elL[3][3] = {{0.0,0.0,0.0},{0.0,0.0,0.0},{0.0,0.0,0.0}};
-  double elQ[3][3], elQT[3][3], elA[3][3], elAp[3][3];
-
-  if (pc->s.shape == COLLOID_SHAPE_ELLIPSOID) {
-
-    /*Constructing Lambda matrix*/
-    elabc  = pc->s.elabc;
-    for (int i = 0; i < 3; i++) {
-      elL[i][i]=1.0/(elabc[i]*elabc[i]);
-    }
-    /*Constructing Q matrix*/
-    quater = pc->s.quater;
-    util_q4_rotate_vector(quater, worldv1, elev1);
-    util_q4_rotate_vector(quater, worldv2, elev2);
-    cross_product(elev1, elev2, elev3);
-
-    util_vector_normalise(3, elev3);
-
-    for(int i = 0; i < 3; i++) {
-      elQ[i][0]=elev1[i];
-    }
-    for (int i = 0; i < 3; i++) {
-      elQ[i][1]=elev2[i];
-    }
-    for (int i = 0; i < 3; i++) {
-      elQ[i][2]=elev3[i];
-    }
-    /*Constructing A matrix*/
-    matrix_product(elQ, elL, elAp);
-    matrix_transpose(elQ, elQT);
-    matrix_product(elAp, elQT, elA);
-    /*Evaluating quadratic equation*/
-    lhs = elA[0][0]*rsep[X]*rsep[X]
-	+ elA[1][1]*rsep[Y]*rsep[Y]
-	+ elA[2][2]*rsep[Z]*rsep[Z]
-	+ (elA[0][1]+elA[1][0])*rsep[X]*rsep[Y]
-	+ (elA[0][2]+elA[2][0])*rsep[X]*rsep[Z]
-	+ (elA[1][2]+elA[2][1])*rsep[Y]*rsep[Z];
-    rhs = 1.0;
-  }
-  else {
-    lhs	= dot_product(rsep, rsep);
-    radius = pc->s.a0;
-    rhs    = radius*radius;
-  }
-  return (lhs < rhs);
-}
-/*****************************************************************************
- *
- *  Compute the largest dimension of the colloid
- *
- *****************************************************************************/
-
-__host__ double colloids_largest_dimension(colloid_t * pc) {
-
-  double ela,elb,elc;
-  double large;
-  assert(pc);
-
-  /* FIXME: elabc[0] must be set in input as largest dimension */
-  /* This is enforced for user input, but not from colloid file
-     sources PEDNING */
-  if (pc->s.shape == COLLOID_SHAPE_ELLIPSOID) {
-    ela    = pc->s.elabc[0];
-    elb    = pc->s.elabc[1];
-    elc    = pc->s.elabc[2];
-    large=ela > elb ? (ela > elc ? ela : elc) : (elb > elc ? elb : elc);
-  }
-  else {
-    large = pc->s.a0;
-  }
-
-  return large;
 }
 
 /*****************************************************************************
@@ -445,7 +356,8 @@ int build_reconstruct_links(cs_t * cs, colloids_info_t * cinfo,
   /* Limits of the cube around the particle. Make sure these are
    * the appropriate lattice nodes, which extend to the penultimate
    * site in each direction (to include halos). */
-  largestdimn = colloids_largest_dimension(p_colloid);
+
+  largestdimn = colloid_principal_radius(&p_colloid->s);
 
   r0[X] = p_colloid->s.r[X] - 1.0*offset[X];
   r0[Y] = p_colloid->s.r[Y] - 1.0*offset[Y];
@@ -1264,8 +1176,6 @@ int build_replace_q_local(fe_t * fe, colloids_info_t * info, colloid_t * pc,
   double rb[3], rbp[3], rhat[3];
   double rbmod, rhat_dot_rb;
   double qnew[3][3];
-  double posvector[3];
-  int isphere=0;
 
   double amplitude = (1.0/3.0);
 
@@ -1285,11 +1195,14 @@ int build_replace_q_local(fe_t * fe, colloids_info_t * info, colloid_t * pc,
 
   colloid_rb(info, pc, index, rb);
 
-  util_vector_copy(3,rb,posvector);
   if (pc->s.shape == COLLOID_SHAPE_ELLIPSOID) {
     /* Compute correct spheroid normal ... */
-    isphere=check_whether_sphere(pc);
-    if(!isphere) {surface_normal_spheroid(pc,posvector,rb);}
+    int isphere = util_ellipsoid_is_sphere(pc->s.elabc);
+    if (!isphere) {
+      double posvector[3] = {0};
+      util_vector_copy(3, rb, posvector);
+      util_spheroid_surface_normal(pc->s.elabc, pc->s.m, posvector, rb);
+    }
   }
 
   /* Make sure we have a unit vector */
@@ -1407,7 +1320,7 @@ int build_colloid_wall_links(cs_t * cs, colloids_info_t * cinfo,
 
   p_link = p_colloid->lnk;
   p_last = p_colloid->lnk;
-  largestdimn = colloids_largest_dimension(p_colloid);
+  largestdimn = colloid_principal_radius(&p_colloid->s);
 
   /* Work out the first unused link */
 
@@ -1751,129 +1664,3 @@ int build_conservation_phi(colloids_info_t * cinfo, field_t * phi,
 
   return 0;
 }
-
-/*****************************************************************************
- *
- *  Calculate surface normal on an ellipsoid at a point posvector
- *
- ****************************************************************************/
-__host__ __device__ void surface_normal_spheroid(colloid_t * pc,const double * posvector, double * rb) {
-
-  surface_vector_spheroid(pc,posvector, rb, 0);
-  return;
- }
-
-/*****************************************************************************
- *
- *  Calculate surface tangent on an ellipsoid at a point posvector
- *
- ****************************************************************************/
-__host__ __device__ void surface_tangent_spheroid(colloid_t * pc,const double * posvector, double * rb) {
-
-  surface_vector_spheroid(pc,posvector, rb, 1);
-  return;
- }
-
-/*****************************************************************************
- *
- *  Calculate surface normal vector on an ellipsoid at a point posvector
- *
- *  Note
- *  "Speheroid" has a != b and b = c (for oblate or prolate case).
- *
- *  See, e.g., S.R. Keller and T.Y.T. Wu, J. Fluid Mech. 80, 259--278 (1977).
- *
- *  CHECK Does this always produce a unit vector?
- *  CHECK what happens in the oblate case?
- *
- ****************************************************************************/
-__host__ __device__ void surface_vector_spheroid(colloid_t * pc,
-						 const double * posvector,
-						 double * rb,
-						 const int tn) {
-
-  double *elabc;
-  double elc;
-  double ele,ele2;
-  double ela,ela2;
-  double elz,elz2;
-  double elr;
-  double rmod;
-  double *elbz;
-  double denom, term1, term2;
-  double elrho[3];
-  double diff1,diff2,gridin[3],elzin,dr[3];
-
-  elabc=pc->s.elabc;
-  elc=sqrt(elabc[0]*elabc[0]-elabc[1]*elabc[1]);
-  ele=elc/elabc[0];
-  ela = colloids_largest_dimension(pc);
-  elbz=pc->s.m;
-  elz=dot_product(posvector,elbz);
-  for(int ia=0; ia<3; ia++) {elrho[ia]=posvector[ia]-elz*elbz[ia];}
-  elr = modulus(elrho);
-  rmod = 0.0;
-  if (elr != 0.0) rmod = 1.0/elr;
-  for(int ia=0; ia<3; ia++) {elrho[ia]=elrho[ia]*rmod;}
-  ela2=ela*ela;
-  elz2=elz*elz;
-  ele2=ele*ele;
-  diff1=ela2-elz2;
-  diff2=ela2-ele2*elz2;
-  /*Taking care of the unusual circumstances in which the grid point lies*/
-  /*outside the particle and elz > ela. Then the tangent vector is calculated*/
-  /*for the neighbouring grid point inside*/
-  if(diff1<0.0){
-    elr = modulus(posvector);
-    rmod = 0.0;
-    if (elr != 0.0) rmod = 1.0/elr;
-    for(int ia=0; ia<3; ia++) {dr[ia]=posvector[ia]*rmod;}
-    for(int ia = 0; ia < 3; ia++) {
-      gridin[ia] = posvector[ia]-dr[ia];
-      elzin=dot_product(gridin,elbz);
-      elz2=elzin*elzin;
-      diff1=ela2-elz2;
-    }
-  /*diff1 is a more stringent criterion*/
-    if(diff2<0.0) {diff2 = ela2-ele2*elz2;}
-  }
-  denom=sqrt(diff2);
-  term1=sqrt(diff1)/denom;
-  term2=sqrt(1.0-ele*ele)*elz/denom;
-
-  if (tn == 1) {
-    /*Tangent vector*/
-    for (int ia = 0; ia < 3; ia++) {
-      rb[ia] = -term1*elbz[ia] + term2*elrho[ia];
-    }
-  }
-  else {
-    /*Normal vector*/
-    for (int ia = 0; ia < 3; ia++) {
-      rb[ia] =  term2*elbz[ia] + term1*elrho[ia];
-    }
-  }
-
-  return;
-
-}
-
-/*****************************************************************************
-*
-*  Ordering 3 numbers in the ascending order
-*  FIXME: please replace
-*  Specifically, if an ellipsoid has a == b == c, the normal computation
-*  will fail.
-*****************************************************************************/
-
-int check_whether_sphere(colloid_t * pc) {
-
-double a,b,c;
-
-a=pc->s.elabc[0];
-b=pc->s.elabc[1];
-c=pc->s.elabc[2];
-
-return ((fabs(b-a)<1.0e-12)&&(fabs(c-b)<1.0e-12));
-}
-/*****************************************************************************/
