@@ -125,8 +125,8 @@ struct colloid_state_type {
   /* parameters describing ellipsoids */
 
   double elabc[3];	/* Semi principal axes a,b,c */
-  double quater[4];	/* Quaternion */
-  double quaterold[4];	/* Quaternion at previous time step */
+  double quat[4];	/* Quaternion describing current orientation */
+  double quatold[4];	/* Quaternion at previous time step */
 
   double dpad[NPAD_DBL];/* Again, this pads to 512 bytes to allow
 			 * for future expansion. */

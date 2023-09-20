@@ -665,15 +665,15 @@ int colloids_rt_state_stub(pe_t * pe, rt_t * rt, colloids_info_t * cinfo,
     pe_info(pe, format_e3, "Euler angles", euler[X], euler[Y], euler[Z]);
   }
 
-  util_q4_from_euler_angles(euler[X], euler[Y], euler[Z], state->quater);
-  util_vector_copy(4, state->quater, state->quaterold);
+  util_q4_from_euler_angles(euler[X], euler[Y], euler[Z], state->quat);
+  util_vector_copy(4, state->quat, state->quatold);
 
   /* If active and ellipsoid, assign the squirmer orientation as along the
    * long axis */
 
   if (state->shape == COLLOID_SHAPE_ELLIPSOID && state->active) {
     double v1[3] = {1.0, 0.0, 0.0}; /* x-axis */
-    util_q4_rotate_vector(state->quater, v1, state->m);
+    util_q4_rotate_vector(state->quat, v1, state->m);
     pe_info(pe,
 	    "Squirmer swimming direction: %14.7e %14.7e %14.7e\n",
 	    state->m[X], state->m[Y], state->m[Z]);

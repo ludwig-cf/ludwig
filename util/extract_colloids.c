@@ -81,7 +81,7 @@ int main(int argc, char ** argv) {
   double worldv1[3]={1.0,0.0,0.0};
   double worldv2[3]={0.0,1.0,0.0};
   double elev1[3], elev2[3], elev3[3];
-  double *quater;
+  double *quat;
 
   double normv;
 
@@ -189,18 +189,19 @@ int main(int argc, char ** argv) {
       fprintf(fp_vtk, format3wocommaend_, s1.r[0]-1.0, s1.r[1]-1.0, s1.r[2]-1.0);
       /* Write Orientations to vtk file*/
       colloids_to_vtk_inbetween(fp_vtk);
-      quater = s1.quater;
-      util_q4_rotate_vector(quater, worldv1, elev1);
-      util_q4_rotate_vector(quater, worldv2, elev2);
+      quat = s1.quat;
+      util_q4_rotate_vector(quat, worldv1, elev1);
+      util_q4_rotate_vector(quat, worldv2, elev2);
       cross_product(elev1,elev2,elev3);
       util_vector_normalise(3, elev3);
-      fprintf(fp_vtk, format3wocomma_, 2.0*s1.elabc[0]*elev1[0], 2.0*s1.elabc[0]*elev1[1],2.0*s1.elabc[0]*elev1[2]);
-      fprintf(fp_vtk, format3wocomma_, 2.0*s1.elabc[1]*elev2[0], 2.0*s1.elabc[1]*elev2[1], 2.0*s1.elabc[1]*elev2[2]);
-      fprintf(fp_vtk, format3wocommaend_, 2.0*s1.elabc[2]*elev3[0], 2.0*s1.elabc[2]*elev3[1], 2.0*s1.elabc[2]*elev3[2]);
+      fprintf(fp_vtk, format3wocomma_, 2.0*s1.elabc[0]*elev1[0],
+	      2.0*s1.elabc[0]*elev1[1],2.0*s1.elabc[0]*elev1[2]);
+      fprintf(fp_vtk, format3wocomma_, 2.0*s1.elabc[1]*elev2[0],
+	      2.0*s1.elabc[1]*elev2[1], 2.0*s1.elabc[1]*elev2[2]);
+      fprintf(fp_vtk, format3wocommaend_, 2.0*s1.elabc[2]*elev3[0],
+	      2.0*s1.elabc[2]*elev3[1], 2.0*s1.elabc[2]*elev3[2]);
       ncount += 1;
-
     }
-
   }
 
   /* Finish colloid coordinate output */

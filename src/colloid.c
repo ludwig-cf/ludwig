@@ -21,7 +21,7 @@
 #include "util_ellipsoid.h"
 #include "colloid.h"
 
-/* Old type definitions for backwards compatability */
+/* Old type definitions for backwards compatibility */
 enum colloid_type_enum {COLLOID_TYPE_DEFAULT = 0,
                         COLLOID_TYPE_ACTIVE,
                         COLLOID_TYPE_SUBGRID,
@@ -112,15 +112,15 @@ int colloid_state_read_ascii(colloid_state_t * ps, FILE * fp) {
   nread += fscanf(fp, sformat, &ps->elabc[1]);
   nread += fscanf(fp, sformat, &ps->elabc[2]);
 
-  nread += fscanf(fp, sformat, &ps->quater[0]);
-  nread += fscanf(fp, sformat, &ps->quater[1]);
-  nread += fscanf(fp, sformat, &ps->quater[2]);
-  nread += fscanf(fp, sformat, &ps->quater[3]);
+  nread += fscanf(fp, sformat, &ps->quat[0]);
+  nread += fscanf(fp, sformat, &ps->quat[1]);
+  nread += fscanf(fp, sformat, &ps->quat[2]);
+  nread += fscanf(fp, sformat, &ps->quat[3]);
 
-  nread += fscanf(fp, sformat, &ps->quaterold[0]);
-  nread += fscanf(fp, sformat, &ps->quaterold[1]);
-  nread += fscanf(fp, sformat, &ps->quaterold[2]);
-  nread += fscanf(fp, sformat, &ps->quaterold[3]);
+  nread += fscanf(fp, sformat, &ps->quatold[0]);
+  nread += fscanf(fp, sformat, &ps->quatold[1]);
+  nread += fscanf(fp, sformat, &ps->quatold[2]);
+  nread += fscanf(fp, sformat, &ps->quatold[3]);
 
   for (n = 0; n < NPAD_DBL; n++) {
     nread += fscanf(fp, sformat, &ps->dpad[n]);
@@ -251,15 +251,15 @@ int colloid_state_write_ascii(const colloid_state_t * s, FILE * fp) {
   nwrite += fprintf(fp, sformat, s->elabc[1]);
   nwrite += fprintf(fp, sformat, s->elabc[2]);
 
-  nwrite += fprintf(fp, sformat, s->quater[0]);
-  nwrite += fprintf(fp, sformat, s->quater[1]);
-  nwrite += fprintf(fp, sformat, s->quater[2]);
-  nwrite += fprintf(fp, sformat, s->quater[3]);
+  nwrite += fprintf(fp, sformat, s->quat[0]);
+  nwrite += fprintf(fp, sformat, s->quat[1]);
+  nwrite += fprintf(fp, sformat, s->quat[2]);
+  nwrite += fprintf(fp, sformat, s->quat[3]);
 
-  nwrite += fprintf(fp, sformat, s->quaterold[0]);
-  nwrite += fprintf(fp, sformat, s->quaterold[1]);
-  nwrite += fprintf(fp, sformat, s->quaterold[2]);
-  nwrite += fprintf(fp, sformat, s->quaterold[3]);
+  nwrite += fprintf(fp, sformat, s->quatold[0]);
+  nwrite += fprintf(fp, sformat, s->quatold[1]);
+  nwrite += fprintf(fp, sformat, s->quatold[2]);
+  nwrite += fprintf(fp, sformat, s->quatold[3]);
 
   /* Padding */
 
@@ -362,7 +362,7 @@ int colloid_type_check(colloid_state_t * s) {
  *
  *  colloid_principal_radius
  *
- *  The radius; in the case of an ellipsoid, the pricipal a (a >= b >= c).
+ *  The radius; in the case of an ellipsoid, the principal a (a >= b >= c).
  *
  *****************************************************************************/
 
@@ -398,7 +398,7 @@ int colloid_r_inside(const colloid_state_t * s, const double r[3]) {
     if (rdot < s->a0*s->a0) inside = 1;
   }
   else if (s->shape == COLLOID_SHAPE_ELLIPSOID) {
-    inside = util_q4_is_inside_ellipsoid(s->quater, s->elabc, r);
+    inside = util_q4_is_inside_ellipsoid(s->quat, s->elabc, r);
   }
   else if (s->shape == COLLOID_SHAPE_DISK) {
     double rdot = r[X]*r[X] + r[Y]*r[Y];

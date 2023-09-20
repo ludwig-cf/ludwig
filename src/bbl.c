@@ -1045,14 +1045,14 @@ int bbl_update_ellipsoid(bbl_t * bbl, wall_t * wall, colloid_t * pc,
 
   if (pc->s.isfixeds == 0) {
     util_q4_from_omega(owathalf, 0.5, qbar);
-    util_q4_product(qbar, pc->s.quater, quaternext);
-    util_vector_copy(4, pc->s.quater, pc->s.quaterold);
-    util_vector_copy(4, quaternext, pc->s.quater);
+    util_q4_product(qbar, pc->s.quat, quaternext);
+    util_vector_copy(4, pc->s.quat, pc->s.quatold);
+    util_vector_copy(4, quaternext, pc->s.quat);
   }
 
   /* Re-orient swimming direction */
 
-  util_q4_rotate_vector(pc->s.quater, v1, pc->s.m);
+  util_q4_rotate_vector(pc->s.quat, v1, pc->s.m);
 
   return iret;
 }
@@ -1152,7 +1152,7 @@ void setter_ladd_ellipsoid(colloid_t *pc, wall_t * wall, double rho0, double a[6
   mI_P[0] = (1.0/5.0)*mass*(pow(elabc[1],2)+pow(elabc[2],2));
   mI_P[1] = (1.0/5.0)*mass*(pow(elabc[0],2)+pow(elabc[2],2));
   mI_P[2] = (1.0/5.0)*mass*(pow(elabc[0],2)+pow(elabc[1],2));
-  inertia_tensor_quaternion(pc->s.quater, mI_P, mI);
+  inertia_tensor_quaternion(pc->s.quat, mI_P, mI);
 
   wall_lubr_sphere(wall, pc->s.ah, pc->s.r, dwall);
   /* Add inertial terms to diagonal elements */
@@ -1199,7 +1199,7 @@ void setter_ladd_ellipsoid(colloid_t *pc, wall_t * wall, double rho0, double a[6
 
   /*Add unsteady moment of inertia terms - pick one of the method*/
   if (ddtmI_fd_flag == 1) {
-    inertia_tensor_quaternion(pc->s.quaterold, &mI_P[0], mIold);
+    inertia_tensor_quaternion(pc->s.quatold, &mI_P[0], mIold);
     for (int i = 0; i < 3; i++) {
       for(int j = 0; j < 3; j++) {
         dIijdt[i][j] = (mI[i][j] - mIold[i][j]);
@@ -1207,7 +1207,7 @@ void setter_ladd_ellipsoid(colloid_t *pc, wall_t * wall, double rho0, double a[6
     }
   }
   else {
-    unsteady_mI(pc->s.quater, mI_P, pc->s.w, dIijdt);
+    unsteady_mI(pc->s.quat, mI_P, pc->s.w, dIijdt);
   }
 
   for (int i = 0; i < 3; i++) {

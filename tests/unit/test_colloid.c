@@ -238,14 +238,14 @@ int test_colloid_compare(colloid_state_t * s1, colloid_state_t * s2) {
   assert(fabs(s1->elabc[0]     - s2->elabc[0]) < DBL_EPSILON);
   assert(fabs(s1->elabc[1]     - s2->elabc[1]) < DBL_EPSILON);
   assert(fabs(s1->elabc[2]     - s2->elabc[2]) < DBL_EPSILON);
-  assert(fabs(s1->quater[0]    - s2->quater[0]) < DBL_EPSILON);
-  assert(fabs(s1->quater[1]    - s2->quater[1]) < DBL_EPSILON);
-  assert(fabs(s1->quater[2]    - s2->quater[2]) < DBL_EPSILON);
-  assert(fabs(s1->quater[3]    - s2->quater[3]) < DBL_EPSILON);
-  assert(fabs(s1->quaterold[0] - s2->quaterold[0]) < DBL_EPSILON);
-  assert(fabs(s1->quaterold[1] - s2->quaterold[1]) < DBL_EPSILON);
-  assert(fabs(s1->quaterold[2] - s2->quaterold[2]) < DBL_EPSILON);
-  assert(fabs(s1->quaterold[3] - s2->quaterold[3]) < DBL_EPSILON);
+  assert(fabs(s1->quat[0]      - s2->quat[0])  < DBL_EPSILON);
+  assert(fabs(s1->quat[1]      - s2->quat[1])  < DBL_EPSILON);
+  assert(fabs(s1->quat[2]      - s2->quat[2])  < DBL_EPSILON);
+  assert(fabs(s1->quat[3]      - s2->quat[3])  < DBL_EPSILON);
+  assert(fabs(s1->quatold[0]   - s2->quatold[0]) < DBL_EPSILON);
+  assert(fabs(s1->quatold[1]   - s2->quatold[1]) < DBL_EPSILON);
+  assert(fabs(s1->quatold[2]   - s2->quatold[2]) < DBL_EPSILON);
+  assert(fabs(s1->quatold[3]   - s2->quatold[3]) < DBL_EPSILON);
 
   /* check the last element of the padding */
   test_assert(test_are_equal_scalar_double(s1->dpad[NPAD_DBL-1], s2->dpad[NPAD_DBL-1]));
@@ -459,7 +459,7 @@ int test_colloid_r_inside(void) {
   {
     colloid_state_t s = {.shape = COLLOID_SHAPE_ELLIPSOID,
 			 .elabc = {7.5, 2.5, 2.5},
-			 .quater = {1.0, 0.0, 0.0, 0.0}};
+			 .quat  = {1.0, 0.0, 0.0, 0.0}};
     double r[3] = {1.0, 1.0, 1.0};
     ifail = colloid_r_inside(&s, r);
     assert(ifail == 1);

@@ -154,14 +154,11 @@ int stats_colloid_write_velocities(pe_t * pe, colloids_info_t * info) {
  *
  *****************************************************************************/
 
-int stats_colloid_write_info(pe_t * pe, colloids_info_t * info, double const t) {
+int stats_colloid_write_info(pe_t * pe, colloids_info_t * info,
+			     double const t) {
 
   colloid_t * pc = NULL;
   double phi,theta,psi;
-  double r;
-  double force = -0.01;
-  double mu = 0.1;
-  double U[2];
 
   colloids_info_all_head(info, &pc);
 
@@ -171,22 +168,14 @@ int stats_colloid_write_info(pe_t * pe, colloids_info_t * info, double const t) 
 
   for ( ; pc; pc = pc->nextlocal) {
 
-    printf("%22.15e %22.15e %22.15e position \n", pc->s.r[X], pc->s.r[Y], pc->s.r[Z]);
-    util_q4_to_euler_angles(pc->s.quater, &phi, &theta, &psi);
-    printf("%22.15e, %22.15e, %22.15e\n",phi*180.0/pi,theta*180.0/pi,psi*180.0/pi);
-    r = pc->s.elabc[0]/pc->s.elabc[1];
-    //Jeffery_omega_predicted(r,pc->s.quater, gammadot,opred,angpred);
-    settling_velocity_prolate(r, force, mu, pc->s.elabc[0], U);
-    //printf("%22.15e,\t%22.15e, Predicted U\n",U[0],U[1]);
-    //elc=(sqrt(pc->s.elabc[0]*pc->s.elabc[0]-pc->s.elabc[1]*pc->s.elabc[1]))/pc->s.elabc[0];
-    //tau0=1.0/elc;
-    //sqU=tau0*(tau0-(tau0*tau0-1.0)*atanh(elc));
-    //printf("%22.15e, Predicted U of squirmer\n",pc->s.b1*sqU);
-    //ellipsoid_nearwall_predicted(pc->s.elabc,pc->s.r[1],pc->s.quater, Upred,opred);
-    //printf("%22.15e,\t%22.15e,\t%22.15e Predicted U\n",Upred[0],Upred[1],Upred[2]);
+    printf("%22.15e %22.15e %22.15e position \n", pc->s.r[X], pc->s.r[Y],
+	   pc->s.r[Z]);
+    util_q4_to_euler_angles(pc->s.quat, &phi, &theta, &psi);
+    printf("%22.15e, %22.15e, %22.15e\n", phi*180.0/pi, theta*180.0/pi,
+	   psi*180.0/pi);
     printf("%22.15e %22.15e %22.15e U \n", pc->s.v[X], pc->s.v[Y], pc->s.v[Z]);
-    //printf("%22.15e,\t%22.15e,\t%22.15e Predicted O\n",opred[0],opred[1],opred[2]);
-    printf("%22.15e,\t%22.15e,\t%22.15e Calculated O\n",pc->s.w[X], pc->s.w[Y], pc->s.w[Z]);
+    printf("%22.15e,\t%22.15e,\t%22.15e Calculated O\n", pc->s.w[X],
+	   pc->s.w[Y], pc->s.w[Z]);
   }
 
   return 0;

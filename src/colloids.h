@@ -52,7 +52,7 @@ struct colloid {
 
   colloid_state_t s;
 
-  /* AUXILARY */
+  /* AUXILIARY */
 
   double random[6];     /* Random numbers for MC/Brownian dynamics */
   double force[3];      /* Total force on colloid */
@@ -64,10 +64,10 @@ struct colloid {
   double deltam;        /* Mass difference owing to change in shape */
   double sumw;          /* Sum of weights over links */
   double zeta[21];      /* Upper triangle of 6x6 drag matrix zeta */
-  double stats[3];      /* Particle statisitics */
+  double stats[3];      /* Particle statistics */
   double fc0[3];        /* total force on squirmer for mass conservation */
   double tc0[3];        /* total torque on squirmer for mass conservation */
-  double sump;          /* flux through squirmer surface */ 
+  double sump;          /* flux through squirmer surface */
   double dq[2];         /* charge remove/replace mismatch for 2 charges */
 
   double fsub[3];       /* Subgrid particle force from fluid */
@@ -117,7 +117,7 @@ struct colloids_info_s {
 
   pe_t * pe;                  /* Parallel environment */
   cs_t * cs;                  /* Coordinate system */
-  colloids_info_t * target;   /* Copy of this structure on target */ 
+  colloids_info_t * target;   /* Copy of this structure on target */
 };
 
 __host__ int colloids_info_create(pe_t * pe, cs_t * cs, int ncell[3],
