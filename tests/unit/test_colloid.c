@@ -31,7 +31,11 @@ int test_are_equal_scalar_double(double a, double b);
 int test_are_equal_vector_double(const double * a, const double * b, int nlen);
 void test_colloid_ascii_io(colloid_state_t * s, const char * filename);
 void test_colloid_binary_io(colloid_state_t * s, const char * filename);
+
 int test_colloid_state_mass(void);
+int test_colloid_type_check(void);
+int test_colloid_principal_radius(void);
+int test_colloid_r_inside(void);
 
 /*****************************************************************************
  *
@@ -84,6 +88,9 @@ int test_colloid_suite(void) {
   remove(filename);
 
   test_colloid_state_mass();
+  test_colloid_type_check();
+  test_colloid_principal_radius();
+  test_colloid_r_inside();
 
   if (rank == 0) printf("PASS     ./unit/test_colloid\n");
 
@@ -336,6 +343,133 @@ int test_colloid_state_mass(void) {
     assert(ifail == 0);
     if (fabs(mass - 2.0*pi*rho0*a0*a0) > FLT_EPSILON) ifail = -1;
     assert(ifail == -1);
+  }
+
+  return ifail;
+}
+
+/*****************************************************************************
+ *
+ *  test_colloid_type_check
+ *
+ *  For backwards compatibility with "type".
+ *
+ *****************************************************************************/
+
+int test_colloid_type_check(void) {
+
+  int ifail = 0;
+
+  {
+    /* type = default */
+    colloid_state_t s = {.type = 0};
+    ifail = colloid_type_check(&s);
+    assert(ifail == 1);
+    assert(s.shape  == COLLOID_SHAPE_SPHERE);
+    assert(s.bc     == COLLOID_BC_BBL);
+    assert(s.active == 0);
+  }
+
+  {
+    /* type = active */
+    colloid_state_t s = {.type = 1};
+    ifail = colloid_type_check(&s);
+    assert(ifail == 1);
+    assert(s.shape  == COLLOID_SHAPE_SPHERE);
+    assert(s.bc     == COLLOID_BC_BBL);
+    assert(s.active == 1);
+  }
+
+  {
+    /* type = subgrid */
+    colloid_state_t s = {.type = 2};
+    ifail = colloid_type_check(&s);
+    assert(ifail == 1);
+    assert(s.shape  == COLLOID_SHAPE_SPHERE);
+    assert(s.bc     == COLLOID_BC_SUBGRID);
+    assert(s.active == 0);
+  }
+
+  {
+    /* No operation */
+    colloid_state_t s = {.shape = COLLOID_SHAPE_SPHERE};
+    ifail = colloid_type_check(&s);
+    assert(ifail == 0);
+  }
+
+  return ifail;
+}
+
+/*****************************************************************************
+ *
+ *  test_colloid_principal_radius
+ *
+ *****************************************************************************/
+
+int test_colloid_principal_radius(void) {
+
+  int ifail = 0;
+
+  {
+    /* Sphere */
+    double a0 = 1.25;
+    colloid_state_t s = {.shape = COLLOID_SHAPE_SPHERE, .a0 = a0};
+    double a = colloid_principal_radius(&s);
+    if (fabs(a - a0) > DBL_EPSILON) ifail += 1;
+    assert(ifail == 0);
+  }
+
+  {
+    /* Ellispse */
+    double a0 = 2.5;
+    colloid_state_t s = {.shape = COLLOID_SHAPE_ELLIPSOID,
+			 .elabc = {a0, 0.0, 0.0}};
+    double a = colloid_principal_radius(&s);
+    if (fabs(a - a0) > DBL_EPSILON) ifail += 1;
+  }
+
+  return ifail;
+}
+
+/*****************************************************************************
+ *
+ *  test_colloid_r_inside
+ *
+ *****************************************************************************/
+
+int test_colloid_r_inside(void) {
+
+  int ifail = 0;
+
+  {
+    colloid_state_t s = {0};
+    double r[3] = {0};
+    ifail = colloid_r_inside(&s, r);
+    assert(ifail == -1);
+  }
+
+  {
+    colloid_state_t s = {.shape = COLLOID_SHAPE_SPHERE,
+                         .a0 = 1.25};
+    double r[3] = {0.0, 0.0, 1.24};
+    ifail = colloid_r_inside(&s, r);
+    assert(ifail == 1);
+  }
+
+  {
+    colloid_state_t s = {.shape = COLLOID_SHAPE_ELLIPSOID,
+			 .elabc = {7.5, 2.5, 2.5},
+			 .quater = {1.0, 0.0, 0.0, 0.0}};
+    double r[3] = {1.0, 1.0, 1.0};
+    ifail = colloid_r_inside(&s, r);
+    assert(ifail == 1);
+  }
+
+  {
+    colloid_state_t s = {.shape = COLLOID_SHAPE_DISK, .a0 = 2.5};
+    double r[3] = {2.6, 0.0, 0.0};
+    ifail = colloid_r_inside(&s, r);
+    assert(ifail == 0);
   }
 
   return ifail;
