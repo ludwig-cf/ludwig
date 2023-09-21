@@ -23,6 +23,8 @@
 #include "pe.h"
 #include "coords.h"
 #include "util.h"
+#include "util_vector.h"
+#include "util_ellipsoid.h"
 #include "colloids.h"
 
 #define RHO_DEFAULT 1.0
@@ -1301,13 +1303,13 @@ __host__ int colloids_info_ahmax(colloids_info_t * cinfo, double * ahmax) {
  *****************************************************************************/
 
 __host__ int colloids_number_sites(colloids_info_t *cinfo) {
-  
+
   colloid_t * pc;
   colloid_link_t * p_link;
 
   /* All colloids, including halo */
   colloids_info_all_head(cinfo, &pc);
- 
+
   int ncolsite=0;
 
   for ( ; pc; pc = pc->nextall) {
@@ -1320,7 +1322,7 @@ __host__ int colloids_number_sites(colloids_info_t *cinfo) {
 
       /* increment by 2 (outward and inward sites) */
       ncolsite+=2;
-     
+
     }
   }
 
@@ -1332,7 +1334,7 @@ __host__ int colloids_number_sites(colloids_info_t *cinfo) {
  *
  *  colloid_list_sites
  *
- *  provides a list of lattice site indexes affected by colloids 
+ *  provides a list of lattice site indexes affected by colloids
  *
  *****************************************************************************/
 
@@ -1342,9 +1344,9 @@ __host__ void colloids_list_sites(int* colloidSiteList, colloids_info_t *cinfo)
   colloid_t * pc;
   colloid_link_t * p_link;
 
-  /* All colloids, including halo */  
+  /* All colloids, including halo */
   colloids_info_all_head(cinfo, &pc);
- 
+
   int ncolsite=0;
 
   for ( ; pc; pc = pc->nextall) {
@@ -1402,7 +1404,14 @@ __host__ void colloids_q_boundary_normal(colloids_info_t * cinfo,
       dn[ia] = 1.0*(noffset[ia] + isite[ia]);
       dn[ia] -= pc->s.r[ia];
     }
-
+    if (pc->s.shape == COLLOID_SHAPE_ELLIPSOID) {
+      int isphere = util_ellipsoid_is_sphere(pc->s.elabc);
+      if (!isphere) {
+	double rs[3] = {0};
+	util_vector_copy(3, dn, rs);
+	util_spheroid_surface_normal(pc->s.elabc, pc->s.m, rs, dn);
+      }
+    }
     rd = modulus(dn);
     assert(rd > 0.0);
     rd = 1.0/rd;
@@ -1515,7 +1524,7 @@ int colloids_info_rebuild_freq_set(colloids_info_t * cinfo, int nfreq) {
  *
  *  colloids_check_type
  *
- *  For backwards compatability, check type component for each colloid.
+ *  For backwards compatibility, check type component for each colloid.
  *  Return number updated (should be zero for well-formed files).
  *
  *****************************************************************************/
@@ -1562,7 +1571,8 @@ int colloids_ellipsoid_abc_check(colloids_info_t * info) {
       double c = pc->s.elabc[Z];
       if (a < b || b < c) {
 	nbad += 1;
-	pe_warn(info->pe, "Colloid %d is an ellipse and fails a >= b >= c\n");
+	pe_warn(info->pe, "Colloid %d is an ellipse and fails a >= b >= c\n",
+		pc->s.index);
       }
     }
   }
