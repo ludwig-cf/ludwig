@@ -375,7 +375,7 @@ int util_q4_is_inside_ellipsoid(const double q[4], const double elabc[3],
  *  PENDING CONFIRMATION
  *
  *****************************************************************************/
-__host__ __device__ void ellipsoid_nearwall_predicted(double const elabc[3], double const h, double const quater[4], double Upred[3], double opred[3]) {
+__host__ __device__ void ellipsoid_nearwall_predicted(double const elabc[3], double const h, double const quat[4], double Upred[3], double opred[3]) {
 
   double ecc,ecc2,ecc3,ecc4,K;
   double termn,termd,h2,h3,h4;
@@ -408,7 +408,7 @@ __host__ __device__ void ellipsoid_nearwall_predicted(double const elabc[3], dou
   Ya = 16.0*ecc2/Yad;
   XamYa = Xa - Ya;
   XaYa = Xa*Ya;
-  util_q4_to_euler_angles(quater, &phi, &theta, &psi);
+  util_q4_to_euler_angles(quat, &phi, &theta, &psi);
   ctheta = cos(phi);
   stheta = cos(phi);
   c2theta = cos(2*phi);
@@ -504,7 +504,7 @@ return;
  *  angpred[2]  (theta_1, phi_1) See Figure 3.13.
  *
  *****************************************************************************/
-__host__ __device__ void Jeffery_omega_predicted(double const r, double const quater[4], double const gammadot, double opred[3], double angpred[2]) {
+__host__ __device__ void Jeffery_omega_predicted(double const r, double const quat[4], double const gammadot, double opred[3], double angpred[2]) {
 
   double beta;
   double phi1,the1;
@@ -520,7 +520,7 @@ __host__ __device__ void Jeffery_omega_predicted(double const r, double const qu
 
   beta=(r*r-1.0)/(r*r+1.0);
   /*Determining p, the orientation of the long axis*/
-  util_q4_rotate_vector(quater,v1,p);
+  util_q4_rotate_vector(quat,v1,p);
 
   /*Determine pdot in Guazzeli's convention*/
   pdoty=p[0]*v2[0]+p[1]*v2[1]+p[2]*v2[2];
@@ -624,7 +624,7 @@ return;
  *  L.G. Leal Advanced Transport phemomena, Cambridge 2007
  *  See page 559
  *
- *  r is the apect ratio
+ *  r is the aspect ratio
  *  f is the force (magnitude)
  *  mu is the dynamic viscosity (LB. units)
  *  ela  principle semi-major axis
@@ -657,54 +657,6 @@ cf2 = (16.0/3.0)*(ecc*ecc*ecc)/cf2br;
 dcoef = 6.0*pi*mu*ela;
 U[0] = f/(dcoef*cf1);
 U[1] = f/(dcoef*cf2);
-return;
-}
-/*****************************************************************************
- *
- *  Calculate the unsteady term dIij/dt
- *
- *  Compute rate of change of the moment of inertia tensor from
- *  the curent quaternion, I_ab being the moment of inertia
- *  in the principle co-ordinate frame, and the angular velocity
- *  at (t - delta t) the previous time step (omega in the lab frame).
- *
- *  This horrific expression is the analytical result from Mathematica.
- *
- *  Using this avoids any finite time derivative.
- *
- ****************************************************************************/
-__host__ __device__ void unsteady_mI(const double q[4],
-				     const double I[3],
-				     const double omega[3], double F[3][3]){
-
-double Ixx, Iyy, Izz;
-double ox, oy, oz;
-
-Ixx=I[0];
-Iyy=I[1];
-Izz=I[2];
-ox=omega[0];
-oy=omega[1];
-oz=omega[2];
-
-F[0][0] = 4.0*Izz*(q[0]*q[2] + q[1]*q[3])*(oy*q[0]*q[0] + 2.0*oz*q[0]*q[1] - oy*q[1]*q[1] - oy*q[2]*q[2] - 2.0*oz*q[2]*q[3] + oy*q[3]*q[3]) + 4.0*Iyy*(q[1]*q[2] - q[0]*q[3])*(-(oz*q[0]*q[0]) + 2.0*oy*q[0]*q[1] + oz*q[1]*q[1] - oz*q[2]*q[2] + 2.0*oy*q[2]*q[3] + oz*q[3]*q[3]) - 4.0*Ixx*(-1.0 + 2.0*q[0]*q[0] + 2.0*q[1]*q[1])* (q[1]*(oz*q[2] - oy*q[3]) + q[0]*(oy*q[2] + oz*q[3]));
-
-F[0][1] = -(Iyy*(-1.0 + 2.0*q[0]*q[0] + 2.0*q[2]*q[2])*(oz*q[0]*q[0] - 2.0*oy*q[0]*q[1] - oz*q[1]*q[1] + oz*q[2]*q[2] - 2.0*oy*q[2]*q[3] - oz*q[3]*q[3])) + 4.0*Iyy*(q[1]*q[2] - q[0]*q[3])* (q[2]*(oz*q[1] - ox*q[3]) - q[0]*(ox*q[1] + oz*q[3])) - 4.0*Ixx*(q[1]*q[2] + q[0]*q[3])*(q[1]*(oz*q[2] - oy*q[3]) + q[0]*(oy*q[2] + oz*q[3])) + Ixx*(-1.0 + 2.0*q[0]*q[0] + 2.0*q[1]*q[1])* (oz*q[0]*q[0] + oz*q[1]*q[1] + 2.0*ox*q[0]*q[2] - 2.0*ox*q[1]*q[3] - oz*(q[2]*q[2] + q[3]*q[3])) - 2.0*Izz*(q[0]*q[0]*q[0]*(oy*q[1] + ox*q[2]) + q[0]*q[0]*(2.0*oz*q[1]*q[1] + ox*q[1]*q[3] - q[2]*(2.0*oz*q[2] + oy*q[3])) + q[3]*(-(ox*q[1]*q[1]*q[1]) + q[1]*q[1]*(oy*q[2] - 2.0*oz*q[3]) + ox*q[1]*(-q[2]*q[2] + q[3]*q[3]) + q[2]*(oy*q[2]*q[2] + 2.0*oz*q[2]*q[3] - oy*q[3]*q[3])) - q[0]*(oy*q[1]*q[1]*q[1] + ox*q[1]*q[1]*q[2] + ox*q[2]*(q[2]*q[2] - q[3]*q[3]) + q[1]*(oy*q[2]*q[2] + 8*oz*q[2]*q[3] - oy*q[3]*q[3])));
-
-F[0][2] = -4.0*Izz*(q[0]*q[2] + q[1]*q[3])*(q[0]*(ox*q[1] + oy*q[2]) + (oy*q[1] - ox*q[2])*q[3]) +  Izz*(-1.0 + 2.0*q[0]*q[0] + 2.0*q[3]*q[3])*(oy*q[0]*q[0] + 2.0*oz*q[0]*q[1] - oy*q[1]*q[1] - oy*q[2]*q[2] - 2.0*oz*q[2]*q[3] + oy*q[3]*q[3]) + 4.0*Ixx*(q[0]*q[2] - q[1]*q[3])*(q[1]*(oz*q[2] - oy*q[3]) + q[0]*(oy*q[2] + oz*q[3])) - Ixx*(-1.0 + 2.0*q[0]*q[0] + 2.0*q[1]*q[1])*(oy*q[0]*q[0] + oy*q[1]*q[1] - 2.0*ox*q[1]*q[2] - 2.0*ox*q[0]*q[3] - oy*(q[2]*q[2] + q[3]*q[3])) - 2.0*Iyy*(q[0]*q[0]*q[0]*(oz*q[1] + ox*q[3]) + q[0]*q[0]*(-2.0*oy*q[1]*q[1] - ox*q[1]*q[2] + q[3]*(oz*q[2] + 2.0*oy*q[3])) + q[2]*(ox*q[1]*q[1]*q[1] + q[1]*q[1]*(2.0*oy*q[2] - oz*q[3]) + ox*q[1]*(-q[2]*q[2] + q[3]*q[3]) + q[3]*(oz*q[2]*q[2] - 2.0*oy*q[2]*q[3] - oz*q[3]*q[3])) - q[0]*(oz*q[1]*q[1]*q[1] + ox*q[1]*q[1]*q[3] + ox*q[3]*(-q[2]*q[2] + q[3]*q[3]) + q[1]*(-(oz*q[2]*q[2]) + 8*oy*q[2]*q[3] + oz*q[3]*q[3])));
-
-F[1][0] = -(Iyy*(-1.0 + 2.0*q[0]*q[0] + 2.0*q[2]*q[2])*(oz*q[0]*q[0] - 2.0*oy*q[0]*q[1] - oz*q[1]*q[1] + oz*q[2]*q[2] - 2.0*oy*q[2]*q[3] - oz*q[3]*q[3])) + 4.0*Iyy*(q[1]*q[2] - q[0]*q[3])*(q[2]*(oz*q[1] - ox*q[3]) - q[0]*(ox*q[1] + oz*q[3])) - 4.0*Ixx*(q[1]*q[2] + q[0]*q[3])*  (q[1]*(oz*q[2] - oy*q[3]) + q[0]*(oy*q[2] + oz*q[3])) + Ixx*(-1.0 + 2.0*q[0]*q[0] + 2.0*q[1]*q[1])*(oz*q[0]*q[0] + oz*q[1]*q[1] + 2.0*ox*q[0]*q[2] - 2.0*ox*q[1]*q[3] - oz*(q[2]*q[2] + q[3]*q[3])) - 2.0*Izz*(q[0]*q[0]*q[0]*(oy*q[1] + ox*q[2]) + q[0]*q[0]*(2.0*oz*q[1]*q[1] + ox*q[1]*q[3] - q[2]*(2.0*oz*q[2] + oy*q[3])) + q[3]*(-(ox*q[1]*q[1]*q[1]) + q[1]*q[1]*(oy*q[2] - 2.0*oz*q[3]) + ox*q[1]*(-q[2]*q[2] + q[3]*q[3]) + q[2]*(oy*q[2]*q[2] + 2.0*oz*q[2]*q[3] - oy*q[3]*q[3])) -q[0]*(oy*q[1]*q[1]*q[1] + ox*q[1]*q[1]*q[2] + ox*q[2]*(q[2]*q[2] - q[3]*q[3]) + q[1]*(oy*q[2]*q[2] + 8*oz*q[2]*q[3] - oy*q[3]*q[3])));
-
-F[1][1] = -4.0*Iyy*(-1.0 + 2.0*q[0]*q[0] + 2.0*q[2]*q[2])*(q[2]*(-(oz*q[1]) + ox*q[3]) + q[0]*(ox*q[1] + oz*q[3])) + 4.0*Izz*(q[0]*q[1] - q[2]*q[3])*(ox*q[0]*q[0] - ox*q[1]*q[1] - 2.0*oz*q[0]*q[2] - 2.0*oz*q[1]*q[3] + ox*(-q[2]*q[2] + q[3]*q[3])) + 4.0*Ixx*(q[1]*q[2] + q[0]*q[3])*(oz*q[0]*q[0] + oz*q[1]*q[1] + 2.0*ox*q[0]*q[2] - 2.0*ox*q[1]*q[3] - oz*(q[2]*q[2] + q[3]*q[3]));
-
-F[1][2] = 4.0*Izz*(q[0]*q[1] - q[2]*q[3])*(q[0]*(ox*q[1] + oy*q[2]) + (oy*q[1] - ox*q[2])*q[3]) - 4.0*Iyy*(q[0]*q[1] + q[2]*q[3])*(q[2]*(-(oz*q[1]) + ox*q[3]) + q[0]*(ox*q[1] + oz*q[3])) + Iyy*(-1.0 + 2.0*q[0]*q[0] + 2.0*q[2]*q[2])*(ox*q[0]*q[0] - ox*q[1]*q[1] - 2.0*oy*q[1]*q[2] + 2.0*oy*q[0]*q[3] + ox*(q[2]*q[2] - q[3]*q[3])) - Izz*(-1.0 + 2.0*q[0]*q[0] + 2.0*q[3]*q[3])*(ox*q[0]*q[0] - ox*q[1]*q[1] - 2.0*oz*q[0]*q[2] - 2.0*oz*q[1]*q[3] + ox*(-q[2]*q[2] + q[3]*q[3])) - 2.0*Ixx*(q[0]*q[0]*q[0]*(oz*q[2] + oy*q[3]) + q[0]*q[0]*(q[1]*(oy*q[2] - oz*q[3]) + 2.0*ox*(q[2]*q[2] - q[3]*q[3])) + q[0]*(-8*ox*q[1]*q[2]*q[3] + q[1]*q[1]*(oz*q[2] + oy*q[3]) - (oz*q[2] + oy*q[3])*(q[2]*q[2] + q[3]*q[3])) + q[1]*(q[1]*q[1]*(oy*q[2] - oz*q[3]) + 2.0*ox*q[1]*(-q[2]*q[2] + q[3]*q[3]) - (oy*q[2] - oz*q[3])*(q[2]*q[2] + q[3]*q[3])));
-
-F[2][0] = -4.0*Izz*(q[0]*q[2] + q[1]*q[3])*(q[0]*(ox*q[1] + oy*q[2]) + (oy*q[1] - ox*q[2])*q[3]) + Izz*(-1.0 + 2.0*q[0]*q[0] + 2.0*q[3]*q[3])*(oy*q[0]*q[0] + 2.0*oz*q[0]*q[1] - oy*q[1]*q[1] - oy*q[2]*q[2] - 2.0*oz*q[2]*q[3] + oy*q[3]*q[3]) + 4.0*Ixx*(q[0]*q[2] - q[1]*q[3])*(q[1]*(oz*q[2] - oy*q[3]) + q[0]*(oy*q[2] + oz*q[3])) - Ixx*(-1.0 + 2.0*q[0]*q[0] + 2.0*q[1]*q[1])*(oy*q[0]*q[0] + oy*q[1]*q[1] - 2.0*ox*q[1]*q[2] - 2.0*ox*q[0]*q[3] - oy*(q[2]*q[2] + q[3]*q[3])) - 2.0*Iyy*(q[0]*q[0]*q[0]*(oz*q[1] + ox*q[3]) + q[0]*q[0]*(-2.0*oy*q[1]*q[1] - ox*q[1]*q[2] + q[3]*(oz*q[2] + 2.0*oy*q[3])) + q[2]*(ox*q[1]*q[1]*q[1] + q[1]*q[1]*(2.0*oy*q[2] - oz*q[3]) + ox*q[1]*(-q[2]*q[2] + q[3]*q[3]) + q[3]*(oz*q[2]*q[2] - 2.0*oy*q[2]*q[3] - oz*q[3]*q[3])) - q[0]*(oz*q[1]*q[1]*q[1] + ox*q[1]*q[1]*q[3] + ox*q[3]*(-q[2]*q[2] + q[3]*q[3]) + q[1]*(-(oz*q[2]*q[2]) + 8*oy*q[2]*q[3] + oz*q[3]*q[3])));
-
-F[2][1] = 4.0*Izz*(q[0]*q[1] - q[2]*q[3])*(q[0]*(ox*q[1] + oy*q[2]) + (oy*q[1] - ox*q[2])*q[3]) - 4.0*Iyy*(q[0]*q[1] + q[2]*q[3])*(q[2]*(-(oz*q[1]) + ox*q[3]) + q[0]*(ox*q[1] + oz*q[3])) + Iyy*(-1.0 + 2.0*q[0]*q[0] + 2.0*q[2]*q[2])*(ox*q[0]*q[0] - ox*q[1]*q[1] - 2.0*oy*q[1]*q[2] + 2.0*oy*q[0]*q[3] + ox*(q[2]*q[2] - q[3]*q[3])) - Izz*(-1.0 + 2.0*q[0]*q[0] + 2.0*q[3]*q[3])*(ox*q[0]*q[0] - ox*q[1]*q[1] - 2.0*oz*q[0]*q[2] - 2.0*oz*q[1]*q[3] + ox*(-q[2]*q[2] + q[3]*q[3])) - 2.0*Ixx*(q[0]*q[0]*q[0]*(oz*q[2] + oy*q[3]) + q[0]*q[0]*(q[1]*(oy*q[2] - oz*q[3]) + 2.0*ox*(q[2]*q[2] - q[3]*q[3])) + q[0]*(-8*ox*q[1]*q[2]*q[3] + q[1]*q[1]*(oz*q[2] + oy*q[3]) - (oz*q[2] + oy*q[3])*(q[2]*q[2] + q[3]*q[3])) + q[1]*(q[1]*q[1]*(oy*q[2] - oz*q[3]) + 2.0*ox*q[1]*(-q[2]*q[2] + q[3]*q[3]) - (oy*q[2] - oz*q[3])*(q[2]*q[2] + q[3]*q[3])));
-
-F[2][2] = -4.0*Izz*(q[0]*(ox*q[1] + oy*q[2]) + (oy*q[1] - ox*q[2])*q[3])*(-1.0 + 2.0*q[0]*q[0] + 2.0*q[3]*q[3]) + 4.0*Iyy*(q[0]*q[1] + q[2]*q[3])*(ox*q[0]*q[0] - ox*q[1]*q[1] - 2.0*oy*q[1]*q[2] + 2.0*oy*q[0]*q[3] + ox*(q[2]*q[2] - q[3]*q[3])) + 4.0*Ixx*(q[0]*q[2] - q[1]*q[3])*(oy*q[0]*q[0] + oy*q[1]*q[1] - 2.0*ox*q[1]*q[2] - 2.0*ox*q[0]*q[3] - oy*(q[2]*q[2] + q[3]*q[3]));
-
 return;
 }
 
@@ -742,7 +694,7 @@ int util_ellipsoid_is_sphere(const double elabc[3]) {
  *
  *  CHECK what happens in the oblate case?
  *
- *  The vector returned should be a unit vector if r is exacty at the
+ *  The vector returned should be a unit vector if r is exactly at the
  *  surface, but is not in other cases.
  *
  ****************************************************************************/
@@ -762,7 +714,7 @@ int util_spheroid_normal_tangent(const double elabc[3], const double elbz[3],
 
   /* elabc[0] must be a, the largest dimension, and b == c */
   assert(elabc[0] >  elabc[1]);
-  assert(elabc[1] == elabc[2]);
+  assert(fabs(elabc[1] - elabc[2]) < DBL_EPSILON);
 
   ela = elabc[0];
   elc = sqrt(elabc[0]*elabc[0] - elabc[1]*elabc[1]);
