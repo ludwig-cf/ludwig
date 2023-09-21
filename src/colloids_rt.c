@@ -43,7 +43,6 @@
 #include "colloid_io_rt.h"
 #include "colloids_rt.h"
 
-#include "bbl.h"
 #include "build.h"
 
 int lubrication_init(pe_t * pe, cs_t * cs, rt_t * rt, interact_t * inter);
@@ -387,12 +386,13 @@ int colloids_rt_state_stub(pe_t * pe, rt_t * rt, colloids_info_t * cinfo,
   const char * format_e3 = "%-28s %14.7e %14.7e %14.7e\n";
   const char * format_s1 = "%-28s  %s\n";
 
-  /*For ellipsoids*/
+  /* For ellipsoids */
   int nrteuler = 0;
-  int nrtv1,nrtv2;
-  double elev1[3];
-  double elev2[3];
-  double euler[3];
+  int nrtv1    = 0;
+  int nrtv2    = 0;
+  double elev1[3] = {0};
+  double elev2[3] = {0};
+  double euler[3] = {0};
 
   assert(pe);
   assert(rt);
@@ -613,32 +613,33 @@ int colloids_rt_state_stub(pe_t * pe, rt_t * rt, colloids_info_t * cinfo,
     if (a < b || b < c)  {
       pe_info(pe, "Error specifying principal semi-axes of ellipse\n");
       pe_info(pe, "Please specify a_b_c with a >= b >= c\n");
-      pe_fatal(pe, "Please check and try again\n");
+      pe_exit(pe, "Please check and try again\n");
     }
 
     if (state->shape != COLLOID_SHAPE_ELLIPSOID) {
       pe_info(pe, "Key elabc requires shape to be ellipsoidal\n");
-      pe_fatal(pe, "Please check colloid input and try again\n");
+      pe_exit(pe, "Please check colloid input and try again\n");
     }
 
     /* Active ellipsoids must have b == c for tangent computation */
     /* Also need b == c if surface anchoring required. */
 
     if (state->active && (fabs(b - c) > FLT_EPSILON)) {
-      pe_info(pe,  "Active ellipsoids must have b == c\n");
-      pe_fatal(pe, "Please check and try again\n");
+      pe_info(pe, "Active ellipsoids must have b == c\n");
+      pe_exit(pe, "Please check and try again\n");
     }
   }
 
   snprintf(key, BUFSIZ-1, "%s_%s", stub, "euler");
-  nrt = rt_double_parameter_vector(rt, key, euler);
-  if (nrt) {
+  nrteuler = rt_double_parameter_vector(rt, key, euler);
+  if (nrteuler) {
     pe_info(pe, format_e3, key, euler[X], euler[Y], euler[Z]);
-    euler[X]=euler[X]/180.0*pi;
-    euler[Y]=euler[Y]/180.0*pi;
-    euler[Z]=euler[Z]/180.0*pi;
-    nrteuler=nrt;
+    euler[X] = euler[X]/180.0*pi;
+    euler[Y] = euler[Y]/180.0*pi;
+    euler[Z] = euler[Z]/180.0*pi;
   }
+
+  /* For vectors, both are necessary */
 
   snprintf(key, BUFSIZ-1, "%s_%s", stub, "elev1");
   nrtv1 = rt_double_parameter_vector(rt, key, elev1);
@@ -648,10 +649,18 @@ int colloids_rt_state_stub(pe_t * pe, rt_t * rt, colloids_info_t * cinfo,
   nrtv2 = rt_double_parameter_vector(rt, key, elev2);
   if (nrtv2) pe_info(pe, format_e3, key, elev2[X], elev2[Y], elev2[Z]);
 
-  if (nrteuler&&nrtv1&&nrtv2) {
-    printf("Over writing the Euler angles with that of given vectors\nNew ");
+  if (nrteuler && (nrtv1 || nrtv2)) {
+    pe_info(pe, "Do not use both Euler angles and vectors for ellipsoids\n");
+    pe_exit(pe, "Please remove one or other from the input and try again\n");
   }
+
+  if (nrtv1 != nrtv2) {
+    pe_info(pe, "You have specified only one ellipsoid orientation vector\n");
+    pe_exit(pe, "Both are required. Please check the input and try again\n");
+  }
+
   if (nrtv1 && nrtv2) {
+    /* Just translate to Euler angles ... */
     euler_from_vectors(elev1, elev2, euler);
     pe_info(pe, format_e3, "Euler angles", euler[X], euler[Y], euler[Z]);
   }
@@ -660,14 +669,17 @@ int colloids_rt_state_stub(pe_t * pe, rt_t * rt, colloids_info_t * cinfo,
   util_vector_copy(4, state->quat, state->quatold);
 
   /* If active and ellipsoid, assign the squirmer orientation as along the
-   * long axis */
+   * long axis. In fact, this should be available for all ellipsoids,
+   * e.g., for anchoring */
 
-  if (state->shape == COLLOID_SHAPE_ELLIPSOID && state->active) {
+  if (state->shape == COLLOID_SHAPE_ELLIPSOID) {
     double v1[3] = {1.0, 0.0, 0.0}; /* x-axis */
     util_q4_rotate_vector(state->quat, v1, state->m);
-    pe_info(pe,
-	    "Squirmer swimming direction: %14.7e %14.7e %14.7e\n",
-	    state->m[X], state->m[Y], state->m[Z]);
+    if (state->active) {
+      pe_info(pe,
+	      "Squirmer swimming direction: %14.7e %14.7e %14.7e\n",
+	      state->m[X], state->m[Y], state->m[Z]);
+    }
   }
 
   return 0;
