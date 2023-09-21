@@ -12,7 +12,7 @@
  *  Contributing Authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *  Squimer code from Isaac Llopis and Ricard Matas Navarro (U. Barcelona).
- *  Ellipsoids (including active ellipsoids) by Sumesh Thampi.
+ *  Ellipsoids (including active ellipsoids) by Sumesh Thampi (IIT, Chennai).
  *
  *****************************************************************************/
 
@@ -33,10 +33,21 @@
 #include "colloid.h"
 #include "colloids.h"
 
+
+/* Ellipsoid update mechanism flag */
+/* There's no particular reason not to use the quaternion method, but
+ * the alternative has been retained in case comparison is wanted. */
+
+enum bbl_ellipsoid_update {
+  BBL_ELLIPSOID_UPDATE_QUATERNION = 0,  /* dI/dt using d/dt (qqIqq)     */
+  BBL_ELLIPSOID_UPDATE_FD               /* using (I(t) - I(t - dt))/dt  */
+};
+
 struct bbl_s {
   pe_t * pe;            /* Parallel environment */
   cs_t * cs;            /* Coordinate system */
   int active;           /* Global flag for active particles. */
+  int ellipsoid_didt;   /* Switch for unsteady term method */
   int ndist;            /* Number of LB distributions active */
   double deltag;        /* Excess or deficit of phi between steps */
   double stress[3][3];  /* Surface stress diagnostic */
@@ -59,9 +70,12 @@ int bbl_update_colloid_default(bbl_t * bbl, wall_t * wall, colloid_t * pc,
 int bbl_update_ellipsoid(bbl_t * bbl, wall_t * wall, colloid_t * pc,
 			 double rho0, double xb[6]);
 
-void setter_ladd_ellipsoid(colloid_t *pc, wall_t * wall,double rho0,
-			   double a[6][6], double xb[6]);
+void bbl_ladd_ellipsoid(bbl_t * bbl, colloid_t * pc, wall_t * wall,
+			double rho0, double a[6][6], double xb[6]);
 void record_force_torque(colloid_t * pc);
+
+void bbl_ellipsoid_unsteady_mI(const double q[4], const double mi[3],
+			       const double omega[3], double didt[3][3]);
 
 /*****************************************************************************
  *
@@ -86,6 +100,7 @@ int bbl_create(pe_t * pe, cs_t * cs, lb_t * lb, bbl_t ** pobj) {
 
   bbl->pe = pe;
   bbl->cs = cs;
+  bbl->ellipsoid_didt = BBL_ELLIPSOID_UPDATE_QUATERNION;
   lb_ndist(lb, &bbl->ndist);
 
   *pobj = bbl;
@@ -106,6 +121,28 @@ int bbl_free(bbl_t * bbl) {
   free(bbl);
 
   return 0;
+}
+
+/*****************************************************************************
+ *
+ *  bbl_didt_method_set
+ *
+ *****************************************************************************/
+
+int bbl_didt_method_set(bbl_t * bbl, int method) {
+
+  int ifail = 0;
+
+  switch (method) {
+  case BBL_ELLIPSOID_UPDATE_QUATERNION:
+  case BBL_ELLIPSOID_UPDATE_FD:
+    bbl->ellipsoid_didt = method;
+    break;
+  default:
+    ifail = -1;
+  }
+
+  return ifail;
 }
 
 /*****************************************************************************
@@ -1036,7 +1073,7 @@ int bbl_update_ellipsoid(bbl_t * bbl, wall_t * wall, colloid_t * pc,
 
   /* Set up the matrix problem and solve it here. */
 
-  setter_ladd_ellipsoid(pc, wall, rho0, a, xb);
+  bbl_ladd_ellipsoid(bbl, pc, wall, rho0, a, xb);
   iret = bbl_6x6_gaussian_elimination(a, xb);
 
   /* And then finding the new quaternions */
@@ -1120,20 +1157,21 @@ return;
 
 /*****************************************************************************
  *
- *  Setting up  6 x 6 equations of Ladd for an ellipsoid
+ *  bbl_ladd_ellipsoid
  *
-*****************************************************************************/
-void setter_ladd_ellipsoid(colloid_t *pc, wall_t * wall, double rho0, double a[6][6], double xb[6]) {
+ *  Set up  6 x 6 equations of Ladd for an ellipsoid A x = xb
+ *
+ *****************************************************************************/
 
-  double mass;    /* Assumes (4/3) rho pi abc */
-  double mI_P[3];  /* also assumes that for an ellipsoid */
-  double mI[3][3];  /* also assumes that for an ellipsoid */
+void bbl_ladd_ellipsoid(bbl_t * bbl, colloid_t * pc, wall_t * wall,
+			double rho0, double a[6][6], double xb[6]) {
+
+  double mass;         /* Assumes (4/3) rho pi abc */
+  double mI_P[3];      /* also assumes that for an ellipsoid */
+  double mI[3][3];     /* also assumes that for an ellipsoid */
   double mIold[3][3];
   double dIijdt[3][3];
   double dwall[3]={0.0,0.0,0.0};
-  /*Flag = 0 dI/dt using quaternions d/dt(qqIqq)) */
-  /*Flag = 1 dI/dt from previous time step, I(t)-I(t-\Delta t)*/
-  int ddtmI_fd_flag = 0;
 
   double * elabc;
   double * zeta;
@@ -1145,16 +1183,17 @@ void setter_ladd_ellipsoid(colloid_t *pc, wall_t * wall, double rho0, double a[6
   PI_DOUBLE(pi);
 
   zeta=pc->zeta;
-   /* Mass and moment of inertia are those of a hard ellipsoid*/
+   /* Mass and moment of inertia are those of a hard ellipsoid */
 
-  elabc=pc->s.elabc;
+  elabc = pc->s.elabc;
   mass = (4.0/3.0)*pi*rho0*elabc[0]*elabc[1]*elabc[2];
-  mI_P[0] = (1.0/5.0)*mass*(pow(elabc[1],2)+pow(elabc[2],2));
-  mI_P[1] = (1.0/5.0)*mass*(pow(elabc[0],2)+pow(elabc[2],2));
-  mI_P[2] = (1.0/5.0)*mass*(pow(elabc[0],2)+pow(elabc[1],2));
+  mI_P[0] = (1.0/5.0)*mass*(pow(elabc[1], 2)+pow(elabc[2], 2));
+  mI_P[1] = (1.0/5.0)*mass*(pow(elabc[0], 2)+pow(elabc[2], 2));
+  mI_P[2] = (1.0/5.0)*mass*(pow(elabc[0], 2)+pow(elabc[1], 2));
   inertia_tensor_quaternion(pc->s.quat, mI_P, mI);
 
   wall_lubr_sphere(wall, pc->s.ah, pc->s.r, dwall);
+
   /* Add inertial terms to diagonal elements */
 
   a[0][0] = (mass/frn) +   zeta[0] - dwall[X];
@@ -1197,9 +1236,10 @@ void setter_ladd_ellipsoid(colloid_t *pc, wall_t * wall, double rho0, double a[6
   a[5][3] = a[3][5];
   a[5][4] = a[4][5];
 
-  /*Add unsteady moment of inertia terms - pick one of the method*/
-  if (ddtmI_fd_flag == 1) {
-    inertia_tensor_quaternion(pc->s.quatold, &mI_P[0], mIold);
+  /* Add unsteady moment of inertia terms */
+
+  if (bbl->ellipsoid_didt == BBL_ELLIPSOID_UPDATE_FD) {
+    inertia_tensor_quaternion(pc->s.quatold, mI_P, mIold);
     for (int i = 0; i < 3; i++) {
       for(int j = 0; j < 3; j++) {
         dIijdt[i][j] = (mI[i][j] - mIold[i][j]);
@@ -1207,7 +1247,8 @@ void setter_ladd_ellipsoid(colloid_t *pc, wall_t * wall, double rho0, double a[6
     }
   }
   else {
-    unsteady_mI(pc->s.quat, mI_P, pc->s.w, dIijdt);
+    /* Default to BBL_ELLIPSOID_UPDATE_QUATERNION */
+    bbl_ellipsoid_unsteady_mI(pc->s.quat, mI_P, pc->s.w, dIijdt);
   }
 
   for (int i = 0; i < 3; i++) {
@@ -1405,4 +1446,56 @@ int bbl_surface_stress(bbl_t * bbl, double slocal[3][3]) {
   }
 
   return 0;
+}
+
+/*****************************************************************************
+ *
+ *  bbl_ellipsoid_unsteady_mi
+ *
+ *  Calculate the unsteady term dIij/dt for ellipsoid update.
+ *
+ *  Compute rate of change of the moment of inertia tensor from
+ *  the current quaternion, I_ab being the moment of inertia (diagonal entries)
+ *  in the principle co-ordinate frame, and the angular velocity
+ *  at (t - delta t) the previous time step (omega in the lab frame).
+ *
+ *  This horrific expression is the analytical result from Mathematica.
+ *
+ *  Using this avoids any finite difference time derivative.
+ *
+ ****************************************************************************/
+
+void bbl_ellipsoid_unsteady_mI(const double q[4],
+			       const double I[3],
+			       const double omega[3],
+			       double F[3][3]) {
+  double Ixx, Iyy, Izz;
+  double ox, oy, oz;
+
+  Ixx=I[0];
+  Iyy=I[1];
+  Izz=I[2];
+  ox=omega[0];
+  oy=omega[1];
+  oz=omega[2];
+
+  F[0][0] = 4.0*Izz*(q[0]*q[2] + q[1]*q[3])*(oy*q[0]*q[0] + 2.0*oz*q[0]*q[1] - oy*q[1]*q[1] - oy*q[2]*q[2] - 2.0*oz*q[2]*q[3] + oy*q[3]*q[3]) + 4.0*Iyy*(q[1]*q[2] - q[0]*q[3])*(-(oz*q[0]*q[0]) + 2.0*oy*q[0]*q[1] + oz*q[1]*q[1] - oz*q[2]*q[2] + 2.0*oy*q[2]*q[3] + oz*q[3]*q[3]) - 4.0*Ixx*(-1.0 + 2.0*q[0]*q[0] + 2.0*q[1]*q[1])* (q[1]*(oz*q[2] - oy*q[3]) + q[0]*(oy*q[2] + oz*q[3]));
+
+  F[0][1] = -(Iyy*(-1.0 + 2.0*q[0]*q[0] + 2.0*q[2]*q[2])*(oz*q[0]*q[0] - 2.0*oy*q[0]*q[1] - oz*q[1]*q[1] + oz*q[2]*q[2] - 2.0*oy*q[2]*q[3] - oz*q[3]*q[3])) + 4.0*Iyy*(q[1]*q[2] - q[0]*q[3])* (q[2]*(oz*q[1] - ox*q[3]) - q[0]*(ox*q[1] + oz*q[3])) - 4.0*Ixx*(q[1]*q[2] + q[0]*q[3])*(q[1]*(oz*q[2] - oy*q[3]) + q[0]*(oy*q[2] + oz*q[3])) + Ixx*(-1.0 + 2.0*q[0]*q[0] + 2.0*q[1]*q[1])* (oz*q[0]*q[0] + oz*q[1]*q[1] + 2.0*ox*q[0]*q[2] - 2.0*ox*q[1]*q[3] - oz*(q[2]*q[2] + q[3]*q[3])) - 2.0*Izz*(q[0]*q[0]*q[0]*(oy*q[1] + ox*q[2]) + q[0]*q[0]*(2.0*oz*q[1]*q[1] + ox*q[1]*q[3] - q[2]*(2.0*oz*q[2] + oy*q[3])) + q[3]*(-(ox*q[1]*q[1]*q[1]) + q[1]*q[1]*(oy*q[2] - 2.0*oz*q[3]) + ox*q[1]*(-q[2]*q[2] + q[3]*q[3]) + q[2]*(oy*q[2]*q[2] + 2.0*oz*q[2]*q[3] - oy*q[3]*q[3])) - q[0]*(oy*q[1]*q[1]*q[1] + ox*q[1]*q[1]*q[2] + ox*q[2]*(q[2]*q[2] - q[3]*q[3]) + q[1]*(oy*q[2]*q[2] + 8*oz*q[2]*q[3] - oy*q[3]*q[3])));
+
+  F[0][2] = -4.0*Izz*(q[0]*q[2] + q[1]*q[3])*(q[0]*(ox*q[1] + oy*q[2]) + (oy*q[1] - ox*q[2])*q[3]) +  Izz*(-1.0 + 2.0*q[0]*q[0] + 2.0*q[3]*q[3])*(oy*q[0]*q[0] + 2.0*oz*q[0]*q[1] - oy*q[1]*q[1] - oy*q[2]*q[2] - 2.0*oz*q[2]*q[3] + oy*q[3]*q[3]) + 4.0*Ixx*(q[0]*q[2] - q[1]*q[3])*(q[1]*(oz*q[2] - oy*q[3]) + q[0]*(oy*q[2] + oz*q[3])) - Ixx*(-1.0 + 2.0*q[0]*q[0] + 2.0*q[1]*q[1])*(oy*q[0]*q[0] + oy*q[1]*q[1] - 2.0*ox*q[1]*q[2] - 2.0*ox*q[0]*q[3] - oy*(q[2]*q[2] + q[3]*q[3])) - 2.0*Iyy*(q[0]*q[0]*q[0]*(oz*q[1] + ox*q[3]) + q[0]*q[0]*(-2.0*oy*q[1]*q[1] - ox*q[1]*q[2] + q[3]*(oz*q[2] + 2.0*oy*q[3])) + q[2]*(ox*q[1]*q[1]*q[1] + q[1]*q[1]*(2.0*oy*q[2] - oz*q[3]) + ox*q[1]*(-q[2]*q[2] + q[3]*q[3]) + q[3]*(oz*q[2]*q[2] - 2.0*oy*q[2]*q[3] - oz*q[3]*q[3])) - q[0]*(oz*q[1]*q[1]*q[1] + ox*q[1]*q[1]*q[3] + ox*q[3]*(-q[2]*q[2] + q[3]*q[3]) + q[1]*(-(oz*q[2]*q[2]) + 8*oy*q[2]*q[3] + oz*q[3]*q[3])));
+
+  F[1][0] = -(Iyy*(-1.0 + 2.0*q[0]*q[0] + 2.0*q[2]*q[2])*(oz*q[0]*q[0] - 2.0*oy*q[0]*q[1] - oz*q[1]*q[1] + oz*q[2]*q[2] - 2.0*oy*q[2]*q[3] - oz*q[3]*q[3])) + 4.0*Iyy*(q[1]*q[2] - q[0]*q[3])*(q[2]*(oz*q[1] - ox*q[3]) - q[0]*(ox*q[1] + oz*q[3])) - 4.0*Ixx*(q[1]*q[2] + q[0]*q[3])*  (q[1]*(oz*q[2] - oy*q[3]) + q[0]*(oy*q[2] + oz*q[3])) + Ixx*(-1.0 + 2.0*q[0]*q[0] + 2.0*q[1]*q[1])*(oz*q[0]*q[0] + oz*q[1]*q[1] + 2.0*ox*q[0]*q[2] - 2.0*ox*q[1]*q[3] - oz*(q[2]*q[2] + q[3]*q[3])) - 2.0*Izz*(q[0]*q[0]*q[0]*(oy*q[1] + ox*q[2]) + q[0]*q[0]*(2.0*oz*q[1]*q[1] + ox*q[1]*q[3] - q[2]*(2.0*oz*q[2] + oy*q[3])) + q[3]*(-(ox*q[1]*q[1]*q[1]) + q[1]*q[1]*(oy*q[2] - 2.0*oz*q[3]) + ox*q[1]*(-q[2]*q[2] + q[3]*q[3]) + q[2]*(oy*q[2]*q[2] + 2.0*oz*q[2]*q[3] - oy*q[3]*q[3])) -q[0]*(oy*q[1]*q[1]*q[1] + ox*q[1]*q[1]*q[2] + ox*q[2]*(q[2]*q[2] - q[3]*q[3]) + q[1]*(oy*q[2]*q[2] + 8*oz*q[2]*q[3] - oy*q[3]*q[3])));
+
+  F[1][1] = -4.0*Iyy*(-1.0 + 2.0*q[0]*q[0] + 2.0*q[2]*q[2])*(q[2]*(-(oz*q[1]) + ox*q[3]) + q[0]*(ox*q[1] + oz*q[3])) + 4.0*Izz*(q[0]*q[1] - q[2]*q[3])*(ox*q[0]*q[0] - ox*q[1]*q[1] - 2.0*oz*q[0]*q[2] - 2.0*oz*q[1]*q[3] + ox*(-q[2]*q[2] + q[3]*q[3])) + 4.0*Ixx*(q[1]*q[2] + q[0]*q[3])*(oz*q[0]*q[0] + oz*q[1]*q[1] + 2.0*ox*q[0]*q[2] - 2.0*ox*q[1]*q[3] - oz*(q[2]*q[2] + q[3]*q[3]));
+
+  F[1][2] = 4.0*Izz*(q[0]*q[1] - q[2]*q[3])*(q[0]*(ox*q[1] + oy*q[2]) + (oy*q[1] - ox*q[2])*q[3]) - 4.0*Iyy*(q[0]*q[1] + q[2]*q[3])*(q[2]*(-(oz*q[1]) + ox*q[3]) + q[0]*(ox*q[1] + oz*q[3])) + Iyy*(-1.0 + 2.0*q[0]*q[0] + 2.0*q[2]*q[2])*(ox*q[0]*q[0] - ox*q[1]*q[1] - 2.0*oy*q[1]*q[2] + 2.0*oy*q[0]*q[3] + ox*(q[2]*q[2] - q[3]*q[3])) - Izz*(-1.0 + 2.0*q[0]*q[0] + 2.0*q[3]*q[3])*(ox*q[0]*q[0] - ox*q[1]*q[1] - 2.0*oz*q[0]*q[2] - 2.0*oz*q[1]*q[3] + ox*(-q[2]*q[2] + q[3]*q[3])) - 2.0*Ixx*(q[0]*q[0]*q[0]*(oz*q[2] + oy*q[3]) + q[0]*q[0]*(q[1]*(oy*q[2] - oz*q[3]) + 2.0*ox*(q[2]*q[2] - q[3]*q[3])) + q[0]*(-8*ox*q[1]*q[2]*q[3] + q[1]*q[1]*(oz*q[2] + oy*q[3]) - (oz*q[2] + oy*q[3])*(q[2]*q[2] + q[3]*q[3])) + q[1]*(q[1]*q[1]*(oy*q[2] - oz*q[3]) + 2.0*ox*q[1]*(-q[2]*q[2] + q[3]*q[3]) - (oy*q[2] - oz*q[3])*(q[2]*q[2] + q[3]*q[3])));
+
+  F[2][0] = -4.0*Izz*(q[0]*q[2] + q[1]*q[3])*(q[0]*(ox*q[1] + oy*q[2]) + (oy*q[1] - ox*q[2])*q[3]) + Izz*(-1.0 + 2.0*q[0]*q[0] + 2.0*q[3]*q[3])*(oy*q[0]*q[0] + 2.0*oz*q[0]*q[1] - oy*q[1]*q[1] - oy*q[2]*q[2] - 2.0*oz*q[2]*q[3] + oy*q[3]*q[3]) + 4.0*Ixx*(q[0]*q[2] - q[1]*q[3])*(q[1]*(oz*q[2] - oy*q[3]) + q[0]*(oy*q[2] + oz*q[3])) - Ixx*(-1.0 + 2.0*q[0]*q[0] + 2.0*q[1]*q[1])*(oy*q[0]*q[0] + oy*q[1]*q[1] - 2.0*ox*q[1]*q[2] - 2.0*ox*q[0]*q[3] - oy*(q[2]*q[2] + q[3]*q[3])) - 2.0*Iyy*(q[0]*q[0]*q[0]*(oz*q[1] + ox*q[3]) + q[0]*q[0]*(-2.0*oy*q[1]*q[1] - ox*q[1]*q[2] + q[3]*(oz*q[2] + 2.0*oy*q[3])) + q[2]*(ox*q[1]*q[1]*q[1] + q[1]*q[1]*(2.0*oy*q[2] - oz*q[3]) + ox*q[1]*(-q[2]*q[2] + q[3]*q[3]) + q[3]*(oz*q[2]*q[2] - 2.0*oy*q[2]*q[3] - oz*q[3]*q[3])) - q[0]*(oz*q[1]*q[1]*q[1] + ox*q[1]*q[1]*q[3] + ox*q[3]*(-q[2]*q[2] + q[3]*q[3]) + q[1]*(-(oz*q[2]*q[2]) + 8*oy*q[2]*q[3] + oz*q[3]*q[3])));
+
+  F[2][1] = 4.0*Izz*(q[0]*q[1] - q[2]*q[3])*(q[0]*(ox*q[1] + oy*q[2]) + (oy*q[1] - ox*q[2])*q[3]) - 4.0*Iyy*(q[0]*q[1] + q[2]*q[3])*(q[2]*(-(oz*q[1]) + ox*q[3]) + q[0]*(ox*q[1] + oz*q[3])) + Iyy*(-1.0 + 2.0*q[0]*q[0] + 2.0*q[2]*q[2])*(ox*q[0]*q[0] - ox*q[1]*q[1] - 2.0*oy*q[1]*q[2] + 2.0*oy*q[0]*q[3] + ox*(q[2]*q[2] - q[3]*q[3])) - Izz*(-1.0 + 2.0*q[0]*q[0] + 2.0*q[3]*q[3])*(ox*q[0]*q[0] - ox*q[1]*q[1] - 2.0*oz*q[0]*q[2] - 2.0*oz*q[1]*q[3] + ox*(-q[2]*q[2] + q[3]*q[3])) - 2.0*Ixx*(q[0]*q[0]*q[0]*(oz*q[2] + oy*q[3]) + q[0]*q[0]*(q[1]*(oy*q[2] - oz*q[3]) + 2.0*ox*(q[2]*q[2] - q[3]*q[3])) + q[0]*(-8*ox*q[1]*q[2]*q[3] + q[1]*q[1]*(oz*q[2] + oy*q[3]) - (oz*q[2] + oy*q[3])*(q[2]*q[2] + q[3]*q[3])) + q[1]*(q[1]*q[1]*(oy*q[2] - oz*q[3]) + 2.0*ox*q[1]*(-q[2]*q[2] + q[3]*q[3]) - (oy*q[2] - oz*q[3])*(q[2]*q[2] + q[3]*q[3])));
+
+  F[2][2] = -4.0*Izz*(q[0]*(ox*q[1] + oy*q[2]) + (oy*q[1] - ox*q[2])*q[3])*(-1.0 + 2.0*q[0]*q[0] + 2.0*q[3]*q[3]) + 4.0*Iyy*(q[0]*q[1] + q[2]*q[3])*(ox*q[0]*q[0] - ox*q[1]*q[1] - 2.0*oy*q[1]*q[2] + 2.0*oy*q[0]*q[3] + ox*(q[2]*q[2] - q[3]*q[3])) + 4.0*Ixx*(q[0]*q[2] - q[1]*q[3])*(oy*q[0]*q[0] + oy*q[1]*q[1] - 2.0*ox*q[1]*q[2] - 2.0*ox*q[0]*q[3] - oy*(q[2]*q[2] + q[3]*q[3]));
+
+  return;
 }

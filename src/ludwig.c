@@ -302,6 +302,12 @@ static int ludwig_rt(ludwig_t * ludwig) {
 
   bbl_create(pe, ludwig->cs, ludwig->lb, &ludwig->bbl);
   bbl_active_set(ludwig->bbl, ludwig->collinfo);
+  {
+    /* Kludge: this switch is unlikely to be required as the default
+     * method of quaternions (ellipsoid_didt = 0) is exact */
+    int ellipsoid_didt = rt_switch(rt, "bbl_ellipsoid_update_fd");
+    bbl_didt_method_set(ludwig->bbl, ellipsoid_didt);
+  }
 
   /* NOW INITIAL CONDITIONS */
 
