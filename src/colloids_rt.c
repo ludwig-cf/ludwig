@@ -661,7 +661,12 @@ int colloids_rt_state_stub(pe_t * pe, rt_t * rt, colloids_info_t * cinfo,
 
   if (nrtv1 && nrtv2) {
     /* Just translate to Euler angles ... */
-    euler_from_vectors(elev1, elev2, euler);
+    int ifail = util_ellipsoid_euler_from_vectors(elev1, elev2, euler);
+    if (ifail != 0) {
+      pe_info(pe, "Vectors elev1 and elev2 must not be zero, and\n");
+      pe_info(pe, "must not be parallel to specify ellipsoid orientation\n");
+      pe_exit(pe, "Please check the input and try again\n");
+    }
     pe_info(pe, format_e3, "Euler angles", euler[X], euler[Y], euler[Z]);
   }
 
