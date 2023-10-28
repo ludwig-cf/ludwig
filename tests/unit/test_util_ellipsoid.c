@@ -29,8 +29,11 @@ int test_util_q4_to_euler_angles(void);
 int test_util_q4_rotate_vector(void);
 int test_util_q4_from_omega(void);
 int test_util_q4_is_inside_ellipsoid(void);
+int test_util_q4_inertia_tensor(void);
 
 int test_util_ellipsoid_is_sphere(void);
+int test_util_ellipsoid_euler_from_vectors(void);
+int test_util_ellipsoid_prolate_settling_velocity(void);
 int test_util_spheroid_surface_normal(void);
 int test_util_spheroid_surface_tangent(void);
 
@@ -52,8 +55,11 @@ int test_util_ellipsoid_suite(void) {
   test_util_q4_from_euler_angles();
   test_util_q4_to_euler_angles();
   test_util_q4_is_inside_ellipsoid();
+  test_util_q4_inertia_tensor();
 
   test_util_ellipsoid_is_sphere();
+  test_util_ellipsoid_euler_from_vectors();
+  test_util_ellipsoid_prolate_settling_velocity();
   test_util_spheroid_surface_normal();
   test_util_spheroid_surface_tangent();
 
@@ -431,6 +437,103 @@ int test_util_ellipsoid_is_sphere(void) {
 
 /*****************************************************************************
  *
+ *  test_util_ellipsoid_euler_from_vectors
+ *
+ *****************************************************************************/
+
+int test_util_ellipsoid_euler_from_vectors(void) {
+
+  int ifail = 0;
+  PI_DOUBLE(pi);
+
+  {
+    /* Fail a = 0 */
+    double a[3]     = {0.0, 0.0, 0.0};
+    double b[3]     = {1.0, 0.0, 0.0};
+    double euler[3] = {0.0, 0.0, 0.0};
+    ifail = util_ellipsoid_euler_from_vectors(a, b, euler);
+    assert(ifail != 0);
+  }
+
+  {
+    /* Fail b = 0 */
+    double a[3]     = {0.0, 1.0, 0.0};
+    double b[3]     = {0.0, 0.0, 0.0};
+    double euler[3] = {0.0, 0.0, 0.0};
+    ifail = util_ellipsoid_euler_from_vectors(a, b, euler);
+    assert(ifail != 0);
+  }
+
+  {
+    /* Fail linear dependency */
+    double a[3]     = {1.0, 0.0, 0.0};
+    double b[3]     = {2.0, 0.0, 0.0};
+    double euler[3] = {0.0, 0.0, 0.0};
+    ifail = util_ellipsoid_euler_from_vectors(a, b, euler);
+    assert(ifail != 0);
+  }
+
+  {
+    /* OK. */
+    double a[3]     = {0.0, 0.0, 1.0};
+    double b[3]     = {0.0, 1.0, 0.0};
+    double euler[3] = {0.0, 0.0, 0.0};
+    ifail = util_ellipsoid_euler_from_vectors(a, b, euler);
+    assert(ifail == 0);
+    assert(fabs(euler[0] + 0.5*pi) < DBL_EPSILON);
+    assert(fabs(euler[1] - 0.5*pi) < DBL_EPSILON);
+    assert(fabs(euler[2] - 0.5*pi) < DBL_EPSILON);
+  }
+
+  return ifail;
+}
+
+/*****************************************************************************
+ *
+ *  test_util_ellipsoid_prolate_settling_velocity
+ *
+ *****************************************************************************/
+
+int test_util_ellipsoid_prolate_settling_velocity(void) {
+
+  int ifail = 0;
+  PI_DOUBLE(pi);
+
+  {
+    /* Ellipsoid */
+    double a = 1.0;
+    double b = 0.5;
+    double eta  = 1.0/(6.0*pi);
+    double f    = 1.0;
+    double u[2] = {0};
+
+    ifail = util_ellipsoid_prolate_settling_velocity(a, b, eta, f, u);
+    assert(ifail == 0);
+
+    assert(fabs(u[0] - 1.6612110) < FLT_EPSILON);
+    assert(fabs(u[1] - 1.4504325) < FLT_EPSILON);
+  }
+
+  {
+    /* Limit of a sphere */
+    double a = 1.0;
+    double b = 1.0;
+    double eta  = 1.0/(6.0*pi);
+    double f    = 1.0;
+    double u[2] = {0};
+
+    ifail = util_ellipsoid_prolate_settling_velocity(a, b, eta, f, u);
+    assert(ifail == 0);
+
+    assert(fabs(u[0] - 1.0) < DBL_EPSILON);
+    assert(fabs(u[1] - 1.0) < DBL_EPSILON);
+  }
+
+  return ifail;
+}
+
+/*****************************************************************************
+ *
  *  test_util_spheroid_surface_normal
  *
  *  This is a test for the normal, but we also check the tangent is
@@ -575,6 +678,55 @@ int test_util_spheroid_surface_tangent(void) {
     assert(fabs(rt[0] - -1.0) < DBL_EPSILON);
     assert(fabs(rt[1] -  0.0) < DBL_EPSILON);
     assert(fabs(rt[2] -  0.0) < DBL_EPSILON);
+  }
+
+  return ifail;
+}
+
+/*****************************************************************************
+ *
+ *  test_util_q4_inertia_tensor
+ *
+ *****************************************************************************/
+
+int test_util_q4_inertia_tensor(void) {
+
+  int ifail = 0;
+  PI_DOUBLE(pi);
+
+  {
+    /* No prizes for this one ... */
+    double moment[3] = {1.0, 2.0, 3.0};
+    double q[4]      = {1.0, 0.0, 0.0, 0.0};
+    double mi[3][3]  = {0};
+    util_q4_inertia_tensor(q, moment, mi);
+    assert(fabs(mi[0][0] - 1.0) < DBL_EPSILON);
+    assert(fabs(mi[0][1] - 0.0) < DBL_EPSILON);
+    assert(fabs(mi[0][2] - 0.0) < DBL_EPSILON);
+    assert(fabs(mi[1][0] - 0.0) < DBL_EPSILON);
+    assert(fabs(mi[1][1] - 2.0) < DBL_EPSILON);
+    assert(fabs(mi[1][2] - 0.0) < DBL_EPSILON);
+    assert(fabs(mi[2][0] - 0.0) < DBL_EPSILON);
+    assert(fabs(mi[2][1] - 0.0) < DBL_EPSILON);
+    assert(fabs(mi[2][2] - 3.0) < DBL_EPSILON);
+  }
+
+  {
+    /* Rotate the quaternion ... */
+    double moment[3] = {1.0, 2.0, 3.0};
+    double q[4]      = {0};
+    double mi[3][3]  = {0};
+    double phi       = pi/2.0;
+    double theta     = pi/3.0;
+    double psi       = pi/4.0;
+    util_q4_from_euler_angles(phi, theta, psi, q);
+    util_q4_inertia_tensor(q, moment, mi);
+    /* Sample of ... */
+    assert(fabs(mi[0][0] - 2.6250) < 8.0*DBL_EPSILON);
+    assert(fabs(mi[0][1] - 0.2500) < 8.0*DBL_EPSILON);
+    assert(fabs(mi[1][0] - 0.2500) < 8.0*DBL_EPSILON);
+    assert(fabs(mi[1][1] - 1.5000) < 8.0*DBL_EPSILON);
+    assert(fabs(mi[2][2] - 1.8750) < 8.0*DBL_EPSILON);
   }
 
   return ifail;

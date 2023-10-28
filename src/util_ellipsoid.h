@@ -28,22 +28,23 @@ int  util_q4_to_euler_angles(const double q[4], double * phi, double * theta,
 			     double * psi);
 int  util_q4_is_inside_ellipsoid(const double q[4], const double elabc[3],
 				 const double r[3]);
+void util_q4_inertia_tensor(const double q[4], const double moment[3],
+			    double mI[3][3]);
 
 int util_ellipsoid_is_sphere(const double elabc[3]);
 int util_spheroid_surface_normal(const double elabc[3], const double m[3],
 				 const double r[3], double v[3]);
 int util_spheroid_surface_tangent(const double elabc[3], const double m[3],
 				  const double r[3], double vt[3]);
+int util_ellipsoid_euler_from_vectors(const double a0[3], const double b0[3],
+				      double euler[3]);
+int util_ellipsoid_prolate_settling_velocity(double a, double b, double eta,
+					     double f, double u[2]);
 
-__host__ __device__ void orthonormalise_vector_b_to_a(double *a, double *b);
-__host__ __device__ void matrix_product(const double a[3][3], const double b[3][3], double result[3][3]);
-__host__ __device__ void matrix_transpose(const double a[3][3], double result[3][3]);
+void matrix_product(const double a[3][3], const double b[3][3],
+		    double result[3][3]);
+void matrix_transpose(const double a[3][3], double result[3][3]);
+
 __host__ __device__ void inertia_tensor_quaternion(const double q[4], const double a[3], double      b[3][3]);
-__host__ __device__ void Jeffery_omega_predicted(double const r, double const quat[4], double const gdot, double opred[3], double angpred[2]);
-__host__ __device__ void ellipsoid_nearwall_predicted(double const elabc[3], double const h, double const quat[4], double Upred[3], double opred[3]);
- __host__ __device__ void settling_velocity_prolate(double const r, double const f, double const mu, double const ela, double U[2]);
-__host__ __device__ void euler_from_vectors(double a[3], double b[3], double *euler);
- __host__ __device__ void euler_from_dcm(const double r[3][3], double *phi, double *theta, double *psi);
-__host__ __device__ void dcm_from_vectors(const double a[3], const double b[3], const double c[3], double r[3][3]);
 
 #endif

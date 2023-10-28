@@ -26,28 +26,6 @@
 
 /*****************************************************************************
  *
- *  Orthonormalise a vector b to a given vector a
- *
- *****************************************************************************/
-
- __host__ __device__ void orthonormalise_vector_b_to_a(double *a, double *b){
-
-  double proj,mag;
-  /*projecting b onto a*/
-  proj = a[0]*b[0]+a[1]*b[1]+a[2]*b[2];
-  b[0] = b[0] - proj*a[0];
-  b[1] = b[1] - proj*a[1];
-  b[2] = b[2] - proj*a[2];
-  /*Normalising b */
-  mag = sqrt(b[0]*b[0]+b[1]*b[1]+b[2]*b[2]);
-  b[0]=b[0]/mag;
-  b[1]=b[1]/mag;
-  b[2]=b[2]/mag;
-  return ;
-}
-
-/*****************************************************************************
- *
  *  matrix_product
  *
  *****************************************************************************/
@@ -99,17 +77,17 @@ void matrix_transpose(const double a[3][3], double result[3][3]) {
 
 void util_q4_from_omega(const double omega[3], double dt, double q[4]) {
 
- double omag = sqrt(omega[0]*omega[0] + omega[1]*omega[1] + omega[2]*omega[2]);
+  double ww = sqrt(omega[0]*omega[0] + omega[1]*omega[1] + omega[2]*omega[2]);
 
- if (omag < DBL_EPSILON) {
-   q[0] = 1.0; q[1] = 0.0; q[2] = 0.0; q[3] = 0.0;
- }
- else {
-   q[0] = cos(omag*dt);
-   for (int i = 0; i < 3; i++) {
-     q[i+1] = sin(omag*dt)*omega[i]/omag;
-   }
- }
+  if (ww < DBL_EPSILON) {
+    q[0] = 1.0; q[1] = 0.0; q[2] = 0.0; q[3] = 0.0;
+  }
+  else {
+    q[0] = cos(ww*dt);
+    for (int i = 0; i < 3; i++) {
+      q[i+1] = sin(ww*dt)*omega[i]/ww;
+    }
+  }
 
   return;
 }
@@ -124,7 +102,7 @@ void util_q4_from_omega(const double omega[3], double dt, double q[4]) {
  *  See Zhao and Wachem Acta Mech 224, 2331--2358 (2013) [different!]
  *  The full operation is Eq 22.
  *
- *  The result mI_ab is the inertia tensor in the rotated frame.
+ *  The result mI_ab is the full inertia tensor in the rotated frame.
  *
  ****************************************************************************/
 __host__ __device__ void inertia_tensor_quaternion(const double q[4],
@@ -310,7 +288,7 @@ void util_q4_product(const double a[4], const double b[4], double c[4]) {
  *
  *  Returns 0 if r is outside.
  *
- *  NEEDS REFERENCE TO PROVIDE MEANING
+ *  NEEDS REFERENCE TO PROVIDE MEANING TO COMMENTS
  *
  *****************************************************************************/
 
@@ -371,11 +349,63 @@ int util_q4_is_inside_ellipsoid(const double q[4], const double elabc[3],
 
 /*****************************************************************************
  *
+ *  util_q4_inertia_tensor
+ *
+ *  Construct the moment of inertia tensor in the principal coordinates
+ *  from the quaternion describing ellipsoid orientation.
+ *
+ *  The (diagonal) moment of interia tensor in the lab frame is moment[3].
+ *  This must be rotated by the quaternion.
+ *
+ *  See Zhao and Wachem Acta Mech 224, 2331--2358 (2013)
+ *  The full operation is Eq 22.
+ *
+ *  The result mI is the full inertia tensor in the rotated frame.
+ *
+ ****************************************************************************/
+
+void util_q4_inertia_tensor(const double q[4], const double moment[3],
+			    double mI[3][3]) {
+
+  double Mdd[3][3] = {0};
+
+  /* First half ... */
+
+  for (int j = 0; j < 3; j++) {
+    double Mi[3]  = {0};
+    double Mdi[3] = {0};
+    Mi[j] = moment[j];
+    util_q4_rotate_vector(q, Mi, Mdi);
+    for (int i = 0; i < 3; i++) {
+      Mdd[j][i] = Mdi[i];
+    }
+  }
+
+  /* Repeat the entire procedure for the final mI */
+
+  for (int j = 0; j < 3; j++) {
+    double Mi[3]  = {0};
+    double Mdi[3] = {0};
+    for (int i = 0; i < 3; i++) {
+      Mi[i] = Mdd[i][j];
+    }
+    util_q4_rotate_vector(q, Mi, Mdi);
+    for (int i = 0; i < 3; i++) {
+      mI[j][i] = Mdi[i];
+    }
+  }
+
+  return;
+}
+
+#ifdef PENDING_REFACTOR_FOR_VALIDATIONS
+/*****************************************************************************
+ *
  *  Far field predictions of Mitchell and Spagnolie
  *  PENDING CONFIRMATION
  *
  *****************************************************************************/
-__host__ __device__ void ellipsoid_nearwall_predicted(double const elabc[3], double const h, double const quat[4], double Upred[3], double opred[3]) {
+void ellipsoid_nearwall_predicted(double const elabc[3], double const h, double const quat[4], double Upred[3], double opred[3]) {
 
   double ecc,ecc2,ecc3,ecc4,K;
   double termn,termd,h2,h3,h4;
@@ -504,7 +534,7 @@ return;
  *  angpred[2]  (theta_1, phi_1) See Figure 3.13.
  *
  *****************************************************************************/
-__host__ __device__ void Jeffery_omega_predicted(double const r, double const quat[4], double const gammadot, double opred[3], double angpred[2]) {
+void Jeffery_omega_predicted(double const r, double const quat[4], double const gammadot, double opred[3], double angpred[2]) {
 
   double beta;
   double phi1,the1;
@@ -556,108 +586,102 @@ __host__ __device__ void Jeffery_omega_predicted(double const r, double const qu
 
   return;
 }
+#endif
 
 /*****************************************************************************
  *
- *  Calculating Euler angles from vectors
+ *  util_ellipsoid_euler_from_vectors
  *
- *  If a and b are not at right angles, b is adjusted to be so.
+ *  The intent here is to allow the user to specify an initial orientation
+ *  (of an ellipsoid) by two vectors (along the semi-major and a semi-minor
+ *  axis).
+ *
+ *  These vectors do not have to be unit vectors, and they do not even have
+ *  to be at right angles. However, both should be non-zero, and they must
+ *  not be linearly dependent (parallel). If they are not at right angles,
+ *  the second is adjusted to be so.
+ *
+ *  The result is a standard set of Euler angles describing the orientation.
+ *
+ *  If the return value is not zero, the input vectors did not satisfy
+ *  the conditions above.
  *
  *****************************************************************************/
-__host__ __device__ void euler_from_vectors(double a[3], double b[3], double *euler) {
 
-  double c[3],r[3][3];
+int util_ellipsoid_euler_from_vectors(const double a0[3], const double b0[3],
+				      double euler[3]) {
+  int ifail = 0;
+  double a[3] = {a0[0], a0[1], a0[2]};
+  double b[3] = {b0[0], b0[1], b0[2]};
+
+  /* Make sure the inputs are unit vectors at right angles ... */
   util_vector_normalise(3, a);
-  orthonormalise_vector_b_to_a(a, b);
-  cross_product(a,b,c);
-  dcm_from_vectors(a,b,c,r);
-  euler_from_dcm(r,&euler[0],&euler[1],&euler[2]);
+  ifail = util_vector_orthonormalise(a, b);
 
- return;
+  /* Cross product of orthongonal unit vectors is itself a unit vector
+   * so we can compute the direction cosine matrix. */
+
+  {
+    double c[3] = {0};
+    double r[3][3] = {0};
+    util_vector_cross_product(c, a, b);
+    util_vector_basis_to_dcm(a, b, c, r);
+    util_vector_dcm_to_euler(r, euler, euler + 1, euler + 2);
+  }
+
+  return ifail;
 }
-/*****************************************************************************
-*
-*  Calculating Euler angles from Direction Cosine Matrix
-*
-*****************************************************************************/
-__host__ __device__ void euler_from_dcm(const double r[3][3], double *phi, double *theta, double *psi) {
 
-  *theta=acos(r[2][2]);
-  if(fabs(fabs(r[2][2])-1.0)>1e-12) {
-    *phi=atan2(r[2][0],-r[2][1]);
-    *psi=atan2(r[0][2],r[1][2]);
+/*****************************************************************************
+ *
+ *  util_ellipsoid_prolate_settling_velocity
+ *
+ *  L.G. Leal Advanced Transport phemomena, Cambridge University Press (2007)
+ *  See page 559 for a prolate spheroid...
+ *
+ *  If e is the eccentricity,  e = sqrt(1 - b^2/a^2), and coefficients
+ *  cf1 =  (8/3) e^3 [-2e + (1 +e^2) log(1+e/1-e)]^-1
+ *  cf2 = (16/3) e^3 [+2e +(3e^2 - 1) log(1+e/1-e)]^-1
+ *
+ *  The Stokes' relationship is:
+ *  F = 6 pi mu a (U_1 cf1 xhat + U_2 cf2 yhat)
+ *
+ *  a    is the semi-major axis
+ *  b    is the semi-minor axis (b < a)
+ *  eta  is the dynamic viscosity (lattice units)
+ *  f    is the force (magnitude)
+ *  u[2] velocity in parallel and perpenduclar directions (xhat, yhat)
+ *
+ *****************************************************************************/
+
+int util_ellipsoid_prolate_settling_velocity(double a,
+					     double b,
+					     double eta,
+					     double f,
+					     double u[2]) {
+  int ifail = 0;
+  double pi = 4.0*atan(1.0);
+
+  if (a <= 0.0) {
+    ifail = -1;
   }
   else {
-    *phi=atan2(r[0][1],r[0][0]);
-    *psi = 0.0;
+    /* Have a little care to manage the limit e -> 0 (a sphere) */
+    double e    = sqrt(1.0 - (b*b)/(a*a));
+    double loge = log((1.0 + e)/(1.0 - e));
+    double cf1  = 1.0;
+    double cf2  = 1.0;
+
+    if (e > 0.0) {
+      cf1 =  (8.0/3.0)*e*e*e/(-2.0*e + (1.0 + e*e)*loge);
+      cf2 = (16.0/3.0)*e*e*e/(+2.0*e + (3.0*e*e - 1.0)*loge);
+    }
+
+    u[0] = f/(6.0*pi*eta*a*cf1);
+    u[1] = f/(6.0*pi*eta*a*cf2);
   }
-return;
-}
-/*****************************************************************************
-*
-*  Calculating Direction Cosine Matrix from a given set of orientation vectors
-*
-*****************************************************************************/
-__host__ __device__ void dcm_from_vectors(const double a[3], const double b[3], const double c[3], double r[3][3]) {
 
-double v1[3]={1.0,0.0,0.0};
-double v2[3]={0.0,1.0,0.0};
-double v3[3]={0.0,0.0,1.0};
-
-r[0][0] = dot_product(v1,a);
-r[1][0] = dot_product(v1,b);
-r[2][0] = dot_product(v1,c);
-r[0][1] = dot_product(v2,a);
-r[1][1] = dot_product(v2,b);
-r[2][1] = dot_product(v2,c);
-r[0][2] = dot_product(v3,a);
-r[1][2] = dot_product(v3,b);
-r[2][2] = dot_product(v3,c);
-
-return;
-}
-
-/*****************************************************************************
- *
- *  Settling velocity of a prolate spheroid
- *
- *  L.G. Leal Advanced Transport phemomena, Cambridge 2007
- *  See page 559
- *
- *  r is the aspect ratio
- *  f is the force (magnitude)
- *  mu is the dynamic viscosity (LB. units)
- *  ela  principle semi-major axis
- *  u[2] velocity in parallel and perpenduclar directions
- *
-*****************************************************************************/
-__host__ __device__ void settling_velocity_prolate(double const r,
-						   double const f,
-						   double const mu,
-						   double const ela,
-						   double U[2]) {
-
-double ecc,logecc;
-double cfterm1,cfterm21,cf1br,cf1;
-double cfterm2,cfterm22,cf2br,cf2;
-double dcoef;
-double rinv;
-PI_DOUBLE(pi);
-rinv = 1.0/r;
-ecc = sqrt(1.0 - (rinv*rinv));
-logecc = log((1.0+ecc)/(1.0-ecc));
-cfterm1 = -2.0*ecc;
-cfterm21 = 1.0 + ecc*ecc;
-cf1br = cfterm1 + cfterm21*logecc;
-cf1 = (8.0/3.0)*(ecc*ecc*ecc)/cf1br;
-cfterm2 = 2.0*ecc;
-cfterm22 = 3.0*ecc*ecc - 1.0;
-cf2br = cfterm2 + cfterm22*logecc;
-cf2 = (16.0/3.0)*(ecc*ecc*ecc)/cf2br;
-dcoef = 6.0*pi*mu*ela;
-U[0] = f/(dcoef*cf1);
-U[1] = f/(dcoef*cf2);
-return;
+  return ifail;
 }
 
 /*****************************************************************************
@@ -688,14 +712,14 @@ int util_ellipsoid_is_sphere(const double elabc[3]) {
  *  otherwise the normal is returned.
  *
  *  Note
- *  "Speheroid" has a != b and b = c (for oblate or prolate case).
+ *  "Spheroid" has a != b and b = c (for oblate or prolate case).
  *
  *  See, e.g., S.R. Keller and T.Y.T. Wu, J. Fluid Mech. 80, 259--278 (1977).
  *
  *  CHECK what happens in the oblate case?
  *
  *  The vector returned should be a unit vector if r is exactly at the
- *  surface, but is not in other cases.
+ *  surface, but may not be in other cases.
  *
  ****************************************************************************/
 
