@@ -54,6 +54,8 @@ struct interact_s {
   stat_ft stats[INTERACT_MAX];       /* Statisitics functions */
 };
 
+int colloids_update_forces_fluid_body_force(colloids_info_t * cinfo);
+
 /*****************************************************************************
  *
  *  interact_create
@@ -193,6 +195,7 @@ int interact_compute(interact_t * interact, colloids_info_t * cinfo,
     colloids_update_forces_zero(cinfo);
     colloids_update_forces_external(cinfo, psi);
     colloids_update_forces_fluid_gravity(cinfo, map);
+    colloids_update_forces_fluid_body_force(cinfo);
     colloids_update_forces_fluid_driven(cinfo, map);
     interact_wall(interact, cinfo);
     
@@ -373,7 +376,7 @@ int colloids_update_forces_zero(colloids_info_t * cinfo) {
 
 /*****************************************************************************
  *
- *  colloid_forces_single_particle_set
+ *  colloid_update_forces_external
  *
  *  Accumulate single particle force contributions.
  *
@@ -435,7 +438,7 @@ int colloids_update_forces_external(colloids_info_t * cinfo, psi_t * psi) {
 
 /*****************************************************************************
  *
- *  colloid_forces_fluid_gravity_set
+ *  colloid_update_forces_fluid_gravity
  *
  *  Set the current gravtitational force on the fluid. This should
  *  match, exactly, the force on the colloids and so depends on the
@@ -482,10 +485,52 @@ int colloids_update_forces_fluid_gravity(colloids_info_t * cinfo,
   return 0;
 }
 
+/*****************************************************************************
+ *
+ *  colloids_update_forces_fluid_body_force
+ *
+ *  If there is a body force on the fluid specified by the user, there
+ *  should be a contribution to the body force on the particle (in the
+ *  same direction) related to the volume.
+ *
+ *  This must not be confused with the body force that arises from the
+ *  balance of gravity forces; gravity means this should not be done.
+ *
+ *****************************************************************************/
+
+int colloids_update_forces_fluid_body_force(colloids_info_t * cinfo) {
+
+  physics_t * phys = NULL;
+  double fg[3] = {0};
+
+  physics_ref(&phys);
+  physics_fgrav(phys, fg);
+
+  if (fg[X] != 0.0 || fg[Y] != 0.0 || fg[Z] != 0.0) {
+    /* do nothing */
+  }
+  else {
+    colloid_t * pc = NULL;
+    double fb[3] = {0};
+
+    physics_fbody(phys, fb);
+    colloids_info_local_head(cinfo, &pc);
+
+    for (; pc; pc = pc->nextlocal) {
+      double vol = 0.0;
+      util_discrete_volume_sphere(pc->s.r, pc->s.a0, &vol);
+      pc->force[X] += vol*fb[X];
+      pc->force[Y] += vol*fb[Y];
+      pc->force[Z] += vol*fb[Z];
+    }
+  }
+
+  return 0;
+}
 
 /*****************************************************************************
  *
- *  colloid_forces_fluid_driven
+ *  colloid_update_forces_fluid_driven
  *
  *  Set the current drive force on the fluid. This should
  *  match, exactly, the force on the colloids and so depends on the
