@@ -193,7 +193,7 @@ int interact_compute(interact_t * interact, colloids_info_t * cinfo,
     physics_t * phys = NULL;
     physics_ref(&phys);
     colloids_update_forces_zero(cinfo);
-    colloids_update_forces_external(cinfo, psi, phys);
+    colloids_update_forces_external(cinfo, phys);
     colloids_update_forces_fluid_gravity(cinfo, map, phys);
     colloids_update_forces_fluid_body_force(cinfo, phys);
     colloids_update_forces_fluid_driven(cinfo, map, phys);
@@ -380,12 +380,9 @@ int colloids_update_forces_zero(colloids_info_t * cinfo) {
  *
  *  Accumulate single particle force contributions.
  *
- *  psi may be NULL, in which case, assume no charged species, otherwise
- *  we assume two. Indeed, not used at the moment.
- *
  *****************************************************************************/
 
-int colloids_update_forces_external(colloids_info_t * cinfo, psi_t * psi,
+int colloids_update_forces_external(colloids_info_t * cinfo,
 				    physics_t * phys) {
 
   int ic, jc, kc, ia;

@@ -71,7 +71,7 @@ int interact_rcmax(interact_t * obj, double * rcmax);
 
 int colloids_update_forces_zero(colloids_info_t * cinfo);
 int colloids_update_forces_ext(colloids_info_t * cinfo);
-int colloids_update_forces_external(colloids_info_t * cinfo, psi_t * psi,
+int colloids_update_forces_external(colloids_info_t * cinfo,
 				    physics_t * phys);
 int colloids_update_forces_fluid_gravity(colloids_info_t * cinfo, map_t * map,
 					 physics_t * phys);
