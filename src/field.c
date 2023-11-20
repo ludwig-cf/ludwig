@@ -482,8 +482,6 @@ __host__ int field_halo(field_t * obj) {
 
 __host__ int field_halo_swap(field_t * obj, field_halo_enum_t flag) {
 
-  double * data;
-
   assert(obj);
 
   switch (flag) {
