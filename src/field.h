@@ -5,7 +5,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2012-2022 The University of Edinburgh
+ *  (c) 2012-2023 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -33,16 +33,12 @@
 
 #include "cs_limits.h"
 
-#if defined(__NVCC__)
+typedef struct field_graph_halo_s field_graph_halo_t;
 
-typedef struct cuda_graph_s cuda_graph_t;
-
-struct cuda_graph_s {
-  cudaGraph_t graph;
-  cudaGraphExec_t graphExec;
-  intptr_t hostCallbackArgs[27][3];
+struct field_graph_halo_s {
+  tdpGraph_t graph;
+  tdpGraphExec_t exec;
 };
-#endif
 
 typedef struct field_halo_s field_halo_t;
 
@@ -57,17 +53,15 @@ struct field_halo_s {
   cs_limits_t rlim[27];         /* halo: recv regions (rectangular) */
   double * send[27];            /* halo: send data buffers */
   double * recv[27];            /* halo: recv data buffers */
-  int max_buf_len;             /* halo: the size of the largest buffer */
   MPI_Request request[2*27];    /* halo: array of send/recv requests */
 
   tdpStream_t stream;
   field_halo_t * target;        /* target structure */
   double * send_d[27];          /* halo: device send data buffers */
   double * recv_d[27];          /* halo: device recv data buffers */
-#if defined(__NVCC__)
-  cuda_graph_t *send_graph;
-  cuda_graph_t *recv_graph;
-#endif
+
+  field_graph_halo_t gsend;     /* Graph API halo swap */
+  field_graph_halo_t grecv;
 };
 
 typedef struct field_s field_t;
@@ -142,9 +136,7 @@ int field_io_aggr_unpack(field_t * field, const io_aggregator_t * aggr);
 int field_io_write(field_t * field, int timestep, io_event_t * event);
 int field_io_read(field_t * field, int timestep, io_event_t * event);
 
-#if defined(__NVCC__)
-int create_send_graph(const field_t * field, field_halo_t * h);
-int create_recv_graph(const field_t * field, field_halo_t * h);
-#endif
+int field_graph_halo_send_create(const field_t * field, field_halo_t * h);
+int field_graph_halo_recv_create(const field_t * field, field_halo_t * h);
 
 #endif
