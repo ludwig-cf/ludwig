@@ -217,7 +217,7 @@ int colloids_rt_dynamics(cs_t * cs, colloids_info_t * cinfo, wall_t * wall,
 
   build_update_map(cs, cinfo, map);
   build_update_links(cs, cinfo, wall, map, model);
-
+  colloids_memcpy(cinfo, tdpMemcpyHostToDevice);
 
   return 0;
 }
