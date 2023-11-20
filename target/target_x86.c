@@ -7,7 +7,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2018-2022 The University of Edinburgh
+ *  (c) 2018-2023 The University of Edinburgh
  *
  *  Contributing authors:
  *  Alan Gray (Late of this parish)
@@ -938,3 +938,132 @@ __device__ double tdpAtomicBlockAddDouble(double * partsum) {
   return partsum[0];
 }
 
+/*****************************************************************************
+ *
+ *  tdpGraphAddKernelNode
+ *
+ *****************************************************************************/
+
+__host__ tdpError_t tdpGraphAddKernelNode(tdpGraphNode_t * pGraphNode,
+					  tdpGraph_t graph,
+					  const tdpGraphNode_t * pDependencies,
+					  size_t numDependencies,
+					  const tdpKernelNodeParams * nParams) {
+  /* tdpSuccess, tdpErrorInvalidValue, tdpErrorInvalidDeviceFunction */
+  return tdpErrorInvalidValue;
+}
+
+/*****************************************************************************
+ *
+ *  tdpGraphAddMemcpyNode
+ *
+ *****************************************************************************/
+
+__host__ tdpError_t tdpGraphAddMemcpyNode(tdpGraphNode_t * pGraphNode,
+					  tdpGraph_t graph,
+					  const tdpGraphNode_t * pDependencies,
+					  size_t numDependencies,
+					  const tdpMemcpy3DParms * copyParams) {
+  /* tdpSuccess or tdpErrorInvalidValue */
+  return tdpErrorInvalidValue;
+}
+
+/*****************************************************************************
+ *
+ *  tdpGraphCreate
+ *
+ *****************************************************************************/
+
+__host__ tdpError_t tdpGraphCreate(tdpGraph_t * pGraph, unsigned int flags) {
+
+  /* tdpSuccess, tdpErrorInvalidValue, or tdpErrorMemoryAllocation */
+  assert(flags == 0);
+  return tdpErrorInvalidValue;
+}
+
+/*****************************************************************************
+ *
+ *  tdpGraphDestroy
+ *
+ *****************************************************************************/
+
+__host__ tdpError_t tdpGraphDestroy(tdpGraph_t graph) {
+
+  /* tdpSuccess or tdpErrorInvalidValue */
+  return tdpSuccess;
+}
+
+/*****************************************************************************
+ *
+ *  tdpGraphInstantiate
+ *
+ *****************************************************************************/
+
+__host__ tdpError_t tdpGraphInstantiate(tdpGraphExec_t * pGraphExec,
+					tdpGraph_t graph,
+					unsigned long long flags) {
+
+  /* tdpSuccess ot tdpErrorInvalidValue */
+  return tdpErrorInvalidValue;
+}
+
+/*****************************************************************************
+ *
+ *  tdpGraphLaunch
+ *
+ *****************************************************************************/
+
+__host__ tdpError_t tdpGraphLaunch(tdpGraphExec_t exec, tdpStream_t stream) {
+
+  /* tdpSuccess or tdpErrorInvalidValue */
+  return tdpErrorInvalidValue;
+}
+
+/*****************************************************************************
+ *
+ *  make_tdpExtent
+ *
+ *****************************************************************************/
+
+__host__ struct tdpExtent make_tdpExtent(size_t w, size_t h, size_t d) {
+
+  struct tdpExtent extent = {0};
+  extent.width  = w;
+  extent.height = h;
+  extent.depth  = d;
+
+  return extent;
+}
+
+/*****************************************************************************
+ *
+ *  make_tdpPos
+ *
+ *****************************************************************************/
+
+__host__ struct tdpPos make_tdpPos(size_t x, size_t y, size_t z) {
+
+  struct tdpPos pos = {0};
+
+  pos.x = x; pos.y = y; pos.z = z;
+
+  return pos;
+}
+
+/*****************************************************************************
+ *
+ *  make_tdpPitchedPtr
+ *
+ *****************************************************************************/
+
+__host__ struct tdpPitchedPtr make_tdpPitchedPtr(void * d, size_t p,
+						 size_t xsz, size_t ysz) {
+  struct tdpPitchedPtr ptr = {0};
+
+  ptr.ptr   = d;
+  ptr.pitch = p;
+  ptr.xsize = xsz;
+  ptr.ysize = ysz;
+
+  return ptr;
+}
