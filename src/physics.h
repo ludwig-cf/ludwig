@@ -6,7 +6,7 @@
  *  Edinburgh Parallel Computing Centre
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
- *  (c) 2013-2020 The University of Edinburgh
+ *  (c) 2013-2023 The University of Edinburgh
  *
  *****************************************************************************/
 
@@ -47,13 +47,13 @@ __host__ __device__ int physics_b0(physics_t * phys, double b0[3]);
 __host__ __device__ int physics_e0(physics_t * phys, double e0[3]);
 __host__ __device__ int physics_e0_frequency(physics_t * phys, double * freq);
 __host__ __device__ int physics_e0_flag(physics_t * phys);
-__host__ __device__ int physics_fbody(physics_t * phys, double f[3]);
-__host__ __device__ int physics_fgrav(physics_t * phys, double g[3]);
+__host__ __device__ int physics_fbody(const physics_t * phys, double f[3]);
+__host__ __device__ int physics_fgrav(const physics_t * phys, double g[3]);
 __host__ __device__ int physics_mobility(physics_t * phys, double * mobility);
 __host__ __device__ int physics_control_timestep(physics_t * phys);
 __host__ __device__ int physics_control_time(physics_t * phys, double * t);
 __host__ __device__ int physics_fpulse(physics_t * phys, double fpulse[3]);
-__host__ __device__ int physics_fpulse_frequency(physics_t * phys, 
+__host__ __device__ int physics_fpulse_frequency(physics_t * phys,
 						  double * fpule_frequency);
 __host__ __device__ int physics_grad_mu(physics_t * phys, double gm[3]);
 

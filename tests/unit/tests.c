@@ -49,7 +49,7 @@ __host__ int tests_create(int argc, char ** argv) {
   test_pe_suite();
   test_coords_suite();
   test_cs_limits_suite();
-  
+
   test_kernel_suite();
   test_gradient_d3q27_suite();
   test_angle_cosine_suite();
@@ -76,6 +76,7 @@ __host__ int tests_create(int argc, char ** argv) {
   test_halo_suite();
   test_hydro_options_suite();
   test_hydro_suite();
+  test_interaction_suite();
   test_io_aggregator_suite();
   test_io_element_suite();
   test_io_options_suite();

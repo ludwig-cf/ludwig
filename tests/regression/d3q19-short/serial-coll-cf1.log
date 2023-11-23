@@ -1,0 +1,554 @@
+Welcome to: Ludwig v0.21.0 (Serial version running on 1 process)
+Git commit: 8b9fd49022d9fa02bf109a58c17620c93a060d99
+
+Start time: Fri Nov 17 14:51:50 2023
+
+Compiler:
+  name:           Gnu 12.3.0
+  version-string: 12.3.0
+  options:        -O3 -g -DNDEBUG -DNSIMDVL=4 -fopenmp
+
+Target thread model: OpenMP.
+OpenMP threads: 1; maximum number of threads: 16.
+
+Read 20 user parameters from input
+
+No free energy selected
+
+System details
+--------------
+System size:    24 64 64
+Decomposition:  1 1 1
+Local domain:   24 64 64
+Periodic:       0 1 1
+Halo nhalo:     1
+Reorder:        true
+Initialised:    1
+
+System properties
+----------------
+Mean fluid density:           1.00000e+00
+Shear viscosity               1.66666e-01
+Bulk viscosity                1.66666e-01
+Temperature                   0.00000e+00
+External body force density   0.00000e+00  0.00000e+00  1.00000e-05
+External E-field amplitude    0.00000e+00  0.00000e+00  0.00000e+00
+External E-field frequency    0.00000e+00
+External magnetic field       0.00000e+00  0.00000e+00  0.00000e+00
+
+Lattice Boltzmann distributions
+-------------------------------
+Model:            d3q19  
+SIMD vector len:  4
+Number of sets:   1
+Halo type:        lb_halo_target (full halo)
+Input format:     binary
+Output format:    binary
+I/O grid:         1 1 1
+
+Lattice Boltzmann collision
+---------------------------
+Relaxation time scheme:   M10
+Hydrodynamic modes:       on
+Ghost modes:              on
+Isothermal fluctuations:  off
+Shear relaxation time:    9.99998e-01
+Bulk relaxation time:     9.99998e-01
+Ghost relaxation time:    1.00000e+00
+[Default] Random number seed: 7361237
+
+Hydrodynamics
+-------------
+Hydrodynamics: on
+
+Boundary walls
+--------------
+Boundary walls:                  X - -
+Boundary speed u_x (bottom):     0.0000000e+00
+Boundary speed u_x (top):        0.0000000e+00
+Boundary normal lubrication rc:  1.0000000e-01
+Wall boundary links allocated:   40960
+Memory (total, bytes):           655360
+Boundary shear initialise:       0
+
+Colloid information
+-------------------
+
+Colloid I/O settings
+--------------------
+Decomposition:                1  1  1
+Number of files:              1
+Input format:                 ascii
+Output format:                ascii
+Single file read flag:        0
+
+Requested one colloid via input:
+colloid_one_isfixedr          0
+colloid_one_isfixedv          0
+colloid_one_a0                7.2000000e+00
+colloid_one_ah                7.2000000e+00
+colloid_one_r                 1.2499999e+01  3.2499999e+01  3.2499999e+01
+
+Initialised 1 colloid
+
+Colloid cell list information
+-----------------------------
+Input radius maximum:         7.2000000e+00
+Final cell list:              3 8 8
+Final cell lengths:           8.0000000e+00  8.0000000e+00  8.0000000e+00
+Colloid density:              1.0000000e+00
+
+Initial conditions.
+
+Scalars - total mean variance min max
+[rho]       96736.00  1.00000000000  2.2204460e-16  1.00000000000  1.00000000000
+
+Momentum - x y z
+[total   ]  0.0000000e+00  0.0000000e+00  0.0000000e+00
+[fluid   ]  0.0000000e+00  0.0000000e+00  0.0000000e+00
+[colloids]  0.0000000e+00  0.0000000e+00  0.0000000e+00
+[walls   ]  0.0000000e+00  0.0000000e+00  0.0000000e+00
+
+Starting time step loop.
+
+Particle statistics:
+
+Colloid velocities - x y z
+[minimum ]  2.1757127e-14  2.0373699e-14  9.2663701e-04
+[maximum ]  2.1757127e-14  2.0373699e-14  9.2663701e-04
+
+Scalars - total mean variance min max
+[rho]       96736.00  1.00000000000  5.1327831e-12  0.99996009718  1.00003979333
+
+Momentum - x y z
+[total   ] -1.8230897e-12  2.1772802e-12  9.8304000e+01
+[fluid   ]  1.3454873e-11 -3.0716436e-11  7.1674163e+01
+[colloids]  3.5523317e-11  3.3236748e-11  1.4616706e+00
+[walls   ] -5.0801280e-11 -3.4303116e-13  2.5168166e+01
+
+Velocity - x y z
+[minimum ] -2.6192620e-05 -1.7856387e-05  1.2983138e-04
+[maximum ]  2.6192617e-05  1.7856386e-05  9.7711807e-04
+
+Completed cycle 100
+
+Particle statistics:
+
+Colloid velocities - x y z
+[minimum ] -2.4023391e-14 -2.9214439e-14  1.6431142e-03
+[maximum ] -2.4023391e-14 -2.9214439e-14  1.6431142e-03
+
+Scalars - total mean variance min max
+[rho]       96732.00  1.00000000000  2.7717384e-11  0.99990190065  1.00008645581
+
+Momentum - x y z
+[total   ] -2.2368337e-12  2.1001734e-12  1.9660800e+02
+[fluid   ] -1.1596847e-10  5.8098509e-11  1.2279169e+02
+[colloids] -3.4353508e-11 -4.3763900e-11  2.5785315e+00
+[walls   ]  1.4808514e-10 -1.2234436e-11  7.1237777e+01
+
+Velocity - x y z
+[minimum ] -6.4206686e-05 -4.7947575e-05  1.8624199e-04
+[maximum ]  6.4206677e-05  4.7947568e-05  1.7986681e-03
+
+Completed cycle 200
+
+Particle statistics:
+
+Colloid velocities - x y z
+[minimum ]  1.3466284e-14 -1.6534097e-14  2.1768472e-03
+[maximum ]  1.3466284e-14 -1.6534097e-14  2.1768472e-03
+
+Scalars - total mean variance min max
+[rho]       96736.00  1.00000000000  5.6348926e-11  0.99987605000  1.00012182901
+
+Momentum - x y z
+[total   ] -1.1689471e-12  2.1040264e-12  2.9491200e+02
+[fluid   ]  3.6275829e-10  4.1921813e-12  1.6092323e+02
+[colloids]  2.3940006e-11 -2.3423033e-11  3.4103290e+00
+[walls   ] -3.8786724e-10  2.1334878e-11  1.3057844e+02
+
+Velocity - x y z
+[minimum ] -8.8485916e-05 -6.7629246e-05  2.2626732e-04
+[maximum ]  8.8485901e-05  6.7629257e-05  2.4254445e-03
+
+Completed cycle 300
+
+Particle statistics:
+
+Colloid velocities - x y z
+[minimum ] -1.2835923e-14 -3.1299847e-14  2.5709184e-03
+[maximum ] -1.2835923e-14 -3.1299847e-14  2.5709184e-03
+
+Scalars - total mean variance min max
+[rho]       96732.00  1.00000000000  9.3819175e-11  0.99985153623  1.00014927490
+
+Momentum - x y z
+[total   ] -2.3477501e-13  2.0442149e-12  3.9321600e+02
+[fluid   ]  1.7594308e-10  7.6843875e-11  1.8947240e+02
+[colloids] -2.5210921e-11 -5.2096432e-11  4.0247491e+00
+[walls   ] -1.5096693e-10 -2.2703228e-11  1.9971885e+02
+
+Velocity - x y z
+[minimum ] -1.0800130e-04 -8.2038219e-05  2.5864104e-04
+[maximum ]  1.0800132e-04  8.2038204e-05  2.8959009e-03
+
+Completed cycle 400
+
+Particle statistics:
+
+Colloid velocities - x y z
+[minimum ]  5.9312572e-14  2.0834861e-14  2.8622334e-03
+[maximum ]  5.9312572e-14  2.0834861e-14  2.8622334e-03
+
+Scalars - total mean variance min max
+[rho]       96728.00  1.00000000000  1.0679790e-10  0.99982610346  1.00018363920
+
+Momentum - x y z
+[total   ] -1.6003886e-13  2.0831574e-12  4.9152000e+02
+[fluid   ] -5.9963993e-10 -1.5379698e-10  2.1083980e+02
+[colloids]  2.1775520e-10  1.6032609e-10  4.4975904e+00
+[walls   ]  3.8172469e-10 -4.4459575e-12  2.7618261e+02
+
+Velocity - x y z
+[minimum ] -1.2518191e-04 -1.0053968e-04  2.7959526e-04
+[maximum ]  1.2518194e-04  1.0053970e-04  3.2502908e-03
+
+Completed cycle 500
+
+Particle statistics:
+
+Colloid velocities - x y z
+[minimum ] -6.8448099e-14 -4.5480916e-14  3.0867833e-03
+[maximum ] -6.8448099e-14 -4.5480916e-14  3.0867833e-03
+
+Scalars - total mean variance min max
+[rho]       96732.00  1.00000000000  1.2892110e-10  0.99979061875  1.00018331943
+
+Momentum - x y z
+[total   ]  3.9279958e-13  2.0387982e-12  5.8982400e+02
+[fluid   ] -3.2494433e-10  1.7216120e-10  2.2685706e+02
+[colloids] -1.1597305e-10 -6.9544566e-11  4.8288098e+00
+[walls   ]  4.4131018e-10 -1.0057784e-10  3.5813813e+02
+
+Velocity - x y z
+[minimum ] -1.3905438e-04 -1.1109696e-04  2.9624694e-04
+[maximum ]  1.3905436e-04  1.1109694e-04  3.5188476e-03
+
+Completed cycle 600
+
+Particle statistics:
+
+Colloid velocities - x y z
+[minimum ]  1.3686977e-13  6.3491861e-14  3.2714772e-03
+[maximum ]  1.3686977e-13  6.3491861e-14  3.2714772e-03
+
+Scalars - total mean variance min max
+[rho]       96708.00  1.00000000000  1.6632562e-10  0.99979200648  1.00020686433
+
+Momentum - x y z
+[total   ]  3.7422004e-13  2.1475083e-12  6.8812800e+02
+[fluid   ] -6.0691922e-10  5.1827948e-11  2.3881862e+02
+[colloids]  1.8289580e-10  6.9822218e-11  5.1149513e+00
+[walls   ]  4.2439764e-10 -1.1950266e-10  4.4419443e+02
+
+Velocity - x y z
+[minimum ] -1.4747586e-04 -1.1854493e-04  3.0626711e-04
+[maximum ]  1.4747589e-04  1.1854495e-04  3.7207126e-03
+
+Completed cycle 700
+
+Particle statistics:
+
+Colloid velocities - x y z
+[minimum ] -1.3674865e-14 -6.8391372e-14  3.3771244e-03
+[maximum ] -1.3674865e-14 -6.8391372e-14  3.3771244e-03
+
+Scalars - total mean variance min max
+[rho]       96732.00  1.00000000000  1.6189694e-10  0.99979422958  1.00023378922
+
+Momentum - x y z
+[total   ]  2.1121610e-12  2.0609269e-12  7.8643200e+02
+[fluid   ]  1.3206077e-10  2.1431875e-10  2.4782174e+02
+[colloids] -2.9093037e-11 -1.1231592e-10  5.2809682e+00
+[walls   ] -1.0085557e-10 -9.9941902e-11  5.3332930e+02
+
+Velocity - x y z
+[minimum ] -1.5646252e-04 -1.2438733e-04  3.1855342e-04
+[maximum ]  1.5646255e-04  1.2438736e-04  3.8738221e-03
+
+Completed cycle 800
+
+Particle statistics:
+
+Colloid velocities - x y z
+[minimum ]  3.7514835e-14 -5.3401535e-14  3.4673962e-03
+[maximum ]  3.7514835e-14 -5.3401535e-14  3.4673962e-03
+
+Scalars - total mean variance min max
+[rho]       96732.00  1.00000000000  1.7281909e-10  0.99976281446  1.00020852753
+
+Momentum - x y z
+[total   ]  3.1216478e-12  2.0570834e-12  8.8473600e+02
+[fluid   ]  5.7743914e-10  2.9380271e-10  2.5454384e+02
+[colloids]  3.6995048e-11 -9.0846917e-11  5.4222715e+00
+[walls   ] -6.1131254e-10 -2.0089871e-10  6.2476989e+02
+
+Velocity - x y z
+[minimum ] -1.5910959e-04 -1.2786624e-04  3.2572777e-04
+[maximum ]  1.5910956e-04  1.2786622e-04  3.9851635e-03
+
+Completed cycle 900
+
+Particle statistics:
+
+Colloid velocities - x y z
+[minimum ]  8.2652730e-14 -1.0538237e-16  3.5507437e-03
+[maximum ]  8.2652730e-14 -1.0538237e-16  3.5507437e-03
+
+Scalars - total mean variance min max
+[rho]       96708.00  1.00000000000  2.0010638e-10  0.99977680842  1.00022107955
+
+Momentum - x y z
+[total   ]  2.6990773e-12  1.8969543e-12  9.8304000e+02
+[fluid   ] -4.5268003e-10  2.4078246e-10  2.5955930e+02
+[colloids]  1.2389640e-10 -5.9541128e-12  5.5514858e+00
+[walls   ]  3.3148270e-10 -2.3293140e-10  7.1792921e+02
+
+Velocity - x y z
+[minimum ] -1.5725436e-04 -1.2944625e-04  3.2661582e-04
+[maximum ]  1.5725433e-04  1.2944627e-04  4.0688949e-03
+
+Completed cycle 1000
+
+Particle statistics:
+
+Colloid velocities - x y z
+[minimum ]  5.7242248e-14  5.1021140e-15  3.5791606e-03
+[maximum ]  5.7242248e-14  5.1021140e-15  3.5791606e-03
+
+Scalars - total mean variance min max
+[rho]       96736.00  1.00000000000  1.8649948e-10  0.99978408868  1.00024236505
+
+Momentum - x y z
+[total   ]  2.4098208e-12  1.7528502e-12  1.0813440e+03
+[fluid   ] -1.0327722e-09  1.8912258e-10  2.6336391e+02
+[colloids]  9.6886209e-11  1.2159217e-11  5.5974781e+00
+[walls   ]  9.3829583e-10 -1.9952895e-10  8.1238261e+02
+
+Velocity - x y z
+[minimum ] -1.6175326e-04 -1.3292441e-04  3.3362924e-04
+[maximum ]  1.6175329e-04  1.3292444e-04  4.1349105e-03
+
+Completed cycle 1100
+
+Particle statistics:
+
+Colloid velocities - x y z
+[minimum ]  2.3831546e-13  2.2382266e-13  3.6369528e-03
+[maximum ]  2.3831546e-13  2.2382266e-13  3.6369528e-03
+
+Scalars - total mean variance min max
+[rho]       96736.00  1.00000000000  1.8403834e-10  0.99977379748  1.00021467736
+
+Momentum - x y z
+[total   ]  2.0805712e-12  1.7599622e-12  1.1796480e+03
+[fluid   ] -1.4235953e-09 -2.6502523e-10  2.6618000e+02
+[colloids]  5.7054434e-10  5.6573514e-10  5.6607621e+00
+[walls   ]  8.5513154e-10 -2.9894995e-10  9.0780724e+02
+
+Velocity - x y z
+[minimum ] -1.6430138e-04 -1.3078379e-04  3.3779590e-04
+[maximum ]  1.6430135e-04  1.3078376e-04  4.1806373e-03
+
+Completed cycle 1200
+
+Particle statistics:
+
+Colloid velocities - x y z
+[minimum ]  9.3445482e-14  1.3112542e-14  3.6523047e-03
+[maximum ]  9.3445482e-14  1.3112542e-14  3.6523047e-03
+
+Scalars - total mean variance min max
+[rho]       96732.00  1.00000000000  1.7973045e-10  0.99977980588  1.00022445947
+
+Momentum - x y z
+[total   ]  1.9506102e-12  1.6457904e-12  1.2779520e+03
+[fluid   ] -1.1369291e-09  3.2407728e-10  2.6829238e+02
+[colloids]  1.2002777e-10 -5.3440038e-12  5.7099044e+00
+[walls   ]  1.0188519e-09 -3.1708748e-10  1.0039497e+03
+
+Velocity - x y z
+[minimum ] -1.6051027e-04 -1.2596751e-04  3.4096668e-04
+[maximum ]  1.6051030e-04  1.2596754e-04  4.2148148e-03
+
+Completed cycle 1300
+
+Particle statistics:
+
+Colloid velocities - x y z
+[minimum ] -6.3427438e-14 -1.4043422e-13  3.6712744e-03
+[maximum ] -6.3427438e-14 -1.4043422e-13  3.6712744e-03
+
+Scalars - total mean variance min max
+[rho]       96736.00  1.00000000000  1.8752999e-10  0.99977472540  1.00022377124
+
+Momentum - x y z
+[total   ]  2.0969925e-12  1.5844621e-12  1.3762560e+03
+[fluid   ] -6.1092354e-10  5.3242285e-10  2.6988012e+02
+[colloids] -1.2356781e-10 -2.3583815e-10  5.7403919e+00
+[walls   ]  7.3658835e-10 -2.9500023e-10  1.1006355e+03
+
+Velocity - x y z
+[minimum ] -1.5766300e-04 -1.3437265e-04  3.4154964e-04
+[maximum ]  1.5766296e-04  1.3437267e-04  4.2398635e-03
+
+Completed cycle 1400
+
+Particle statistics:
+
+Colloid velocities - x y z
+[minimum ]  8.0884130e-14 -5.5920818e-15  3.6728439e-03
+[maximum ]  8.0884130e-14 -5.5920818e-15  3.6728439e-03
+
+Scalars - total mean variance min max
+[rho]       96744.00  1.00000000000  1.8746826e-10  0.99978097592  1.00021754740
+
+Momentum - x y z
+[total   ]  1.7408513e-12  1.5326089e-12  1.4745600e+03
+[fluid   ] -4.1316504e-10  2.2736506e-10  2.7107044e+02
+[colloids]  2.3656155e-10  1.1325018e-10  5.7571906e+00
+[walls   ]  1.7834434e-10 -3.3908264e-10  1.1977324e+03
+
+Velocity - x y z
+[minimum ] -1.6240874e-04 -1.3222280e-04  3.4323099e-04
+[maximum ]  1.6240871e-04  1.3222278e-04  4.2612055e-03
+
+Completed cycle 1500
+
+Particle statistics:
+
+Colloid velocities - x y z
+[minimum ]  2.4672041e-14 -6.2706323e-14  3.6987039e-03
+[maximum ]  2.4672041e-14 -6.2706323e-14  3.6987039e-03
+
+Scalars - total mean variance min max
+[rho]       96740.00  1.00000000000  2.2301094e-10  0.99977347815  1.00023775128
+
+Momentum - x y z
+[total   ]  2.3441069e-12  1.4938704e-12  1.5728640e+03
+[fluid   ]  2.6977870e-10  4.4388831e-10  2.7195352e+02
+[colloids]  4.0542270e-11 -1.0416607e-10  5.7829027e+00
+[walls   ] -3.0797687e-10 -3.3822838e-10  1.2951276e+03
+
+Velocity - x y z
+[minimum ] -1.6540560e-04 -1.3162429e-04  3.4445669e-04
+[maximum ]  1.6540563e-04  1.3162432e-04  4.2750785e-03
+
+Completed cycle 1600
+
+Particle statistics:
+
+Colloid velocities - x y z
+[minimum ]  1.4618388e-13 -6.9530540e-15  3.7097796e-03
+[maximum ]  1.4618388e-13 -6.9530540e-15  3.7097796e-03
+
+Scalars - total mean variance min max
+[rho]       96736.00  1.00000000000  2.0364532e-10  0.99976977865  1.00022724962
+
+Momentum - x y z
+[total   ]  2.7913514e-12  1.5394569e-12  1.6711680e+03
+[fluid   ]  7.3407861e-10  3.3532020e-10  2.7261558e+02
+[colloids]  2.6023438e-10  1.1504045e-11  5.8001715e+00
+[walls   ] -9.9152164e-10 -3.4528479e-10  1.3927522e+03
+
+Velocity - x y z
+[minimum ] -1.5952701e-04 -1.3668378e-04  3.4377780e-04
+[maximum ]  1.5952697e-04  1.3668375e-04  4.2867656e-03
+
+Completed cycle 1700
+
+Particle statistics:
+
+Colloid velocities - x y z
+[minimum ] -5.2183436e-10 -2.2843800e-09  3.7132194e-03
+[maximum ] -5.2183436e-10 -2.2843800e-09  3.7132194e-03
+
+Scalars - total mean variance min max
+[rho]       96724.00  1.00000000000  2.0032642e-10  0.99975524383  1.00026052954
+
+Momentum - x y z
+[total   ]  2.9295980e-12  1.5389861e-12  1.7694720e+03
+[fluid   ]  4.1625238e-06  2.8054929e-06  2.7307256e+02
+[colloids] -8.7020418e-07 -3.5916727e-06  5.8517194e+00
+[walls   ] -3.2923167e-06  7.8618140e-07  1.4905477e+03
+
+Velocity - x y z
+[minimum ] -1.6201697e-04 -1.3063637e-04  3.4197646e-04
+[maximum ]  1.6196165e-04  1.3062000e-04  4.2965517e-03
+
+Completed cycle 1800
+
+Particle statistics:
+
+Colloid velocities - x y z
+[minimum ] -8.4555930e-11 -3.3300647e-10  3.7269506e-03
+[maximum ] -8.4555930e-11 -3.3300647e-10  3.7269506e-03
+
+Scalars - total mean variance min max
+[rho]       96732.00  1.00000000000  2.0493407e-10  0.99977231735  1.00026462679
+
+Momentum - x y z
+[total   ]  3.2294088e-12  1.5456646e-12  1.8677760e+03
+[fluid   ]  7.1469282e-07 -1.6681119e-06  2.7348039e+02
+[colloids] -1.9752821e-07 -5.7382689e-07  5.8264177e+00
+[walls   ] -5.1716137e-07  2.2419404e-06  1.5884692e+03
+
+Velocity - x y z
+[minimum ] -1.7524447e-04 -1.3890853e-04  3.4435782e-04
+[maximum ]  1.7524187e-04  1.3890646e-04  4.3043724e-03
+
+Completed cycle 1900
+
+Particle statistics:
+
+Colloid velocities - x y z
+[minimum ] -2.5577125e-11 -1.2332537e-10  3.7269850e-03
+[maximum ] -2.5577125e-11 -1.2332537e-10  3.7269850e-03
+
+Scalars - total mean variance min max
+[rho]       96732.00  1.00000000000  2.0420377e-10  0.99974293634  1.00022504296
+
+Momentum - x y z
+[total   ]  2.4347115e-12  1.4597108e-12  1.9660800e+03
+[fluid   ] -9.1891357e-07 -1.5317747e-06  2.7376205e+02
+[colloids] -7.4279784e-08 -2.0761142e-07  5.8269816e+00
+[walls   ]  9.9319579e-07  1.7393876e-06  1.6864910e+03
+
+Velocity - x y z
+[minimum ] -1.7263786e-04 -1.3935934e-04  3.4509949e-04
+[maximum ]  1.7263512e-04  1.3936071e-04  4.3094000e-03
+
+Completed cycle 2000
+
+Timer resolution: 1e-06 second
+
+Timer statistics
+             Section:       tmin       tmax      total
+               Total:    101.727    101.727    101.727 101.727328 (1 call)
+      Time step loop:      0.050      0.094    101.598   0.050799 (2000 calls)
+         Propagation:      0.007      0.009     15.111   0.007555 (2000 calls)
+    Propagtn (krnl) :      0.007      0.009     15.105   0.007553 (2000 calls)
+           Collision:      0.033      0.035     66.610   0.033305 (2000 calls)
+   Collision (krnl) :      0.033      0.035     66.600   0.033300 (2000 calls)
+       Lattice halos:      0.001      0.004      4.806   0.001201 (4000 calls)
+       phi gradients:      0.000      0.000      0.000   0.000000 (2000 calls)
+              Forces:      0.000      0.000      0.025   0.000013 (2000 calls)
+             Rebuild:      0.002      0.003      4.069   0.002035 (2000 calls)
+                 BBL:      0.005      0.005      9.224   0.004612 (2000 calls)
+      Particle halos:      0.000      0.000      0.027   0.000014 (2000 calls)
+   Force calculation:      0.000      0.000      0.001   0.000000 (2000 calls)
+          phi update:      0.000      0.000      0.000   0.000000 (2000 calls)
+Diagnostics / output:      0.000      0.043      0.858   0.000429 (2000 calls)
+End time: Fri Nov 17 14:53:32 2023
+Ludwig finished normally.
