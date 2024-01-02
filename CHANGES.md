@@ -1,6 +1,16 @@
 
 ### Changes
 
+version 0.21.0
+
+- There is no longer an option available for field halo swaps; the
+  scheme has been consolidated is always the same (for CPU). GPU
+  run time configuration is pending. Halo information is still
+  available https://ludwig.epcc.ed.ac.uk/inputs/parallel.html
+- If you use a 2-dimensional system (L_z = 1) with an order parameter, you
+  must use a 2d gradient calculation. This is related to the (non-) treatment
+  of halo swaps in the third dimension for fields.
+
 version 0.20.0
 
 - Added coverage via https://about.codecov.io/
