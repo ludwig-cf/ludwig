@@ -94,64 +94,6 @@ void util_q4_from_omega(const double omega[3], double dt, double q[4]) {
 
 /*****************************************************************************
  *
- *  Calculate the moment of inerita tensor from the specified quaternion
- *
- *  The moment of interia tensor in the lab frame is moment[3].
- *  This must be rotated by the quaternion.
- *
- *  See Zhao and Wachem Acta Mech 224, 2331--2358 (2013) [different!]
- *  The full operation is Eq 22.
- *
- *  The result mI_ab is the full inertia tensor in the rotated frame.
- *
- ****************************************************************************/
-__host__ __device__ void inertia_tensor_quaternion(const double q[4],
-						   const double moment[3], double mI[3][3]) {
-
-  /*Construting the moment of inertia tensor in the principal coordinates*/
-  double mIP[3][3];
-  for(int i = 0; i < 3; i++) {
-    for(int j = 0; j < 3; j++) {
-      mIP[i][j] = 0.0;
-    }
-  }
-  /* Set the diagonal elements */
-  for (int i = 0; i < 3; i++) {
-    mIP[i][i] = moment[i];
-  }
-  /* Rotating it to the body frame */
-  double Mi[3],Mdi[3],Mdd[3][3];
-  /*First column transform and fill as first row*/
-  for(int i = 0; i < 3; i++) {Mi[i] = mIP[i][0];}
-  util_q4_rotate_vector(q,Mi,Mdi);
-  for(int i = 0; i < 3; i++) {Mdd[0][i] = Mdi[i];}
-  /*Second column transform and fill as second row*/
-  for(int i = 0; i < 3; i++) {Mi[i] = mIP[i][1];}
-  util_q4_rotate_vector(q,Mi,Mdi);
-  for(int i = 0; i < 3; i++) {Mdd[1][i] = Mdi[i];}
-  /*Third column transform and fill as third row*/
-  for(int i = 0; i < 3; i++) {Mi[i] = mIP[i][2];}
-  util_q4_rotate_vector(q,Mi,Mdi);
-  for(int i = 0; i < 3; i++) {Mdd[2][i] = Mdi[i];}
-
-  /*Repeat the entire procedure*/
-  /*First column transform and fill as first row*/
-  for(int i = 0; i < 3; i++) {Mi[i] = Mdd[i][0];}
-  util_q4_rotate_vector(q,Mi,Mdi);
-  for(int i = 0; i < 3; i++) {mI[0][i] = Mdi[i];}
-  /*Second column transform and fill as second row*/
-  for(int i = 0; i < 3; i++) {Mi[i] = Mdd[i][1];}
-  util_q4_rotate_vector(q,Mi,Mdi);
-  for(int i = 0; i < 3; i++) {mI[1][i] = Mdi[i];}
-  /*Third column transform and fill as third row*/
-  for(int i = 0; i < 3; i++) {Mi[i] = Mdd[i][2];}
-  util_q4_rotate_vector(q,Mi,Mdi);
-  for(int i = 0; i < 3; i++) {mI[2][i] = Mdi[i];}
-  return;
-}
-
-/*****************************************************************************
- *
  *  util_q4_rotate_vector
  *
  *  Rotate vector a[3] by the quaternion to give vector b.
@@ -357,8 +299,11 @@ int util_q4_is_inside_ellipsoid(const double q[4], const double elabc[3],
  *  The (diagonal) moment of interia tensor in the lab frame is moment[3].
  *  This must be rotated by the quaternion.
  *
- *  See Zhao and Wachem Acta Mech 224, 2331--2358 (2013)
- *  The full operation is Eq 22.
+ *  Zhao and Wachem Acta Mech 224, 2331--2358 (2013)
+ *  describe how to rotate a general tensor by a quaternion.
+ *  The full operation is described by Eqns 22 - 29.
+ *
+ *  This is the special case where the initial tensor is diagonal.
  *
  *  The result mI is the full inertia tensor in the rotated frame.
  *
@@ -369,7 +314,7 @@ void util_q4_inertia_tensor(const double q[4], const double moment[3],
 
   double Mdd[3][3] = {0};
 
-  /* First half ... */
+  /* Construct the transpose of the rotated column vectors ... */
 
   for (int j = 0; j < 3; j++) {
     double Mi[3]  = {0};
@@ -381,7 +326,7 @@ void util_q4_inertia_tensor(const double q[4], const double moment[3],
     }
   }
 
-  /* Repeat the entire procedure for the final mI */
+  /* Repeat the entire procedure rotating the rows for the final mI */
 
   for (int j = 0; j < 3; j++) {
     double Mi[3]  = {0};

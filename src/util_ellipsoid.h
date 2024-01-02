@@ -5,7 +5,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2023 The University of Edinburgh
+ *  (c) 2023-2024 The University of Edinburgh
  *
  *  Contributing authors:
  *  Sumesh Thampi introduced ellipsoids.
@@ -44,7 +44,5 @@ int util_ellipsoid_prolate_settling_velocity(double a, double b, double eta,
 void matrix_product(const double a[3][3], const double b[3][3],
 		    double result[3][3]);
 void matrix_transpose(const double a[3][3], double result[3][3]);
-
-__host__ __device__ void inertia_tensor_quaternion(const double q[4], const double a[3], double      b[3][3]);
 
 #endif

@@ -7,7 +7,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2010-2023 The University of Edinburgh
+ *  (c) 2010-2024 The University of Edinburgh
  *
  *  Contributing Authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -1190,7 +1190,8 @@ void bbl_ladd_ellipsoid(bbl_t * bbl, colloid_t * pc, wall_t * wall,
   mI_P[0] = (1.0/5.0)*mass*(pow(elabc[1], 2)+pow(elabc[2], 2));
   mI_P[1] = (1.0/5.0)*mass*(pow(elabc[0], 2)+pow(elabc[2], 2));
   mI_P[2] = (1.0/5.0)*mass*(pow(elabc[0], 2)+pow(elabc[1], 2));
-  inertia_tensor_quaternion(pc->s.quat, mI_P, mI);
+
+  util_q4_inertia_tensor(pc->s.quat, mI_P, mI);
 
   wall_lubr_sphere(wall, pc->s.ah, pc->s.r, dwall);
 
@@ -1239,7 +1240,9 @@ void bbl_ladd_ellipsoid(bbl_t * bbl, colloid_t * pc, wall_t * wall,
   /* Add unsteady moment of inertia terms */
 
   if (bbl->ellipsoid_didt == BBL_ELLIPSOID_UPDATE_FD) {
-    inertia_tensor_quaternion(pc->s.quatold, mI_P, mIold);
+
+    util_q4_inertia_tensor(pc->s.quatold, mI_P, mIold);
+
     for (int i = 0; i < 3; i++) {
       for(int j = 0; j < 3; j++) {
         dIijdt[i][j] = (mI[i][j] - mIold[i][j]);
