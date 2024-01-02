@@ -16,6 +16,7 @@
  *****************************************************************************/
 
 #include <assert.h>
+#include <float.h>
 #include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -143,7 +144,19 @@ __host__ int colloids_info_recreate(int newcell[3], colloids_info_t ** pinfo) {
 
   for ( ; pc; pc = pc->nextlocal) {
     colloids_info_add_local(newinfo, pc->s.index, pc->s.r, &pcnew);
-    assert(pcnew);
+    if (pcnew == NULL) {
+      /* We have dropped a colloid, probably at the new cell list boundary;
+       * try adjusting the position by a small amount... */
+      pc->s.r[X] += DBL_EPSILON*pc->s.r[X];
+      pc->s.r[Y] += DBL_EPSILON*pc->s.r[Y];
+      pc->s.r[Z] += DBL_EPSILON*pc->s.r[Z];
+      colloids_info_add_local(newinfo, pc->s.index, pc->s.r, &pcnew);
+    }
+    /* If we've still failed, then we need to stop under control */
+    if (pcnew == NULL) {
+      colloid_state_write_ascii(&pc->s, stdout);
+      pe_fatal(oldinfo->pe, "Colloid position causes cell list failure\n");
+    }
     pcnew->s = pc->s;
   }
 

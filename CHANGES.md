@@ -2,6 +2,12 @@
 ### Changes
 
 version 0.21.0
+
+- Issue 270: a colloid with an initial position placed exactly at a sub-domain
+             boundary can fail to be attached to the cell list in some
+	     circumstances causing a crash. This has been fixed by adding
+	     a small position adjustment, or if this doesn't work, failing
+	     with a message.
 - Issue 268: if using wetting information read from porous media files,
              the form of the key words in the input file has been
 	     adjusted. See https://ludwig.epcc.ed.ac.uk/inputs/porous.html
