@@ -14,7 +14,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2012-2023 The University of Edinburgh
+ *  (c) 2012-2024 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -183,7 +183,6 @@ __host__ int field_free(field_t * obj) {
   }
 
   if (obj->data) free(obj->data);
-  if (obj->halo) halo_swap_free(obj->halo);
   if (obj->info) io_info_free(obj->info);
 
   field_halo_free(&obj->h);
@@ -262,13 +261,6 @@ __host__ int field_init(field_t * obj, int nhcomm, lees_edw_t * le) {
 	      tdpMemcpyHostToDevice);
     field_memcpy(obj, tdpMemcpyHostToDevice);
   }
-
-  /* MPI datatypes for halo */
-
-  halo_swap_create_r1(obj->pe, obj->cs, nhcomm, nsites, obj->nf, &obj->halo);
-  assert(obj->halo);
-
-  halo_swap_handlers_set(obj->halo, halo_swap_pack_rank1, halo_swap_unpack_rank1);
 
   return 0;
 }
@@ -454,22 +446,7 @@ __host__ int field_data_touch(field_t * field) {
 
 __host__ int field_halo(field_t * obj) {
 
-  int nlocal[3];
-  assert(obj);
-
-  cs_nlocal(obj->cs, nlocal);
-
-  if (nlocal[Z] < obj->nhcomm) {
-    /* This constraint means can't use target method;
-     * this also requires a copy if the address spaces are distinct. */
-    field_memcpy(obj, tdpMemcpyDeviceToHost);
-    field_halo_swap(obj, FIELD_HALO_HOST);
-    field_memcpy(obj, tdpMemcpyHostToDevice);
-  }
-  else {
-    /* Default to ... */
-    field_halo_swap(obj, obj->opts.haloscheme);
-  }
+  field_halo_swap(obj, obj->opts.haloscheme);
 
   return 0;
 }
@@ -484,17 +461,13 @@ __host__ int field_halo_swap(field_t * obj, field_halo_enum_t flag) {
 
   assert(obj);
 
+  /* Everything is "OPENMP", a name which is historical ... */
+  /* There may be a need for host (only) halo swaps
+   * if the target (GPU) is active. But not at the moment.  */
+
   switch (flag) {
   case FIELD_HALO_HOST:
-    halo_swap_host_rank1(obj->halo, obj->data, MPI_DOUBLE);
-    break;
   case FIELD_HALO_TARGET:
-    /*
-    tdpMemcpy(&data, &obj->target->data, sizeof(double *),
-	      tdpMemcpyDeviceToHost);
-    halo_swap_packed(obj->halo, data);
-    break;
-    */
   case FIELD_HALO_OPENMP:
     field_halo_post(obj, &obj->h);
     field_halo_wait(obj, &obj->h);

@@ -5,7 +5,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2012-2023 The University of Edinburgh
+ *  (c) 2012-2024 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -25,8 +25,8 @@
 #include "io_impl.h"
 #include "io_event.h"
 #include "io_harness.h"       /* To be removed in favour of refactored io */
+#include "kernel.h"
 #include "leesedwards.h"
-#include "halo_swap.h"
 #include "field_options.h"
 
 /* Halo */
@@ -84,7 +84,6 @@ struct field_s {
 
   io_info_t * info;             /* I/O Handler (to be removed) */
 
-  halo_swap_t * halo;           /* Halo swap driver object */
   field_halo_t h;               /* Host halo */
   field_options_t opts;         /* Options */
 
