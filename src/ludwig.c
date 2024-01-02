@@ -442,25 +442,6 @@ static int ludwig_rt(ludwig_t * ludwig) {
  *****************************************************************************/
 
 void ludwig_run(const char * inputfile) {
-#ifdef __NVCC__
-  {
-    int local_rank = -1;
-    {
-        int rank;
-        MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-        MPI_Comm local_comm;
-        MPI_Comm_split_type(MPI_COMM_WORLD, MPI_COMM_TYPE_SHARED, rank, MPI_INFO_NULL, &local_comm);
-        MPI_Comm_rank(local_comm, &local_rank);
-        MPI_Comm_free(&local_comm);
-    }
-    /* Pending a more formal approach */
-    int nd = 0; /* GPU devices per node */
-    int id = 0; /* Assume MPI ranks per node == nd */
-    cudaGetDeviceCount(&nd);
-    id = local_rank % nd;
-    cudaSetDevice(id);
-  }
-#endif
 
   char    filename[FILENAME_MAX];
   char    subdirectory[FILENAME_MAX/2];
@@ -506,7 +487,7 @@ void ludwig_run(const char * inputfile) {
     if (ndevice > 0 && ndevice < node_size) {
       pe_info(ludwig->pe,  "MPI tasks per node: %d\n", node_size);
       pe_info(ludwig->pe,  "GPUs per node:      %d\n", ndevice);
-      pe_fatal(ludwig->pe, "Expecting one GPU per MPI task\n");
+      pe_fatal(ludwig->pe, "Expecting at least one GPU per MPI task\n");
     }
 
     tdpAssert(tdpSetDevice(node_rank));
