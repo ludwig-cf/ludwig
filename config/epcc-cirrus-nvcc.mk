@@ -2,35 +2,35 @@
 #
 #  nvcc build
 #
-#  NVHPC_VERSION=22.2
-#  module load nvidia/nvhpc/$NVHPC_VERSION
-#  module load intel-20.4/compilers
-#  module load intel-20.4/mpi
-#  module load mpt
+#  There are a number of ways forward here... see futher comments below
 #
-#  Host   As epcc-cirrus-intel.mk
-#  Device NVIDIA Tesla V100-SXM2
+#  E.g., serial with stub MPI
+#  module load nvidia/nvhpc-nompi/22.11
+#
+#  E.g., parallel using NVHPC with MPI ...
+#  module load nvidia/nvhpc/22.11
 #
 ###############################################################################
 
-BUILD   = parallel
-MODEL   = -D_D3Q19_
+BUILD  = parallel
+MODEL  = -D_D3Q19_
 
 CC     = nvcc
-CFLAGS = -ccbin=icpc -DADDR_SOA -DNDEBUG -arch=sm_70 -x cu -dc -Xcompiler -fast -Xcompiler -qopenmp
+CFLAGS = -g -DADDR_SOA -O2 -arch=sm_70 -x cu -dc
+
+# PTX assembler extra information:  -Xptxas -v
+# Alternative compiler, e.g., Intel: -ccbin=icpc -Xcompiler -fast
 
 AR = ar
 ARFLAGS = -cr
-LDFLAGS= -ccbin=icpc -arch=sm_70 -liomp5
+LDFLAGS = -arch=sm_70
 
-# MPI_HOME     = /lustre/sw/intel/compilers_and_libraries_2019.0.117/linux/mpi/intel64
-# MPI_HOME     = /scratch/sw/intel/compilers_and_libraries_2019.0.117/linux/mpi/intel64
-# MPI_HOME	 = /opt/hpe/hpc/mpt/mpt-2.25
-MPI_HOME 	 = #/scratch/sw/intel/compilers_and_libraries_2020.4.304/linux/mpi/intel64
-MPI_INC_PATH = #-I$(MPI_HOME)/include
-MPI_LIB_PATH = -lmpi #-L$(MPI_HOME)/lib -lmpi
+# nvhpc (mpicc is present but drives nvc not nvcc) so use nvcc still ... but
+MPI_HOME     = ${NVHPC_ROOT}/comm_libs/mpi
+MPI_INC_PATH = -I$(MPI_HOME)/include
+MPI_LIB_PATH = -L$(MPI_HOME)/lib -lmpi
 
+# NVHPC bundled MPI must use mpirun supplied ...
 LAUNCH_SERIAL_CMD =
 LAUNCH_MPIRUN_CMD = mpirun
 MPIRUN_NTASK_FLAG = -np
-
