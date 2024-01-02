@@ -7,7 +7,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2010-2022 The University of Edinburgh
+ *  (c) 2010-2024 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -473,7 +473,7 @@ int colloid_io_read(colloid_io_t * cio, const char * filename) {
     MPI_Allreduce(&ntype_updates, &ntype, 1, MPI_INT, MPI_SUM, cio->comm);
     if (ntype > 0) {
       pe_info(cio->pe, "One or more colloids were updated as this looks\n");
-      pe_info(cio->pe, "like an old formet input file. See note at\n");
+      pe_info(cio->pe, "like an old format input file. See note at\n");
       pe_info(cio->pe, "https://ludwig.epcc.ed.ac.uk/outputs/colloid.html\n");
     }
   }
