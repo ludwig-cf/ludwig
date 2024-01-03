@@ -5,7 +5,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2018-2022 The University of Edinburgh
+ *  (c) 2018-2024 The University of Edinburgh
  *
  *  Contributing authors:
  *  Alan Gray (alang@epcc.ed.ac.uk)
@@ -93,7 +93,7 @@ enum tdpError {
 #define tdpMemAttachHost          0x02
 #define tdpMemAttachSingle        0x04
 
-/* Device memory qualifiers / executation space qualifiers */
+/* Device memory qualifiers / execution space qualifiers */
 
 #define __host__
 #define __global__
@@ -142,7 +142,7 @@ struct tdp_double3_s {
 };
 
 #ifdef _OPENMP
-  /* These names are reserved and must be ... */ 
+  /* These names are reserved and must be ... */
   #pragma omp threadprivate(gridDim, blockDim, threadIdx, blockIdx)
 #endif
 
@@ -156,6 +156,79 @@ struct tdpDeviceProp {
   char name[256];
 };
 
+/* Graph API and related ... */
+
+typedef void * tdpArray_t;     /* An general type */
+
+typedef int * tdpGraph_t;      /* an opaque type (actually CUgraph_st) */
+typedef int * tdpGraphExec_t;  /* ditto (actually CUgraphExec_st) */
+typedef int * tdpGraphNode_t;  /* ditto (actually CUgraphNode_st) */
+
+typedef struct tdpKernelNodeParams_s {
+  dim3 blockDim;
+  void * extra;
+  void * func;
+  dim3 gridDim;
+  void ** kernelParams;
+  unsigned int sharedMemBytes;
+} tdpKernelNodeParams;
+
+struct tdpExtent {
+  size_t depth;
+  size_t height;
+  size_t width;
+};
+
+struct tdpPos {
+  size_t x;
+  size_t y;
+  size_t z;
+};
+
+struct tdpPitchedPtr {
+  size_t pitch;
+  void * ptr;
+  size_t xsize;
+  size_t ysize;
+};
+
+typedef struct tdpMemcpy3DParms_s {
+  tdpArray_t           dstArray;
+  struct tdpPos        dstPos;
+  struct tdpPitchedPtr dstPtr;
+  struct tdpExtent     extent;
+  tdpMemcpyKind        kind;
+  tdpArray_t           srcArray;
+  struct tdpPos        srcPos;
+  struct tdpPitchedPtr srcPtr;
+} tdpMemcpy3DParms;
+
+__host__ tdpError_t tdpGraphAddKernelNode(tdpGraphNode_t * pGraphNode,
+					  tdpGraph_t graph,
+					  const tdpGraphNode_t * pDependencies,
+					  size_t numDependencies,
+					  const tdpKernelNodeParams * nParams);
+__host__ tdpError_t tdpGraphAddMemcpyNode(tdpGraphNode_t * pGraphNode,
+					  tdpGraph_t graph,
+					  const tdpGraphNode_t * pDependencies,
+					  size_t numDependencies,
+					  const tdpMemcpy3DParms * copyParams);
+__host__ tdpError_t tdpGraphCreate(tdpGraph_t * pGraph, unsigned int flags);
+__host__ tdpError_t tdpGraphDestroy(tdpGraph_t graph);
+__host__ tdpError_t tdpGraphInstantiate(tdpGraphExec_t * pGraphExec,
+					tdpGraph_t graph,
+					unsigned long long flags);
+
+__host__ tdpError_t tdpGraphLaunch(tdpGraphExec_t exec, tdpStream_t stream);
+
+__host__ struct tdpExtent make_tdpExtent(size_t w, size_t h, size_t d);
+__host__ struct tdpPos    make_tdpPos(size_t x, size_t y, size_t z);
+__host__ struct tdpPitchedPtr make_tdpPitchedPtr(void * d, size_t p,
+						 size_t xsz, size_t ysz);
+
+
+
+/* Macros */
 
 #define tdpSymbol(x) &(x)
 void  tdp_x86_prelaunch(dim3 nblocks, dim3 nthreads);
@@ -232,7 +305,7 @@ void  tdp_x86_postlaunch(void);
 #define tdp_get_max_threads() omp_get_max_threads()
 
 /* For "critical section" it's handy to use atomicCAS() and atomicExch()
- * in place (togther with __threadfence()); until some better mechanism
+ * in place (together with __threadfence()); until some better mechanism
  * is available */
 
 #define atomicCAS(address, old, new) (old)

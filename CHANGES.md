@@ -3,6 +3,15 @@
 
 version 0.21.0
 
+
+- There is no longer an option available for field halo swaps; the
+  scheme has been consolidated is always the same (for CPU). GPU
+  run time configuration is pending. Halo information is still
+  available https://ludwig.epcc.ed.ac.uk/inputs/parallel.html
+- If you use a 2-dimensional system (L_z = 1) with an order parameter, you
+  must use a 2d gradient calculation. This is related to the (non-) treatment
+  of halo swaps in the third dimension for fields.
+
 - Issue 270: a colloid with an initial position placed exactly at a sub-domain
              boundary can fail to be attached to the cell list in some
 	     circumstances causing a crash. This has been fixed by adding
@@ -11,6 +20,7 @@ version 0.21.0
 - Issue 268: if using wetting information read from porous media files,
              the form of the key words in the input file has been
 	     adjusted. See https://ludwig.epcc.ed.ac.uk/inputs/porous.html
+
 
 version 0.20.1
 - Issue 271: missing stub prevents compilation at some compiler optimisation

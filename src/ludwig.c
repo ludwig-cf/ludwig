@@ -481,10 +481,10 @@ void ludwig_run(const char * inputfile) {
 
     tdpGetDeviceCount(&ndevice);
 
-    if (ndevice > 0 && ndevice != node_size) {
+    if (ndevice > 0 && ndevice < node_size) {
       pe_info(ludwig->pe,  "MPI tasks per node: %d\n", node_size);
       pe_info(ludwig->pe,  "GPUs per node:      %d\n", ndevice);
-      pe_fatal(ludwig->pe, "Expecting one GPU per MPI task\n");
+      pe_fatal(ludwig->pe, "Expecting at least one GPU per MPI task\n");
     }
 
     tdpAssert(tdpSetDevice(node_rank));
