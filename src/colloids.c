@@ -1344,13 +1344,13 @@ __host__ int colloids_info_count_local(colloids_info_t * cinfo,
  *****************************************************************************/
 
 __host__ int colloids_number_sites(colloids_info_t *cinfo) {
-  
+
   colloid_t * pc;
   colloid_link_t * p_link;
 
   /* All colloids, including halo */
   colloids_info_all_head(cinfo, &pc);
- 
+
   int ncolsite=0;
 
   for ( ; pc; pc = pc->nextall) {
@@ -1363,7 +1363,7 @@ __host__ int colloids_number_sites(colloids_info_t *cinfo) {
 
       /* increment by 2 (outward and inward sites) */
       ncolsite+=2;
-     
+
     }
   }
 
@@ -1375,7 +1375,7 @@ __host__ int colloids_number_sites(colloids_info_t *cinfo) {
  *
  *  colloid_list_sites
  *
- *  provides a list of lattice site indexes affected by colloids 
+ *  provides a list of lattice site indexes affected by colloids
  *
  *****************************************************************************/
 
@@ -1385,9 +1385,9 @@ __host__ void colloids_list_sites(int* colloidSiteList, colloids_info_t *cinfo)
   colloid_t * pc;
   colloid_link_t * p_link;
 
-  /* All colloids, including halo */  
+  /* All colloids, including halo */
   colloids_info_all_head(cinfo, &pc);
- 
+
   int ncolsite=0;
 
   for ( ; pc; pc = pc->nextall) {
