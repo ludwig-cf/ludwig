@@ -17,7 +17,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2010-2023 The University of Edinburgh
+ *  (c) 2010-2024 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -513,7 +513,7 @@ int colloids_update_forces_fluid_body_force(colloids_info_t * cinfo,
 
     for (; pc; pc = pc->nextlocal) {
       double vol = 0.0;
-      if (pc->s.type == COLLOID_TYPE_SUBGRID) continue;
+      if (pc->s.bc == COLLOID_BC_SUBGRID) continue;
       util_discrete_volume_sphere(pc->s.r, pc->s.a0, &vol);
       pc->force[X] += vol*fb[X];
       pc->force[Y] += vol*fb[Y];
