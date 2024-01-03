@@ -9,7 +9,7 @@
  *  Edinburgh Soft Matter and Statistical Physics and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2011-2022 The University of Edinburgh
+ *  (c) 2011-2023 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -474,14 +474,14 @@ __host__ int wall_init_boundaries(wall_t * wall, wall_init_enum_t init) {
  *
  *  wall_init_boundaries_slip
  *
- *  The slip condition is slightly more compilcated than the no-slip,
+ *  The slip condition is slightly more complicated than the no-slip,
  *  as it involves an additional fluid site.
  *
  *  Further, some care should be taken that slip links occur in pairs;
  *  the pair should have a unique value of 's' (the fraction of slip)
  *  so that mass is conserved by the bbl.
  *
- *  This will examine the existing 'no-slip' links, and make necesary
+ *  This will examine the existing 'no-slip' links, and make necessary
  *  additions.
  *
  *****************************************************************************/
@@ -529,7 +529,7 @@ __host__ int wall_init_boundaries_slip(wall_t * wall) {
 		tdpMemcpyHostToDevice);
     }
 
-    /* For each exsiting fluid-to-solid link i->j with cv[p] ... */
+    /* For each existing fluid-to-solid link i->j with cv[p] ... */
     /* Where is k (source of slipping distribution which will arrive at i),
        and what are q and s? */
 
@@ -543,7 +543,7 @@ __host__ int wall_init_boundaries_slip(wall_t * wall) {
       lb_t * lb = wall->lb;
 
       /* Identify the wall normal wn, and project cv[p] into the
-       * plane orthogonal to the normal to find the tangetial
+       * plane orthogonal to the normal to find the tangential
        * direction which takes us to the fluid site paired with
        * the current link for slip. */
 
@@ -597,7 +597,7 @@ __host__ int wall_init_boundaries_slip(wall_t * wall) {
  *
  *  wall_link_normal
  *
- *  For link n, what is the wall normal at the crossing poistion?
+ *  For link n, what is the wall normal at the crossing position?
  *  This is for the special case iswall only.
  *
  *****************************************************************************/
@@ -640,7 +640,7 @@ __host__ int wall_link_normal(wall_t * wall, int n, int wn[3]) {
   }
 
   return 0;
-} 
+}
 
 /*****************************************************************************
  *
@@ -1034,15 +1034,15 @@ __global__ void wall_bbl_kernel(wall_t * wall, lb_t * lb, map_t * map) {
     double fp, fp0, fp1;
     double force;
 
-    i  = wall->linki[n];
-    j  = wall->linkj[n];
-    ij = wall->linkp[n];         /* Link index direction solid->fluid */
+    i  = wall->linki[n];         /* fluid */
+    j  = wall->linkj[n];         /* solid */
+    ij = wall->linkp[n];         /* Link index direction fluid->solid */
     ji = lb->param->nvel - ij;   /* Opposite direction index */
     ia = wall->linku[n];         /* Wall velocity lookup */
 
     cdotu = lb->param->cv[ij][X]*uw[ia][X] +
             lb->param->cv[ij][Y]*uw[ia][Y] +
-            lb->param->cv[ij][Z]*uw[ia][Z]; 
+            lb->param->cv[ij][Z]*uw[ia][Z];
 
     map_status(map, i, &status);
 
@@ -1426,7 +1426,7 @@ __host__ int wall_shear_init(wall_t * wall) {
 
   pe_info(wall->pe, "Initialising linear shear profile for walls\n");
   pe_info(wall->pe, "Speed at top u_x    %14.7e\n", uxtop);
-  pe_info(wall->pe, "Speed at bottom u_x %14.7e\n", uxbottom); 
+  pe_info(wall->pe, "Speed at bottom u_x %14.7e\n", uxbottom);
   pe_info(wall->pe, "Overall shear rate  %14.7e\n", gammadot);
 
   /* Initialise the density, velocity, gradu; ghost modes are zero */

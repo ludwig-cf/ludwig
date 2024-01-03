@@ -24,6 +24,7 @@
  *****************************************************************************/
 
 #include <assert.h>
+#include <limits.h>
 #include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -226,6 +227,11 @@ __host__ int field_init(field_t * obj, int nhcomm, lees_edw_t * le) {
   obj->nhcomm = nhcomm;
   obj->nsites = nsites;
   nfsz = (size_t) obj->nf*nsites;
+
+  if (nfsz < 1 || INT_MAX/nfsz < 1) {
+    pe_info(obj->pe, "field_init: failure in int32_t indexing\n");
+    return -1;
+  }
 
   if (obj->opts.usefirsttouch) {
 
@@ -1820,9 +1826,8 @@ int field_io_write(field_t * field, int timestep, io_event_t * event) {
 
   /* Metadata */
   if (meta->iswriten == 0) {
-    /* No extra comments at the moment */
-    cJSON * comments = NULL;
-    int ifail = io_metadata_write(meta, field->name, comments);
+    int ifail = io_metadata_write(meta, field->name, event->extra_name,
+				  event->extra_json);
     if (ifail == 0) field->iometadata_out.iswriten = 1;
   }
 

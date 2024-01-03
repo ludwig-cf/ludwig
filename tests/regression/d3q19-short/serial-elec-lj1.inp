@@ -1,0 +1,125 @@
+##############################################################################
+#
+#  Liquid junction problem
+#
+#  This is the liquid junction time dependence as discussed at
+#  https://ludwig.epcc.ed.ac.uk/tutorials/electrokinectics/electrokinetics.html
+#
+#  For a quasi-one-dimensional system we use the special intialisation
+#
+#  electrokinetics_init          liquid_junction
+#
+#  to provide two charged species with an initial step at the centre
+#  of the system in the long direction (the x-direction).
+#
+#  The hydrodynamics is switched off for this problem. It is purely
+#  diffusive.
+#
+#  For the short time scale, the system is run for 5000 time steps
+#  with statistics at 50 time steps, while for the long time regime
+#  the run is 100,000 time steps with statistics at 1000 steps.
+#
+#  For system size 128_4_4, the parameters are the same; for the
+#  system size 256_4_4, the short time regime is the same, but
+#  the long time regime is run for 200,000 steps.
+#
+#  Note that large differences in the diffusivities (e.g., as much
+#  as 0.0125 and 0.075) will lead to noticable deviations from the
+#  theory of Mafe et al., which assumes they are "close".
+#
+#
+#  For the purposes of this test, the number of steps is reduced to
+#  100, with statistics at 100 steps.
+#
+##############################################################################
+
+##############################################################################
+#
+#  Run duration
+#
+###############################################################################
+
+N_cycles 100
+
+##############################################################################
+#
+#  System and MPI
+# 
+##############################################################################
+
+size               64_4_4
+periodicity        1_1_1
+lb_halo_scheme     lb_halo_openmp_reduced
+
+##############################################################################
+#
+#  Fluid parameters
+#
+##############################################################################
+
+hydrodynamics           off
+temperature             3.33333333333333333e-5
+
+##############################################################################
+#
+#  Free energy parameters
+#
+###############################################################################
+
+free_energy               fe_electro
+fe_force_method           phi_gradmu_correction
+
+###############################################################################
+#
+#  Colloid parameters
+#
+###############################################################################
+
+colloid_init        none
+
+###############################################################################
+#
+#  Walls / boundaries
+#
+###############################################################################
+
+boundary_walls 0_0_0
+
+###############################################################################
+#
+#  Output frequency and type
+#
+###############################################################################
+
+freq_statistics              100
+freq_psi_resid               1000
+config_at_end                no
+
+###############################################################################
+#
+#  Electrokinetics
+#
+###############################################################################
+
+electrokinetics_z0           +1
+electrokinetics_z1           -1
+electrokinetics_d0            0.0105
+electrokinetics_d1            0.0095
+electrokinetics_eunit         1.0
+electrokinetics_epsilon       3.3e3
+
+electrokinetics_init          liquid_junction
+electrokinetics_init_rho_el   0.01
+electrokinetics_init_delta_el 0.0002
+
+psi_io_mode                   mpiio
+psi_io_format                 ascii
+psi_io_report                 no
+
+###############################################################################
+#
+#  Miscellaneous
+#
+###############################################################################
+
+random_seed 8361235

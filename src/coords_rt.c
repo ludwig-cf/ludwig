@@ -8,7 +8,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2009-2018 The University of Edinburgh
+ *  (c) 2009-2023 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -35,8 +35,15 @@ int coords_init_rt(pe_t * pe, rt_t * rt, cs_t * cs) {
   assert(rt);
   assert(cs);
 
-  rt_int_parameter_vector(rt, "size", vector);
-  cs_ntotal_set(cs, vector);
+  {
+    int ntotal[3] = {0, 0, 0};
+    rt_int_parameter_vector(rt, "size", ntotal);
+    if (ntotal[X] < 1 || ntotal[Y] < 1 || ntotal[Z] < 1) {
+      pe_info(pe, "System size must be > 0 in all three co-ordinates\n");
+      pe_fatal(pe, "Please check and try again\n");
+    }
+    cs_ntotal_set(cs, ntotal);
+  }
 
   n = rt_int_parameter_vector(rt, "periodicity", vector);
   if (n != 0) cs_periodicity_set(cs, vector);

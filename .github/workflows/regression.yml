@@ -1,0 +1,91 @@
+# Regression tests (serial)
+
+name: "Regression"
+
+on:
+  pull_request:
+    branches:
+    - master
+    - develop
+
+jobs:
+
+  d2q9:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v3
+
+    - name: Build
+      run: |
+        gcc --version
+        cp config/github-gcc.mk config.mk
+        sed -i "s/D3Q19/D2Q9/" config.mk
+        make serial
+        make -j 2
+
+    - name: Check
+      run: |
+        make unit
+        make -C tests d2q9
+
+  d3q15:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v3
+
+    - name: Build
+      run: |
+        gcc --version
+        cp config/github-gcc.mk config.mk
+        sed -i "s/D3Q19/D3Q15/" config.mk
+        make serial
+        make -j 2
+
+    - name: Check
+      run: |
+        make unit
+        make -C tests d3q15
+
+  make-d3q19-short:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v3
+
+    - name: Build
+      run: |
+        gcc --version
+        cp config/github-gcc.mk config.mk
+        make serial
+        make -j 2
+
+    # Some care may be required with threads
+    - name: Check
+      run: |
+        export OMP_NUM_THREADS=1
+        make test
+
+  d3q27:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v3
+
+    - name: Build
+      run: |
+        gcc --version
+        cp config/github-gcc.mk config.mk
+        sed -i "s/D3Q19/D3Q27/" config.mk
+        make serial
+        make -j 2
+
+    # No specific tests yet
+    - name: Check
+      run: |
+        make unit
