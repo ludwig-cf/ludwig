@@ -15,7 +15,7 @@
  *  (2) Influence of the particles on local fluid nodes;
  *
  *  (1) subgrid_update() is responsible for the particle update and setting
- *      any poistion increment dr. Schematically:
+ *      any position increment dr. Schematically:
  *
  *      -> subgrid_interpolation()
  *         accumulates contributions to the force on the particle from
@@ -43,7 +43,7 @@
  *      -> This force may then enter the fluid collision stage.
  *
  *
- *  Edinburgh Soft Matter and Statistical Phyiscs Group and
+ *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
  *  (c) 2010-2022 The University of Edinburgh
@@ -160,7 +160,7 @@ int subgrid_force_from_particles(colloids_info_t * cinfo, hydro_t * hydro,
 		r[Z] = r0[Z] - 1.0*k;
 
 		dr = d_peskin(r[X])*d_peskin(r[Y])*d_peskin(r[Z]);
-            
+
 		force[X] = p_colloid->fex[X]*dr;
 		force[Y] = p_colloid->fex[Y]*dr;
 		force[Z] = p_colloid->fex[Z]*dr;
@@ -424,7 +424,7 @@ int subgrid_wall_lubrication(colloids_info_t * cinfo, wall_t * wall) {
   colloid_t * pc = NULL;
 
   double f[3] = {0.0, 0.0, 0.0};
-  
+
   assert(cinfo);
   assert(wall);
 

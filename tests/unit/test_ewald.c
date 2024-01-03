@@ -199,7 +199,7 @@ int test_ewald_suite(void) {
   p_c2->force[X] = 0.0; p_c2->force[Y] = 0.0; p_c2->force[Z] = 0.0;
 
   /* Energy */
-  
+
   ewald_real_space_energy(ewald, p_c1->s.s, p_c2->s.s, r12, &e);
   test_assert(fabs(e - 0.0) < TOLERANCE);
 

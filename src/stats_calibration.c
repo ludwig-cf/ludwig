@@ -251,7 +251,7 @@ int stats_ahydro_free(stats_ahydro_t * stat) {
     }
 
     fhasimoto = stats_calibration_hasimoto(ah, length);
-  
+
     pe_info(stat->pe, "\n");
     pe_info(stat->pe, "Actual force:              %11.4e\n", f0);
     pe_info(stat->pe, "Actual speed:              %11.4e\n", u0);

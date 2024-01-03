@@ -92,7 +92,7 @@ __host__ int pe_create(MPI_Comm parent, pe_enum_t flag, pe_t ** ppe) {
   }
 
   *ppe = pe;
-  
+
   return 0;
 }
 
