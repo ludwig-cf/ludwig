@@ -5,7 +5,7 @@
  *  The version is MAJOR.MINOR.PATCH
  *  See, e.g., https://apr.apache.org/versioning.html
  *
- *  (c) 2014-2023 The University of Edinburgh
+ *  (c) 2014-2024 The University of Edinburgh
  *
  *****************************************************************************/
 
