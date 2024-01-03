@@ -1,0 +1,96 @@
+##############################################################################
+#
+#  serial-coll-cf1.inp
+#
+#  A colloid confined between parallel plane walls in Poiseuille flow
+#  develops a maximum velocity less than would be observed for a free
+#  Poiseuille flow with no colloid.
+#
+#  Here we have a colloid with 2a / H = 2a / L_x = 0.6 driven by a
+#  constant body force placed at the centre of the channel.
+#
+#  If one runs for, say, 5000 times steps, the colloid develops a speed
+#  which is steady at around U = 3.73 x 10^-3; this compares with a
+#  maximum unhindered Poiseuille flow of U_c = 4.31 x 10^3 (need to
+#  remove the colloid to measure this).
+#
+#  Staben et al. Phys. Fluids. 15, 1711-1733 (2003) provide an
+#  analytical result for this problem. For the the current values they
+#  give U/U_c = 0.871 (Table 1).
+#
+#  We have U / U_c = 0.86.
+#
+#  For the purposes of this test, the number of time steps is reduced to 10.
+#
+############################################################################## 
+
+
+N_start  0
+N_cycles 10
+
+##############################################################################
+#
+#  System
+#
+##############################################################################
+
+size 24_64_64
+grid 1_1_1
+
+##############################################################################
+#
+#  Fluid parameters
+#
+##############################################################################
+
+viscosity 0.166666
+viscosity_bulk 0.166666
+
+###############################################################################
+#
+#  Body force on fluid and colloid sites mimicking pressure gradient
+#
+###############################################################################
+
+force 0.0_0.0_0.00001
+
+##############################################################################
+#
+#  Free energy parameters
+#
+###############################################################################
+
+free_energy none
+
+###############################################################################
+#
+#  Colloid parameters
+#
+###############################################################################
+
+colloid_init        input_one
+colloid_rho0        1.0
+colloid_one_a0      7.2
+colloid_one_ah      7.2
+colloid_one_r       12.499999_32.499999_32.499999
+colloid_one_isfixedr 0
+colloid_one_isfixedv 0
+
+###############################################################################
+#
+#  Periodic conditions / boundaries
+#
+###############################################################################
+
+periodicity 0_1_1
+boundary_walls 1_0_0
+boundary_lubrication_rcnormal 0.1
+
+###############################################################################
+#
+#  Output frequency and type
+#
+###############################################################################
+
+freq_statistics 10
+config_at_end no
