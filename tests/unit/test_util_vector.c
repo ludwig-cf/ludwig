@@ -68,7 +68,7 @@ int test_util_vector_dot_product(void) {
     double a[3] = {2.0, 3.0, 4.0};
     double b[3] = {-0.5, -1.0/3.0, 0.75};
     double dot = util_vector_dot_product(a, b);
-    assert(fabs(dot - 1.0) < DBL)EPSILON);
+    assert(fabs(dot - 1.0) < DBL_EPSILON);
     if (fabs(dot - 1.0) > DBL_EPSILON) ifail -= 1;
   }
 
