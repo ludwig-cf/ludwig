@@ -76,6 +76,7 @@ __host__ int tests_create(int argc, char ** argv) {
   test_halo_suite();
   test_hydro_options_suite();
   test_hydro_suite();
+  test_interaction_suite();
   test_io_aggregator_suite();
   test_io_element_suite();
   test_io_options_suite();

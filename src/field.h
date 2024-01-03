@@ -5,7 +5,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2012-2022 The University of Edinburgh
+ *  (c) 2012-2024 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -25,13 +25,20 @@
 #include "io_impl.h"
 #include "io_event.h"
 #include "io_harness.h"       /* To be removed in favour of refactored io */
+#include "kernel.h"
 #include "leesedwards.h"
-#include "halo_swap.h"
 #include "field_options.h"
 
 /* Halo */
 
 #include "cs_limits.h"
+
+typedef struct field_graph_halo_s field_graph_halo_t;
+
+struct field_graph_halo_s {
+  tdpGraph_t graph;
+  tdpGraphExec_t exec;
+};
 
 typedef struct field_halo_s field_halo_t;
 
@@ -47,6 +54,14 @@ struct field_halo_s {
   double * send[27];            /* halo: send data buffers */
   double * recv[27];            /* halo: recv data buffers */
   MPI_Request request[2*27];    /* halo: array of send/recv requests */
+
+  tdpStream_t stream;
+  field_halo_t * target;        /* target structure */
+  double * send_d[27];          /* halo: device send data buffers */
+  double * recv_d[27];          /* halo: device recv data buffers */
+
+  field_graph_halo_t gsend;     /* Graph API halo swap */
+  field_graph_halo_t grecv;
 };
 
 typedef struct field_s field_t;
@@ -69,7 +84,6 @@ struct field_s {
 
   io_info_t * info;             /* I/O Handler (to be removed) */
 
-  halo_swap_t * halo;           /* Halo swap driver object */
   field_halo_t h;               /* Host halo */
   field_options_t opts;         /* Options */
 
@@ -111,7 +125,6 @@ __host__ __device__ int field_scalar_array(field_t * obj, int index,
 __host__ __device__ int field_scalar_array_set(field_t * obj, int index,
 					       const double * array);
 
-
 int field_read_buf(field_t * field, int index, const char * buf);
 int field_read_buf_ascii(field_t * field, int index, const char * buf);
 int field_write_buf(field_t * field, int index, char * buf);
@@ -121,5 +134,8 @@ int field_io_aggr_unpack(field_t * field, const io_aggregator_t * aggr);
 
 int field_io_write(field_t * field, int timestep, io_event_t * event);
 int field_io_read(field_t * field, int timestep, io_event_t * event);
+
+int field_graph_halo_send_create(const field_t * field, field_halo_t * h);
+int field_graph_halo_recv_create(const field_t * field, field_halo_t * h);
 
 #endif

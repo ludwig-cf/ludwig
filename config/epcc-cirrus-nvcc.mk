@@ -2,30 +2,35 @@
 #
 #  nvcc build
 #
-#  module load intel-mpi-17
-#  module load intel-comiplers-17
-#  module load cuda/9.1
+#  There are a number of ways forward here... see further comments below
 #
-#  Host   As epcc-cirrus-intel.mk
-#  Device NVIDIA Tesla V100-SXM2
+#  E.g., serial with stub MPI
+#  module load nvidia/nvhpc-nompi/22.11
+#
+#  E.g., parallel using NVHPC with MPI ...
+#  module load nvidia/nvhpc/22.11
 #
 ###############################################################################
 
-BUILD   = parallel
-MODEL   = -D_D3Q19_
+BUILD  = parallel
+MODEL  = -D_D3Q19_
 
 CC     = nvcc
-CFLAGS = -ccbin=icpc -DADDR_SOA -DNDEBUG -arch=sm_70 -x cu -dc -Xcompiler -fast
+CFLAGS = -g -DADDR_SOA -O2 -arch=sm_70 -x cu -dc
+
+# PTX assembler extra information:  -Xptxas -v
+# Alternative compiler, e.g., Intel: -ccbin=icpc -Xcompiler -fast
 
 AR = ar
 ARFLAGS = -cr
-LDFLAGS= -ccbin=icpc -arch=sm_70
+LDFLAGS = -arch=sm_70
 
-MPI_HOME     = /lustre/sw/intel/compilers_and_libraries_2017.2.174/linux/mpi
-MPI_INC_PATH = -I$(MPI_HOME)/include64
-MPI_LIB_PATH = -L$(MPI_HOME)/lib64 -lmpi
+# nvhpc (mpicc is present but drives nvc not nvcc) so use nvcc still ... but
+MPI_HOME     = ${NVHPC_ROOT}/comm_libs/mpi
+MPI_INC_PATH = -I$(MPI_HOME)/include
+MPI_LIB_PATH = -L$(MPI_HOME)/lib -lmpi
 
+# NVHPC bundled MPI must use mpirun supplied ...
 LAUNCH_SERIAL_CMD =
 LAUNCH_MPIRUN_CMD = mpirun
 MPIRUN_NTASK_FLAG = -np
-

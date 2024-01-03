@@ -14,11 +14,12 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2012-2022 The University of Edinburgh
+ *  (c) 2012-2024 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *  Alan Gray (alang@epcc.ed.ac.uk)
+ *  Zhihong Zhai wrote the initial version of the graph API inplementaiton.
  *
  *****************************************************************************/
 
@@ -47,6 +48,26 @@ static int field_data_touch(field_t * field);
 static int field_leesedwards_parallel(field_t * obj);
 
 __host__ int field_init(field_t * obj, int nhcomm, lees_edw_t * le);
+
+#ifdef HAVE_OPENMPI_
+/* This provides MPIX_CUDA_AWARE_SUPPORT .. */
+#include "mpi-ext.h"
+#endif
+
+#ifdef __NVCC__
+/* There are two file-scope switches here, which need to be generalised
+ * via some suitable interface; they are separate, but both relate to
+ * GPU execution. */
+static const int have_graph_api_ = 1;
+#else
+static const int have_graph_api_ = 0;
+#endif
+
+#if defined (MPIX_CUDA_AWARE_SUPPORT) && MPIX_CUDA_AWARE_SUPPORT
+static const int have_gpu_aware_mpi_ = 1;
+#else
+static const int have_gpu_aware_mpi_ = 0;
+#endif
 
 /*****************************************************************************
  *
@@ -163,7 +184,6 @@ __host__ int field_free(field_t * obj) {
   }
 
   if (obj->data) free(obj->data);
-  if (obj->halo) halo_swap_free(obj->halo);
   if (obj->info) io_info_free(obj->info);
 
   field_halo_free(&obj->h);
@@ -186,7 +206,7 @@ __host__ int field_free(field_t * obj) {
  *
  *  TODO:
  *  The behaviour with no planes (cs_t only) could be refactored
- *  into two separate classes. 
+ *  into two separate classes.
  *
  *****************************************************************************/
 
@@ -247,13 +267,6 @@ __host__ int field_init(field_t * obj, int nhcomm, lees_edw_t * le) {
 	      tdpMemcpyHostToDevice);
     field_memcpy(obj, tdpMemcpyHostToDevice);
   }
-
-  /* MPI datatypes for halo */
-
-  halo_swap_create_r1(obj->pe, obj->cs, nhcomm, nsites, obj->nf, &obj->halo);
-  assert(obj->halo);
-
-  halo_swap_handlers_set(obj->halo, halo_swap_pack_rank1, halo_swap_unpack_rank1);
 
   return 0;
 }
@@ -439,22 +452,7 @@ __host__ int field_data_touch(field_t * field) {
 
 __host__ int field_halo(field_t * obj) {
 
-  int nlocal[3];
-  assert(obj);
-
-  cs_nlocal(obj->cs, nlocal);
-
-  if (nlocal[Z] < obj->nhcomm) {
-    /* This constraint means can't use target method;
-     * this also requires a copy if the address spaces are distinct. */
-    field_memcpy(obj, tdpMemcpyDeviceToHost);
-    field_halo_swap(obj, FIELD_HALO_HOST);
-    field_memcpy(obj, tdpMemcpyHostToDevice);
-  }
-  else {
-    /* Default to ... */
-    field_halo_swap(obj, obj->opts.haloscheme);
-  }
+  field_halo_swap(obj, obj->opts.haloscheme);
 
   return 0;
 }
@@ -467,19 +465,15 @@ __host__ int field_halo(field_t * obj) {
 
 __host__ int field_halo_swap(field_t * obj, field_halo_enum_t flag) {
 
-  double * data;
-
   assert(obj);
+
+  /* Everything is "OPENMP", a name which is historical ... */
+  /* There may be a need for host (only) halo swaps
+   * if the target (GPU) is active. But not at the moment.  */
 
   switch (flag) {
   case FIELD_HALO_HOST:
-    halo_swap_host_rank1(obj->halo, obj->data, MPI_DOUBLE);
-    break;
   case FIELD_HALO_TARGET:
-    tdpMemcpy(&data, &obj->target->data, sizeof(double *),
-	      tdpMemcpyDeviceToHost);
-    halo_swap_packed(obj->halo, data);
-    break;
   case FIELD_HALO_OPENMP:
     field_halo_post(obj, &obj->h);
     field_halo_wait(obj, &obj->h);
@@ -1125,7 +1119,7 @@ int field_write_buf_ascii(field_t * field, int index, char * buf) {
     if (n == field->nf - 1) {
       np = snprintf(tmp, 2, "\n");
       if (np != 1) ifail = 2;
-      memcpy(buf + field->nf*nbyte, tmp, sizeof(char)); 
+      memcpy(buf + field->nf*nbyte, tmp, sizeof(char));
     }
   }
 
@@ -1306,7 +1300,7 @@ int field_halo_enqueue_send(const field_t * field, field_halo_t * h, int ireq) {
   int stry = strz*nz;
   int strx = stry*ny;
 
-  #pragma omp for nowait
+#pragma omp for nowait
   for (int ih = 0; ih < nx*ny*nz; ih++) {
     int ic = h->slim[ireq].imin + ih/strx;
     int jc = h->slim[ireq].jmin + (ih % strx)/stry;
@@ -1320,6 +1314,42 @@ int field_halo_enqueue_send(const field_t * field, field_halo_t * h, int ireq) {
   }
 
   return 0;
+}
+
+/*****************************************************************************
+ *
+ *  field_halo_enqueue_send_kernel
+ *
+ *  As above, but this is a device target implementation.
+ *
+ *****************************************************************************/
+
+__global__ void field_halo_enqueue_send_kernel(const field_t * field,
+					       field_halo_t * h, int ireq) {
+  assert(field);
+  assert(h);
+  assert(1 <= ireq && ireq < h->nvel);
+
+  int nx = 1 + h->slim[ireq].imax - h->slim[ireq].imin;
+  int ny = 1 + h->slim[ireq].jmax - h->slim[ireq].jmin;
+  int nz = 1 + h->slim[ireq].kmax - h->slim[ireq].kmin;
+
+  int strz = 1;
+  int stry = strz*nz;
+  int strx = stry*ny;
+
+  int ih = 0;
+  for_simt_parallel(ih, nx*ny*nz, 1) {
+    int ic = h->slim[ireq].imin + ih/strx;
+    int jc = h->slim[ireq].jmin + (ih % strx)/stry;
+    int kc = h->slim[ireq].kmin + (ih % stry)/strz;
+    int index = cs_index(field->cs, ic, jc, kc);
+
+    for (int ibf = 0; ibf < field->nf; ibf++) {
+      int faddr = addr_rank1(field->nsites, field->nf, index, ibf);
+      h->send[ireq][ih*field->nf + ibf] = field->data[faddr];
+    }
+  }
 }
 
 /*****************************************************************************
@@ -1370,10 +1400,58 @@ int field_halo_dequeue_recv(field_t * field, const field_halo_t * h, int ireq) {
 
 /*****************************************************************************
  *
+ *  field_halo_dequeue_recv_kernel
+ *
+ *  As above, but a target implementation.
+ *
+ *****************************************************************************/
+
+__global__ void field_halo_dequeue_recv_kernel(field_t * field,
+					       const field_halo_t * h,
+					       int ireq) {
+  assert(field);
+  assert(h);
+  assert(1 <= ireq && ireq < h->nvel);
+
+  int nx = 1 + h->rlim[ireq].imax - h->rlim[ireq].imin;
+  int ny = 1 + h->rlim[ireq].jmax - h->rlim[ireq].jmin;
+  int nz = 1 + h->rlim[ireq].kmax - h->rlim[ireq].kmin;
+
+  int strz = 1;
+  int stry = strz*nz;
+  int strx = stry*ny;
+
+  double * recv = h->recv[ireq];
+
+  /* Check if this a copy from our own send buffer */
+  {
+    int i = 1 + h->cv[h->nvel - ireq][X];
+    int j = 1 + h->cv[h->nvel - ireq][Y];
+    int k = 1 + h->cv[h->nvel - ireq][Z];
+
+    if (h->nbrrank[i][j][k] == h->nbrrank[1][1][1]) recv = h->send[ireq];
+  }
+
+  int ih = 0;
+  for_simt_parallel(ih, nx*ny*nz, 1) {
+    int ic = h->rlim[ireq].imin + ih/strx;
+    int jc = h->rlim[ireq].jmin + (ih % strx)/stry;
+    int kc = h->rlim[ireq].kmin + (ih % stry)/strz;
+    int index = cs_index(field->cs, ic, jc, kc);
+
+    for (int ibf = 0; ibf < field->nf; ibf++) {
+      int faddr = addr_rank1(field->nsites, field->nf, index, ibf);
+      field->data[faddr] = recv[ih*field->nf + ibf];
+    }
+  }
+}
+
+/*****************************************************************************
+ *
  *  field_halo_create
  *
  *  It's convenient to borrow the velocity notation from the lb for
- *  the commnunication directions.
+ *  the communication directions.
  *
  *****************************************************************************/
 
@@ -1383,6 +1461,7 @@ int field_halo_create(const field_t * field, field_halo_t * h) {
 
   int nlocal[3] = {0};
   int nhalo = 0;
+  int ndevice = 0;
 
   assert(field);
   assert(h);
@@ -1484,6 +1563,41 @@ int field_halo_create(const field_t * field, field_halo_t * h) {
     assert(h->recv[p]);
   }
 
+  for (int i = 0; i < 2 * h->nvel; i++) {
+    h->request[i] = MPI_REQUEST_NULL;
+  }
+
+  /* Device */
+
+  tdpGetDeviceCount(&ndevice);
+  tdpStreamCreate(&h->stream);
+
+  if (ndevice == 0) {
+    h->target = h;
+  }
+  else {
+    tdpAssert( tdpMalloc((void **) &h->target, sizeof(field_halo_t)) );
+    tdpAssert( tdpMemcpy(h->target, h, sizeof(field_halo_t),
+			 tdpMemcpyHostToDevice) );
+
+    for (int p = 1; p < h->nvel; p++) {
+      int scount = field->nf*field_halo_size(h->slim[p]);
+      int rcount = field->nf*field_halo_size(h->rlim[p]);
+      tdpAssert( tdpMalloc((void**) &h->send_d[p], scount * sizeof(double)) );
+      tdpAssert( tdpMalloc((void**) &h->recv_d[p], rcount * sizeof(double)) );
+    }
+    /* Slightly tricksy. Could use send_d and recv_d on target copy ...*/
+    tdpAssert( tdpMemcpy(h->target->send, h->send_d, 27*sizeof(double *),
+			 tdpMemcpyHostToDevice) );
+    tdpAssert( tdpMemcpy(h->target->recv, h->recv_d, 27*sizeof(double *),
+			 tdpMemcpyHostToDevice) );
+
+    if (have_graph_api_) {
+      field_graph_halo_send_create(field, h);
+      field_graph_halo_recv_create(field, h);
+    }
+  }
+
   return 0;
 }
 
@@ -1512,12 +1626,15 @@ int field_halo_post(const field_t * field, field_halo_t * h) {
     int j = 1 + h->cv[h->nvel - ireq][Y];
     int k = 1 + h->cv[h->nvel - ireq][Z];
     int mcount = field->nf*field_halo_size(h->rlim[ireq]);
+    double * buf = h->recv[ireq];
+    if (have_gpu_aware_mpi_) buf = h->recv_d[ireq];
 
     h->request[ireq] = MPI_REQUEST_NULL;
 
-    if (h->nbrrank[i][j][k] == h->nbrrank[1][1][1]) mcount = 0;
+    /* Skip messages to self */
+    if (h->nbrrank[i][j][k] == h->nbrrank[1][1][1]) continue;
 
-    MPI_Irecv(h->recv[ireq], mcount, MPI_DOUBLE, h->nbrrank[i][j][k],
+    MPI_Irecv(buf, mcount, MPI_DOUBLE, h->nbrrank[i][j][k],
 	      tagbase + ireq, h->comm, h->request + ireq);
   }
 
@@ -1527,10 +1644,16 @@ int field_halo_post(const field_t * field, field_halo_t * h) {
 
   TIMER_start(TIMER_FIELD_HALO_PACK);
 
-  #pragma omp parallel
-  {
-    for (int ireq = 1; ireq < h->nvel; ireq++) {
-      field_halo_enqueue_send(field, h, ireq);
+  if (have_graph_api_) {
+    tdpAssert( tdpGraphLaunch(h->gsend.exec, h->stream) );
+    tdpAssert( tdpStreamSynchronize(h->stream) );
+  }
+  else {
+    #pragma omp parallel
+    {
+      for (int ireq = 1; ireq < h->nvel; ireq++) {
+        field_halo_enqueue_send(field, h, ireq);
+      }
     }
   }
 
@@ -1545,10 +1668,13 @@ int field_halo_post(const field_t * field, field_halo_t * h) {
     int j = 1 + h->cv[ireq][Y];
     int k = 1 + h->cv[ireq][Z];
     int mcount = field->nf*field_halo_size(h->slim[ireq]);
+    double * buf = h->send[ireq];
+    if (have_gpu_aware_mpi_) buf = h->send_d[ireq];
 
-    if (h->nbrrank[i][j][k] == h->nbrrank[1][1][1]) mcount = 0;
+    /* Skip messages to self ... */
+    if (h->nbrrank[i][j][k] == h->nbrrank[1][1][1]) continue;
 
-    MPI_Isend(h->send[ireq], mcount, MPI_DOUBLE, h->nbrrank[i][j][k],
+    MPI_Isend(buf, mcount, MPI_DOUBLE, h->nbrrank[i][j][k],
 	      tagbase + ireq, h->comm, h->request + 27 + ireq);
   }
 
@@ -1576,10 +1702,17 @@ int field_halo_wait(field_t * field, field_halo_t * h) {
 
   TIMER_start(TIMER_FIELD_HALO_UNPACK);
 
-  #pragma omp parallel
-  {
-    for (int ireq = 1; ireq < h->nvel; ireq++) {
-      field_halo_dequeue_recv(field, h, ireq);
+  if (have_graph_api_) {
+    tdpAssert( tdpGraphLaunch(h->grecv.exec, h->stream) );
+    tdpAssert( tdpStreamSynchronize(h->stream) );
+  }
+  else {
+    /* Use explicit copies */
+    #pragma omp parallel
+    {
+      for (int ireq = 1; ireq < h->nvel; ireq++) {
+        field_halo_dequeue_recv(field, h, ireq);
+      }
     }
   }
 
@@ -1650,11 +1783,32 @@ int field_halo_free(field_halo_t * h) {
 
   assert(h);
 
+  int ndevice = 0;
+  tdpGetDeviceCount(&ndevice);
+
+  if (ndevice > 0) {
+    tdpAssert( tdpMemcpy(h->send_d, h->target->send, 27*sizeof(double *),
+			 tdpMemcpyDeviceToHost) );
+    tdpAssert( tdpMemcpy(h->recv_d, h->target->recv, 27*sizeof(double *),
+			 tdpMemcpyDeviceToHost) );
+    for (int p = 1; p < h->nvel; p++) {
+      tdpFree(h->send_d[p]);
+      tdpFree(h->recv_d[p]);
+    }
+    tdpFree(h->target);
+  }
+
   for (int p = 1; p < h->nvel; p++) {
     free(h->send[p]);
     free(h->recv[p]);
   }
 
+  if (have_graph_api_) {
+    tdpAssert( tdpGraphDestroy(h->gsend.graph) );
+    tdpAssert( tdpGraphDestroy(h->grecv.graph) );
+  }
+
+  tdpAssert( tdpStreamDestroy(h->stream) );
   *h = (field_halo_t) {0};
 
   return 0;
@@ -1753,6 +1907,169 @@ int field_io_read(field_t * field, int timestep, io_event_t * event) {
 
     io->impl->free(&io);
   }
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ * field_graph_halo_send_create
+ *
+ *****************************************************************************/
+
+int field_graph_halo_send_create(const field_t * field, field_halo_t * h) {
+
+  assert(field);
+  assert(h);
+
+  tdpAssert( tdpGraphCreate(&h->gsend.graph, 0) );
+
+  for (int ireq = 1; ireq < h->nvel; ireq++) {
+    tdpGraphNode_t kernelNode;
+    tdpKernelNodeParams kernelNodeParams = {0};
+    void * kernelArgs[3] = {(void *) &field->target,
+                            (void *) &h->target,
+                            (void *) &ireq};
+    kernelNodeParams.func = (void *) field_halo_enqueue_send_kernel;
+    dim3 nblk;
+    dim3 ntpb;
+    int scount = field->nf*field_halo_size(h->slim[ireq]);
+
+    kernel_launch_param(scount, &nblk, &ntpb);
+
+    kernelNodeParams.gridDim        = nblk;
+    kernelNodeParams.blockDim       = ntpb;
+    kernelNodeParams.sharedMemBytes = 0;
+    kernelNodeParams.kernelParams   = (void **) kernelArgs;
+    kernelNodeParams.extra          = NULL;
+
+    tdpAssert( tdpGraphAddKernelNode(&kernelNode, h->gsend.graph, NULL, 0,
+				     &kernelNodeParams) );
+
+    if (have_gpu_aware_mpi_) {
+      /* Don't need explicit device -> host copy */
+    }
+    else {
+      /* We do need to add the memcpys to the graph definition
+       * (except messages to self... ) */
+
+      int i = 1 + h->cv[h->nvel - ireq][X];
+      int j = 1 + h->cv[h->nvel - ireq][Y];
+      int k = 1 + h->cv[h->nvel - ireq][Z];
+
+      if (h->nbrrank[i][j][k] != h->nbrrank[1][1][1]) {
+	tdpGraphNode_t memcpyNode;
+        tdpMemcpy3DParms memcpyParams = {0};
+
+	memcpyParams.srcArray = NULL;
+	memcpyParams.srcPos   = make_tdpPos(0, 0, 0);
+	memcpyParams.srcPtr   = make_tdpPitchedPtr(h->send_d[ireq],
+						   sizeof(double)*scount,
+						   scount, 1);
+	memcpyParams.dstArray = NULL;
+	memcpyParams.dstPos   = make_tdpPos(0, 0, 0);
+	memcpyParams.dstPtr   = make_tdpPitchedPtr(h->send[ireq],
+						   sizeof(double)*scount,
+						   scount, 1);
+	memcpyParams.extent   = make_tdpExtent(sizeof(double)*scount, 1, 1);
+	memcpyParams.kind     = tdpMemcpyDeviceToHost;
+
+	tdpAssert( tdpGraphAddMemcpyNode(&memcpyNode, h->gsend.graph,
+					 &kernelNode, 1, &memcpyParams) );
+      }
+    }
+  }
+
+  tdpAssert( tdpGraphInstantiate(&h->gsend.exec, h->gsend.graph, 0) );
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  field_graph_halo_recv_create
+ *
+ *****************************************************************************/
+
+int field_graph_halo_recv_create(const field_t * field, field_halo_t * h) {
+
+  assert(field);
+  assert(h);
+
+  tdpAssert( tdpGraphCreate(&h->grecv.graph, 0) );
+
+  for (int ireq = 1; ireq < h->nvel; ireq++) {
+    int rcount = field->nf*field_halo_size(h->rlim[ireq]);
+    tdpGraphNode_t memcpyNode = {0};
+
+    if (have_gpu_aware_mpi_) {
+      /* Don't need explicit copies */
+    }
+    else {
+      int i = 1 + h->cv[h->nvel - ireq][X];
+      int j = 1 + h->cv[h->nvel - ireq][Y];
+      int k = 1 + h->cv[h->nvel - ireq][Z];
+
+      if (h->nbrrank[i][j][k] != h->nbrrank[1][1][1]) {
+	tdpMemcpy3DParms memcpyParams = {0};
+
+	memcpyParams.srcArray = NULL;
+	memcpyParams.srcPos   = make_tdpPos(0, 0, 0);
+	memcpyParams.srcPtr   = make_tdpPitchedPtr(h->recv[ireq],
+						   sizeof(double)*rcount,
+						   rcount, 1);
+	memcpyParams.dstArray = NULL;
+	memcpyParams.dstPos   = make_tdpPos(0, 0, 0);
+	memcpyParams.dstPtr   = make_tdpPitchedPtr(h->recv_d[ireq],
+						   sizeof(double)*rcount,
+						   rcount, 1);
+	memcpyParams.extent   = make_tdpExtent(sizeof(double)*rcount, 1, 1);
+	memcpyParams.kind     = tdpMemcpyHostToDevice;
+
+	tdpAssert( tdpGraphAddMemcpyNode(&memcpyNode, h->grecv.graph, NULL,
+					 0, &memcpyParams) );
+      }
+    }
+
+    /* Always need the dis-aggregateion kernel */
+
+    dim3 nblk;
+    dim3 ntpb;
+    tdpGraphNode_t node;
+    tdpKernelNodeParams kernelNodeParams = {0};
+    void * kernelArgs[3] = {(void *) &field->target,
+                            (void *) &h->target,
+                            (void *) &ireq};
+    kernelNodeParams.func = (void *) field_halo_dequeue_recv_kernel;
+
+    kernel_launch_param(rcount, &nblk, &ntpb);
+
+    kernelNodeParams.gridDim        = nblk;
+    kernelNodeParams.blockDim       = ntpb;
+    kernelNodeParams.sharedMemBytes = 0;
+    kernelNodeParams.kernelParams   = (void **) kernelArgs;
+    kernelNodeParams.extra          = NULL;
+
+    if (have_gpu_aware_mpi_) {
+      tdpAssert( tdpGraphAddKernelNode(&node, h->grecv.graph, NULL,
+				       0, &kernelNodeParams) );
+    }
+    else {
+      int i = 1 + h->cv[h->nvel - ireq][X];
+      int j = 1 + h->cv[h->nvel - ireq][Y];
+      int k = 1 + h->cv[h->nvel - ireq][Z];
+      if (h->nbrrank[i][j][k] != h->nbrrank[1][1][1]) {
+	tdpAssert( tdpGraphAddKernelNode(&node, h->grecv.graph, &memcpyNode,
+					 1, &kernelNodeParams) );
+      }
+      else {
+	tdpAssert( tdpGraphAddKernelNode(&node, h->grecv.graph, NULL, 0,
+					 &kernelNodeParams) );
+      }
+    }
+  }
+
+  tdpAssert( tdpGraphInstantiate(&h->grecv.exec, h->grecv.graph, 0) );
 
   return 0;
 }
