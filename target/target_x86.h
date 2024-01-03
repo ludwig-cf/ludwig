@@ -5,7 +5,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2018-2023 The University of Edinburgh
+ *  (c) 2018-2024 The University of Edinburgh
  *
  *  Contributing authors:
  *  Alan Gray (alang@epcc.ed.ac.uk)
@@ -93,7 +93,7 @@ enum tdpError {
 #define tdpMemAttachHost          0x02
 #define tdpMemAttachSingle        0x04
 
-/* Device memory qualifiers / executation space qualifiers */
+/* Device memory qualifiers / execution space qualifiers */
 
 #define __host__
 #define __global__
@@ -142,7 +142,7 @@ struct tdp_double3_s {
 };
 
 #ifdef _OPENMP
-  /* These names are reserved and must be ... */ 
+  /* These names are reserved and must be ... */
   #pragma omp threadprivate(gridDim, blockDim, threadIdx, blockIdx)
 #endif
 
@@ -305,7 +305,7 @@ void  tdp_x86_postlaunch(void);
 #define tdp_get_max_threads() omp_get_max_threads()
 
 /* For "critical section" it's handy to use atomicCAS() and atomicExch()
- * in place (togther with __threadfence()); until some better mechanism
+ * in place (together with __threadfence()); until some better mechanism
  * is available */
 
 #define atomicCAS(address, old, new) (old)

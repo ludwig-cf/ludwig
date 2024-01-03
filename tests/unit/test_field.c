@@ -159,7 +159,7 @@ static int do_test0(pe_t * pe) {
   field_options_t opts = field_options_ndata_nhalo(nfref, nhalo);
 
   assert(pe);
-  
+
   cs_create(pe, &cs);
   cs_nhalo_set(cs, nhalo);
   cs_ntotal_set(cs, ntotal);
@@ -430,10 +430,10 @@ static int do_test5(pe_t * pe) {
 static int test_field_halo(cs_t * cs, field_t * phi) {
 
   assert(phi);
-  
+
   test_coords_field_set(cs, phi->nf, phi->data, MPI_DOUBLE, test_ref_double1);
   field_memcpy(phi, tdpMemcpyHostToDevice);
- 
+
   field_halo_swap(phi, FIELD_HALO_TARGET);
 
   field_memcpy(phi, tdpMemcpyDeviceToHost);
@@ -441,7 +441,7 @@ static int test_field_halo(cs_t * cs, field_t * phi) {
 			  test_ref_double1);
 
   return 0;
-} 
+}
 
 /*****************************************************************************
  *
@@ -645,7 +645,7 @@ int test_field_write_buf_ascii(pe_t * pe) {
       assert((val[1] - array[1]) < DBL_EPSILON);
       assert((val[2] - array[2]) < DBL_EPSILON);
       assert((val[3] - array[3]) < DBL_EPSILON);
-      assert((val[4] - array[4]) < DBL_EPSILON);      
+      assert((val[4] - array[4]) < DBL_EPSILON);
     }
   }
 

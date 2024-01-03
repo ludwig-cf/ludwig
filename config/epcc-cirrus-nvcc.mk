@@ -2,7 +2,7 @@
 #
 #  nvcc build
 #
-#  There are a number of ways forward here... see futher comments below
+#  There are a number of ways forward here... see further comments below
 #
 #  E.g., serial with stub MPI
 #  module load nvidia/nvhpc-nompi/22.11

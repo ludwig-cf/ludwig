@@ -1003,7 +1003,7 @@ __host__ tdpError_t tdpGraphInstantiate(tdpGraphExec_t * pGraphExec,
 					tdpGraph_t graph,
 					unsigned long long flags) {
 
-  /* tdpSuccess ot tdpErrorInvalidValue */
+  /* tdpSuccess or tdpErrorInvalidValue */
   return tdpErrorInvalidValue;
 }
 

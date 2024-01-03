@@ -205,7 +205,7 @@ __host__ int field_free(field_t * obj) {
  *
  *  TODO:
  *  The behaviour with no planes (cs_t only) could be refactored
- *  into two separate classes. 
+ *  into two separate classes.
  *
  *****************************************************************************/
 
@@ -1113,7 +1113,7 @@ int field_write_buf_ascii(field_t * field, int index, char * buf) {
     if (n == field->nf - 1) {
       np = snprintf(tmp, 2, "\n");
       if (np != 1) ifail = 2;
-      memcpy(buf + field->nf*nbyte, tmp, sizeof(char)); 
+      memcpy(buf + field->nf*nbyte, tmp, sizeof(char));
     }
   }
 
@@ -1445,7 +1445,7 @@ __global__ void field_halo_dequeue_recv_kernel(field_t * field,
  *  field_halo_create
  *
  *  It's convenient to borrow the velocity notation from the lb for
- *  the commnunication directions.
+ *  the communication directions.
  *
  *****************************************************************************/
 
@@ -1794,7 +1794,7 @@ int field_halo_free(field_halo_t * h) {
 
   for (int p = 1; p < h->nvel; p++) {
     free(h->send[p]);
-    free(h->recv[p]);  
+    free(h->recv[p]);
   }
 
   if (have_graph_api_) {

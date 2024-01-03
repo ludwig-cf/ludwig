@@ -70,7 +70,7 @@ int colloids_rt_cell_list_checks(pe_t * pe, cs_t * cs, colloids_info_t ** pinfo,
 /*****************************************************************************
  *
  *  colloids_init_rt
- * 
+ *
  *  Driver routine for colloid initialisation.
  *
  *  (a) Read source (input file, or external file)
@@ -113,7 +113,7 @@ int colloids_init_rt(pe_t * pe, rt_t * rt, cs_t * cs, colloids_info_t ** pinfo,
 
   /* Trap old input files */
   if (strcmp(keyvalue, "random") == 0) pe_fatal(pe, "check input file: random\n");
-  
+
   if ((init_one + init_two + init_three + init_random + init_from_file) < 1)
     return 0;
 
@@ -184,7 +184,7 @@ int colloids_init_rt(pe_t * pe, rt_t * rt, cs_t * cs, colloids_info_t ** pinfo,
   }
 
   pe_info(pe, "\n");
-  
+
   return 0;
 }
 
@@ -572,7 +572,7 @@ int colloids_rt_gravity(pe_t * pe, rt_t * rt, colloids_info_t * cinfo) {
 
   if (nc) {
     colloids_info_rho0_set(cinfo, rho0);
-    pe_info(pe, "Colloid density:             %14.7e\n", rho0);    
+    pe_info(pe, "Colloid density:             %14.7e\n", rho0);
   }
 
   return 0;
@@ -699,7 +699,7 @@ int colloids_init_ewald_rt(pe_t * pe, rt_t * rt, cs_t * cs,
 
     ewald_create(pe, cs, mu, rc, cinfo, pewald);
     assert(*pewald);
-    ewald_info(*pewald); 
+    ewald_info(*pewald);
   }
 
   return 0;
@@ -732,7 +732,7 @@ int lubrication_init(pe_t * pe, cs_t * cs, rt_t * rt, interact_t * inter) {
     n = rt_double_parameter(rt, "lubrication_normal_cutoff", &rcnorm);
     pe_info(pe, (n == 0) ? "[Default] " : "[User   ] ");
     pe_info(pe, "Normal force cutoff is %f\n", rcnorm);
-    
+
     n = rt_double_parameter(rt, "lubrication_tangential_cutoff", &rctang);
     pe_info(pe, (n == 0) ? "[Default] " : "[User   ] ");
     pe_info(pe, "Tangential force cutoff is %f\n", rctang);
