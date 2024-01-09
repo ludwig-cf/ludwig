@@ -8,15 +8,25 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
+ *  (c) 2010-2024 The University of Edinburgh
+ *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
- *  (c) 2010-2021 The University of Edinburgh
  *
  *****************************************************************************/
 
 #include <assert.h>
 #include <stdio.h>
+#include <math.h>
 
+#include "cartesian.h"
+#include "util_ellipsoid.h"
 #include "colloid.h"
+
+/* Old type definitions for backwards compatibility */
+enum colloid_type_enum {COLLOID_TYPE_DEFAULT = 0,
+                        COLLOID_TYPE_ACTIVE,
+                        COLLOID_TYPE_SUBGRID,
+                        COLLOID_TYPE_JANUS};
 
 /*****************************************************************************
  *
@@ -63,6 +73,12 @@ int colloid_state_read_ascii(colloid_state_t * ps, FILE * fp) {
   }
 
   nread += fscanf(fp, isformat, &ps->inter_type);
+  nread += fscanf(fp, isformat, &ps->ioversion);
+  nread += fscanf(fp, isformat, &ps->bc);
+  nread += fscanf(fp, isformat, &ps->shape);
+  nread += fscanf(fp, isformat, &ps->active);
+  nread += fscanf(fp, isformat, &ps->magnetic);
+  nread += fscanf(fp, isformat, &ps->attr);
 
   for (n = 0; n < NPAD_INT; n++) {
     nread += fscanf(fp, isformat, &ps->intpad[n]);
@@ -91,6 +107,21 @@ int colloid_state_read_ascii(colloid_state_t * ps, FILE * fp) {
   nread += fscanf(fp, sformat, &ps->sa);
   nread += fscanf(fp, sformat, &ps->saf);
   nread += fscanf(fp, sformat, &ps->al);
+
+  /* For backwards compatibility, these are read one line at a time */
+  nread += fscanf(fp, sformat, &ps->elabc[0]);
+  nread += fscanf(fp, sformat, &ps->elabc[1]);
+  nread += fscanf(fp, sformat, &ps->elabc[2]);
+
+  nread += fscanf(fp, sformat, &ps->quat[0]);
+  nread += fscanf(fp, sformat, &ps->quat[1]);
+  nread += fscanf(fp, sformat, &ps->quat[2]);
+  nread += fscanf(fp, sformat, &ps->quat[3]);
+
+  nread += fscanf(fp, sformat, &ps->quatold[0]);
+  nread += fscanf(fp, sformat, &ps->quatold[1]);
+  nread += fscanf(fp, sformat, &ps->quatold[2]);
+  nread += fscanf(fp, sformat, &ps->quatold[3]);
 
   for (n = 0; n < NPAD_DBL; n++) {
     nread += fscanf(fp, sformat, &ps->dpad[n]);
@@ -169,7 +200,7 @@ int colloid_state_write_ascii(const colloid_state_t * s, FILE * fp) {
 
   nwrite += fprintf(fp, isformat, s->rng);
 
-  /* isfixedrxyz and isfixedvxyz are writen as 3 x scalars as they
+  /* isfixedrxyz and isfixedvxyz are written as 3 x scalars as they
    * have replaced padding */
 
   for (n = 0; n < 3; n++) {
@@ -180,6 +211,12 @@ int colloid_state_write_ascii(const colloid_state_t * s, FILE * fp) {
   }
 
   nwrite += fprintf(fp, isformat, s->inter_type);
+  nwrite += fprintf(fp, isformat, s->ioversion);
+  nwrite += fprintf(fp, isformat, s->bc);
+  nwrite += fprintf(fp, isformat, s->shape);
+  nwrite += fprintf(fp, isformat, s->active);
+  nwrite += fprintf(fp, isformat, s->magnetic);
+  nwrite += fprintf(fp, isformat, s->attr);
 
   for (n = 0; n < NPAD_INT; n++) {
     nwrite += fprintf(fp, isformat, s->intpad[n]);
@@ -209,13 +246,29 @@ int colloid_state_write_ascii(const colloid_state_t * s, FILE * fp) {
   nwrite += fprintf(fp, sformat, s->saf);
   nwrite += fprintf(fp, sformat, s->al);
 
+  /* Additional entries should be one data item per line at a time */
+
+  nwrite += fprintf(fp, sformat, s->elabc[0]);
+  nwrite += fprintf(fp, sformat, s->elabc[1]);
+  nwrite += fprintf(fp, sformat, s->elabc[2]);
+
+  nwrite += fprintf(fp, sformat, s->quat[0]);
+  nwrite += fprintf(fp, sformat, s->quat[1]);
+  nwrite += fprintf(fp, sformat, s->quat[2]);
+  nwrite += fprintf(fp, sformat, s->quat[3]);
+
+  nwrite += fprintf(fp, sformat, s->quatold[0]);
+  nwrite += fprintf(fp, sformat, s->quatold[1]);
+  nwrite += fprintf(fp, sformat, s->quatold[2]);
+  nwrite += fprintf(fp, sformat, s->quatold[3]);
+
+  /* Padding */
 
   for (n = 0; n < NPAD_DBL; n++) {
     nwrite += fprintf(fp, sformat, s->dpad[n]);
   }
 
   /* ... should be NTOT_VAR items of format + 1 characters */
-
   if (nwrite != NTOT_VAR*25) ifail = 1;
 
   /* If assertions are off, responsibility passes to caller */
@@ -242,4 +295,120 @@ int colloid_state_write_binary(const colloid_state_t * s, FILE * fp) {
   nwrite = fwrite(s, sizeof(colloid_state_t), 1, fp);
 
   return (1 - nwrite);
+}
+
+/*****************************************************************************
+ *
+ *  colloid_state_mass
+ *
+ *  Depends on shape and density.
+ *
+ *****************************************************************************/
+
+int colloid_state_mass(const colloid_state_t * s, double rho0, double * mass) {
+
+  int ifail = 0;
+  const double pi = 4.0*atan(1.0);
+
+  assert(s);
+  assert(mass);
+
+  if (s->shape == COLLOID_SHAPE_SPHERE) {
+    *mass = 4.0*pi*pow(s->a0, 3)*rho0/3.0;
+  }
+  else if (s->shape == COLLOID_SHAPE_ELLIPSOID) {
+    *mass = (4.0/3.0)*pi*rho0*s->elabc[0]*s->elabc[1]*s->elabc[2];
+  }
+  else if (s->shape == COLLOID_SHAPE_DISK) {
+    *mass = pi*rho0*pow(s->a0, 2);
+  }
+  else {
+    ifail = -1;
+  }
+
+  return ifail;
+}
+
+/*****************************************************************************
+ *
+ *  colloid_type_check
+ *
+ *  At v0.21.0 colloid.type was effectively split into a number of separate
+ *  components "shape" "bc" "active" etc.
+ *  If the latest version reads an old format file with shape defaulting
+ *  to COLLOID_SHAPE_INVALID, we must recover reasonable behaviour.
+ *
+ *  So assume we should have the old default situation with a sphere
+ *  using bbl.
+ *
+ *****************************************************************************/
+
+int colloid_type_check(colloid_state_t * s) {
+
+  int is_updated = 0;
+
+  if (s->shape == COLLOID_SHAPE_INVALID) {
+    s->shape   = COLLOID_SHAPE_SPHERE;
+    s->bc      = COLLOID_BC_BBL;
+    s->active  = 0;
+    if (s->type == COLLOID_TYPE_ACTIVE) s->active = 1;
+    if (s->type == COLLOID_TYPE_SUBGRID) s->bc = COLLOID_BC_SUBGRID;
+    is_updated = 1;
+  }
+
+  return is_updated;
+}
+
+/*****************************************************************************
+ *
+ *  colloid_principal_radius
+ *
+ *  The radius; in the case of an ellipsoid, the principal a (a >= b >= c).
+ *
+ *****************************************************************************/
+
+double colloid_principal_radius(const colloid_state_t * s) {
+
+  double amax = -1.0;
+
+  assert(s);
+
+  amax = s->a0;
+  if (s->shape == COLLOID_SHAPE_ELLIPSOID) amax = s->elabc[0];
+
+  return amax;
+}
+
+/*****************************************************************************
+ *
+ *  colloid_r_inside
+ *
+ *  Is r inside the colloid? The vector r is a displacement from the centre.
+ *  For details of the ellipsoid case, see util_4_is_inside_ellipsoid().
+ *
+ *  Return value of -1 is an error.
+ *
+ *****************************************************************************/
+
+int colloid_r_inside(const colloid_state_t * s, const double r[3]) {
+
+  int inside = 0;
+
+  if (s->shape == COLLOID_SHAPE_SPHERE) {
+    double rdot = r[X]*r[X] + r[Y]*r[Y] + r[Z]*r[Z];
+    if (rdot < s->a0*s->a0) inside = 1;
+  }
+  else if (s->shape == COLLOID_SHAPE_ELLIPSOID) {
+    inside = util_q4_is_inside_ellipsoid(s->quat, s->elabc, r);
+  }
+  else if (s->shape == COLLOID_SHAPE_DISK) {
+    double rdot = r[X]*r[X] + r[Y]*r[Y];
+    if (rdot < s->a0*s->a0) inside = 1;
+  }
+  else {
+    /* This should have been trapped at input. */
+    inside = -1;
+  }
+
+  return inside;
 }

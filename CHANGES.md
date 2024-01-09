@@ -1,8 +1,21 @@
 
 ### Changes
 
+
 version 0.21.0
 
+- Ellipsoids. A feature which allows ellipsoidal particles to be
+  used has been added by Sumesh Thampi.
+
+- "colloid_type" has been split into a number of more general
+  properties including: boundary condition (bc) either bbl or
+  subgrid; shale either "disk", "sphere", or "ellipsoid";
+  active (logical); magnetic (logical).
+  The default is: bc = bbl, shape = sphere, active = no, magnetic = no.
+  There are some conditions, e.g., "disk" expects a 2D D2Q9 model.
+  This affects the way colloid details are specified in the input.
+  Older colloid state files should still work.
+  See https://ludwig.epcc.ed.ac.uk
 
 - There is no longer an option available for field halo swaps; the
   scheme has been consolidated is always the same (for CPU). GPU

@@ -5,8 +5,9 @@
  *  Edinburgh Soft Matter and Statisitical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
+ *  (c) 2012-2023 The University of Edinburgh
+ *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
- *  (c) 2012-2021 The University of Edinburgh
  *
  *****************************************************************************/
 
@@ -33,6 +34,4 @@ int build_conservation(colloids_info_t * info, field_t * phi, psi_t * psi,
 int build_count_links_local(colloid_t * colloid, int * nlinks);
 int build_count_faces_local(colloid_t * colloid, const lb_model_t * model,
 			    double * sa, double * saf);
-
-
 #endif

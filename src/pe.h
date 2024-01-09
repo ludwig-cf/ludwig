@@ -5,7 +5,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2010-2017 The University of Edinburgh
+ *  (c) 2010-2023 The University of Edinburgh
  *
  *  Contribtuing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -36,6 +36,8 @@ __host__ int pe_subdirectory_set(pe_t * pe, const char * name);
 __host__ int pe_info(pe_t * pe, const char * fmt, ...);
 __host__ int pe_fatal(pe_t * pe, const char * fmt, ...);
 __host__ int pe_verbose(pe_t * pe, const char * fmt, ...);
+__host__ int pe_warn(pe_t * pe, const char * fmt, ...);
+__host__ int pe_exit(pe_t * pe, const char * fmt, ...);
 
 __host__ int pe_time(char * strctime, int bufsiz);
 

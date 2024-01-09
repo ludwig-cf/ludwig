@@ -7,7 +7,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2010-2021 The University of Edinburgh
+ *  (c) 2010-2023 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -24,6 +24,8 @@
 #include "pe.h"
 #include "coords.h"
 #include "util.h"
+#include "util_vector.h"
+#include "util_ellipsoid.h"
 #include "colloids.h"
 
 #define RHO_DEFAULT 1.0
@@ -1246,6 +1248,7 @@ __host__ int colloids_info_climits(colloids_info_t * cinfo, int ia, int ic,
  *  colloids_info_a0max
  *
  *  Find the largest input radius a0 currently present and return.
+ *  If ellispsoids are present a (a >= b >= c) is used.
  *
  *****************************************************************************/
 
@@ -1264,7 +1267,10 @@ __host__ int colloids_info_a0max(colloids_info_t * cinfo, double * a0max) {
   colloids_info_update_lists(cinfo);
 
   colloids_info_local_head(cinfo, &pc);
-  for (; pc; pc = pc->next) a0_local = dmax(a0_local, pc->s.a0);
+  for (; pc; pc = pc->next) {
+    double a0 = colloid_principal_radius(&pc->s);
+    a0_local = dmax(a0_local, a0);
+  }
 
   MPI_Allreduce(&a0_local, a0max, 1, MPI_DOUBLE, MPI_MAX, comm);
 
@@ -1297,40 +1303,6 @@ __host__ int colloids_info_ahmax(colloids_info_t * cinfo, double * ahmax) {
   for (; pc; pc = pc->next) ahmax_local = dmax(ahmax_local, pc->s.ah);
 
   MPI_Allreduce(&ahmax_local, ahmax, 1, MPI_DOUBLE, MPI_MAX, comm);
-
-  return 0;
-}
-
-/*****************************************************************************
- *
- *  colloids_info_count_local
- *
- *  Return number of local colloids of given type.
- *
- *****************************************************************************/
-
-__host__ int colloids_info_count_local(colloids_info_t * cinfo,
-				       colloid_type_enum_t it,
-				       int * count) {
-  int nlocal = 0;
-  int ic, jc, kc;
-  colloid_t * pc = NULL;
-
-  assert(cinfo);
-
-  for (ic = 1; ic <= cinfo->ncell[X]; ic++) {
-    for (jc = 1; jc <= cinfo->ncell[Y]; jc++) {
-      for (kc = 1; kc <= cinfo->ncell[Z]; kc++) {
-
-	colloids_info_cell_list_head(cinfo, ic, jc, kc, &pc);
-	for (; pc; pc = pc->next) {
-	  if (pc->s.type == it) nlocal += 1;
-	}
-      }
-    }
-  }
-
-  *count = nlocal;
 
   return 0;
 }
@@ -1445,7 +1417,14 @@ __host__ void colloids_q_boundary_normal(colloids_info_t * cinfo,
       dn[ia] = 1.0*(noffset[ia] + isite[ia]);
       dn[ia] -= pc->s.r[ia];
     }
-
+    if (pc->s.shape == COLLOID_SHAPE_ELLIPSOID) {
+      int isphere = util_ellipsoid_is_sphere(pc->s.elabc);
+      if (!isphere) {
+	double rs[3] = {0};
+	util_vector_copy(3, dn, rs);
+	util_spheroid_surface_normal(pc->s.elabc, pc->s.m, rs, dn);
+      }
+    }
     rd = modulus(dn);
     assert(rd > 0.0);
     rd = 1.0/rd;
@@ -1552,4 +1531,64 @@ int colloids_info_rebuild_freq_set(colloids_info_t * cinfo, int nfreq) {
   cinfo->rebuild_freq = nfreq;
 
   return 0;
+}
+
+/*****************************************************************************
+ *
+ *  colloids_check_type
+ *
+ *  For backwards compatibility, check type component for each colloid.
+ *  Return number updated (should be zero for well-formed files).
+ *
+ *****************************************************************************/
+
+int colloids_type_check(colloids_info_t * info) {
+
+  int nupdate = 0;
+  colloid_t * pc = NULL;
+
+  assert(info);
+
+  /* Make sure lists are up-to-date */
+  colloids_info_update_lists(info);
+
+  colloids_info_local_head(info, &pc);
+  for (; pc; pc = pc->next) nupdate += colloid_type_check(&pc->s);
+
+  return nupdate;
+}
+
+/*****************************************************************************
+ *
+ *  colloids_ellipsoid_abc_check
+ *
+ *  For ellipsoids, enforce a >= b >= c.
+ *
+ *****************************************************************************/
+
+int colloids_ellipsoid_abc_check(colloids_info_t * info) {
+
+  int nbad = 0;
+  colloid_t * pc = NULL;
+
+  assert(info);
+
+  /* Make sure lists are up-to-date */
+  colloids_info_update_lists(info);
+
+  colloids_info_local_head(info, &pc);
+  for (; pc; pc = pc->next) {
+    if (pc->s.shape == COLLOID_SHAPE_ELLIPSOID) {
+      double a = pc->s.elabc[X];
+      double b = pc->s.elabc[Y];
+      double c = pc->s.elabc[Z];
+      if (a < b || b < c) {
+	nbad += 1;
+	pe_warn(info->pe, "Colloid %d is an ellipse and fails a >= b >= c\n",
+		pc->s.index);
+      }
+    }
+  }
+
+  return nbad;
 }

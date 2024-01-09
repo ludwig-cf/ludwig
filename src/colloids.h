@@ -7,7 +7,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2010-2021 The University of Edinburgh
+ *  (c) 2010-2023 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -30,6 +30,7 @@ struct colloid_diagnostic_s {
   int index;          /* Copy of particle index for identification. */
   double ftotal[3];   /* Net force on particle (all contributions) */
   double fhydro[3];   /* Hydrodynamic force on particle */
+  double Thydro[3];   /* Hydrodynamic torque on particle */
   double fsbulk[3];   /* Bulk stress (divergence) contribution */
   double fsgrad[3];   /* Gradient stress (divergence) contribution */
   double fschem[3];   /* Total "chemical" stress contribution (is fd2 + fd3) */
@@ -51,7 +52,7 @@ struct colloid {
 
   colloid_state_t s;
 
-  /* AUXILARY */
+  /* AUXILIARY */
 
   double random[6];     /* Random numbers for MC/Brownian dynamics */
   double force[3];      /* Total force on colloid */
@@ -63,10 +64,10 @@ struct colloid {
   double deltam;        /* Mass difference owing to change in shape */
   double sumw;          /* Sum of weights over links */
   double zeta[21];      /* Upper triangle of 6x6 drag matrix zeta */
-  double stats[3];      /* Particle statisitics */
+  double stats[3];      /* Particle statistics */
   double fc0[3];        /* total force on squirmer for mass conservation */
   double tc0[3];        /* total torque on squirmer for mass conservation */
-  double sump;          /* flux through squirmer surface */ 
+  double sump;          /* flux through squirmer surface */
   double dq[2];         /* charge remove/replace mismatch for 2 charges */
 
   double fsub[3];       /* Subgrid particle force from fluid */
@@ -116,7 +117,7 @@ struct colloids_info_s {
 
   pe_t * pe;                  /* Parallel environment */
   cs_t * cs;                  /* Coordinate system */
-  colloids_info_t * target;   /* Copy of this structure on target */ 
+  colloids_info_t * target;   /* Copy of this structure on target */
 };
 
 __host__ int colloids_info_create(pe_t * pe, cs_t * cs, int ncell[3],
@@ -166,8 +167,7 @@ __host__ int colloids_info_list_local_build(colloids_info_t * cinfo);
 __host__ int colloids_info_climits(colloids_info_t * cinfo, int ia, int ic, int * lim);
 __host__ int colloids_info_a0max(colloids_info_t * cinfo, double * a0max);
 __host__ int colloids_info_ahmax(colloids_info_t * cinfo, double * ahmax);
-__host__ int colloids_info_count_local(colloids_info_t * cinfo, colloid_type_enum_t it,
-			      int * count);
+
 __host__ int colloids_number_sites(colloids_info_t *cinfo);
 __host__ void colloids_list_sites(int* colloidSiteList, colloids_info_t *cinfo);
 __host__ void colloids_q_boundary_normal(colloids_info_t * cinfo,
@@ -178,4 +178,9 @@ __host__ int colloid_rb(colloids_info_t * info, colloid_t * pc, int index,
 			double rb[3]);
 __host__ int colloid_rb_ub(colloids_info_t * info, colloid_t * pc, int index,
 			   double rb[3], double ub[3]);
+
+__host__ int is_site_inside_colloid(colloid_t * pc, double rsep[3]);
+__host__ int colloids_type_check(colloids_info_t * info);
+__host__ int colloids_ellipsoid_abc_check(colloids_info_t * info);
+
 #endif

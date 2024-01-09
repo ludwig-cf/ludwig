@@ -233,7 +233,7 @@ static int ludwig_rt(ludwig_t * ludwig) {
   ludwig_timekeeper_init(ludwig);
   init_control(pe, rt);
 
-  physics_init_rt(rt, ludwig->phys); 
+  physics_init_rt(rt, ludwig->phys);
   physics_info(pe, ludwig->phys);
 
   lb_run_time(pe, cs, rt, &ludwig->lb);
@@ -264,7 +264,7 @@ static int ludwig_rt(ludwig_t * ludwig) {
     pe_info(pe, "\n");
     pe_info(pe, "Order parameter I/O\n");
     pe_info(pe, "-------------------\n");
-    
+
     pe_info(pe, "Order parameter I/O format:   %s\n", value);
     pe_info(pe, "I/O decomposition:            %d %d %d\n",
 	    io_grid[X], io_grid[Y], io_grid[Z]);
@@ -302,6 +302,12 @@ static int ludwig_rt(ludwig_t * ludwig) {
 
   bbl_create(pe, ludwig->cs, ludwig->lb, &ludwig->bbl);
   bbl_active_set(ludwig->bbl, ludwig->collinfo);
+  {
+    /* Kludge: this switch is unlikely to be required as the default
+     * method of quaternions (ellipsoid_didt = 0) is exact */
+    int ellipsoid_didt = rt_switch(rt, "bbl_ellipsoid_update_fd");
+    bbl_didt_method_set(ludwig->bbl, ellipsoid_didt);
+  }
 
   /* NOW INITIAL CONDITIONS */
 
@@ -404,7 +410,7 @@ static int ludwig_rt(ludwig_t * ludwig) {
     if (nstat) stats_sigma_create(pe, cs, ludwig->fe_symm, ludwig->phi,
 				  &ludwig->stat_sigma);
     lb_ndist(ludwig->lb, &n);
-    if (n == 2) phi_lb_from_field(ludwig->phi, ludwig->lb); 
+    if (n == 2) phi_lb_from_field(ludwig->phi, ludwig->lb);
   }
 
   /* Initial Q_ab field required */
@@ -588,7 +594,7 @@ void ludwig_run(const char * inputfile) {
       TIMER_start(TIMER_PHI_HALO);
       field_halo(ludwig->q);
       TIMER_stop(TIMER_PHI_HALO);
-      
+
       field_grad_compute(ludwig->q_grad);
       fe_lc_redshift_compute(ludwig->cs, ludwig->fe_lc);
     }
@@ -608,7 +614,7 @@ void ludwig_run(const char * inputfile) {
      * gradients for phi) */
 
     if (ludwig->psi) {
-      /* Set charge distribution according to updated map */     
+      /* Set charge distribution according to updated map */
       psi_colloid_rho_set(ludwig->psi, ludwig->collinfo);
 
       /* Poisson solve */
@@ -628,7 +634,7 @@ void ludwig_run(const char * inputfile) {
       /* Time splitting for high electrokinetic diffusions in Nernst Planck */
 
       psi_multisteps(ludwig->psi, &multisteps);
-      
+
       for (im = 0; im < multisteps; im++) {
 
 	TIMER_start(TIMER_HALO_LATTICE);
@@ -643,7 +649,7 @@ void ludwig_run(const char * inputfile) {
 	  TIMER_start(TIMER_FORCE_CALCULATION);
 	  psi_force_method(ludwig->psi, &flag);
 
-          /* Force input as gradient of chemical potential 
+          /* Force input as gradient of chemical potential
                  with integrated momentum correction       */
 	  if (flag == PSI_FORCE_GRADMU) {
 	    psi_force_gradmu(ludwig->psi, ludwig->fe, ludwig->phi,
@@ -666,13 +672,13 @@ void ludwig_run(const char * inputfile) {
 	TIMER_stop(TIMER_ELECTRO_NPEQ);
 
       }
-      
+
       TIMER_start(TIMER_HALO_LATTICE);
       psi_halo_psi(ludwig->psi);
       psi_halo_psijump(ludwig->psi);
       psi_halo_rho(ludwig->psi);
       TIMER_stop(TIMER_HALO_LATTICE);
-    
+
       nernst_planck_adjust_multistep(ludwig->psi);
       psi_zero_mean(ludwig->psi);
     }
@@ -703,7 +709,7 @@ void ludwig_run(const char * inputfile) {
 	    fe_lc_droplet_t * fe = (fe_lc_droplet_t *) ludwig->fe;
 
 	    if (wall_present(ludwig->wall)) {
-	      fe_lc_droplet_bodyforce_wall(fe, ludwig->le, ludwig->hydro, 
+	      fe_lc_droplet_bodyforce_wall(fe, ludwig->le, ludwig->hydro,
 		                           ludwig->map, ludwig->wall);
 	    }
 	    else {
@@ -805,7 +811,7 @@ void ludwig_run(const char * inputfile) {
 
       TIMER_stop(TIMER_COLLIDE);
 
-      
+
       /* Boundary conditions */
 
       if (ludwig->le) {
@@ -919,7 +925,7 @@ void ludwig_run(const char * inputfile) {
     /* Measurements */
 
     if (is_measurement_step()) {
-      /* TODO: Allow calibration to be taken its own measurment frequency */
+      /* TODO: Allow calibration to be taken its own measurement frequency */
       stats_sigma_measure(ludwig->stat_sigma, step);
     }
 
@@ -1106,7 +1112,7 @@ static int ludwig_report_momentum(ludwig_t * ludwig) {
  *
  *  No free energy is appropriate for a single phase fluid.
  *
- *  This is currently rather repetative, so some rationalisation
+ *  This is currently rather repetitive, so some rationalisation
  *  is required.
  *
  *****************************************************************************/
@@ -1424,7 +1430,7 @@ int free_energy_init_rt(ludwig_t * ludwig) {
 
     ludwig->fe_surf = fe;
     ludwig->fe = (fe_t *) fe;
-    
+
   }
   else if (strcmp(description, "ternary") == 0) {
 
@@ -1631,7 +1637,7 @@ int free_energy_init_rt(ludwig_t * ludwig) {
     /* liquid crystal droplet */
     pe_info(pe, "\n");
     pe_info(pe, "Liquid crystal droplet free energy selected\n");
-    
+
     /* first do the symmetric */
     nf = 1;      /* 1 scalar order parameter */
     nhalo = 2;   /* Require stress divergence. */
@@ -2029,7 +2035,7 @@ int visc_model_init_rt(pe_t * pe, rt_t * rt, ludwig_t * ludwig) {
 
     if (param.eta_plus  == 0.0) pe_fatal(pe, "Non-zero eta_plus required\n");
     if (param.eta_minus == 0.0) pe_fatal(pe, "Non-zero eta_minus required\n");
-    if (param.phistar   == 0.0) pe_fatal(pe, "Non-zero phistar required\n"); 
+    if (param.phistar   == 0.0) pe_fatal(pe, "Non-zero phistar required\n");
 
     visc_arrhenius_create(pe, cs, phi, param, &visc);
     ludwig->visc = (visc_t *) visc;
@@ -2165,7 +2171,7 @@ int ludwig_colloids_update(ludwig_t * ludwig) {
  *
  *  io_replace_values
  *
- *  Replaces order parameter values at internal colloid or sites 
+ *  Replaces order parameter values at internal colloid or sites
  *
  *****************************************************************************/
 
@@ -2236,7 +2242,7 @@ __global__ void io_replace_values_kernel(kernel_ctxt_t * ktx,
  *
  *  io_replace_field_values
  *
- *  Driver to replace specfic values in a field.
+ *  Driver to replace specific values in a field.
  *
  *****************************************************************************/
 

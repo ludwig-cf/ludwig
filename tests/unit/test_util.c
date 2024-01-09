@@ -21,6 +21,7 @@
 
 #include "pe.h"
 #include "util.h"
+#include "util_ellipsoid.h"
 #include "tests.h"
 
 /* For RNG tests */

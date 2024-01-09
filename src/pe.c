@@ -92,7 +92,7 @@ __host__ int pe_create(MPI_Comm parent, pe_enum_t flag, pe_t ** ppe) {
   }
 
   *ppe = pe;
-  
+
   return 0;
 }
 
@@ -244,6 +244,33 @@ __host__ int pe_fatal(pe_t * pe, const char * fmt, ...) {
 
 /*****************************************************************************
  *
+ *  pe_exit
+ *
+ *  Just an alternative to "fatal".
+ *
+ *****************************************************************************/
+
+__host__ int pe_exit(pe_t * pe, const char * fmt, ...) {
+
+  va_list args;
+
+  assert(pe);
+
+  printf("[%d] ", pe->mpi_rank);
+
+  va_start(args, fmt);
+  vprintf(fmt, args);
+  va_end(args);
+
+  /* Considered a successful exit (code 0). */
+
+  MPI_Abort(pe->comm, 0);
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
  *  pe_verbose
  *
  *  Always prints a message (prefixed by MPI rank).
@@ -257,6 +284,27 @@ __host__ int pe_verbose(pe_t * pe, const char * fmt, ...) {
   assert(pe);
 
   printf("[%d] ", pe->mpi_rank);
+
+  va_start(args, fmt);
+  vprintf(fmt, args);
+  va_end(args);
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  pe_warn
+ *
+ *  Always prints a message.
+ *
+ *****************************************************************************/
+
+__host__ int pe_warn(pe_t * pe, const char * fmt, ...) {
+
+  va_list args;
+
+  assert(pe);
 
   va_start(args, fmt);
   vprintf(fmt, args);

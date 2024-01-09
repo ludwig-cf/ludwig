@@ -130,10 +130,12 @@ __host__ int tests_create(int argc, char ** argv) {
   test_timer_suite();
   test_util_suite();
   test_util_bits_suite();
+  test_util_ellipsoid_suite();
   test_util_fopen_suite();
   test_util_io_suite();
   test_util_json_suite();
   test_util_sum_suite();
+  test_util_vector_suite();
   test_visc_arrhenius_suite();
   test_wall_suite();
   test_wall_ss_cut_suite();

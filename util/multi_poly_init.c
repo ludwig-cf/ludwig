@@ -83,11 +83,10 @@ int main(int argc, char ** argv) {
   double b1 = 0.00;
   double b2 = 0.00;
 
-  /* COLLOID_TYPE_DEFAULT  fully resolved standard;
-   * COLLOID_TYPE_ACTIVE   squirmer;
-   * COLLOID_TYPE_SUBGRID  subgrid. For polymers, must be subgrid. */
+  /* See, e.g., colloid.h for different possibilities */
 
-  int type  = COLLOID_TYPE_SUBGRID;
+  int bc = COLLOID_BC_SUBGRID;
+  int shape = COLLOID_SHAPE_SPHERE;
 
   int Npoly = 1;        /* number of polymers */
   int Lpoly = 30;       /* length of a polymer */
@@ -133,8 +132,9 @@ int main(int argc, char ** argv) {
     state[n].m[X] = 1.0;
     state[n].m[Y] = 0.0;
     state[n].m[Z] = 0.0;
-    state[n].type = type;
-    if (type == COLLOID_TYPE_SUBGRID) {
+    state[n].bc = bc;
+    state[n].shape = shape;
+    if (bc == COLLOID_BC_SUBGRID) {
       /* Needs a_L */
       state[n].al= al;
     }

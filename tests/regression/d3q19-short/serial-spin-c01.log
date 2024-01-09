@@ -88,7 +88,6 @@ Input format:                 ascii
 Output format:                ascii
 Single file read flag:        0
 
-colloid_random                default
 colloid_random_a0             2.3000000e+00
 colloid_random_ah             2.3000000e+00
 Requested   20 colloids at random
