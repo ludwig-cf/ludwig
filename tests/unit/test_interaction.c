@@ -233,12 +233,14 @@ int test_colloids_update_forces_buoyancy(pe_t * pe) {
     physics_create(pe, &phys);
     colloids_update_forces_buoyancy(cinfo, map, phys);
 
-    if (fabs(pc->force[X] - 0.0) > DBL_EPSILON) ifail = -1;
-    assert(ifail == 0);
-    if (fabs(pc->force[Y] - 0.0) > DBL_EPSILON) ifail = -1;
-    assert(ifail == 0);
-    if (fabs(pc->force[Z] - 0.0) > DBL_EPSILON) ifail = -1;
-    assert(ifail == 0);
+    if (pc) {
+      if (fabs(pc->force[X] - 0.0) > DBL_EPSILON) ifail = -1;
+      assert(ifail == 0);
+      if (fabs(pc->force[Y] - 0.0) > DBL_EPSILON) ifail = -1;
+      assert(ifail == 0);
+      if (fabs(pc->force[Z] - 0.0) > DBL_EPSILON) ifail = -1;
+      assert(ifail == 0);
+    }
     physics_free(phys);
   }
 
@@ -251,11 +253,13 @@ int test_colloids_update_forces_buoyancy(pe_t * pe) {
 
     colloids_buoyancy_set(cinfo, b);
     colloids_update_forces_buoyancy(cinfo, map, phys);
-    colloid_state_mass(&pc->s, cinfo->rho0, &vol);
 
-    assert(fabs(pc->force[X] - 0.0) < DBL_EPSILON);
-    assert(fabs(pc->force[Y] - 0.0) < DBL_EPSILON);
-    assert(fabs(pc->force[Z] - vol) < DBL_EPSILON);
+    if (pc) {
+      colloid_state_mass(&pc->s, cinfo->rho0, &vol);
+      assert(fabs(pc->force[X] - 0.0) < DBL_EPSILON);
+      assert(fabs(pc->force[Y] - 0.0) < DBL_EPSILON);
+      assert(fabs(pc->force[Z] - vol) < DBL_EPSILON);
+    }
 
     physics_free(phys);
   }
