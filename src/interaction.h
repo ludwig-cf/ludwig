@@ -79,5 +79,7 @@ int colloids_update_forces_fluid_driven(colloids_info_t * cinfo, map_t * map,
 					physics_t * phys);
 int colloids_update_forces_fluid_body_force(colloids_info_t * cinfo,
 					    const physics_t * phys);
+int colloids_update_forces_buoyancy(colloids_info_t * cinfo, map_t * map,
+				    physics_t * phys);
 
 #endif

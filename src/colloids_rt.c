@@ -694,34 +694,48 @@ int colloids_rt_state_stub(pe_t * pe, rt_t * rt, colloids_info_t * cinfo,
  *
  *  colloids_rt_gravity
  *
- *  Sedimentation force and density
+ *  Sedimentation force and density.
+ *  Look at the separate buoyancy at the same time. This is a later
+ *  addition and is treated differently, as physics_t should be on
+ *  the way out.
  *
  *****************************************************************************/
 
 int colloids_rt_gravity(pe_t * pe, rt_t * rt, colloids_info_t * cinfo) {
 
   int nc;
-  int isgrav = 0;
   double rho0;
   double g[3] = {0.0, 0.0, 0.0};
-  physics_t * phys = NULL;
 
   assert(cinfo);
 
-  physics_ref(&phys);
   colloids_info_ntotal(cinfo, &nc);
   if (nc == 0) return 0;
 
-  nc = rt_double_parameter_vector(rt, "colloid_gravity", g);
-  if (nc != 0) physics_fgrav_set(phys, g);
+  rt_double_parameter_vector(rt, "colloid_gravity", g);
+  colloids_gravity_set(cinfo, g);
 
-  isgrav = (g[X] != 0.0 || g[Y] != 0.0 || g[Z] != 0.0);
-
-  if (isgrav) {
+  if (cinfo->isgravity) {
     pe_info(pe, "\n");
     pe_info(pe, "Sedimentation force on:       yes\n");
     pe_info(pe, "Sedimentation force:         %14.7e %14.7e %14.7e\n",
 	 g[X], g[Y], g[Z]);
+  }
+
+  {
+    double b[3] = {0};
+    int isb = rt_double_parameter_vector(rt, "colloid_buoyancy", b);
+
+    colloids_buoyancy_set(cinfo, b);
+
+    if (isb) {
+      pe_info(pe, "\n");
+      pe_info(pe, "Colloid buoyancy force:      %14.7e %14.7e %14.7e\n",
+	      b[X], b[Y], b[Z]);
+      if (cinfo->isgravity) {
+	pe_exit(pe, "Buoyancy and gravity both set; use one only!\n");
+      }
+    }
   }
 
   nc = rt_double_parameter(rt, "colloid_rho0", &rho0);

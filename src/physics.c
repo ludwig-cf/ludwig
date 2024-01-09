@@ -20,7 +20,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2010-2023 The University of Edinburgh
+ *  (c) 2010-2024 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -47,7 +47,6 @@ struct physics_s {
   double e0[3];        /* Amplitude of external electric field */
   double e0_frequency; /* Frequency of external electric field */
   double b0[3];        /* External magnetic field */
-  double fgravity[3];  /* Gravitational force (on objects) */
   double mobility;     /* Order parameter mobility (binary fluid) */
 
   int t_start;         /* Start time step requested */
@@ -558,40 +557,6 @@ __host__ int physics_mobility_set(physics_t * phys, double mobility) {
   assert(mobility);
 
   phys->mobility = mobility;
-
-  return 0;
-}
-
-/*****************************************************************************
- *
- *  physics_fgrav
- *
- *****************************************************************************/
-
-__host__ __device__ int physics_fgrav(const physics_t * phys, double g[3]) {
-
-  assert(phys);
-
-  g[0] = phys->fgravity[0];
-  g[1] = phys->fgravity[1];
-  g[2] = phys->fgravity[2];
-
-  return 0;
-}
-
-/*****************************************************************************
- *
- *  physics_fgrav_set
- *
- *****************************************************************************/
-
-__host__ int physics_fgrav_set(physics_t * phys, double g[3]) {
-
-  assert(phys);
-
-  phys->fgravity[0] = g[0];
-  phys->fgravity[1] = g[1];
-  phys->fgravity[2] = g[2];
 
   return 0;
 }

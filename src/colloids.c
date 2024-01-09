@@ -7,7 +7,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2010-2023 The University of Edinburgh
+ *  (c) 2010-2024 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -1591,4 +1591,40 @@ int colloids_ellipsoid_abc_check(colloids_info_t * info) {
   }
 
   return nbad;
+}
+
+/*****************************************************************************
+ *
+ *  colloids_buoyancy_set
+ *
+ *****************************************************************************/
+
+int colloids_buoyancy_set(colloids_info_t * cinfo, const double b[3]) {
+
+  assert(cinfo);
+
+  cinfo->isbuoyancy = (b[X] != 0.0 || b[Y] != 0.0 || b[Z] != 0.0);
+  cinfo->bgravity[X] = b[X];
+  cinfo->bgravity[Y] = b[Y];
+  cinfo->bgravity[Z] = b[Z];
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  colloids_gravity_set
+ *
+ *****************************************************************************/
+
+int colloids_gravity_set(colloids_info_t * cinfo, const double g[3]) {
+
+  assert(cinfo);
+
+  cinfo->isgravity = (g[X] != 0 || g[Y] != 0.0 || g[Z] != 0.0);
+  cinfo->fgravity[X] = g[X];
+  cinfo->fgravity[Y] = g[Y];
+  cinfo->fgravity[Z] = g[Z];
+
+  return 0;
 }
