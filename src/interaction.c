@@ -197,6 +197,9 @@ int interact_compute(interact_t * interact, colloids_info_t * cinfo,
     colloids_update_forces_fluid_gravity(cinfo, map, phys);
     colloids_update_forces_fluid_body_force(cinfo, phys);
     colloids_update_forces_fluid_driven(cinfo, map, phys);
+
+    colloids_update_forces_buoyancy(cinfo, map, phys);
+
     interact_wall(interact, cinfo);
 
     if (nc > 1) {
@@ -388,7 +391,6 @@ int colloids_update_forces_external(colloids_info_t * cinfo,
   int ic, jc, kc, ia;
   int ncell[3];
   double b0[3];          /* external fields */
-  double g[3];
   double btorque[3];
   double dforce[3];
   colloid_t * pc;
@@ -397,7 +399,6 @@ int colloids_update_forces_external(colloids_info_t * cinfo,
   colloids_info_ncell(cinfo, ncell);
 
   physics_b0(phys, b0);
-  physics_fgrav(phys, g);
 
   for (ic = 1; ic <= ncell[X]; ic++) {
     for (jc = 1; jc <= ncell[Y]; jc++) {
@@ -408,9 +409,9 @@ int colloids_update_forces_external(colloids_info_t * cinfo,
 	for (; pc; pc = pc->next) {
 
 	  /* All particles have gravity */
-	  pc->force[X] += g[X];
-	  pc->force[Y] += g[Y];
-	  pc->force[Z] += g[Z];
+	  pc->force[X] += cinfo->fgravity[X];
+	  pc->force[Y] += cinfo->fgravity[Y];
+	  pc->force[Z] += cinfo->fgravity[Z];
 
           if (pc->s.bc == COLLOID_BC_SUBGRID) continue;
 
@@ -450,9 +451,8 @@ int colloids_update_forces_fluid_gravity(colloids_info_t * cinfo,
   int nc;
   int ia;
   int nsfluid;
-  int is_gravity = 0;
   double rvolume;
-  double g[3], f[3];
+  double f[3];
 
   assert(cinfo);
   assert(phys);
@@ -460,10 +460,7 @@ int colloids_update_forces_fluid_gravity(colloids_info_t * cinfo,
   colloids_info_ntotal(cinfo, &nc);
   if (nc == 0) return 0;
 
-  physics_fgrav(phys, g);
-  is_gravity = (g[X] != 0.0 || g[Y] != 0.0 || g[Z] != 0.0);
-
-  if (is_gravity) {
+  if (cinfo->isgravity) {
 
     assert(map);
     map_volume_allreduce(map, MAP_FLUID, &nsfluid);
@@ -472,7 +469,7 @@ int colloids_update_forces_fluid_gravity(colloids_info_t * cinfo,
     /* Force per fluid node to balance is... */
 
     for (ia = 0; ia < 3; ia++) {
-      f[ia] = -g[ia]*rvolume*nc;
+      f[ia] = -cinfo->fgravity[ia]*rvolume*nc;
     }
 
     physics_fbody_set(phys, f);
@@ -497,11 +494,9 @@ int colloids_update_forces_fluid_gravity(colloids_info_t * cinfo,
 int colloids_update_forces_fluid_body_force(colloids_info_t * cinfo,
 					    const physics_t * phys) {
 
-  double fg[3] = {0};
+  assert(cinfo);
 
-  physics_fgrav(phys, fg);
-
-  if (fg[X] != 0.0 || fg[Y] != 0.0 || fg[Z] != 0.0) {
+  if (cinfo->isgravity || cinfo->isbuoyancy) {
     /* Gravity => cannot have body force; do nothing */
   }
   else {
@@ -901,6 +896,65 @@ int colloids_update_forces_ext(colloids_info_t * cinfo) {
     pc->tex[X] = pc->torque[X];
     pc->tex[Y] = pc->torque[Y];
     pc->tex[Z] = pc->torque[Z];
+  }
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  colloids_update_force_buoyancy
+ *
+ *  1. Apply a "buoyancy" force b delta rho V on each particle. The
+ *     volume of each particle is potentially different;
+ *  2. cccumulate the total such force on all the particles;
+ *  3. compute and apply the counterbalancing force for fluid sites
+ *     in a periodic system,
+ *
+ *****************************************************************************/
+
+int colloids_update_forces_buoyancy(colloids_info_t * cinfo, map_t * map,
+				    physics_t * phys) {
+  double btot[3] = {0};
+
+  assert(cinfo);
+  assert(map);
+  assert(phys);
+
+  if (cinfo->isbuoyancy == 0) return 0;
+
+  {
+    colloid_t * pc = NULL;
+
+    colloids_info_local_head(cinfo, &pc);
+
+    for ( ; pc; pc = pc->nextlocal) {
+      double vol = 0.0; /* volume, aka mass here */
+      colloid_state_mass(&pc->s, cinfo->rho0, &vol);
+
+      pc->force[X] += cinfo->bgravity[X]*vol;
+      pc->force[Y] += cinfo->bgravity[Y]*vol;
+      pc->force[Z] += cinfo->bgravity[Z]*vol;
+
+      btot[X] += cinfo->bgravity[X]*vol;
+      btot[Y] += cinfo->bgravity[Y]*vol;
+      btot[Z] += cinfo->bgravity[Z]*vol;
+    }
+  }
+
+  MPI_Allreduce(MPI_IN_PLACE, btot, 3, MPI_DOUBLE, MPI_SUM, cinfo->cs->commcart);
+
+  /* Counter force per fluid site */
+  {
+    int vfluid = 0;
+    double fcounter[3] = {0};
+    map_volume_allreduce(map, MAP_FLUID, &vfluid);
+
+    fcounter[X] = -btot[X]/vfluid;
+    fcounter[Y] = -btot[Y]/vfluid;
+    fcounter[Z] = -btot[Z]/vfluid;
+
+    physics_fbody_set(phys, fcounter);
   }
 
   return 0;

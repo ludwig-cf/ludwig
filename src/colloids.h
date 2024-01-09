@@ -109,6 +109,11 @@ struct colloids_info_s {
   double rho0;                /* Mean density (usually matches fluid) */
   double drmax;               /* Maximum movement per time step */
 
+  int isgravity;              /* Gravity flag */
+  int isbuoyancy;             /* Buoyancy flag */
+  double fgravity[3];         /* External "gravity" force (per colloid) */
+  double bgravity[3];         /* External "buoyancy" force (per unit vol) */
+
   colloid_t ** clist;         /* Cell list pointers */
   colloid_t ** map_old;       /* Map (previous time step) pointers */
   colloid_t ** map_new;       /* Map (current time step) pointers */
@@ -182,5 +187,8 @@ __host__ int colloid_rb_ub(colloids_info_t * info, colloid_t * pc, int index,
 __host__ int is_site_inside_colloid(colloid_t * pc, double rsep[3]);
 __host__ int colloids_type_check(colloids_info_t * info);
 __host__ int colloids_ellipsoid_abc_check(colloids_info_t * info);
+
+__host__ int colloids_buoyancy_set(colloids_info_t * cinfo, const double b[3]);
+__host__ int colloids_gravity_set(colloids_info_t * cinfo, const double g[3]);
 
 #endif

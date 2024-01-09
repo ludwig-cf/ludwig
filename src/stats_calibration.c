@@ -140,7 +140,7 @@ int stats_ahydro_create(pe_t * pe, cs_t * cs, colloids_info_t * cinfo,
   }
   obj->ndata = 0;
 
-  physics_fgrav_set(phys, f);
+  colloids_gravity_set(cinfo, f);
 
   pe_info(pe, "\n\n");
   pe_info(pe, "Calibration information:\n");
