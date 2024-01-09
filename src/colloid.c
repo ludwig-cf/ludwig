@@ -8,7 +8,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2010-2023 The University of Edinburgh
+ *  (c) 2010-2024 The University of Edinburgh
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *
@@ -18,6 +18,7 @@
 #include <stdio.h>
 #include <math.h>
 
+#include "cartesian.h"
 #include "util_ellipsoid.h"
 #include "colloid.h"
 

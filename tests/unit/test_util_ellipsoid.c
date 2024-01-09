@@ -5,7 +5,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2012-2023 The University of Edinburgh
+ *  (c) 2023-2024 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -36,6 +36,7 @@ int test_util_ellipsoid_euler_from_vectors(void);
 int test_util_ellipsoid_prolate_settling_velocity(void);
 int test_util_spheroid_surface_normal(void);
 int test_util_spheroid_surface_tangent(void);
+int test_util_discrete_volume_ellipsoid(void);
 
 /*****************************************************************************
  *
@@ -62,6 +63,7 @@ int test_util_ellipsoid_suite(void) {
   test_util_ellipsoid_prolate_settling_velocity();
   test_util_spheroid_surface_normal();
   test_util_spheroid_surface_tangent();
+  test_util_discrete_volume_ellipsoid();
 
   pe_info(pe, "%-9s %s\n", "PASS", __FILE__);
   pe_free(pe);
@@ -474,15 +476,16 @@ int test_util_ellipsoid_euler_from_vectors(void) {
   }
 
   {
-    /* OK. */
+    /* This one is ok. */
     double a[3]     = {0.0, 0.0, 1.0};
     double b[3]     = {0.0, 1.0, 0.0};
     double euler[3] = {0.0, 0.0, 0.0};
     ifail = util_ellipsoid_euler_from_vectors(a, b, euler);
     assert(ifail == 0);
-    assert(fabs(euler[0] + 0.5*pi) < DBL_EPSILON);
-    assert(fabs(euler[1] - 0.5*pi) < DBL_EPSILON);
-    assert(fabs(euler[2] - 0.5*pi) < DBL_EPSILON);
+    if (fabs(euler[0] + 0.5*pi) > DBL_EPSILON) ifail = -1;
+    if (fabs(euler[1] - 0.5*pi) > DBL_EPSILON) ifail = -1;
+    if (fabs(euler[2] - 0.5*pi) > DBL_EPSILON) ifail = -1;
+    assert(ifail == 0);
   }
 
   return ifail;
@@ -727,6 +730,45 @@ int test_util_q4_inertia_tensor(void) {
     assert(fabs(mi[1][0] - 0.2500) < 8.0*DBL_EPSILON);
     assert(fabs(mi[1][1] - 1.5000) < 8.0*DBL_EPSILON);
     assert(fabs(mi[2][2] - 1.8750) < 8.0*DBL_EPSILON);
+  }
+
+  return ifail;
+}
+
+/*****************************************************************************
+ *
+ *  test_util_discrete_volume_ellipsoid
+ *
+ *****************************************************************************/
+
+int test_util_discrete_volume_ellipsoid(void) {
+
+  int ifail = 0;
+
+  {
+    /* prolate example: vol = 3 units */
+    double r0[3]  = {1.00, 1.00, 1.00};
+    double abc[3] = {1.01, 0.25, 0.25};
+    double q4[4]  = {1.0, 0.0, 0.0, 0.0};
+    int ivol = 0;
+    double rvol = 0.0;
+    ivol = util_discrete_volume_ellipsoid(abc, r0, q4, &rvol);
+    if (ivol != 3) ifail = -1;
+    assert(ifail == 0);
+    assert(fabs(rvol - 1.0*ivol) < DBL_EPSILON);
+  }
+
+  {
+    /* oblate example: vol = 4 units */
+    double r0[3]  = {1.00, 1.50, 1.50};
+    double abc[3] = {0.25, 0.71, 0.71};    /* slightly larger than sqrt(2) */
+    double q4[4]  = {1.0, 0.0, 0.0, 0.0};
+    int ivol = 0;
+    double rvol = 0.0;
+    ivol = util_discrete_volume_ellipsoid(abc, r0, q4, &rvol);
+    if (ivol != 4) ifail = -1;
+    assert(ifail == 0);
+    assert(fabs(rvol - 1.0*ivol) < DBL_EPSILON);
   }
 
   return ifail;

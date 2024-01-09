@@ -7,7 +7,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2023 The University of Edinburgh
+ *  (c) 2023-2024 The University of Edinburgh
  *
  *  Contributing authors:
  *  Sumesh Thampi
@@ -789,4 +789,46 @@ int util_spheroid_surface_tangent(const double elabc[3], const double m[3],
 				  const double r[3], double vt[3]) {
 
   return util_spheroid_normal_tangent(elabc, m, r, 1, vt);
+}
+
+/*****************************************************************************
+ *
+ *  util_discrete_volume_ellipsoid
+ *
+ *  A utility to return the discrete volume of an ellipsoid with axes
+ *  abs[3] and orientation described by quaternion q placed on the
+ *  unit lattice at position r.
+ *
+ *  We just draw a large box around the central position based on the
+ *  semi-principal radius.
+ *  The inside/outside determination is via util_q4_is_inside_ellipsoid().
+ *
+ *  The return value is the volume as an integer.
+ *
+ *****************************************************************************/
+
+int util_discrete_volume_ellipsoid(const double abc[3], const double r0[3],
+				   const double q[4], double * vol) {
+
+  int inside = 0;
+  int nr = ceil(dmax(abc[0], dmax(abc[1], abc[2])));
+
+  double x0 = r0[X] - floor(r0[X]);
+  double y0 = r0[Y] - floor(r0[Y]);
+  double z0 = r0[Z] - floor(r0[Z]);
+
+  assert(vol);
+
+  for (int ic = -nr; ic <= nr; ic++) {
+    for (int jc = -nr; jc <= nr; jc++) {
+      for (int kc = -nr; kc <= nr; kc++) {
+	double r[3] = {1.0*ic - x0, 1.0*jc - y0, 1.0*kc - z0};
+	inside += util_q4_is_inside_ellipsoid(q, abc, r);
+      }
+    }
+  }
+
+  *vol = 1.0*inside;
+
+  return inside;
 }

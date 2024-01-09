@@ -292,9 +292,10 @@ int test_util_vector_dcm_to_euler(void) {
     double theta = -1.0;
     double psi   = -1.0;
     util_vector_dcm_to_euler(dcm, &phi, &theta, &psi);
-    assert(fabs(theta - 0.0)    < DBL_EPSILON);
-    assert(fabs(phi   - pi/2.0) < DBL_EPSILON);
-    assert(fabs(psi   - 0.0)    < DBL_EPSILON);
+    if (fabs(theta - 0.0)    > DBL_EPSILON) ifail = -1;
+    if (fabs(phi   - pi/2.0) > DBL_EPSILON) ifail = -1;
+    if (fabs(psi   - 0.0)    > DBL_EPSILON) ifail = -1;
+    assert(ifail == 0);
   }
 
   return ifail;

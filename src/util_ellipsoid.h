@@ -16,9 +16,6 @@
 #ifndef LUDWIG_UTIL_ELLIPSOID_H
 #define LUDWIG_UTIL_ELLIPSOID_H
 
-#include "pe.h"
-#include "coords.h"
-
 void util_q4_product(const double a[4], const double b[4], double c[4]);
 void util_q4_rotate_vector(const double q[4], const double a[3], double b[3]);
 void util_q4_from_omega(const double omega[3], double dt, double q[4]);
@@ -40,6 +37,8 @@ int util_ellipsoid_euler_from_vectors(const double a0[3], const double b0[3],
 				      double euler[3]);
 int util_ellipsoid_prolate_settling_velocity(double a, double b, double eta,
 					     double f, double u[2]);
+int util_discrete_volume_ellipsoid(const double abc[3], const double r0[3],
+				   const double q[4], double * vol);
 
 void matrix_product(const double a[3][3], const double b[3][3],
 		    double result[3][3]);
