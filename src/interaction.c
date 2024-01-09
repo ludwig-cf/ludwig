@@ -17,7 +17,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2010-2020 The University of Edinburgh
+ *  (c) 2010-2024 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -51,7 +51,7 @@ struct interact_s {
 
   void * abstr[INTERACT_MAX];        /* Abstract interaction types */
   compute_ft compute[INTERACT_MAX];  /* Corresponding compute functions */
-  stat_ft stats[INTERACT_MAX];       /* Statisitics functions */
+  stat_ft stats[INTERACT_MAX];       /* Statistics functions */
 };
 
 /*****************************************************************************
@@ -173,7 +173,7 @@ int interact_statistic_add(interact_t * obj, interact_enum_t it, void * pot,
  *
  *  interact_compute
  *
- *  Top-level function for compuatation of external forces to be called
+ *  Top-level function for computation of external forces to be called
  *  once per time step. Note that particle copies in the halo regions
  *  must have zero external force/torque on exit from this routine.
  *
@@ -190,12 +190,15 @@ int interact_compute(interact_t * interact, colloids_info_t * cinfo,
   colloids_info_ntotal(cinfo, &nc);
 
   if (nc > 0) {
+    physics_t * phys = NULL;
+    physics_ref(&phys);
     colloids_update_forces_zero(cinfo);
-    colloids_update_forces_external(cinfo, psi);
-    colloids_update_forces_fluid_gravity(cinfo, map);
-    colloids_update_forces_fluid_driven(cinfo, map);
+    colloids_update_forces_external(cinfo, phys);
+    colloids_update_forces_fluid_gravity(cinfo, map, phys);
+    colloids_update_forces_fluid_body_force(cinfo, phys);
+    colloids_update_forces_fluid_driven(cinfo, map, phys);
     interact_wall(interact, cinfo);
-    
+
     if (nc > 1) {
       interact_pairwise(interact, cinfo);
       interact_bonds(interact, cinfo);
@@ -236,30 +239,30 @@ int interact_stats(interact_t * obj, colloids_info_t * cinfo) {
 
   colloids_info_ntotal(cinfo, &nc);
   pe_mpi_comm(obj->pe, &comm);
-  
+
   if (nc > 0) {
 
     /* Colloid-wall. */
 
     intr = obj->abstr[INTERACT_WALL];
-    
+
     if (intr) {
-      
+
       obj->stats[INTERACT_WALL](intr, stats);
-      
+
       hminlocal = stats[INTERACT_STAT_HMINLOCAL];
       vlocal = stats[INTERACT_STAT_VLOCAL];
 
       MPI_Reduce(&hminlocal, &hmin, 1, MPI_DOUBLE, MPI_MIN, 0, comm);
       MPI_Reduce(&vlocal, &v, 1, MPI_DOUBLE, MPI_SUM, 0, comm);
-      
+
       pe_info(obj->pe, "Wall potential minimum h is: %14.7e\n", hmin);
       pe_info(obj->pe, "Wall potential energy is:    %14.7e\n", v);
     }
 
 
     if (nc > 1) {
-  
+
       /* Colloid-colloid lubrication */
       /* Minimum lubrication distance */
 
@@ -338,7 +341,7 @@ int interact_stats(interact_t * obj, colloids_info_t * cinfo) {
       }
     }
   }
-  
+
   return 0;
 }
 
@@ -373,16 +376,14 @@ int colloids_update_forces_zero(colloids_info_t * cinfo) {
 
 /*****************************************************************************
  *
- *  colloid_forces_single_particle_set
+ *  colloid_update_forces_external
  *
  *  Accumulate single particle force contributions.
  *
- *  psi may be NULL, in which case, assume no charged species, otherwise
- *  we assume two. Indeed, not used at the moment.
- *
  *****************************************************************************/
 
-int colloids_update_forces_external(colloids_info_t * cinfo, psi_t * psi) {
+int colloids_update_forces_external(colloids_info_t * cinfo,
+				    physics_t * phys) {
 
   int ic, jc, kc, ia;
   int ncell[3];
@@ -391,12 +392,10 @@ int colloids_update_forces_external(colloids_info_t * cinfo, psi_t * psi) {
   double btorque[3];
   double dforce[3];
   colloid_t * pc;
-  physics_t * phys = NULL;
 
   assert(cinfo);
   colloids_info_ncell(cinfo, ncell);
 
-  physics_ref(&phys);
   physics_b0(phys, b0);
   physics_fgrav(phys, g);
 
@@ -413,7 +412,7 @@ int colloids_update_forces_external(colloids_info_t * cinfo, psi_t * psi) {
 	  pc->force[Y] += g[Y];
 	  pc->force[Z] += g[Z];
 
-          if (pc->s.type == COLLOID_TYPE_SUBGRID) continue;
+          if (pc->s.bc == COLLOID_BC_SUBGRID) continue;
 
 	  btorque[X] = pc->s.s[Y]*b0[Z] - pc->s.s[Z]*b0[Y];
 	  btorque[Y] = pc->s.s[Z]*b0[X] - pc->s.s[X]*b0[Z];
@@ -435,7 +434,7 @@ int colloids_update_forces_external(colloids_info_t * cinfo, psi_t * psi) {
 
 /*****************************************************************************
  *
- *  colloid_forces_fluid_gravity_set
+ *  colloid_update_forces_fluid_gravity
  *
  *  Set the current gravtitational force on the fluid. This should
  *  match, exactly, the force on the colloids and so depends on the
@@ -446,21 +445,21 @@ int colloids_update_forces_external(colloids_info_t * cinfo, psi_t * psi) {
  *****************************************************************************/
 
 int colloids_update_forces_fluid_gravity(colloids_info_t * cinfo,
-					 map_t * map) {
+					 map_t * map,
+					 physics_t * phys) {
   int nc;
   int ia;
   int nsfluid;
   int is_gravity = 0;
   double rvolume;
   double g[3], f[3];
-  physics_t * phys = NULL;
 
   assert(cinfo);
+  assert(phys);
 
   colloids_info_ntotal(cinfo, &nc);
   if (nc == 0) return 0;
 
-  physics_ref(&phys);
   physics_fgrav(phys, g);
   is_gravity = (g[X] != 0.0 || g[Y] != 0.0 || g[Z] != 0.0);
 
@@ -482,10 +481,52 @@ int colloids_update_forces_fluid_gravity(colloids_info_t * cinfo,
   return 0;
 }
 
+/*****************************************************************************
+ *
+ *  colloids_update_forces_fluid_body_force
+ *
+ *  If there is a body force on the fluid specified by the user, there
+ *  should be a contribution to the body force on the particle (in the
+ *  same direction) related to the volume.
+ *
+ *  This must not be confused with the body force that arises from the
+ *  balance of gravity forces; gravity means this should not be done.
+ *
+ *****************************************************************************/
+
+int colloids_update_forces_fluid_body_force(colloids_info_t * cinfo,
+					    const physics_t * phys) {
+
+  double fg[3] = {0};
+
+  physics_fgrav(phys, fg);
+
+  if (fg[X] != 0.0 || fg[Y] != 0.0 || fg[Z] != 0.0) {
+    /* Gravity => cannot have body force; do nothing */
+  }
+  else {
+    colloid_t * pc = NULL;
+    double fb[3] = {0};
+
+    physics_fbody(phys, fb);
+    colloids_info_local_head(cinfo, &pc);
+
+    for (; pc; pc = pc->nextlocal) {
+      double vol = 0.0;
+      if (pc->s.bc == COLLOID_BC_SUBGRID) continue;
+      util_discrete_volume_sphere(pc->s.r, pc->s.a0, &vol);
+      pc->force[X] += vol*fb[X];
+      pc->force[Y] += vol*fb[Y];
+      pc->force[Z] += vol*fb[Z];
+    }
+  }
+
+  return 0;
+}
 
 /*****************************************************************************
  *
- *  colloid_forces_fluid_driven
+ *  colloid_update_forces_fluid_driven
  *
  *  Set the current drive force on the fluid. This should
  *  match, exactly, the force on the colloids and so depends on the
@@ -499,28 +540,26 @@ int colloids_update_forces_fluid_gravity(colloids_info_t * cinfo,
  *****************************************************************************/
 
 int colloids_update_forces_fluid_driven(colloids_info_t * cinfo,
-					map_t * map) {
-
+					map_t * map,
+					physics_t * phys) {
   int nc;
   int ia;
   int nsfluid;
   double rvolume;
   int periodic[3];
   double fd[3], f[3];
-  physics_t * phys = NULL;
 
-  return 0; /* This routine needs an MOT before use. */
+  return 0; /* This routine is not in use. */
   assert(cinfo);
 
   colloids_info_ntotal(cinfo, &nc);
 
   if (nc == 0) return 0;
 
-  physics_ref(&phys);
-
   if (is_driven()) {
 
     assert(map);
+    assert(phys);
 
     cs_periodic(map->cs, periodic);
     map_volume_allreduce(map, MAP_FLUID, &nsfluid);
@@ -528,7 +567,7 @@ int colloids_update_forces_fluid_driven(colloids_info_t * cinfo,
 
     /* Force per fluid node to balance is... */
     driven_colloid_total_force(cinfo, fd);
-    
+
     for (ia = 0; ia < 3; ia++) {
       f[ia] = -1.0*fd[ia]*rvolume*periodic[ia];
       /* Wall accounting adjustment should be -fd (1 - periodic) / nprocs */
@@ -627,7 +666,7 @@ int interact_angles(interact_t * obj, colloids_info_t * cinfo) {
  *
  *  interact_find_bonds
  *
- *  For backwards compatability, the case where only local bonds are
+ *  For backwards compatibility, the case where only local bonds are
  *  included (nextra = 0).
  *
  *****************************************************************************/
@@ -673,7 +712,7 @@ int interact_find_bonds_all(interact_t * obj, colloids_info_t * cinfo,
   colloids_info_ncell(cinfo, ncell);
 
   for (ic1 = 1 - nextra; ic1 <= ncell[X] + nextra; ic1++) {
-    colloids_info_climits(cinfo, X, ic1, di); 
+    colloids_info_climits(cinfo, X, ic1, di);
     for (jc1 = 1 - nextra; jc1 <= ncell[Y] + nextra; jc1++) {
       colloids_info_climits(cinfo, Y, jc1, dj);
       for (kc1 = 1 - nextra; kc1 <= ncell[Z] + nextra; kc1++) {
@@ -687,12 +726,12 @@ int interact_find_bonds_all(interact_t * obj, colloids_info_t * cinfo,
 	  for (ic2 = di[0]; ic2 <= di[1]; ic2++) {
 	    for (jc2 = dj[0]; jc2 <= dj[1]; jc2++) {
 	      for (kc2 = dk[0]; kc2 <= dk[1]; kc2++) {
-   
+
 		colloids_info_cell_list_head(cinfo, ic2, jc2, kc2, &pc2);
 		for (; pc2; pc2 = pc2->next) {
 
-		  if (pc2->s.nbonds == 0) continue; 
-                  
+		  if (pc2->s.nbonds == 0) continue;
+
 		  for (n1 = 0; n1 < pc1->s.nbonds; n1++) {
 		    if (pc1->s.bond[n1] == pc2->s.index) {
 		      nbondfound += 1;
@@ -826,7 +865,7 @@ int interact_range_check(interact_t * obj, colloids_info_t * cinfo) {
     pe_info(obj->pe,
 	    "Cell list width too small to capture specified interactions!\n");
     pe_info(obj->pe, "The maximum interaction range is: %f\n", rmax);
-    pe_info(obj->pe, "The minumum cell width is only:   %f\n", lmin);
+    pe_info(obj->pe, "The minimum cell width is only:   %f\n", lmin);
     pe_fatal(obj->pe, "Please check and try again\n");
   }
 
@@ -839,6 +878,11 @@ int interact_range_check(interact_t * obj, colloids_info_t * cinfo) {
  *
  *  Having computed external forces, transfer the information for
  *  all particles to fex, tex.
+ *
+ *  Note: we have computed single-particle body forces for "owned"
+ *  colloids only. However, pairwise interactions may show up in
+ *  the hlao cells (dependning on i < j). So we must copy all
+ *  particles here.
  *
  *****************************************************************************/
 

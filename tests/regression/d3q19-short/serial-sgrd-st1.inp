@@ -43,7 +43,7 @@ free_energy none
 
 colloid_init        input_one
 
-colloid_one_type    subgrid
+colloid_one_bc      subgrid
 colloid_one_a0      0.20
 colloid_one_ah      0.20
 colloid_one_al      1.50

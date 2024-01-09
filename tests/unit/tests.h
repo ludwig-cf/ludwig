@@ -5,8 +5,9 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
+ *  (c) 2010-2023 The University of Edinburgh
+ *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
- *  (c) 2010-2022 The University of Edinburgh
  *
  *****************************************************************************/
 
@@ -38,6 +39,7 @@ int test_colloid_suite(void);
 int test_colloids_info_suite(void);
 int test_colloids_halo_suite(void);
 int test_coords_suite(void);
+int test_cs_limits_suite(void);
 int test_ewald_suite(void);
 int test_fe_null_suite(void);
 int test_fe_electro_suite(void);
@@ -52,10 +54,19 @@ int test_field_suite(void);
 int test_field_grad_suite(void);
 int test_gradient_d3q27_suite(void);
 int test_halo_suite(void);
+int test_hydro_options_suite(void);
 int test_hydro_suite(void);
-int test_io_suite(void);
+int test_interaction_suite(void);
+int test_io_aggregator_suite(void);
+int test_io_element_suite(void);
+int test_io_info_args_suite(void);
+int test_io_info_args_rt_suite(void);
 int test_io_options_suite(void);
 int test_io_options_rt_suite(void);
+int test_io_subfile_suite(void);
+int test_io_metadata_suite(void);
+int test_io_impl_mpio_suite(void);
+int test_io_suite(void);
 int test_lb_d2q9_suite(void);
 int test_lb_d3q15_suite(void);
 int test_lb_d3q19_suite(void);
@@ -86,15 +97,26 @@ int test_phi_bc_inflow_opts_suite(void);
 int test_phi_bc_inflow_fixed_suite(void);
 int test_phi_bc_outflow_opts_suite(void);
 int test_phi_bc_outflow_free_suite(void);
+int test_psi_solver_options_suite(int argc, char ** argv);
+int test_psi_options_suite(void);
 int test_psi_suite(void);
+int test_psi_solver_petsc_suite(void);
 int test_psi_sor_suite(void);
 int test_random_suite(void);
 int test_rt_suite(void);
+int test_stencil_d3q7_suite(void);
+int test_stencil_d3q19_suite(void);
+int test_stencil_d3q27_suite(void);
+int test_stencils_suite(void);
 int test_timer_suite(void);
 int test_util_suite(void);
 int test_util_bits_suite(void);
+int test_util_ellipsoid_suite(void);
 int test_util_fopen_suite(void);
+int test_util_io_suite(void);
+int test_util_json_suite(void);
 int test_util_sum_suite(void);
+int test_util_vector_suite(void);
 int test_visc_arrhenius_suite(void);
 int test_wall_suite(void);
 int test_wall_ss_cut_suite(void);

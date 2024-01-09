@@ -10,7 +10,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2010-2022 The University of Edinburgh
+ *  (c) 2010-2024 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -349,13 +349,13 @@ __host__ int util_jacobi(double a[3][3], double vals[3], double vecs[3][3]) {
 
 	g = 100.0*fabs(a[ia][ib]);
 
-	if (iterate > 4 && (fabs(vals[ia]) + g) == fabs(vals[ia]) &&
-	    (fabs(vals[ib]) + g) == fabs(vals[ib])) {
+	if (iterate > 4 && (((fabs(vals[ia]) + g) - fabs(vals[ia])) == 0.0) &&
+	    (((fabs(vals[ib]) + g) - fabs(vals[ib])) == 0.0)) {
 	  a[ia][ib] = 0.0;
 	}
 	else if (fabs(a[ia][ib]) > tresh) {
 	  h = vals[ib] - vals[ia];
-	  if ((fabs(h) + g) == fabs(h)) {
+	  if (((fabs(h) + g) - fabs(h)) == 0.0) {
 	    t = (a[ia][ib])/h;
 	  }
 	  else {
@@ -461,7 +461,7 @@ static __host__ void util_swap(int ia, int ib, double a[3], double b[3][3]) {
  *****************************************************************************/
 
 __host__
-int util_discrete_volume_sphere(double r0[3], double a0, double * vn) {
+int util_discrete_volume_sphere(const double r0[3], double a0, double * vn) {
 
   int ic, jc, kc, nr;
   double x0, y0, z0;    /* Reduced coordinate of argument r0 */
@@ -590,41 +590,6 @@ int util_gauss_jordan(const int n, double * a, double * b) {
   /* Could recover the inverse here if required. */
 
   free(ipivot);
-
-  return 0;
-}
-
-/*****************************************************************************
- *
- *  util_vector_create
- *
- *****************************************************************************/
-
-__host__
-int util_vector_create(int n, double ** p) {
-
-  int ifail = 0;
-  double * v = NULL;
-
-  v = (double*) calloc(n, sizeof(double));
-  if (v == NULL) ifail = 1;
-
-  *p = v;
-
-  return ifail;
-}
-
-/*****************************************************************************
- *
- *  util_vector_free
- *
- *****************************************************************************/
-
-__host__
-int util_vector_free(double ** p) {
-
-  free(*p);
-  *p = NULL;
 
   return 0;
 }
@@ -815,8 +780,7 @@ __host__ int util_matrix_invert(int n, double ** a) {
  *
  *****************************************************************************/
 
-__host__ __device__
-int util_dpythag(double a, double b, double * p) {
+__host__ int util_dpythag(double a, double b, double * p) {
 
   double absa, absb, tmp;
 

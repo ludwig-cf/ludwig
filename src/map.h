@@ -5,7 +5,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2012-2021 The University of Edinburgh
+ *  (c) 2012-2023 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -33,8 +33,6 @@ struct map_s {
 
   pe_t * pe;                  /* Parallel environment */
   cs_t * cs;                  /* Coordinate system */
-  MPI_Datatype halostatus[3]; /* Halo datatype for status */
-  MPI_Datatype halodata[3];   /* Halo datatype for data */
   io_info_t * info;           /* I/O handler */
 
   map_t * target;             /* Copy of this structure on target */

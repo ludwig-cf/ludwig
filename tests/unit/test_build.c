@@ -7,7 +7,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2013-2022 The University of Edinburgh
+ *  (c) 2013-2024 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -25,13 +25,18 @@
 #include "colloid_sums.h"
 #include "build.h"
 #include "tests.h"
+#include "util.h"
+#include "util_ellipsoid.h"
 
-static int test_build_links_model_c1(pe_t * pe, cs_t * cs, int nvel,
-				     double a0, double r0[3]);
-static int test_build_links_model_c2(pe_t * pe, cs_t * cs, int nvel,
-				     double a0, double r0[3]);
-static int test_build_rebuild_c1(pe_t * pe, cs_t * cs, int nvel,
-				 double a0, double r0[3]);
+int test_build_update_map(pe_t * pe, cs_t * cs);
+int test_build_update_links(pe_t * pe, cs_t * cs);
+
+static int test_build_update_map_sph(pe_t * pe, cs_t * cs, double a0,
+				     const double r0[3]);
+static int test_build_update_map_ell(pe_t * pe, cs_t * cs, const double abc[3],
+				     const double r0[3], const double q[4]);
+static int test_build_update_links_sph(pe_t * pe, cs_t * cs, double a0,
+				       const double r0[3], int nvel);
 
 /*****************************************************************************
  *
@@ -41,13 +46,6 @@ static int test_build_rebuild_c1(pe_t * pe, cs_t * cs, int nvel,
 
 int test_build_suite(void) {
 
-  int nvel = NVEL;
-  double a0;
-  double r0[3];
-  double delta = 1.0;        /* A small lattice offset */
-  double lmin[3];
-  double ltot[3];
-
   pe_t * pe = NULL;
   cs_t * cs = NULL;
 
@@ -55,29 +53,8 @@ int test_build_suite(void) {
   cs_create(pe, &cs);
   cs_init(cs);
 
-  cs_lmin(cs, lmin);
-  cs_ltot(cs, ltot);
-
-  a0 = 2.3;
-  r0[X] = 0.5*ltot[X]; r0[Y] = 0.5*ltot[Y]; r0[Z] = 0.5*ltot[Z];
-  test_build_links_model_c1(pe, cs, nvel, a0, r0);
-  test_build_links_model_c2(pe, cs, nvel, a0, r0);
-  test_build_rebuild_c1(pe, cs, nvel, a0, r0);
-
-  a0 = 4.77;
-  r0[X] = lmin[X] + delta; r0[Y] = 0.5*ltot[Y]; r0[Z] = 0.5*ltot[Z];
-  test_build_links_model_c1(pe, cs, nvel, a0, r0);
-  test_build_links_model_c2(pe, cs, nvel, a0, r0);
-  test_build_rebuild_c1(pe, cs, nvel, a0, r0);
-
-  a0 = 3.84;
-  r0[X] = ltot[X]; r0[Y] = ltot[Y]; r0[Z] = ltot[Z];
-  test_build_links_model_c1(pe, cs, nvel, a0, r0);
-  test_build_links_model_c2(pe, cs, nvel, a0, r0);
-  test_build_rebuild_c1(pe, cs, nvel, a0, r0);
-
-  /* Some known cases: place the colloid in the centre and test only
-   * in serial, as there is no quick way to compute in parallel. */
+  test_build_update_map(pe, cs);
+  test_build_update_links(pe, cs);
 
   cs_free(cs);
   pe_info(pe, "PASS     ./unit/test_build\n");
@@ -88,233 +65,265 @@ int test_build_suite(void) {
 
 /*****************************************************************************
  *
- *  test_build_links_model_c1
+ *  test_build_update_map
  *
- *  Plave a colloid, a0 = 2.3, in the centre of the system, and
- *  examine the link integrity.
+ *  At the moment build_update_map() updates a number of things:
+ *    1. map status
+ *    2. map data wetting values (not always relevant)
+ *    3. colloid map
  *
- *  We expect:
- *     \sum_b w_b c_b_alpha = 0         for all alpha;
- *     \sum_b w_b r_b x c_b_alpha = 0   ditto.
- *
- *  independent of the model.
- *
- *  Owner tests the result.
+ *  Those functions should probably be split; here we only examine
+ *  the map status.
  *
  *****************************************************************************/
 
-static int test_build_links_model_c1(pe_t * pe, cs_t * cs, int nvel,
-				     double a0, double r0[3]) {
+int test_build_update_map(pe_t * pe, cs_t * cs) {
 
-  int ncolloid;
-  int ncell[3] = {2, 2, 2};
+  int ifail = 0;
 
-  map_t * map = NULL;
-  lb_model_t model = {0};
-  colloid_t * pc = NULL;
-  colloids_info_t * cinfo = NULL;
+  {
+    double a0 = 0.25;
+    double r0[3] = {1.0, 1.0, 1.0};   /* Trivial case volume = 1 unit */
 
-  assert(pe);
-  assert(cs);
-
-  colloids_info_create(pe, cs, ncell, &cinfo);
-  colloids_info_map_init(cinfo);
-  map_create(pe, cs, 0, &map);
-  lb_model_create(nvel, &model);
-
-  /* Place the single colloid and construct the links */
-
-  colloids_info_add_local(cinfo, 1, r0, &pc);
-  if (pc) pc->s.a0 = a0;
-  colloids_info_ntotal_set(cinfo);
-
-  colloids_halo_state(cinfo);
-  build_update_map(cs, cinfo, map);
-  build_update_links(cs, cinfo, NULL, map, &model);
-
-  colloid_sums_halo(cinfo, COLLOID_SUM_STRUCTURE);
-  colloids_info_ntotal(cinfo, &ncolloid);
-  assert(ncolloid == 1);
-
-  /* The owner checks the details */
-
-  if (pc) {
-
-    /* DBL_EPSILON is too tight for these tests; FLT_EPSILON will catch
-     * missing links which will be O(1). Could accumulate these sums as
-     * integers to avoid this. */
-    assert(fabs(pc->cbar[X] - 0.0) < FLT_EPSILON);
-    assert(fabs(pc->cbar[Y] - 0.0) < FLT_EPSILON);
-    assert(fabs(pc->cbar[Z] - 0.0) < FLT_EPSILON);
-    assert(fabs(pc->rxcbar[X] - 0.0) < FLT_EPSILON);
-    assert(fabs(pc->rxcbar[Y] - 0.0) < FLT_EPSILON);
-    assert(fabs(pc->rxcbar[Z] - 0.0) < FLT_EPSILON);
-    assert(fabs(pc->deltam - 0.0) < DBL_EPSILON);
+    ifail = test_build_update_map_sph(pe, cs, a0, r0);
+    assert(ifail == 0);
   }
 
-  lb_model_free(&model);
-  map_free(map);
-  colloids_info_free(cinfo);
+  {
+    double a0 = 0.87;                 /* A bit more than sqrt(3)/2 ... */
+    double r0[3] = {1.5, 1.5, 1.5};   /* ... so have 8 sites inside */
 
-  return 0;
+    ifail = test_build_update_map_sph(pe, cs, a0, r0);
+    assert(ifail == 0);
+  }
+
+  {
+    /* prolate ellipsoid */
+    double abc[3] = {1.01, 0.25, 0.25};
+    double r0[3]  = {1.00, 1.00, 1.00};
+    double q4[4]  = {1.00, 0.00, 0.00, 0.00};
+
+    ifail = test_build_update_map_ell(pe, cs, abc, r0, q4);
+    assert(ifail == 0);
+  }
+
+  return ifail;
 }
 
 /*****************************************************************************
  *
- * As for _c1() above, but everyone checks the result.
+ *  test_build_update_links
+ *
+ *  Again, build_update_links() performs a number of different operations.
+ *  Here we are concerned with just the generation of a consistent
+ *  number of links (really not much more than a smoke test).
+ *
+ *  In contrast to build_update_map(), this also involves the lb_t model.
+ *  There is a very simple check on the number of links for an object
+ *  occupying one site, ie., the number of links is nvel.
  *
  *****************************************************************************/
 
-static int test_build_links_model_c2(pe_t * pe, cs_t * cs, int nvel,
-				     double a0, double r0[3]) {
+int test_build_update_links(pe_t * pe, cs_t * cs) {
 
-  int ic, jc, kc;
-  int ncolloid;
-  int ncell[3] = {4, 4, 4};
+  int ifail = 0;
 
-  map_t * map = NULL;
-  lb_model_t model = {0};
-  colloid_t * pc = NULL;
-  colloids_info_t * cinfo = NULL;
+  {
+    double a0 = 0.25;
+    double r0[3] = {1.0, 1.0, 1.0};
 
-  assert(pe);
-  assert(cs);
-
-  colloids_info_create(pe, cs, ncell, &cinfo);
-  colloids_info_map_init(cinfo);
-  map_create(pe, cs, 0, &map);
-  lb_model_create(nvel, &model);
-
-  /* Place the single colloid and construct the links */
-
-  colloids_info_add_local(cinfo, 1, r0, &pc);
-  if (pc) pc->s.a0 = a0;
-  colloids_info_ntotal_set(cinfo);
-
-  colloids_halo_state(cinfo);
-  build_update_map(cs, cinfo, map);
-  build_update_links(cs, cinfo, NULL, map, &model);
-
-  colloid_sums_halo(cinfo, COLLOID_SUM_STRUCTURE);
-  colloids_info_ntotal(cinfo, &ncolloid);
-  assert(ncolloid == 1);
-
-  /* Everyone checks the details */
-
-  for (ic = 0; ic <= ncell[X] + 1; ic++) {
-    for (jc = 0; jc <= ncell[Y] + 1; jc++) {
-      for (kc = 0; kc <= ncell[Z] + 1; kc++) {
-
-	colloids_info_cell_list_head(cinfo, ic, jc, kc, &pc);
-
-	if (pc) {
-
-	  /* DBL_EPSILON is too tight for these tests; FLT_EPSILON will catch
-	   * missing links which will be O(1). Could accumulate these sums as
-	   * integers to avoid this. */
-	  assert(fabs(pc->cbar[X] - 0.0) < FLT_EPSILON);
-	  assert(fabs(pc->cbar[Y] - 0.0) < FLT_EPSILON);
-	  assert(fabs(pc->cbar[Z] - 0.0) < FLT_EPSILON);
-	  assert(fabs(pc->rxcbar[X] - 0.0) < FLT_EPSILON);
-	  assert(fabs(pc->rxcbar[Y] - 0.0) < FLT_EPSILON);
-	  assert(fabs(pc->rxcbar[Z] - 0.0) < FLT_EPSILON);
-	  assert(fabs(pc->deltam - 0.0) < DBL_EPSILON);
-	}
-
-      }
-    }
+    ifail = test_build_update_links_sph(pe, cs, a0, r0, 15);
+    assert(ifail == 0);
+    ifail = test_build_update_links_sph(pe, cs, a0, r0, 19);
+    assert(ifail == 0);
+    ifail = test_build_update_links_sph(pe, cs, a0, r0, 27);
+    assert(ifail == 0);
   }
 
-  lb_model_free(&model);
-  map_free(map);
-  colloids_info_free(cinfo);
-
-  return 0;
+  return ifail;
 }
 
 /*****************************************************************************
  *
- *  test_build_rebuild_c1
+ *  test_build_update_map_sph
+ *
+ *  Utility to test map against discrete volume for spheres.
  *
  *****************************************************************************/
 
-static int test_build_rebuild_c1(pe_t * pe, cs_t * cs, int nvel,
-				 double a0, double r0[3]) {
+static int test_build_update_map_sph(pe_t * pe, cs_t * cs, double a0,
+				     const double r0[3]) {
 
-  int ic, jc, kc;
-  int ncolloid;
-  int ncell[3] = {2, 2, 2};
+  int ifail = 0;
+  int ncell[3] = {8, 8, 8};
 
   map_t * map = NULL;
-  lb_model_t model = {0};
   colloid_t * pc = NULL;
   colloids_info_t * cinfo = NULL;
 
-  assert(pe);
-  assert(cs);
+  map_create(pe, cs, 0, &map);
 
   colloids_info_create(pe, cs, ncell, &cinfo);
   colloids_info_map_init(cinfo);
-  map_create(pe, cs, 0, &map);
-  lb_model_create(nvel, &model);
 
-  /* Place the single colloid and construct the links */
-
-  colloids_info_add_local(cinfo, 1, r0, &pc);
-  if (pc) {
-    pc->s.a0 = a0;
-    /* All copies must have this, applied later */
-    pc->s.dr[X] = 0.0;
-    pc->s.dr[Y] = 0.0;
-    pc->s.dr[Z] = 0.0;
+  {
+    colloid_state_t s = {
+      .index = 1,
+      .rebuild = 1,
+      .bc = COLLOID_BC_BBL,
+      .shape = COLLOID_SHAPE_SPHERE,
+      .a0 = a0,
+      .r = {r0[X], r0[Y], r0[Z]}
+    };
+    colloids_info_add_local(cinfo, 1, r0, &pc);
+    if (pc) pc->s = s;
   }
 
   colloids_info_ntotal_set(cinfo);
-
-  colloids_halo_state(cinfo);
-  build_update_map(cs, cinfo, map);
-  build_update_links(cs, cinfo, NULL, map, &model);
-
-  colloids_info_ntotal(cinfo, &ncolloid);
-  assert(ncolloid == 1);
-
-  /* Move, rebuild, and check */
-
-  colloids_info_position_update(cinfo);
-  colloids_info_update_cell_list(cinfo);
   colloids_halo_state(cinfo);
 
   build_update_map(cs, cinfo, map);
-  build_update_links(cs, cinfo, NULL, map, &model);
-  colloid_sums_halo(cinfo, COLLOID_SUM_STRUCTURE);
 
-  for (ic = 0; ic <= ncell[X] + 1; ic++) {
-    for (jc = 0; jc <= ncell[Y] + 1; jc++) {
-      for (kc = 0; kc <= ncell[Z] + 1; kc++) {
+  {
+    /* All ranks compute total and check */
+    int    nvol = 0;
+    double avol = 0.0;
+    map_volume_allreduce(map, MAP_COLLOID, &nvol);
+    util_discrete_volume_sphere(r0, a0, &avol);
+    if (fabs(avol - 1.0*nvol) > DBL_EPSILON) ifail = -1;
+  }
 
-	colloids_info_cell_list_head(cinfo, ic, jc, kc, &pc);
+  colloids_info_free(cinfo);
+  map_free(map);
 
-	if (pc) {
+  return ifail;
+}
 
-	  /* DBL_EPSILON is too tight for these tests; FLT_EPSILON will catch
-	   * missing links which will be O(1). Could accumulate these sums as
-	   * integers to avoid this. */
-	  assert(fabs(pc->cbar[X] - 0.0) < FLT_EPSILON);
-	  assert(fabs(pc->cbar[Y] - 0.0) < FLT_EPSILON);
-	  assert(fabs(pc->cbar[Z] - 0.0) < FLT_EPSILON);
-	  assert(fabs(pc->rxcbar[X] - 0.0) < FLT_EPSILON);
-	  assert(fabs(pc->rxcbar[Y] - 0.0) < FLT_EPSILON);
-	  assert(fabs(pc->rxcbar[Z] - 0.0) < FLT_EPSILON);
-	  assert(fabs(pc->deltam - 0.0) < DBL_EPSILON);
-	}
+/*****************************************************************************
+ *
+ *  test_buld_update_map_ell
+ *
+ *  Utility to test map against discrete volume for ellipsoids
+ *
+ *****************************************************************************/
 
-      }
+static int test_build_update_map_ell(pe_t * pe, cs_t * cs, const double abc[3],
+				     const double r0[3], const double q[4]) {
+  int ifail = 0;
+  int ncell[3] = {8, 8, 8};
+
+  map_t * map = NULL;
+  colloid_t * pc = NULL;
+  colloids_info_t * cinfo = NULL;
+
+  map_create(pe, cs, 0, &map);
+
+  colloids_info_create(pe, cs, ncell, &cinfo);
+  colloids_info_map_init(cinfo);
+
+  {
+    colloid_state_t s = {
+      .index = 1,
+      .rebuild = 1,
+      .bc = COLLOID_BC_BBL,
+      .shape = COLLOID_SHAPE_ELLIPSOID,
+      .r = {r0[X], r0[Y], r0[Z]},
+      .elabc = {abc[X], abc[Y], abc[Z]},
+      .quat = {q[0], q[1], q[2], q[3]}
+    };
+    colloids_info_add_local(cinfo, 1, r0, &pc);
+    if (pc) pc->s = s;
+  }
+
+  colloids_info_ntotal_set(cinfo);
+  colloids_halo_state(cinfo);
+
+  build_update_map(cs, cinfo, map);
+
+  {
+    /* All ranks compute total and check ... */
+    int    nvol = 0;
+    double avol = 0.0;
+    map_volume_allreduce(map, MAP_COLLOID, &nvol);
+    if (nvol != util_discrete_volume_ellipsoid(abc, r0, q, &avol)) {
+      ifail = -1;
     }
   }
 
-  lb_model_free(&model);
+  colloids_info_free(cinfo);
+  map_free(map);
+
+  return ifail;
+}
+
+/*****************************************************************************
+ *
+ *  test_build_update_links_sph
+ *
+ *  A utiity to check the number of links generated for the given model
+ *  (nvel) is consistent. This is limited to COLLOID_SHAPE_SPHERE
+ *  occupying a single site.
+ *
+ *****************************************************************************/
+
+static int test_build_update_links_sph(pe_t * pe, cs_t * cs, double a0,
+				       const double r0[3], int nvel) {
+  int ifail = 0;
+  int ncell[3] = {8, 8, 8};
+
+  map_t * map = NULL;
+  lb_model_t lb = {0};
+  colloids_info_t * cinfo = NULL;
+
+  colloids_info_create(pe, cs, ncell, &cinfo);
+  colloids_info_map_init(cinfo);
+
+  map_create(pe, cs, 0, &map);
+  lb_model_create(nvel, &lb);
+
+  {
+    colloid_t * pc = NULL;
+    colloid_state_t s = {
+      .index = 1,
+      .rebuild = 1,
+      .bc = COLLOID_BC_BBL,
+      .shape = COLLOID_SHAPE_SPHERE,
+      .a0 = a0,
+      .r = {r0[X], r0[Y], r0[Z]}
+    };
+    colloids_info_add_local(cinfo, 1, r0, &pc);
+    if (pc) pc->s = s;
+  }
+
+  colloids_info_ntotal_set(cinfo);
+  colloids_halo_state(cinfo);
+  colloids_info_update_lists(cinfo);
+
+  build_update_map(cs, cinfo, map);
+  build_update_links(cs, cinfo, NULL, map, &lb);
+
+  {
+    /* Count up the number of links. Should be (nvel-1) globally */
+    int nlink = 0;
+    MPI_Comm comm = MPI_COMM_NULL;
+    colloid_t * pc = NULL;
+
+    /* Remmeber to run through all halo images ... */
+    colloids_info_all_head(cinfo, &pc);
+    for (; pc; pc = pc->nextall) {
+      colloid_link_t * link = pc->lnk;
+      for ( ; link; link = link->next) nlink += 1;
+    }
+
+    /* All ranks check */
+    pe_mpi_comm(pe, &comm);
+    MPI_Allreduce(MPI_IN_PLACE, &nlink, 1, MPI_INT, MPI_SUM, comm);
+    if (nlink != (nvel - 1)) ifail = -1;
+  }
+
+  lb_model_free(&lb);
   map_free(map);
   colloids_info_free(cinfo);
 
-  return 0;
+  return ifail;
 }

@@ -79,7 +79,6 @@ lc_anchoring_strength_colloid 0.0018971957
 
 colloid_init        input_one
 
-colloid_one_type inactive
 colloid_one_a0   2.3
 colloid_one_ah   2.3
 colloid_one_r    3.31_12.0_12.0

@@ -37,11 +37,12 @@ struct lb_data_options_s {
   int reportimbalance;
   int usefirsttouch;
 
-  io_info_args_t data;
-  io_info_args_t rho;
+  io_info_args_t iodata;
 };
 
 lb_data_options_t lb_data_options_default(void);
+lb_data_options_t lb_data_options_ndim_nvel_ndist(int ndim, int nvel,
+						  int ndist);
 int lb_data_options_valid(const lb_data_options_t * opts);
 
 #endif

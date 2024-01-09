@@ -15,7 +15,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2010-2022 The University of Edinburgh
+ *  (c) 2010-2023 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -92,7 +92,7 @@ __host__ int pe_create(MPI_Comm parent, pe_enum_t flag, pe_t ** ppe) {
   }
 
   *ppe = pe;
-  
+
   return 0;
 }
 
@@ -152,13 +152,20 @@ __host__ int pe_free(pe_t * pe) {
 
 __host__ int pe_message(pe_t * pe) {
 
+  compiler_info_t compiler = {0};
+
   assert(pe);
 
+  compiler_id(&compiler);
+
   pe_info(pe,
-       "Welcome to Ludwig v%d.%d.%d (%s version running on %d process%s)\n",
+       "Welcome to: Ludwig v%d.%d.%d (%s version running on %d process%s)\n",
        LUDWIG_MAJOR_VERSION, LUDWIG_MINOR_VERSION, LUDWIG_PATCH_VERSION,
        (pe->mpi_size > 1) ? "MPI" : "Serial", pe->mpi_size,
        (pe->mpi_size == 1) ? "" : "es");
+
+  /* Git */
+  pe_info(pe, "Git commit: %s\n\n", compiler.commit);
 
   {
     char strctime[BUFSIZ] = {0};
@@ -168,18 +175,16 @@ __host__ int pe_message(pe_t * pe) {
 
   if (pe->mpi_rank == 0) {
 
-    compiler_info_t compiler = {0};
-
-    compiler_id(&compiler);
-
     printf("Compiler:\n");
     printf("  name:           %s %d.%d.%d\n", compiler.name, compiler.major,
 	   compiler.minor, compiler.patchlevel);
     printf("  version-string: %s\n", compiler.version);
+    printf("  options:        %s\n", compiler.options);
     printf("\n");
-
     /* Compilation */
     assert(printf("Note assertions via standard C assert() are on.\n\n"));
+
+    /* Thread model */
     tdpThreadModelInfo(stdout);
     printf("\n");
   }
@@ -239,6 +244,33 @@ __host__ int pe_fatal(pe_t * pe, const char * fmt, ...) {
 
 /*****************************************************************************
  *
+ *  pe_exit
+ *
+ *  Just an alternative to "fatal".
+ *
+ *****************************************************************************/
+
+__host__ int pe_exit(pe_t * pe, const char * fmt, ...) {
+
+  va_list args;
+
+  assert(pe);
+
+  printf("[%d] ", pe->mpi_rank);
+
+  va_start(args, fmt);
+  vprintf(fmt, args);
+  va_end(args);
+
+  /* Considered a successful exit (code 0). */
+
+  MPI_Abort(pe->comm, 0);
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
  *  pe_verbose
  *
  *  Always prints a message (prefixed by MPI rank).
@@ -252,6 +284,27 @@ __host__ int pe_verbose(pe_t * pe, const char * fmt, ...) {
   assert(pe);
 
   printf("[%d] ", pe->mpi_rank);
+
+  va_start(args, fmt);
+  vprintf(fmt, args);
+  va_end(args);
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  pe_warn
+ *
+ *  Always prints a message.
+ *
+ *****************************************************************************/
+
+__host__ int pe_warn(pe_t * pe, const char * fmt, ...) {
+
+  va_list args;
+
+  assert(pe);
 
   va_start(args, fmt);
   vprintf(fmt, args);

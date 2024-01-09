@@ -7,7 +7,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2019-2022 The University of Edinburgh
+ *  (c) 2019-2023 The University of Edinburgh
  *
  *  Contributing authors:
  *  Alan Gray (alang@epcc.ed.ac.uk)
@@ -390,4 +390,121 @@ __host__ tdpError_t tdpDeviceEnablePeerAccess(int peerDevice,
 					      unsigned int flags) {
 
   return cudaDeviceEnablePeerAccess(peerDevice, flags);
+}
+
+/*****************************************************************************
+ *
+ *  tdpGraphAddKernelNode
+ *
+ *****************************************************************************/
+
+__host__ tdpError_t tdpGraphAddKernelNode(tdpGraphNode_t * pGraphNode,
+                                          tdpGraph_t graph,
+                                          const tdpGraphNode_t * pDependencies,
+                                          size_t numDependencies,
+                                          const tdpKernelNodeParams * nParams) {
+  return cudaGraphAddKernelNode(pGraphNode, graph, pDependencies,
+				numDependencies, nParams);
+}
+
+/*****************************************************************************
+ *
+ *  tdpGraphAddMemcpyNode
+ *
+ *****************************************************************************/
+
+__host__ tdpError_t tdpGraphAddMemcpyNode(tdpGraphNode_t * pGraphNode,
+                                          tdpGraph_t graph,
+                                          const tdpGraphNode_t * pDependencies,
+                                          size_t numDependencies,
+                                          const tdpMemcpy3DParms * copyParams) {
+  return cudaGraphAddMemcpyNode(pGraphNode, graph, pDependencies,
+				numDependencies, copyParams);
+}
+
+/*****************************************************************************
+ *
+ *  tdpGraphCreate
+ *
+ *****************************************************************************/
+
+__host__ tdpError_t tdpGraphCreate(tdpGraph_t * pGraph, unsigned int flags) {
+
+  return cudaGraphCreate(pGraph, flags);
+}
+
+/*****************************************************************************
+ *
+ *  tdpGraphDestroy
+ *
+ *****************************************************************************/
+
+__host__ tdpError_t tdpGraphDestroy(tdpGraph_t graph) {
+
+  return cudaGraphDestroy(graph);
+}
+
+/*****************************************************************************
+ *
+ *  tdpGraphInstantiate
+ *
+ *****************************************************************************/
+
+__host__ tdpError_t tdpGraphInstantiate(tdpGraphExec_t * pGraphExec,
+                                        tdpGraph_t graph,
+                                        unsigned long long flags) {
+
+  /* Note API has changed between CUDA 11 and CUDA 12 */
+  return cudaGraphInstantiate(pGraphExec, graph, NULL, NULL, flags);
+}
+
+/*****************************************************************************
+ *
+ *  tdpGraphLaunch
+ *
+ *****************************************************************************/
+
+__host__ tdpError_t tdpGraphLaunch(tdpGraphExec_t exec, tdpStream_t stream) {
+
+  return cudaGraphLaunch(exec, stream);
+}
+
+/*****************************************************************************
+ *
+ *  make_tdpExtent
+ *
+ *****************************************************************************/
+
+__host__ struct tdpExtent make_tdpExtent(size_t w, size_t h, size_t d) {
+
+  struct cudaExtent extent = make_cudaExtent(w, h, d);
+
+  return extent;
+}
+
+/*****************************************************************************
+ *
+ *  make_tdpPos
+ *
+ *****************************************************************************/
+
+__host__ struct tdpPos make_tdpPos(size_t x, size_t y, size_t z) {
+
+  struct cudaPos pos = make_cudaPos(x, y, z);
+
+  return pos;
+}
+
+/*****************************************************************************
+ *
+ *  make_tdpPitchedPtr
+ *
+ *****************************************************************************/
+
+__host__ struct tdpPitchedPtr make_tdpPitchedPtr(void * d, size_t p,
+                                                 size_t xsz, size_t ysz) {
+
+  struct cudaPitchedPtr ptr = make_cudaPitchedPtr(d, p, xsz, ysz);
+
+  return ptr;
 }

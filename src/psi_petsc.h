@@ -1,14 +1,11 @@
-#ifdef PETSC
 /*****************************************************************************
  *
  *  psi_petsc.h
  *
- *  $Id$
- *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2012-2013 The University of Edinburgh
+ *  (c) 2012-2023 The University of Edinburgh
  *
  *  Contributing Authors:
  *    Oliver Henrich (ohenrich@epcc.ed.ac.uk)
@@ -16,23 +13,29 @@
  *
  *****************************************************************************/
 
-#ifndef PSI_PETSC_H
-#define PSI_PETSC_H
+#ifndef LUDWIG_PSI_SOLVER_PETSC_H
+#define LUDWIG_PSI_SOLVER_PETSC_H
 
-#include "psi.h"
-#include "fe_electro_symmetric.h"
+#include "psi_solver.h"
 
-int psi_petsc_init(psi_t * obj, fe_t * fe, f_vare_t fepsilon);
-int psi_petsc_copy_psi_to_da(psi_t * obj);
-int psi_petsc_copy_da_to_psi(psi_t * obj);
-int psi_petsc_compute_laplacian(psi_t * obj);
-int psi_petsc_set_rhs(psi_t * obj);
-int psi_petsc_compute_matrix(psi_t * obj, fe_es_t * fe, f_vare_t fepsilon);
-int psi_petsc_set_rhs_vare(psi_t * obj, fe_es_t * fe, f_vare_t epsilon);
-int psi_petsc_solve(psi_t * obj, fe_t * fe, f_vare_t fepsilon);
-int psi_petsc_poisson(psi_t * obj);
-int psi_petsc_finish();
+typedef struct psi_solver_petsc_s psi_solver_petsc_t;
+typedef struct psi_solver_petsc_block_s psi_solver_petsc_block_t;
 
-#endif
+struct psi_solver_petsc_s {
+  psi_solver_t super;                /* Superclass block */
+  psi_t * psi;                       /* Retain a reference to psi_t */
+  fe_t * fe;                         /* Free energy */
+  var_epsilon_ft epsilon;            /* Variable dielectric model */
+  psi_solver_petsc_block_t * block;  /* Opaque internal information. */
+};
+
+int psi_solver_petsc_create(psi_t * psi, psi_solver_petsc_t ** solver);
+int psi_solver_petsc_free(psi_solver_petsc_t ** solver);
+int psi_solver_petsc_solve(psi_solver_petsc_t * solver, int ntimestep);
+
+int psi_solver_petsc_var_epsilon_create(psi_t * psi, var_epsilon_t epsilon,
+					psi_solver_petsc_t ** solver);
+int psi_solver_petsc_var_epsilon_solve(psi_solver_petsc_t * solver, int nt);
+
 #endif
 

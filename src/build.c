@@ -9,7 +9,7 @@
  *  Edinburgh Soft Matter and Statisitical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2006-2021 The University of Edinburgh
+ *  (c) 2006-2023 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -27,6 +27,8 @@
 #include "colloid_sums.h"
 #include "psi_colloid.h"
 #include "util.h"
+#include "util_ellipsoid.h"
+#include "util_vector.h"
 #include "wall.h"
 #include "build.h"
 #include "blue_phase.h"
@@ -91,7 +93,7 @@ int build_update_map(cs_t * cs, colloids_info_t * cinfo, map_t * map) {
   double  rsite0[3];
   double  rsep[3];
 
-  double   radius, rsq;
+  double   largestdimn;
   double   cosine, mod;
 
   /* To set the wetting data in the map, we assume C, H zero at moment */
@@ -148,12 +150,11 @@ int build_update_map(cs_t * cs, colloids_info_t * cinfo, map_t * map) {
 
 	for ( ; p_colloid; p_colloid = p_colloid->next) {
 
-          if (p_colloid->s.type == COLLOID_TYPE_SUBGRID) continue;
+	  if (p_colloid->s.bc != COLLOID_BC_BBL) continue;
 
-	  /* Set actual position and radius */
+	  /* Set actual position and size of the cube to be checked */
 
-	  radius = p_colloid->s.a0;
-	  rsq    = radius*radius;
+	  largestdimn = colloid_principal_radius(&p_colloid->s);
 
 	  /* Need to translate the colloid position to "local"
 	   * coordinates, so that the correct range of lattice
@@ -168,12 +169,12 @@ int build_update_map(cs_t * cs, colloids_info_t * cinfo, map_t * map) {
 	   * should not extend beyond the boundary of the current domain
 	   * (but include halos). */
 
-	  i_min = imax(1 - nhalo,         (int) floor(r0[X] - radius));
-	  i_max = imin(nlocal[X] + nhalo, (int) ceil (r0[X] + radius));
-	  j_min = imax(1 - nhalo,         (int) floor(r0[Y] - radius));
-	  j_max = imin(nlocal[Y] + nhalo, (int) ceil (r0[Y] + radius));
-	  k_min = imax(1 - nhalo,         (int) floor(r0[Z] - radius));
-	  k_max = imin(nlocal[Z] + nhalo, (int) ceil (r0[Z] + radius));
+	  i_min = imax(1 - nhalo,         (int) floor(r0[X] - largestdimn));
+	  i_max = imin(nlocal[X] + nhalo, (int) ceil (r0[X] + largestdimn));
+	  j_min = imax(1 - nhalo,         (int) floor(r0[Y] - largestdimn));
+	  j_max = imin(nlocal[Y] + nhalo, (int) ceil (r0[Y] + largestdimn));
+	  k_min = imax(1 - nhalo,         (int) floor(r0[Z] - largestdimn));
+	  k_max = imin(nlocal[Z] + nhalo, (int) ceil (r0[Z] + largestdimn));
 
 	  /* Check each site to see whether it is inside or not */
 
@@ -190,7 +191,7 @@ int build_update_map(cs_t * cs, colloids_info_t * cinfo, map_t * map) {
 
 		/* Are we inside? */
 
-		if (dot_product(rsep, rsep) < rsq) {
+		if (colloid_r_inside(&p_colloid->s, rsep)) {
 
 		  /* Set index */
 		  index = cs_index(cs, i, j, k);
@@ -202,7 +203,8 @@ int build_update_map(cs_t * cs, colloids_info_t * cinfo, map_t * map) {
 		   * with s[3] pointing to the 'north pole' */
 
 		  cosine = 1.0;
-		  if (p_colloid->s.type == COLLOID_TYPE_JANUS) {
+
+		  if (p_colloid->s.attr & COLLOID_ATTR_JANUS) {
 		    mod = modulus(rsep);
 		    if (mod > 0.0) {
 		      cosine = dot_product(p_colloid->s.s, rsep)/mod;
@@ -260,8 +262,8 @@ int build_update_links(cs_t * cs, colloids_info_t * cinfo, wall_t * wall,
 	colloids_info_cell_list_head(cinfo, ic, jc, kc, &pc);
 
 	for (; pc; pc = pc->next) {
-        
-          if (pc->s.type == COLLOID_TYPE_SUBGRID) continue;
+
+	  if (pc->s.bc != COLLOID_BC_BBL) continue;
 
 	  pc->sumw   = 0.0;
 	  for (ia = 0; ia < 3; ia++) {
@@ -321,13 +323,14 @@ int build_reconstruct_links(cs_t * cs, colloids_info_t * cinfo,
   int index0, index1, p;
   int status1;
 
-  double       radius;
   double       lambda = 0.5;
   double      rsite1[3];
   double      rsep[3];
   double      r0[3];
   int ntotal[3];
   int offset[3];
+
+  double   largestdimn;
 
   colloid_t * pc = NULL;
 
@@ -338,7 +341,6 @@ int build_reconstruct_links(cs_t * cs, colloids_info_t * cinfo,
   cs_nlocal_offset(cs, offset);
 
   p_link = p_colloid->lnk;
-  radius = p_colloid->s.a0;
 
   /* Failsafe approach: set all links to unused status */
 
@@ -355,16 +357,18 @@ int build_reconstruct_links(cs_t * cs, colloids_info_t * cinfo,
    * the appropriate lattice nodes, which extend to the penultimate
    * site in each direction (to include halos). */
 
+  largestdimn = colloid_principal_radius(&p_colloid->s);
+
   r0[X] = p_colloid->s.r[X] - 1.0*offset[X];
   r0[Y] = p_colloid->s.r[Y] - 1.0*offset[Y];
   r0[Z] = p_colloid->s.r[Z] - 1.0*offset[Z];
 
-  i_min = imax(1,         (int) floor(r0[X] - radius));
-  i_max = imin(ntotal[X], (int) ceil (r0[X] + radius));
-  j_min = imax(1,         (int) floor(r0[Y] - radius));
-  j_max = imin(ntotal[Y], (int) ceil (r0[Y] + radius));
-  k_min = imax(1,         (int) floor(r0[Z] - radius));
-  k_max = imin(ntotal[Z], (int) ceil (r0[Z] + radius));
+  i_min = imax(1,         (int) floor(r0[X] - largestdimn));
+  i_max = imin(ntotal[X], (int) ceil (r0[X] + largestdimn));
+  j_min = imax(1,         (int) floor(r0[Y] - largestdimn));
+  j_max = imin(ntotal[Y], (int) ceil (r0[Y] + largestdimn));
+  k_min = imax(1,         (int) floor(r0[Z] - largestdimn));
+  k_max = imin(ntotal[Z], (int) ceil (r0[Z] + largestdimn));
 
   for (i = i_min; i <= i_max; i++) {
     for (j = j_min; j <= j_max; j++) {
@@ -486,7 +490,7 @@ int build_reconstruct_links(cs_t * cs, colloids_info_t * cinfo,
  *    There is no assumption here about the form of the position update,
  *    so the separation is recomputed. For Euler update, one could just
  *    subtract the current velocity to get the new boundary link vector
- *    from the old one; however, no assumption is prefered.
+ *    from the old one; however, no assumption is preferred.
  *
  ****************************************************************************/
 
@@ -722,7 +726,7 @@ int build_remove_replace_policy_local(cs_t * cs, colloids_info_t * cinfo,
  *
  *  build_remove_fluid
  *
- *  Remove denisty, momentum at site inode.
+ *  Remove density, momentum at site inode.
  *
  *  Corrections to the mass, force, and torque updates to the relevant
  *  colloid are required.
@@ -914,7 +918,7 @@ static int build_replace_fluid(lb_t * lb, colloids_info_t * cinfo, int index,
       /* ... and remember the new fluid properties */
       newrho += newf[p];
 
-      /* minus sign is approprite for upcoming ...
+      /* minus sign is appropriate for upcoming ...
 	 ... correction to colloid momentum */
 
       for (ia = 0; ia < 3; ia++) {
@@ -1135,7 +1139,6 @@ static int build_replace_order_parameter(fe_t * fe, lb_t * lb,
       weight += lb->model.wv[p];
       nweight += 1;
     }
-
     if (nweight == 0) {
       /* No information. For phi, use existing (solid) value. */
       if (fe->id == FE_LC) build_replace_q_local(fe, cinfo, pc, index, f);
@@ -1177,7 +1180,7 @@ int build_replace_q_local(fe_t * fe, colloids_info_t * info, colloid_t * pc,
   double amplitude = (1.0/3.0);
 
   fe_lc_t * fe_lc = (fe_lc_t *) fe;
-  fe_lc_param_t * lc_param = fe_lc->param; 
+  fe_lc_param_t * lc_param = fe_lc->param;
 
   KRONECKER_DELTA_CHAR(d);
 
@@ -1192,19 +1195,31 @@ int build_replace_q_local(fe_t * fe, colloids_info_t * info, colloid_t * pc,
 
   colloid_rb(info, pc, index, rb);
 
+  if (pc->s.shape == COLLOID_SHAPE_ELLIPSOID) {
+    /* Compute correct spheroid normal ... */
+    int isphere = util_ellipsoid_is_sphere(pc->s.elabc);
+    if (!isphere) {
+      double posvector[3] = {0};
+      util_vector_copy(3, rb, posvector);
+      util_spheroid_surface_normal(pc->s.elabc, pc->s.m, posvector, rb);
+    }
+  }
+
+  /* Make sure we have a unit vector */
   rbmod = 1.0/sqrt(rb[X]*rb[X] + rb[Y]*rb[Y] + rb[Z]*rb[Z]);
   rb[0] *= rbmod;
   rb[1] *= rbmod;
   rb[2] *= rbmod;
 
+
   /* For planar degenerate anchoring we subtract the projection of a
      randomly oriented unit vector on rb and renormalise the result   */
 
-  if (lc_param->anchoring_coll == LC_ANCHORING_PLANAR) {
+  if (lc_param->coll.type == LC_ANCHORING_PLANAR) {
 
     util_random_unit_vector(&pc->s.rng, rhat);
 
-    rhat_dot_rb = dot_product(rhat,rb); 
+    rhat_dot_rb = dot_product(rhat,rb);
     rbp[0] = rhat[0] - rhat_dot_rb*rb[0];
     rbp[1] = rhat[1] - rhat_dot_rb*rb[1];
     rbp[2] = rhat[2] - rhat_dot_rb*rb[2];
@@ -1268,10 +1283,10 @@ static void build_link_mean(colloid_t * pc, double wv, const int8_t cv[3],
  *
  *  This is intended for the inbuilt walls, which occupy the halo
  *  regions. Initialisation with coll_recontruct_links will not
- *  indentify BOUNDARY links because it does not look into the
+ *  identify BOUNDARY links because it does not look into the
  *  halo region. This routine does.
  *
- *  coll_reset_links() examines exsiting links and sets the
+ *  coll_reset_links() examines existing links and sets the
  *  BOUNDARY status as appropriate. See issue 871.
  *
  *****************************************************************************/
@@ -1287,7 +1302,7 @@ int build_colloid_wall_links(cs_t * cs, colloids_info_t * cinfo,
   int ntotal[3];
   int offset[3];
 
-  double radius;
+  double largestdimn;
   double lambda = 0.5;
   double r0[3];
   double rsite1[3];
@@ -1305,7 +1320,7 @@ int build_colloid_wall_links(cs_t * cs, colloids_info_t * cinfo,
 
   p_link = p_colloid->lnk;
   p_last = p_colloid->lnk;
-  radius = p_colloid->s.a0;
+  largestdimn = colloid_principal_radius(&p_colloid->s);
 
   /* Work out the first unused link */
 
@@ -1321,14 +1336,14 @@ int build_colloid_wall_links(cs_t * cs, colloids_info_t * cinfo,
   r0[Y] = p_colloid->s.r[Y] - 1.0*offset[Y];
   r0[Z] = p_colloid->s.r[Z] - 1.0*offset[Z];
 
-  i_min = imax(1,         (int) floor(r0[X] - radius));
-  i_max = imin(ntotal[X], (int) ceil (r0[X] + radius));
-  j_min = imax(1,         (int) floor(r0[Y] - radius));
-  j_max = imin(ntotal[Y], (int) ceil (r0[Y] + radius));
-  k_min = imax(1,         (int) floor(r0[Z] - radius));
-  k_max = imin(ntotal[Z], (int) ceil (r0[Z] + radius));
+  i_min = imax(1,         (int) floor(r0[X] - largestdimn));
+  i_max = imin(ntotal[X], (int) ceil (r0[X] + largestdimn));
+  j_min = imax(1,         (int) floor(r0[Y] - largestdimn));
+  j_max = imin(ntotal[Y], (int) ceil (r0[Y] + largestdimn));
+  k_min = imax(1,         (int) floor(r0[Z] - largestdimn));
+  k_max = imin(ntotal[Z], (int) ceil (r0[Z] + largestdimn));
 
-  for (i = i_min; i <= i_max; i++) { 
+  for (i = i_min; i <= i_max; i++) {
     for (j = j_min; j <= j_max; j++) {
       for (k = k_min; k <= k_max; k++) {
 
@@ -1503,7 +1518,7 @@ int build_conservation(colloids_info_t * cinfo, field_t * phi, psi_t * psi,
  *
  *  Ensure fluid charge is conserved following remove / replace.
  *
- *  Charge has the additonal constraint that quantitiy of charge must
+ *  Charge has the additional constraint that quantity of charge must
  *  not fall below zero. This means some correction may be carried
  *  forward to future steps.
  *
@@ -1584,7 +1599,7 @@ int build_conservation_psi(colloids_info_t * cinfo, psi_t * psi,
     colloid->s.deltaq0 = colloid->dq[0];
     colloid->s.deltaq1 = colloid->dq[1];
     colloid->dq[0] = 0.0;
-    colloid->dq[1] = 0.0; 
+    colloid->dq[1] = 0.0;
   }
 
   return 0;

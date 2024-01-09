@@ -7,7 +7,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Center
  *
- *  (c) 2022 The University of Edinburgh
+ *  (c) 2022-2023 The University of Edinburgh
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *
@@ -84,4 +84,26 @@ int util_printf_bits(size_t size, const void * data) {
   printf("\n");
 
   return 0;
+}
+
+/*****************************************************************************
+ *
+ *  util_set_bit
+ *
+ *****************************************************************************/
+
+int util_set_bit(int mask, int bit) {
+
+  return mask | bit;
+}
+
+/*****************************************************************************
+ *
+ *  util_unset_bit
+ *
+ *****************************************************************************/
+
+int util_unset_bit(int mask, int bit) {
+
+  return mask & ~bit;
 }

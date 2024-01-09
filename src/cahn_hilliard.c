@@ -31,7 +31,6 @@
 
 #include "advection_s.h"
 #include "advection_bcs.h"
-#include "coords_s.h"
 #include "cahn_hilliard.h"
 
 __host__ int ch_update_forward_step(ch_t * ch, field_t * phif);

@@ -469,9 +469,9 @@ __global__ void pth_force_fluid_kernel_v(kernel_ctxt_t * ktx, pth_t * pth,
 
     /* Store the force on lattice */
 
-    for (ia = 0; ia < 3; ia++) { 
+    for (ia = 0; ia < 3; ia++) {
       for_simd_v(iv, NSIMDVL) { 
-	hydro->f[addr_rank1(hydro->nsite,NHDIM,index+iv,ia)]
+	hydro->force->data[addr_rank1(hydro->nsite, NHDIM, index+iv, ia)]
 	  += force[ia][iv]*maskv[iv];
       }
     }
@@ -649,11 +649,9 @@ __global__ void pth_force_map_kernel(kernel_ctxt_t * ktx, pth_t * pth,
 	}
       }
       
-      /* Store the force on lattice */
+      /* Accumulate the force on lattice */
 
-      for (ia = 0; ia < 3; ia++) {
-	hydro->f[addr_rank1(hydro->nsite, NHDIM, index, ia)] += force[ia];
-      }
+      hydro_f_local_add(hydro, index, force);
     }
     /* Next site */
   }

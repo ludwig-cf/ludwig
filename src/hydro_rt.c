@@ -5,7 +5,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2018-2022 The University of Edinburgh
+ *  (c) 2018-2023 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -17,6 +17,7 @@
 
 #include "pe.h"
 #include "runtime.h"
+#include "io_info_args_rt.h"
 #include "hydro_rt.h"
 
 static int hydro_do_init(pe_t * pe, rt_t * rt, cs_t * cs, lees_edw_t * le,
@@ -78,30 +79,49 @@ static int hydro_do_init(pe_t * pe, rt_t * rt, cs_t * cs, lees_edw_t * le,
   assert(rt);
   assert(phydro);
 
+  /* Halo scheme options (all fields have the same option!) */
+
   if (rt_string_parameter(rt, "hydro_halo_scheme", value, BUFSIZ)) {
+    field_halo_enum_t haloscheme = FIELD_HALO_TARGET;
     /* The output is only provided if the key is present to
      * prevent the regression tests getting upset. */
     if (strcmp(value, "hydro_u_halo_target") == 0) {
       /* Should be the default */
-      opts.haloscheme = HYDRO_U_HALO_TARGET;
+      haloscheme = FIELD_HALO_TARGET;
       pe_info(pe, "Hydro halo:    %s\n", "hydro_u_halo_target");
     }
     else if (strcmp(value, "hydro_u_halo_openmp") == 0) {
-      opts.haloscheme = HYDRO_U_HALO_OPENMP;
+      haloscheme = FIELD_HALO_OPENMP;
       pe_info(pe, "Hydro halo:    %s\n", "hydro_u_halo_openmp");    
     }
     else if (strcmp(value, "hydro_u_halo_host") == 0) {
-      opts.haloscheme = HYDRO_U_HALO_HOST;
+      haloscheme = FIELD_HALO_HOST;
       pe_info(pe, "Hydro halo:    %s\n", "hydro_u_halo_host");
     }
     else {
       pe_fatal(pe, "hydro_halo_scheme is present but not recongnised\n");
     }
+    opts = hydro_options_haloscheme(haloscheme);
   }
+
+  /* First touch option (all or nothing) */
+
+  if (rt_switch(rt, "hydro_data_use_first_touch")) {
+    opts.rho.usefirsttouch   = 1;
+    opts.u.usefirsttouch     = 1;
+    opts.force.usefirsttouch = 1;
+    opts.eta.usefirsttouch   = 1;
+    pe_info(pe, "Hydro data:    first touch\n");
+  }
+
+  /* User i/o options */
+  io_info_args_rt(rt, RT_FATAL, "rho", IO_INFO_READ_WRITE, &opts.rho.iodata);
+  io_info_args_rt(rt, RT_FATAL, "vel", IO_INFO_READ_WRITE, &opts.u.iodata);
 
   hydro_create(pe, cs, le, &opts, &obj);
   assert(obj);
 
+  /* Old-style input (to be removed) */
   rt_int_parameter_vector(rt, "default_io_grid", io_grid);
   rt_string_parameter(rt, "vel_format", value, BUFSIZ);
 

@@ -75,9 +75,10 @@ Input radius maximum:         2.3000000e+00
 Final cell list:              22 22 22
 Final cell lengths:           2.9090909e+00  2.9090909e+00  2.9090909e+00
 
-Re-starting simulation at step 20 with data read from config
-file(s) dist-00000020
-hydro files(s) vel-00000020
+Re-starting simulation at step 20 with data read from file
+Reading distribution files for step 20
+Reading rho/vel files for step 20
+
 Initial conditions.
 
 Scalars - total mean variance min max

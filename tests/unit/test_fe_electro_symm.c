@@ -7,7 +7,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2013-2017 The University of Edinburgh
+ *  (c) 2013-2023 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -63,6 +63,7 @@ int test_fe_electro_symm_suite(void) {
 static int do_test1(pe_t * pe) {
 
   int nk = 2;
+  int nhalo = 2;
   int index = 1;
   double dmu[2] = {1.0, 2.0};  /* Solvation free energy differences */
   double dmu_test;
@@ -85,11 +86,15 @@ static int do_test1(pe_t * pe) {
   assert(pe);
 
   cs_create(pe, &cs);
-  cs_nhalo_set(cs, 2);
+  cs_nhalo_set(cs, nhalo);
   cs_init(cs);
 
-  psi_create(pe, cs, nk, &psi);
-  assert(psi);
+  {
+    psi_options_t opts = psi_options_default(nhalo);
+    opts.epsilon1 = epsilon1;
+    opts.epsilon2 = epsilon2;
+    psi_create(pe, cs, &opts, &psi);
+  }
   fe_electro_create(pe, psi, &fe_elec);
 
   {
@@ -125,8 +130,6 @@ static int do_test1(pe_t * pe) {
 
   /* Check epsilon e = ebar [ 1 - gamma phi ] */
 
-  fe_es_epsilon_set(fe, epsilon1, epsilon2);
-
   phi0 = 0.0;
   field_scalar_set(phi, index, phi0);
   fe_es_var_epsilon(fe, index, &eps_test);
@@ -144,7 +147,7 @@ static int do_test1(pe_t * pe) {
   fe_es_free(fe);
   field_grad_free(dphi);
   field_free(phi);
-  psi_free(psi);
+  psi_free(&psi);
   cs_free(cs);
 
   return 0;

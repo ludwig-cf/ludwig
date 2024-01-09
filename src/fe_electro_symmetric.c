@@ -95,6 +95,8 @@ static  __constant__ fe_vt_t fe_es_dvt = {
   (fe_htensor_v_ft) NULL
 };
 
+__host__ int fe_es_epsilon_set(fe_es_t * fe, double e1, double e2);
+
 /*****************************************************************************
  *
  *  fe_es_create
@@ -134,6 +136,7 @@ __host__ int fe_es_create(pe_t * pe, cs_t * cs, fe_symm_t * symm,
   fe->super.id = FE_ELECTRO_SYMMETRIC;
 
   psi_nk(psi, &fe->param->nk);
+  fe_es_epsilon_set(fe, psi->epsilon, psi->epsilon2);
 
   tdpGetDeviceCount(&ndevice);
 
@@ -268,7 +271,7 @@ __host__ int fe_es_mu_phi(fe_es_t * fe, int index, double * mu) {
  
   e2 = 0.0;
 
-  psi_electric_field_d3qx(fe->psi, index, e); 
+  psi_electric_field(fe->psi, index, e); 
 
   for (ia = 0; ia < 3; ia++) {
     e[ia] *= kt*reunit;
@@ -361,8 +364,6 @@ __host__ int fe_es_deltamu_set(fe_es_t * fe, int nk, double * deltamu) {
  *  If phi = +1 then epsilon(r) = epsilon2, as set in the call to
  *  fe_es_epsilon_set().
  *
- *  The function is of signature f_vare_t (see psi_sor.h).
- *
  *****************************************************************************/
 
 __host__ int fe_es_var_epsilon(fe_es_t * fe, int index, double * epsilon) {
@@ -436,7 +437,7 @@ __host__ int fe_es_stress_ex(fe_es_t * fe, int index, double s[3][3]) {
      requires phi and total electric field */
 
   field_scalar(fe->fe_symm->phi, index, &phi);
-  psi_electric_field_d3qx(fe->psi, index, e);
+  psi_electric_field(fe->psi, index, e);
 
   e2 = 0.0;
 

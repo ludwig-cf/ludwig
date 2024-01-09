@@ -5,8 +5,9 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
+ *  (c) 2010-2023 The University of Edinburgh
+ *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
- *  (c) 2010-2021 The University of Edinburgh
  *
  *****************************************************************************/
 
@@ -18,23 +19,12 @@
 #include "runtime.h"
 #include "coords.h"
 #include "physics.h"
+#include "lees_edwards_options.h"
 
 typedef struct lees_edw_s lees_edw_t;
-typedef struct lees_edw_info_s lees_edw_info_t;
 
-struct lees_edw_info_s {
-  int nplanes;
-  int type;
-  int period;
-  int nt0;
-  double uy;
-};
-
-typedef enum lees_edw_enum {LE_SHEAR_TYPE_STEADY,
-			    LE_SHEAR_TYPE_OSCILLATORY} lees_edw_enum_t;
-
-
-__host__ int lees_edw_create(pe_t * pe, cs_t * coords, lees_edw_info_t * info,
+__host__ int lees_edw_create(pe_t * pe, cs_t * coords,
+			     const lees_edw_options_t * opts,
 			     lees_edw_t ** le);
 __host__ int lees_edw_free(lees_edw_t * le);
 __host__ int lees_edw_retain(lees_edw_t * le);
@@ -82,4 +72,5 @@ __host__ __device__ void lees_edw_index_v(lees_edw_t * le, int ic[NSIMDVL],
 					  int jc[NSIMDVL], int kc[NSIMDVL],
 					  int index[NSIMDVL]);
 
+__host__ __device__ int lees_edw_buffer_duy(lees_edw_t * le, int ib);
 #endif

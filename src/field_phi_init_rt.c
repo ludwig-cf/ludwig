@@ -7,7 +7,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group
  *  and Edinburgh Parallel Computing Centre
  *
- *  (c) 2010-2019 The University of Edinburgh
+ *  (c) 2010-2023 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -146,13 +146,15 @@ int field_phi_init_rt(pe_t * pe, rt_t * rt, field_phi_info_t param,
   }
 
   if (p != 0 && strcmp(value, "drop") == 0) {
+    int is_centred = 0;        /* Include Lmin in centre calculation */
     double phistar = 1.0;      /* "Amplitude", can be negative. */
     radius = DEFAULT_RADIUS;
     rt_double_parameter(rt, "phi_init_drop_radius", &radius);
     rt_double_parameter(rt, "phi_init_drop_amplitude", &phistar);
+    is_centred = rt_switch(rt, "phi_init_drop_centred");
     pe_info(pe, "Initialising droplet radius:     %14.7e\n", radius);
     pe_info(pe, "Initialising droplet amplitude:  %14.7e\n", phistar);
-    field_phi_init_drop(phi, param.xi0, radius, phistar);
+    field_phi_init_drop(phi, param.xi0, radius, phistar, is_centred);
   }
 
   if (p != 0 && strcmp(value, "emulsion") == 0) {

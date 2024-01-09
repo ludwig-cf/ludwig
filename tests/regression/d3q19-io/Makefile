@@ -40,4 +40,4 @@ mpi4:
 clean:
 	rm -f *new test-diff*
 	rm -f dist*001 dist*002 phi*001 vel*001
-	rm -t *.meta
+	rm -f *.meta

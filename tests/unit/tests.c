@@ -7,7 +7,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2010-2022 The University of Edinburgh
+ *  (c) 2010-2023 The University of Edinburgh
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *
@@ -19,7 +19,7 @@
 
 #include "tests.h"
 
-__host__ int tests_create(void);
+__host__ int tests_create(int argc, char ** argv);
 
 /*****************************************************************************
  *
@@ -31,7 +31,7 @@ __host__ int main(int argc, char ** argv) {
 
   MPI_Init(&argc, &argv);
 
-  tests_create();
+  tests_create(argc, argv);
 
   MPI_Finalize();
 
@@ -44,10 +44,11 @@ __host__ int main(int argc, char ** argv) {
  *
  *****************************************************************************/
 
-__host__ int tests_create() {
+__host__ int tests_create(int argc, char ** argv) {
 
   test_pe_suite();
   test_coords_suite();
+  test_cs_limits_suite();
 
   test_kernel_suite();
   test_gradient_d3q27_suite();
@@ -73,10 +74,19 @@ __host__ int tests_create() {
   test_field_suite();
   test_field_grad_suite();
   test_halo_suite();
+  test_hydro_options_suite();
   test_hydro_suite();
-  test_io_suite();
+  test_interaction_suite();
+  test_io_aggregator_suite();
+  test_io_element_suite();
   test_io_options_suite();
   test_io_options_rt_suite();
+  test_io_info_args_suite();
+  test_io_info_args_rt_suite();
+  test_io_subfile_suite();
+  test_io_metadata_suite();
+  test_io_impl_mpio_suite();
+  test_io_suite();
   test_lb_d2q9_suite();
   test_lb_d3q15_suite();
   test_lb_d3q19_suite();
@@ -103,17 +113,29 @@ __host__ int tests_create() {
   test_phi_bc_outflow_free_suite();
   test_phi_ch_suite();
   test_polar_active_suite();
+
+  test_psi_solver_options_suite(argc, argv);
+  test_psi_options_suite();
   test_psi_suite();
+  test_psi_solver_petsc_suite();
   test_psi_sor_suite();
   test_nernst_planck_suite();
   test_lb_prop_suite();
   test_random_suite();
   test_rt_suite();
+  test_stencil_d3q7_suite();
+  test_stencil_d3q19_suite();
+  test_stencil_d3q27_suite();
+  test_stencils_suite();
   test_timer_suite();
   test_util_suite();
   test_util_bits_suite();
+  test_util_ellipsoid_suite();
   test_util_fopen_suite();
+  test_util_io_suite();
+  test_util_json_suite();
   test_util_sum_suite();
+  test_util_vector_suite();
   test_visc_arrhenius_suite();
   test_wall_suite();
   test_wall_ss_cut_suite();

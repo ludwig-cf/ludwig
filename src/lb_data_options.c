@@ -32,8 +32,26 @@ lb_data_options_t lb_data_options_default(void) {
 			    .halo   = LB_HALO_TARGET,
 			    .reportimbalance = 0,
 			    .usefirsttouch   = 0,
-                            .data = io_info_args_default(),
-                            .rho  = io_info_args_default()};
+                            .iodata = io_info_args_default()};
+
+  return opts;
+}
+
+/*****************************************************************************
+ *
+ *  lb_data_options_ndim_nvel_ndist
+ *
+ *****************************************************************************/
+
+lb_data_options_t lb_data_options_ndim_nvel_ndist(int ndim, int nvel,
+						  int ndist) {
+
+  lb_data_options_t opts = lb_data_options_default();
+
+  /* There are no checks at this points ... */
+  opts.ndim = ndim;
+  opts.nvel = nvel;
+  opts.ndist = ndist;
 
   return opts;
 }

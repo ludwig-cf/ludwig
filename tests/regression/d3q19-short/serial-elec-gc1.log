@@ -1,0 +1,169 @@
+Welcome to: Ludwig v0.19.1 (Serial version running on 1 process)
+Git commit: 0552745563099758c116ac6742dd788ed39f13e3
+
+Start time: Wed Jun 21 12:27:56 2023
+
+Compiler:
+  name:           Gnu 11.3.0
+  version-string: 11.3.0
+  options:        -O2 -g -fopenmp -Wall -Werror
+
+Note assertions via standard C assert() are on.
+
+Target thread model: OpenMP.
+OpenMP threads: 1; maximum number of threads: 8.
+
+Read 30 user parameters from input
+
+System details
+--------------
+System size:    64 4 4
+Decomposition:  1 1 1
+Local domain:   64 4 4
+Periodic:       1 1 1
+Halo nhalo:     1
+Reorder:        true
+Initialised:    1
+
+Free energy details
+-------------------
+
+Electrokinetics (single fluid) selected
+
+Parameters:
+Electrokinetic species:     2
+Boltzmann factor:           3.0000000e+04 (T =  3.3333333e-05)
+Unit charge:                1.0000000e+00
+Permittivity:               3.3000000e+03
+Bjerrum length:             7.2343156e-01
+Valency species 0:          1
+Diffusivity species 0:      1.0000000e-02
+Valency species 1:         -1
+Diffusivity species 1:      1.0000000e-02
+Solver type:                          sor
+Solver stencil points:                  7
+Relative tolerance:         1.0000000e-08
+Absolute tolerance:         1.0000000e-15
+Max. no. of iterations:             10000
+Number of multisteps:       1
+Diffusive accuracy in NPE:  0.0000000e+00
+Force calculation:      phi_gradmu_correction
+
+System properties
+----------------
+Mean fluid density:           1.00000e+00
+Shear viscosity               1.00000e-01
+Bulk viscosity                1.00000e-01
+Temperature                   3.33333e-05
+External body force density   0.00000e+00  0.00000e+00  0.00000e+00
+External E-field amplitude    0.00000e+00  0.00000e+00  0.00000e+00
+External E-field frequency    0.00000e+00
+External magnetic field       0.00000e+00  0.00000e+00  0.00000e+00
+
+Lattice Boltzmann distributions
+-------------------------------
+Model:            d3q19  
+SIMD vector len:  1
+Number of sets:   1
+Halo type:        lb_halo_openmp_reduced (host)
+Input format:     binary
+Output format:    binary
+I/O grid:         1 1 1
+
+Lattice Boltzmann collision
+---------------------------
+Relaxation time scheme:   M10
+Hydrodynamic modes:       on
+Ghost modes:              on
+Isothermal fluctuations:  off
+Shear relaxation time:    8.00000e-01
+Bulk relaxation time:     8.00000e-01
+Ghost relaxation time:    1.00000e+00
+[User   ] Random number seed: 8361235
+
+Hydrodynamics
+-------------
+Hydrodynamics: on
+
+Advection scheme order: 3
+
+Initial charge densities
+------------------------
+Initial conditions:         Gouy Chapman
+Initial condition rho_el:   0.0000000e+00
+Debye length:                         inf
+Debye length (actual):      3.3033317e+01
+Initial condition sigma:    3.1250000e-03
+
+Porous Media
+------------
+Wall boundary links allocated:   160
+Memory (total, bytes):           2560
+
+Arranging initial charge neutrality.
+
+Initial conditions.
+
+Scalars - total mean variance min max
+[rho]         992.00  1.00000000000  2.2204460e-16  1.00000000000  1.00000000000
+[psi]  0.0000000e+00  0.0000000e+00  0.0000000e+00
+[rho]  1.0000000e-01  0.0000000e+00  3.1250000e-03
+[rho]  1.0000000e-01  0.0000000e+00  1.0080645e-04
+[elc] -2.5413699e-16 -1.0080645e-04  3.1250000e-03
+
+Free energy density - timestep total fluid
+[fed]              0 -1.6572880074e-03 -1.0284584879e-03
+
+Momentum - x y z
+[total   ]  0.0000000e+00  0.0000000e+00  0.0000000e+00
+[fluid   ]  0.0000000e+00  0.0000000e+00  0.0000000e+00
+[walls   ]  0.0000000e+00  0.0000000e+00  0.0000000e+00
+
+Starting time step loop.
+
+Scalars - total mean variance min max
+[rho]         992.00  1.00000000000  1.0214052e-14  0.99999999983  1.00000000113
+[psi]  1.3017365e-13 -1.5610986e-01  2.9805899e-01
+[rho]  1.0000000e-01  0.0000000e+00  3.1250000e-03
+[rho]  1.0000000e-01  0.0000000e+00  1.0273708e-04
+[elc] -8.3006518e-16 -1.0273708e-04  3.1250000e-03
+
+Free energy density - timestep total fluid
+[fed]            100 -1.6422762401e-03 -1.0279856047e-03
+
+Momentum - x y z
+[total   ]  3.6637360e-14  1.3877788e-17  0.0000000e+00
+[fluid   ]  1.1457502e-13  1.3877788e-17  0.0000000e+00
+[walls   ] -7.7937656e-14  0.0000000e+00  0.0000000e+00
+
+Velocity - x y z
+[minimum ] -4.7309645e-10 -6.9388939e-18  0.0000000e+00
+[maximum ]  4.7309630e-10  6.9388939e-18  1.1754944e-38
+
+Completed cycle 100
+
+Timer resolution: 1e-06 second
+
+Timer statistics
+             Section:       tmin       tmax      total
+               Total:      1.863      1.863      1.863   1.862596 (1 call)
+      Time step loop:      0.018      0.037      1.860   0.018596 (100 calls)
+         Propagation:      0.001      0.001      0.061   0.000608 (100 calls)
+    Propagtn (krnl) :      0.001      0.001      0.060   0.000603 (100 calls)
+           Collision:      0.001      0.002      0.130   0.001299 (100 calls)
+   Collision (krnl) :      0.001      0.002      0.130   0.001295 (100 calls)
+       Lattice halos:      0.000      0.000      0.056   0.000141 (400 calls)
+            -> irecv:      0.000      0.000      0.000   0.000000 (100 calls)
+             -> pack:      0.000      0.000      0.012   0.000124 (100 calls)
+            -> isend:      0.000      0.000      0.000   0.000000 (100 calls)
+          -> waitall:      0.000      0.000      0.000   0.000000 (100 calls)
+           -> unpack:      0.000      0.000      0.012   0.000121 (100 calls)
+       phi gradients:      0.000      0.000      0.000   0.000000 (100 calls)
+                 BBL:      0.000      0.000      0.003   0.000026 (100 calls)
+   Force calculation:      0.000      0.000      0.015   0.000073 (200 calls)
+          phi update:      0.000      0.000      0.000   0.000000 (100 calls)
+    Poisson equation:      0.014      0.032      1.439   0.014394 (100 calls)
+       Nernst Planck:      0.001      0.002      0.145   0.001452 (100 calls)
+Diagnostics / output:      0.000      0.001      0.001   0.000009 (100 calls)
+End time: Wed Jun 21 12:27:58 2023
+Ludwig finished normally.

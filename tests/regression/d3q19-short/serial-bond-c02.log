@@ -93,7 +93,6 @@ Output format:                ascii
 Single file read flag:        0
 
 Requested one colloid via input:
-colloid_one                   default
 colloid_one_a0                2.3000000e+00
 colloid_one_ah                2.3000000e+00
 colloid_one_r                 1.6130000e+01  1.6470000e+01  1.6000000e+01
@@ -116,6 +115,9 @@ Initial conditions.
 Scalars - total mean variance min max
 [rho]       65484.00  1.00000000000  2.2204460e-16  1.00000000000  1.00000000000
 [phi]  0.0000000e+00  0.0000000e+00 9.2965928e-01 -1.0000000e+00 1.0000000e+00
+
+Free energies - timestep f v f/v f_s a f_s/a
+[fe]              0 -9.3481842103e-01  6.5484000000e+04 -1.4275524113e-05  0.0000000000e+00
 
 Momentum - x y z
 [total   ]  9.0877306e-13  0.0000000e+00  0.0000000e+00

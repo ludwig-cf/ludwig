@@ -5,7 +5,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2010-2021 The University of Edinburgh
+ *  (c) 2010-2023 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -36,10 +36,6 @@ __host__ int advflux_cs_compute(advflux_t * flux, hydro_t * h, field_t * f);
 __host__ int advflux_cs_zero(advflux_t * flux);
 
 __host__ int advection_x(advflux_t * obj, hydro_t * hydro, field_t * field);
-__host__ int advective_fluxes_d3qx(hydro_t * hydro, int nf, double * f, 
-			double ** flx);
-__host__ int advective_fluxes_2nd_d3qx(hydro_t * hydro, int nf, double * f, 
-			double ** flx);
 
 __host__ int advection_order_set(const int order);
 __host__ int advection_order(int * order);

@@ -43,7 +43,8 @@ free_energy none
 
 colloid_init     input_one
 
-colloid_one_type active
+colloid_one_active yes
+
 colloid_one_a0   7.25
 colloid_one_ah   7.25
 colloid_one_r    32.0_32.0_32.0

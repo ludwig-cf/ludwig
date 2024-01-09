@@ -5,7 +5,7 @@
  *  The version is MAJOR.MINOR.PATCH
  *  See, e.g., https://apr.apache.org/versioning.html
  *
- *  (c) 2014-2022 The University of Edinburgh
+ *  (c) 2014-2024 The University of Edinburgh
  *
  *****************************************************************************/
 
@@ -13,7 +13,7 @@
 #define LUDWIG_VERSION_H
 
 #define LUDWIG_MAJOR_VERSION 0
-#define LUDWIG_MINOR_VERSION 19
+#define LUDWIG_MINOR_VERSION 21
 #define LUDWIG_PATCH_VERSION 0
 
 #endif

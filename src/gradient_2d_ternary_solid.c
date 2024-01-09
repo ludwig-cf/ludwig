@@ -11,7 +11,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2019-2021 The University of Edinburgh
+ *  (c) 2019-2023 The University of Edinburgh
  *
  *  Contributing authors:
  *  Shan Chen (chan.chen@epfl.ch)
@@ -26,10 +26,14 @@
 #include "kernel.h"
 #include "gradient_2d_ternary_solid.h"
 
+typedef struct wetting_s {
+  double hrka[3];         /* Wetting gradients phi, psi, rho */
+} wetting_t;
+
 typedef struct solid_s {
   map_t * map;            /* Map structure reference */
   fe_ternary_param_t fe;  /* Free energy parameters (copy) */
-  double hrka[3];         /* Wetting gradients phi, psi, rho */
+  wetting_t wetting;      /* Wetting parameters */
 } solid_t;
 
 static solid_t static_solid = {0};
@@ -49,8 +53,8 @@ static __constant__ double wv[NGRAD_] = {w0, w2, w1, w2, w1, w1, w2, w1, w2};
 
 __global__ void grad_2d_ternary_solid_kernel(kernel_ctxt_t * ktx,
 					     field_grad_t * fg,
-					     map_t * map, solid_t fe);
-
+					     map_t * map,
+					     wetting_t wet);
 
 /*****************************************************************************
  *
@@ -98,8 +102,9 @@ __host__ int grad_2d_ternary_solid_fe_set(fe_ternary_t * fe) {
   k3 = fe->param->kappa3;
   a2 = fe->param->alpha*fe->param->alpha;
 
-  static_solid.hrka[0] =  (-h1/k1 + h2/k2)/a2; /* phi */
-  static_solid.hrka[1] =  (-h3/k3        )/a2; /* psi */
+  static_solid.wetting.hrka[0] =  (-h1/k1 + h2/k2)/a2; /* phi */
+  static_solid.wetting.hrka[1] =  (-h3/k3        )/a2; /* psi */
+  static_solid.wetting.hrka[2] = 0.0;                  /* not used */
 
   return 0;
 }
@@ -133,7 +138,7 @@ __host__ int grad_2d_ternary_solid_d2(field_grad_t * fgrad) {
 
   tdpLaunchKernel(grad_2d_ternary_solid_kernel, nblk, ntpb, 0, 0,
 		  ctxt->target, fgrad->target, static_solid.map->target,
-		  static_solid);
+		  static_solid.wetting);
   
   tdpAssert(tdpPeekAtLastError());
   tdpAssert(tdpDeviceSynchronize());
@@ -151,7 +156,8 @@ __host__ int grad_2d_ternary_solid_d2(field_grad_t * fgrad) {
 
 __global__ void grad_2d_ternary_solid_kernel(kernel_ctxt_t * ktx,
 					     field_grad_t * fg,
-					     map_t * map, solid_t fe) {
+					     map_t * map,
+					     wetting_t wet) {
   int kindex;
   int kiterations;
 
@@ -209,7 +215,7 @@ __global__ void grad_2d_ternary_solid_kernel(kernel_ctxt_t * ktx,
 
 	  if (isite[p] == -1) {
 	    /* Wetting condition */
-	    dphi = fe.hrka[n];
+	    dphi = wet.hrka[n];
 	  }
 	  else {
 	    /* Fluid */

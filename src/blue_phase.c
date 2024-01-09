@@ -1373,7 +1373,8 @@ int fe_lc_redshift_set(fe_lc_t * fe,  double redshift) {
  *
  *****************************************************************************/
 
-__host__ __device__ int fe_lc_amplitude_compute(fe_lc_param_t * param, double * a) {
+__host__ __device__ int fe_lc_amplitude_compute(const fe_lc_param_t * param,
+						double * a) {
 
   assert(a);
   

@@ -1,0 +1,177 @@
+Welcome to Ludwig v0.19.0 (Serial version running on 1 process)
+Start time: Thu Jan 19 10:39:15 2023
+
+Compiler:
+  name:           Gnu 12.2.0
+  version-string: 12.2.0
+
+Note assertions via standard C assert() are on.
+
+Target thread model: OpenMP.
+OpenMP threads: 4; maximum number of threads: 8.
+
+Read 27 user parameters from lees-edwards-example1.inp
+
+System details
+--------------
+System size:    32 64 1
+Decomposition:  1 1 1
+Local domain:   32 64 1
+Periodic:       1 1 1
+Halo nhalo:     2
+Reorder:        true
+Initialised:    1
+
+Lees-Edwards boundary conditions are active:
+LE plane 1 is at x = 8 with speed 0.005000
+LE plane 2 is at x = 24 with speed 0.005000
+Overall shear rate = 0.000313
+
+Lees-Edwards time offset (time steps):        0
+
+Free energy details
+-------------------
+
+Symmetric phi^4 free energy selected.
+
+Parameters:
+Bulk parameter A      = -6.25000e-02
+Bulk parameter B      =  6.25000e-02
+Surface penalty kappa =  4.00000e-02
+Surface tension       =  4.71405e-02
+Interfacial width     =  1.13137e+00
+
+Using Cahn-Hilliard finite difference solver.
+Mobility M            =  1.50000e-01
+Order parameter noise = off
+Force calculation:      stress_divergence
+
+System properties
+----------------
+Mean fluid density:           1.00000e+00
+Shear viscosity               1.00000e-01
+Bulk viscosity                1.00000e-01
+Temperature                   0.00000e+00
+External body force density   0.00000e+00  0.00000e+00  0.00000e+00
+External E-field amplitude    0.00000e+00  0.00000e+00  0.00000e+00
+External E-field frequency    0.00000e+00
+External magnetic field       0.00000e+00  0.00000e+00  0.00000e+00
+
+Lattice Boltzmann distributions
+-------------------------------
+Model:            d2q9  
+SIMD vector len:  1
+Number of sets:   1
+Halo type:        lb_halo_target (full halo)
+Input format:     binary
+Output format:    binary
+I/O grid:         1 1 1
+
+Lattice Boltzmann collision
+---------------------------
+Relaxation time scheme:   M10
+Hydrodynamic modes:       on
+Ghost modes:              on
+Isothermal fluctuations:  off
+Shear relaxation time:    8.00000e-01
+Bulk relaxation time:     8.00000e-01
+Ghost relaxation time:    1.00000e+00
+[User   ] Random number seed: -7361237
+
+Hydrodynamics
+-------------
+Hydrodynamics: on
+
+Order parameter I/O
+-------------------
+Order parameter I/O format:   
+I/O decomposition:            1 1 1
+
+Advection scheme order: 4
+Initialising droplet radius:      1.2000000e+01
+Initialising droplet amplitude:   1.0000000e+00
+Initialising shear profile
+Gradient calculation: 3d_7pt_fluid
+Initial conditions.
+
+Scalars - total mean variance min max
+[rho]        2048.00  1.00000000000  0.0000000e+00  1.00000000000  1.00000000000
+[phi]  1.1366180e+03  5.5498927e-01 6.0870297e-01 -1.0000000e+00 1.0000000e+00
+
+Momentum - x y z
+[total   ] -6.9388939e-18 -3.4694470e-18  0.0000000e+00
+[fluid   ] -6.9388939e-18 -3.4694470e-18  0.0000000e+00
+
+Starting time step loop.
+
+Scalars - total mean variance min max
+[rho]        2048.00  1.00000000000  1.2089861e-05  0.99567958731  1.00855514326
+[phi]  1.1366180e+03  5.5498927e-01 6.0575697e-01 -1.0147629e+00 9.9638920e-01
+
+Free energy density - timestep total fluid
+[fed]           1600 -1.4032606946e-02 -1.4032606946e-02
+
+Momentum - x y z
+[total   ] -1.5348833e-14  1.8637869e-14  0.0000000e+00
+[fluid   ] -1.5348833e-14  1.8637869e-14  0.0000000e+00
+
+Velocity - x y z
+[minimum ] -4.7035745e-03 -5.5890154e-03  0.0000000e+00
+[maximum ]  4.7035745e-03  5.5890154e-03  1.1754944e-38
+
+Completed cycle 1600
+Writing phi file at step 3200!
+MPIIO wrote to phi-000003200.001-001
+-        phi aggregated   0.049 MB in   0.000 seconds
+-        phi wrote        0.049 MB in   0.003 seconds
+-        phi rate         0.016 GB per second
+Writing rho/velocity output at step 3200!
+MPIIO wrote to rho-000003200.001-001
+-        rho aggregated   0.049 MB in   0.000 seconds
+-        rho wrote        0.049 MB in   0.003 seconds
+-        rho rate         0.017 GB per second
+MPIIO wrote to vel-000003200.001-001
+-        vel aggregated   0.143 MB in   0.001 seconds
+-        vel wrote        0.143 MB in   0.011 seconds
+-        vel rate         0.013 GB per second
+
+Scalars - total mean variance min max
+[rho]        2048.00  1.00000000000  6.5329120e-06  0.99659531268  1.00681534635
+[phi]  1.1366180e+03  5.5498927e-01 6.0295704e-01 -1.0136615e+00 9.9590545e-01
+
+Free energy density - timestep total fluid
+[fed]           3200 -1.4032657774e-02 -1.4032657774e-02
+
+Momentum - x y z
+[total   ] -5.1316590e-14  8.0775664e-14  0.0000000e+00
+[fluid   ] -5.1316590e-14  8.0775664e-14  0.0000000e+00
+
+Velocity - x y z
+[minimum ] -4.1890192e-03 -5.7036243e-03  0.0000000e+00
+[maximum ]  4.1890192e-03  5.7036243e-03  1.1754944e-38
+
+Completed cycle 3200
+
+Timer resolution: 1e-06 second
+
+Timer statistics
+             Section:       tmin       tmax      total
+               Total:     20.836     20.836     20.836  20.836232 (1 call)
+      Time step loop:      0.006      0.014     20.798   0.006499 (3200 calls)
+         Propagation:      0.000      0.002      1.376   0.000430 (3200 calls)
+    Propagtn (krnl) :      0.000      0.002      1.361   0.000425 (3200 calls)
+           Collision:      0.001      0.002      2.895   0.000905 (3200 calls)
+   Collision (krnl) :      0.001      0.002      2.870   0.000897 (3200 calls)
+       Lattice halos:      0.000      0.002      1.735   0.000542 (3200 calls)
+       phi gradients:      0.001      0.002      2.779   0.000869 (3200 calls)
+    phi grad (krnl) :      0.000      0.001      1.381   0.000431 (3200 calls)
+           phi halos:      0.000      0.001      0.722   0.000226 (3200 calls)
+     Lees Edwards BC:      0.000      0.000      0.337   0.000105 (3200 calls)
+                 BBL:      0.000      0.000      0.002   0.000001 (3200 calls)
+   Force calculation:      0.001      0.004      4.956   0.001549 (3200 calls)
+          phi update:      0.002      0.005      6.099   0.001906 (3200 calls)
+     Advectn (krnl) :      0.001      0.002      2.721   0.000850 (3200 calls)
+ Advectn BCS (krnl) :      0.000      0.000      0.654   0.000205 (3200 calls)
+               Free1:      0.000      0.027      0.032   0.000010 (3200 calls)
+End time: Thu Jan 19 10:39:35 2023
+Ludwig finished normally.

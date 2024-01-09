@@ -7,7 +7,7 @@
  *  Edinburgh Soft Matter and Statistical Physics and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2010-2021 The University of Edinburgh
+ *  (c) 2010-2022 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -19,7 +19,7 @@
 #include <stdlib.h>
 
 #include "util.h"
-#include "coords_s.h"
+#include "coords.h"
 
 static __host__ int cs_is_ok_decomposition(cs_t * cs);
 static __host__ int cs_rectilinear_decomposition(cs_t * cs);
@@ -908,4 +908,162 @@ __host__ __device__ int cs_nall(cs_t * cs, int nall[3]) {
 __host__ int cs_cart_rank(cs_t * cs) {
   assert(cs);
   return cs->mpi_cartrank;
+}
+
+
+/*****************************************************************************
+ *
+ *  cs_options_to_json
+ *
+ *  Experimental.
+ *  An ad-hoc object which is "cs_options" currently a subset of cs_param_t.
+ *  First argument to be replaced by the thing itself, when available. A
+ *  correct cs_options_t must allow creation of cs_t without further
+ *  information (excepting pe_t).
+ *
+ *****************************************************************************/
+
+int cs_options_to_json(const cs_param_t * opts, cJSON ** json) {
+
+  int ifail = 0;
+
+  assert(opts);
+
+  if (json == NULL || *json != NULL) {
+    ifail = -1;
+  }
+  else {
+    cJSON * myjson = cJSON_CreateObject();
+    cJSON * ntotal = cJSON_CreateIntArray(opts->ntotal, 3);
+    cJSON * period = cJSON_CreateIntArray(opts->periodic, 3);
+    cJSON * lmin   = cJSON_CreateDoubleArray(opts->lmin, 3);
+
+    cJSON_AddItemToObject(myjson, "System size (total)", ntotal);
+    cJSON_AddItemToObject(myjson, "Periodic boundaries", period);
+    cJSON_AddItemToObject(myjson, "Left-end limit Lmin", lmin);
+
+    *json = myjson;
+  }
+
+  return ifail;
+}
+
+/*****************************************************************************
+ *
+ *  cs_options_from_json
+ *
+ *  Experimental.
+ *  This is just the pair of the above cs_options_to_json().
+ *  We currently set the relevant components of cs_param_t (see above).
+ *  Missing at least "nhalo".
+ *
+ *****************************************************************************/
+
+int cs_options_from_json(const cJSON * json, cs_param_t * opts) {
+
+  int ifail = 0;
+
+  if (json == NULL || opts == NULL) {
+    ifail = -1;
+  }
+  else {
+    /* Note no default for system size: must be present */
+    cs_param_t param = {.periodic = {1,1,1}, .lmin = {0.5,0.5,0.5}};
+    cJSON * jn = cJSON_GetObjectItemCaseSensitive(json, "System size (total)");
+    cJSON * jp = cJSON_GetObjectItemCaseSensitive(json, "Periodic boundaries");
+    cJSON * jl = cJSON_GetObjectItemCaseSensitive(json, "Left-end limit Lmin");
+
+    if (jn) util_json_to_int_array(jn, param.ntotal, 3);
+    if (jp) util_json_to_int_array(jp, param.periodic, 3);
+    if (jl) util_json_to_double_array(jl, param.lmin, 3);
+
+    /* Error conditions */
+    if (!jn) ifail = 1;
+
+    *opts = param;
+  }
+
+  return ifail;
+}
+
+/*****************************************************************************
+ *
+ *  cs_to_json
+ *
+ *  Experimental design
+ *   - "physical part"
+ *     - coords options
+ *     - Lees Edwards options
+ *   - MPI decomposition part
+ *
+ *  The idea would be that one can create a cs_t from the physical part
+ *  only, irrespective of MPI configuration.
+ *
+ *****************************************************************************/
+
+int cs_to_json(const cs_t * cs, cJSON ** json) {
+
+  int ifail = 0;
+
+  assert(cs);
+
+  if (json == NULL || *json != NULL) {
+    ifail = -1;
+  }
+  else {
+    /* Add options, lees edwards */
+    /* No decomposition yet. */
+    cJSON * myson = cJSON_CreateObject();
+    {
+      cJSON * jtmp = NULL;
+      ifail += cs_options_to_json(cs->param, &jtmp);
+      if (ifail == 0) cJSON_AddItemToObject(myson, "options", jtmp);
+    }
+    {
+      cJSON * jtmp = NULL;
+      ifail += lees_edw_opts_to_json(&cs->leopts, &jtmp);
+      if (ifail == 0) cJSON_AddItemToObject(myson, "lees_edwards", jtmp);
+    }
+
+    *json = myson;
+  }
+
+  return ifail;
+}
+
+/*****************************************************************************
+ *
+ *  cs_from_json
+ *
+ *  An (somewhat) experimental placeholder.
+ *  Create and return a new cs_t from the json.
+ *
+ *****************************************************************************/
+
+int cs_from_json(pe_t * pe, const cJSON * json, cs_t ** cs) {
+
+  int ifail = 0;
+  cs_t * obj = NULL;
+
+  if (json == NULL || cs == NULL) {
+    ifail = -1;
+  }
+  else {
+    /* Get cs_options and initialise in the existing picture... */
+    cJSON * jopt = cJSON_GetObjectItemCaseSensitive(json, "options");
+    cJSON * jlep = cJSON_GetObjectItemCaseSensitive(json, "lees_edwards");
+    cs_param_t opts = {0};
+    ifail = cs_options_from_json(jopt, &opts);
+    if (ifail == 0) {
+      cs_create(pe, &obj);
+      cs_ntotal_set(obj, opts.ntotal);
+      cs_periodicity_set(obj, opts.periodic);
+      cs_init(obj);
+      lees_edw_opts_from_json(jlep, &obj->leopts);
+    }
+  }
+
+  *cs = obj;
+
+  return ifail;
 }

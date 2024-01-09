@@ -8,7 +8,7 @@
  *  Edinburgh Soft Matter and Statisitical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2014-2021 The University of Edinburgh
+ *  (c) 2014-2022 The University of Edinburgh
  *
  *  Contributing authors
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -32,7 +32,7 @@
 
 static int do_test1(pe_t * pe);
 static int do_test_halo1(pe_t * pe, int nhalo, int nhcomm,
-			 hydro_halo_enum_t haloscheme);
+			 field_halo_enum_t haloscheme);
 static int do_test_io1(pe_t * pe, int io_format);
 
 int test_hydro_rho(pe_t * pe);
@@ -53,13 +53,13 @@ int test_hydro_suite(void) {
   tdpGetDeviceCount(&ndevice);
 
   do_test1(pe);
-  do_test_halo1(pe, 1, 1, HYDRO_U_HALO_TARGET);
-  do_test_halo1(pe, 2, 2, HYDRO_U_HALO_TARGET);
-  do_test_halo1(pe, 2, 1, HYDRO_U_HALO_TARGET);
+  do_test_halo1(pe, 1, 1, FIELD_HALO_TARGET);
+  do_test_halo1(pe, 2, 2, FIELD_HALO_TARGET);
+  do_test_halo1(pe, 2, 1, FIELD_HALO_TARGET);
 
   if (ndevice == 0) {
-    do_test_halo1(pe, 1, 1, HYDRO_U_HALO_OPENMP);
-    do_test_halo1(pe, 2, 1, HYDRO_U_HALO_OPENMP);
+    do_test_halo1(pe, 1, 1, FIELD_HALO_OPENMP);
+    do_test_halo1(pe, 2, 1, FIELD_HALO_OPENMP);
   }
 
   test_hydro_rho(pe);
@@ -102,7 +102,7 @@ static int do_test1(pe_t * pe) {
 
   hydro_create(pe, cs, le, &opts, &hydro);
   assert(hydro);
-  assert(hydro->opts.nhcomm == 1);
+  assert(hydro->nhcomm == 1);
 
   index = cs_index(cs, 1, 1, 1);
   hydro_f_local_set(hydro, index, force);
@@ -136,12 +136,12 @@ static int do_test1(pe_t * pe) {
  *****************************************************************************/
 
 static int do_test_halo1(pe_t * pe, int nhalo, int nhcomm,
-			 hydro_halo_enum_t haloscheme) {
+			 field_halo_enum_t haloscheme) {
 
   cs_t * cs = NULL;
   lees_edw_t * le = NULL;
 
-  hydro_options_t opts = {.nhcomm = nhcomm, .haloscheme = haloscheme};
+  hydro_options_t opts = hydro_options_default();
   hydro_t * hydro = NULL;
 
   assert(pe);
@@ -151,16 +151,20 @@ static int do_test_halo1(pe_t * pe, int nhalo, int nhcomm,
   cs_init(cs);
   lees_edw_create(pe, cs, NULL, &le);
 
+  opts.nhcomm = nhcomm;
+  opts.u.nhcomm = nhcomm;
+  opts.u.haloscheme = haloscheme;
+
   hydro_create(pe, cs, le, &opts, &hydro);
   assert(hydro);
 
-  test_coords_field_set(cs, NHDIM, hydro->u, MPI_DOUBLE, test_ref_double1);
+  test_coords_field_set(cs, NHDIM, hydro->u->data, MPI_DOUBLE, test_ref_double1);
   hydro_memcpy(hydro, tdpMemcpyHostToDevice);
 
   hydro_u_halo(hydro);
 
   hydro_memcpy(hydro, tdpMemcpyDeviceToHost);
-  test_coords_field_check(cs, nhcomm, NHDIM, hydro->u, MPI_DOUBLE,
+  test_coords_field_check(cs, nhcomm, NHDIM, hydro->u->data, MPI_DOUBLE,
 			  test_ref_double1);
 
   hydro_free(hydro);
@@ -207,7 +211,7 @@ static int do_test_io1(pe_t * pe, int io_format) {
   assert(hydro);
 
   hydro_init_io_info(hydro, grid, io_format, io_format);
-  test_coords_field_set(cs, NHDIM, hydro->u, MPI_DOUBLE, test_ref_double1);
+  test_coords_field_set(cs, NHDIM, hydro->u->data, MPI_DOUBLE, test_ref_double1);
 
   hydro_io_info(hydro, &iohandler);
   assert(iohandler);

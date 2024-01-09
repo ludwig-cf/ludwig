@@ -86,7 +86,6 @@ fd_gradient_calculation 3d_27pt_solid
 
 colloid_init        input_one
 
-colloid_one_type    default
 colloid_one_a0      2.3
 colloid_one_ah      2.3
 colloid_one_r       16.13_16.47_16.0

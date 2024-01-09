@@ -10,7 +10,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2007-2022 The University of Edinburgh.
+ *  (c) 2007-2023 The University of Edinburgh.
  *
  *  Contributing authors:
  *  Grace Kim
@@ -61,7 +61,7 @@ static int ewald_set_kr_table(ewald_t * ewlad, double r[3]);
  *
  *  ewald_init
  *
- *  We always have metalic (conducting) boundary conditions at infinity.
+ *  We always have metallic (conducting) boundary conditions at infinity.
  *  The system is assumed to be a cube.
  *
  *  The dipole strength is mu_input.
@@ -367,8 +367,8 @@ static int ewald_sum_sin_cos_terms(ewald_t * ewald) {
   for ( ; pc; pc = pc->nextlocal) {
 
     int kn = 0;
-		
-    if (pc->s.type == COLLOID_TYPE_SUBGRID) continue;
+
+    if (pc->s.magnetic == 0) continue;
 
     ewald_set_kr_table(ewald, pc->s.r);
 
@@ -525,7 +525,7 @@ int ewald_real_space_sum(ewald_t * ewald) {
 
 	for ( ; p_c1; p_c1 = p_c1->next) {
 
-          if (p_c1->s.type == COLLOID_TYPE_SUBGRID) continue;
+	  if (p_c1->s.magnetic == 0) continue;
 
 	  for (dx = -1; dx <= +1; dx++) {
 	    for (dy = -1; dy <= +1; dy++) {
@@ -539,7 +539,7 @@ int ewald_real_space_sum(ewald_t * ewald) {
 
 		for ( ; p_c2; p_c2 = p_c2->next) {
 
-		  if (p_c2->s.type == COLLOID_TYPE_SUBGRID) continue;
+		  if (p_c2->s.magnetic == 0) continue;
 
 		  if (p_c1->s.index < p_c2->s.index) {
 		    double r;
@@ -673,7 +673,7 @@ int ewald_fourier_space_sum(ewald_t * ewald) {
 
 	for ( ; p_colloid; p_colloid = p_colloid->next) {
 
-          if (p_colloid->s.type == COLLOID_TYPE_SUBGRID) continue;
+	  if (p_colloid->s.magnetic == 0) continue;
 
 	  /* Sum over k to get the force/torque. */
 
@@ -702,12 +702,12 @@ int ewald_fourier_space_sum(ewald_t * ewald) {
 		k[Z] = fkz*kz;
 		ksq = k[X]*k[X] + k[Y]*k[Y] + k[Z]*k[Z];
 
-		if (ksq <= 0.0 || ksq > kmax_) continue;		
+		if (ksq <= 0.0 || ksq > kmax_) continue;
 		b = b0*exp(-r4kappa_sq*ksq)/ksq;
 
-		/* Energy */ 
+		/* Energy */
 
-		if (kz > 0) b *= 2.0; 
+		if (kz > 0) b *= 2.0;
 		efourier_ += 0.5*b*(sinx_[kn]*sinx_[kn] + cosx_[kn]*cosx_[kn]);
 
 		skr[X] = sinkr_[3*abs(kx) + X];
@@ -840,7 +840,7 @@ static int ewald_set_kr_table(ewald_t * ewald, double r[3]) {
   for (k = 2; k < nkmax_; k++) {
     for (i = 0; i < 3; i++) {
       sinkr_[3*k + i] = c2[i]*sinkr_[3*(k-1) + i] - sinkr_[3*(k-2) + i];
-      coskr_[3*k + i] = c2[i]*coskr_[3*(k-1) + i] - coskr_[3*(k-2) + i]; 
+      coskr_[3*k + i] = c2[i]*coskr_[3*(k-1) + i] - coskr_[3*(k-2) + i];
     }
   }
 

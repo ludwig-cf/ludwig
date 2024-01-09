@@ -36,8 +36,6 @@ static int  test_io_write1(FILE *, int index, void * self);
 static int  test_io_read3(FILE *, int index, void * self);
 static int  test_io_write3(FILE *, int index, void * self);
 
-__host__ int test_io_info_create_impl_a(pe_t * pe, cs_t * cs);
-
 /*****************************************************************************
  *
  *  test_io_suite
@@ -54,8 +52,6 @@ int test_io_suite(void) {
   cs_init(cs);
 
   do_test_io_info_struct(pe, cs);
-
-  test_io_info_create_impl_a(pe, cs);
 
   pe_info(pe, "PASS     ./unit/test_io\n");
   cs_free(cs);
@@ -131,68 +127,6 @@ int do_test_io_info_struct(pe_t * pe, cs_t * cs) {
   io_remove_metadata(io_info, stubp);
 
   io_info_free(io_info);
-
-  return 0;
-}
-
-/*****************************************************************************
- *
- * test_io_info_create_impl_b
- *
- *****************************************************************************/
-
-__host__ int test_io_info_create_impl_a(pe_t * pe, cs_t * cs) {
-
-  io_info_args_t args = io_info_args_default();
-  io_implementation_t impl = {0};
-  io_info_t * info = {0};
-
-  assert(pe);
-  assert(cs);
-
-  sprintf(impl.name, "%s", "Test implementaton");
-
-  impl.write_binary    = test_io_write1;
-  impl.read_binary     = test_io_read1;
-  impl.write_ascii     = test_io_write3;
-  impl.read_ascii      = test_io_read3;
-  impl.bytesize_ascii  = 10;
-  impl.bytesize_binary = sizeof(double);
-
-  io_info_create_impl(pe, cs, args, &impl, &info);
-
-  assert(info);
-
-  {
-    /* Copied implementation correctly... */
-    assert((info->pe == pe));
-    assert((info->cs == cs));
-    assert((info->impl.write_binary    == impl.write_binary));
-    assert((info->impl.read_binary     == impl.read_binary));
-    assert((info->impl.write_ascii     == impl.write_ascii));
-    assert((info->impl.read_ascii      == impl.read_ascii));
-
-    assert(info->impl.bytesize_ascii  == impl.bytesize_ascii);
-    assert(info->impl.bytesize_binary == impl.bytesize_binary);
-  }
-
-  {
-    /* Default input format binary ... */
-    size_t bs;
-    assert(info->args.input.iorformat == IO_RECORD_BINARY);
-    io_info_input_bytesize(info, &bs);
-    assert(bs == impl.bytesize_binary);
-  }
-
-  {
-    /* Default output format is binary... */
-    size_t bytesize;
-    assert(info->args.output.iorformat == IO_RECORD_BINARY);
-    io_info_output_bytesize(info, &bytesize);
-    assert(bytesize == impl.bytesize_binary);
-  }
-
-  io_info_free(info);
 
   return 0;
 }
