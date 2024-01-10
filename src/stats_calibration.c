@@ -8,7 +8,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2011-2022 The University of Edinburgh
+ *  (c) 2011-2023 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -140,7 +140,7 @@ int stats_ahydro_create(pe_t * pe, cs_t * cs, colloids_info_t * cinfo,
   }
   obj->ndata = 0;
 
-  physics_fgrav_set(phys, f);
+  colloids_gravity_set(cinfo, f);
 
   pe_info(pe, "\n\n");
   pe_info(pe, "Calibration information:\n");
@@ -251,7 +251,7 @@ int stats_ahydro_free(stats_ahydro_t * stat) {
     }
 
     fhasimoto = stats_calibration_hasimoto(ah, length);
-  
+
     pe_info(stat->pe, "\n");
     pe_info(stat->pe, "Actual force:              %11.4e\n", f0);
     pe_info(stat->pe, "Actual speed:              %11.4e\n", u0);
@@ -330,7 +330,7 @@ static int stats_ahydro_measure(stats_ahydro_t * stat) {
 
   if (pc) {
     for (ia = 0; ia < 3; ia++) {
-      if (pc->s.type == COLLOID_TYPE_SUBGRID) {
+      if (pc->s.bc == COLLOID_BC_SUBGRID) {
 	/* The validity of this computation might be questioned ... */
 	stat->fbar[ia] += pc->force[ia];
       }

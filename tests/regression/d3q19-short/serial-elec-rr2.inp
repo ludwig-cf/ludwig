@@ -39,7 +39,6 @@ fd_advection_scheme_order 2
 
 colloid_init        input_one
 
-colloid_one_type    default
 colloid_one_a0      2.3
 colloid_one_ah      2.3
 colloid_one_r       16.0_16.0_16.299

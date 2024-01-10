@@ -6,7 +6,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2011-2020 The University of Edinburgh
+ *  (c) 2011-2023 The University of Edinburgh
  *
  *  Kevin Stratford (kevin@epc.ed.ac.uk)
  *
@@ -64,10 +64,22 @@ int interact_stats(interact_t * obj, colloids_info_t * cinfo);
 int interact_hcmax(interact_t * obj, double * hcmax);
 int interact_rcmax(interact_t * obj, double * rcmax);
 
+/* One can question whether these body-force contributions really
+ * belong here, or elsewhere. The change in names reflects this uncertainty. */
+
+#include "physics.h"
+
 int colloids_update_forces_zero(colloids_info_t * cinfo);
-int colloids_update_forces_external(colloids_info_t * cinfo, psi_t * psi);
-int colloids_update_forces_fluid_gravity(colloids_info_t * cinfo, map_t * map);
-int colloids_update_forces_fluid_driven(colloids_info_t * cinfo, map_t * map);
 int colloids_update_forces_ext(colloids_info_t * cinfo);
+int colloids_update_forces_external(colloids_info_t * cinfo,
+				    physics_t * phys);
+int colloids_update_forces_fluid_gravity(colloids_info_t * cinfo, map_t * map,
+					 physics_t * phys);
+int colloids_update_forces_fluid_driven(colloids_info_t * cinfo, map_t * map,
+					physics_t * phys);
+int colloids_update_forces_fluid_body_force(colloids_info_t * cinfo,
+					    const physics_t * phys);
+int colloids_update_forces_buoyancy(colloids_info_t * cinfo, map_t * map,
+				    physics_t * phys);
 
 #endif

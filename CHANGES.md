@@ -1,6 +1,45 @@
 
 ### Changes
 
+
+version 0.21.0
+
+- Ellipsoids. A feature which allows ellipsoidal particles to be
+  used has been added by Sumesh Thampi.
+
+- "colloid_type" has been split into a number of more general
+  properties including: boundary condition (bc) either bbl or
+  subgrid; shale either "disk", "sphere", or "ellipsoid";
+  active (logical); magnetic (logical).
+  The default is: bc = bbl, shape = sphere, active = no, magnetic = no.
+  There are some conditions, e.g., "disk" expects a 2D D2Q9 model.
+  This affects the way colloid details are specified in the input.
+  Older colloid state files should still work.
+  See https://ludwig.epcc.ed.ac.uk
+
+- There is no longer an option available for field halo swaps; the
+  scheme has been consolidated is always the same (for CPU). GPU
+  run time configuration is pending. Halo information is still
+  available https://ludwig.epcc.ed.ac.uk/inputs/parallel.html
+- If you use a 2-dimensional system (L_z = 1) with an order parameter, you
+  must use a 2d gradient calculation. This is related to the (non-) treatment
+  of halo swaps in the third dimension for fields.
+- A `colloid_buoyancy` option has been added which is similar to
+  `colloid_gravity` but computes a force proportional to colloid volume.
+  See https://ludwig.epcc.ed.ac.uk/inputs/colloid.html#external-forces
+
+Bug fixes:
+
+- Issue 270: a colloid with an initial position placed exactly at a sub-domain
+             boundary can fail to be attached to the cell list in some
+	     circumstances causing a crash. This has been fixed by adding
+	     a small position adjustment, or if this doesn't work, failing
+	     with a message.
+- Issue 268: if using wetting information read from porous media files,
+             the form of the key words in the input file has been
+	     adjusted. See https://ludwig.epcc.ed.ac.uk/inputs/porous.html
+
+
 version 0.20.1
 - Issue 271: missing stub prevents compilation at some compiler optimisation
              levels.
@@ -26,16 +65,16 @@ version 0.19.0
 
 - There has been a significant change to the way that i/o is undertaken.
   See https://ludwig.epcc.ed.ac.uk/outputs/fluid.html
-  It is the intension to replace completely the 'old' I/O mechanism
+  It is the intention to replace completely the 'old' I/O mechanism
   by release v0.21.0.
 - The extract_colloids.c utility has been updated so that it takes
-  only one comand line argument for new I/O metadata.
+  only one command line argument for new I/O metadata.
 
 - Input associated with the choice of force arising from the free energy
   sector has been made more general. Specifically, input keys
   `fd_force_divergence` and `fe_use_stress_relaxation` are replaced.
   - For scalar order parameters an extra version of the "phi_gradmu"
-    approach is avaialble" "phi_gradmu_correction".
+    approach is available" "phi_gradmu_correction".
   - See https://ludwig.epcc.ed.ac.uk/inputs/force.html for details.
 - Order parameter statistics are now reported as "phi" for scalars
   [Px,Py,Pz] for vectors, and [Qxx, Qxy, Qxz, Qyy, Qyz] for liquid
@@ -77,7 +116,7 @@ version 0.17.0
 - add liquid crystal anchoring "fd_gradient_calculation s7_anchoring"
   - this is a replcement for "3d_7pt_fluid" and does a slightly better
     job at the edges and corners by using a consistent surface normal.
-    The anchoring properties are now specifed in a slightly different
+    The anchoring properties are now specified in a slightly different
     way.
   - For walls, see https://ludwig.epcc.ed.ac.uk/inputs/walls.html
   - For colloids, see https://ludwig.epcc.ed.ac.uk/inputs/colloid.html
@@ -161,7 +200,7 @@ version 0.13.0
 version 0.12.0
 
 - Allow user to specify a linear combination of slip and no-slip for
-  plane walls. This was originally implementated by Katrin Wolff when
+  plane walls. This was originally implemented by Katrin Wolff when
   at Edinburgh, and has been resurrected with the help of Ryan Keogh
   and Tyler Shendruk. See https://ludwig.epcc.ed.ac.uk/inputs/walls.html
 - Various minor code quality improvements
@@ -217,7 +256,7 @@ version 0.9.0
 - Regression tests have been re-organised into different directories
   and are run on a per-directory basis (see tests/Makefile)
 
-- The default test is regression/d3q19-short 
+- The default test is regression/d3q19-short
 
 - A link to new build and test instructions has been made available
   from the README

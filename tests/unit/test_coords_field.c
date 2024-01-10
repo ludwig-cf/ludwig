@@ -21,7 +21,6 @@
 #include "util.h"
 #include "coords.h"
 #include "memory.h"
-#include "coords_field.h"
 #include "test_coords_field.h"
 #include "tests.h"
 

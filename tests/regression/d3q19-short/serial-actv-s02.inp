@@ -40,7 +40,7 @@ temperature 0.00002133333
 free_energy lc_blue_phase
 
 fd_advection_scheme_order 1
-fd_gradient_calculation 3d_7pt_fluid
+fd_gradient_calculation 2d_5pt_fluid
 
 lc_a0      1.0
 lc_gamma   3.0

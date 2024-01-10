@@ -7,7 +7,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2012-2022 The University of Edinburgh
+ *  (c) 2012-2023 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -21,7 +21,6 @@
 
 #include "pe.h"
 #include "coords.h"
-#include "coords_field.h"
 #include "map.h"
 
 #include "test_coords_field.h"
@@ -258,7 +257,9 @@ static int do_test_io(pe_t * pe, int ndata, int io_form_in, int io_form_out) {
   assert(iohandler);
 
   test_coords_field_set(cs, 1, map->status, MPI_CHAR, test_ref_char1);
-  test_coords_field_set(cs, ndata, map->data, MPI_DOUBLE, test_ref_double1);
+  if (ndata > 0) {
+    test_coords_field_set(cs, ndata, map->data, MPI_DOUBLE, test_ref_double1);
+  }
 
   io_write_data(iohandler, filename, map);
   map_free(map);
@@ -280,7 +281,10 @@ static int do_test_io(pe_t * pe, int ndata, int io_form_in, int io_form_out) {
 
   io_read_data(iohandler, filename, map);
   test_coords_field_check(cs, 0, 1, map->status, MPI_CHAR, test_ref_char1);
-  test_coords_field_check(cs, 0, ndata, map->data, MPI_DOUBLE, test_ref_double1);
+  if (ndata > 0) {
+    test_coords_field_check(cs, 0, ndata, map->data, MPI_DOUBLE,
+			    test_ref_double1);
+  }
 
   /* Wait before removing file(s) */
   MPI_Barrier(comm);

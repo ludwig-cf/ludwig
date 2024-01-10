@@ -11,10 +11,16 @@
  *  Device copy must be updated at least once per time step to
  *  ensure a coherent view.
  *
+ *  Note for Developers: the singleton object here is not doing any
+ *  favours (particularly for device code). I would like to move to
+ *  a position where the object is passed explicitly. This reduces
+ *  scope for surprise, particluarly when writing unit tests.
+ *
+ *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2010-2020 The University of Edinburgh
+ *  (c) 2010-2024 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -39,9 +45,8 @@ struct physics_s {
   double phi_noise0;   /* Initial order parameter noise amplitude */
   double fbody[3];     /* External body force on fluid */
   double e0[3];        /* Amplitude of external electric field */
-  double e0_frequency; /* Frequency of external electric field */ 
+  double e0_frequency; /* Frequency of external electric field */
   double b0[3];        /* External magnetic field */
-  double fgravity[3];  /* Gravitational force (on objects) */
   double mobility;     /* Order parameter mobility (binary fluid) */
 
   int t_start;         /* Start time step requested */
@@ -49,7 +54,7 @@ struct physics_s {
   int t_current;       /* The current time step */
   int e0_flag;         /* = 1 if electric field is non-zero */
 
-  double fpulse_frequency; /* Frequency of external body forcing */ 
+  double fpulse_frequency; /* Frequency of external body forcing */
   double fpulse[3];        /* Amplitude of external electric field */
 
   double grad_mu[3];       /* External chemical potential gradient */
@@ -382,7 +387,7 @@ __host__ int physics_e0_set(physics_t * phys, double e0[3]) {
  *
  *  physics_e0_flag
  *
- *  Returns flag if external electric field is set. This is required 
+ *  Returns flag if external electric field is set. This is required
  *  when constraints are applied in the Poisson solve to generate
  *  a potential jump.
  *
@@ -432,7 +437,7 @@ __host__ int physics_e0_frequency_set(physics_t * phys, double e0_frequency) {
  *
  *****************************************************************************/
 
-__host__ __device__ int physics_fbody(physics_t * phys, double f[3]) {
+__host__ __device__ int physics_fbody(const physics_t * phys, double f[3]) {
 
   assert(phys);
 
@@ -537,7 +542,7 @@ __host__ __device__ int physics_mobility(physics_t * phys, double * mobility) {
   assert(mobility);
 
   *mobility = phys->mobility;
- 
+
   return 0;
 }
 
@@ -552,40 +557,6 @@ __host__ int physics_mobility_set(physics_t * phys, double mobility) {
   assert(mobility);
 
   phys->mobility = mobility;
-
-  return 0;
-}
-
-/*****************************************************************************
- *
- *  physics_fgrav
- *
- *****************************************************************************/
-
-__host__ __device__ int physics_fgrav(physics_t * phys, double g[3]) {
-
-  assert(phys);
-
-  g[0] = phys->fgravity[0];
-  g[1] = phys->fgravity[1];
-  g[2] = phys->fgravity[2];
-
-  return 0;
-}
-
-/*****************************************************************************
- *
- *  physics_fgrav_set
- *
- *****************************************************************************/
-
-__host__ int physics_fgrav_set(physics_t * phys, double g[3]) {
-
-  assert(phys);
-
-  phys->fgravity[0] = g[0];
-  phys->fgravity[1] = g[1];
-  phys->fgravity[2] = g[2];
 
   return 0;
 }

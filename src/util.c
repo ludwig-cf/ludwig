@@ -10,7 +10,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2010-2022 The University of Edinburgh
+ *  (c) 2010-2024 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -461,7 +461,7 @@ static __host__ void util_swap(int ia, int ib, double a[3], double b[3][3]) {
  *****************************************************************************/
 
 __host__
-int util_discrete_volume_sphere(double r0[3], double a0, double * vn) {
+int util_discrete_volume_sphere(const double r0[3], double a0, double * vn) {
 
   int ic, jc, kc, nr;
   double x0, y0, z0;    /* Reduced coordinate of argument r0 */

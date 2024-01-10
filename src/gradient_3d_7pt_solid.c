@@ -38,7 +38,7 @@
  *  Experimental feature.
  *  Depedence on the compositional order parameter phi is introduced
  *  to allow wetting in the LC droplet case.
- * 
+ *
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -61,8 +61,11 @@
 #include "colloids.h"
 
 #include "util.h"
+#include "util_vector.h"
+#include "util_ellipsoid.h"
 #include "lc_anchoring.h"
 #include "gradient_3d_7pt_solid.h"
+
 
 struct grad_lc_anch_s {
   pe_t * pe;
@@ -308,12 +311,12 @@ void gradient_6x6_kernel(kernel_ctxt_t * ktx, cs_t * cs, grad_lc_anch_t * anch,
     int normal[3];
     const int bcs[6][3] = {{-1,0,0},{1,0,0},{0,-1,0},{0,1,0},{0,0,-1},{0,0,1}};
     const double bcsign[6] = {-1.0, 1.0, -1.0, 1.0, -1.0, 1.0};
-    
+
     double gradn[6][3][2];          /* one-sided partial gradients */
     double dq;
     double qs[3][3];
     double c[3][3];
-    
+
     double bc[6][6][3];
     double b18[18];
     double x18[18];
@@ -343,28 +346,28 @@ void gradient_6x6_kernel(kernel_ctxt_t * ktx, cs_t * cs, grad_lc_anch_t * anch,
        * in one coordinate direction are solid, treat as known. */
 
       nunknown = 0;
-      
+
       for (ia = 0; ia < 3; ia++) {
-	
+
 	normal[ia] = ia;
-	
+
 	/* Look for outward normals is bcs[] */
-	
+
 	ib = 2*ia + 1;
 	ib = bcs[ib][X]*str[X] + bcs[ib][Y]*str[Y] + bcs[ib][Z]*str[Z];
 
-	status[2*ia] = map->status[index+ib];	
+	status[2*ia] = map->status[index+ib];
 
 	ib = 2*ia;
 	ib = bcs[ib][X]*str[X] + bcs[ib][Y]*str[Y] + bcs[ib][Z]*str[Z];
 
-	status[2*ia+1] = map->status[index+ib];	
+	status[2*ia+1] = map->status[index+ib];
 
 	ig = (status[2*ia    ] != MAP_FLUID);
 	ih = (status[2*ia + 1] != MAP_FLUID);
-	
+
 	/* Calculate half-gradients assuming they are all knowns */
-	
+
 	for (n1 = 0; n1 < NQAB; n1++) {
 
 	  gradn[n1][ia][0] =
@@ -374,12 +377,12 @@ void gradient_6x6_kernel(kernel_ctxt_t * ktx, cs_t * cs, grad_lc_anch_t * anch,
 	    + q->data[addr_rank1(q->nsites, NQAB, index,         n1)]
 	    - q->data[addr_rank1(q->nsites, NQAB, index-str[ia], n1)];
 	}
-	
+
 	gradn[ZZ][ia][0] = -gradn[XX][ia][0] - gradn[YY][ia][0];
 	gradn[ZZ][ia][1] = -gradn[XX][ia][1] - gradn[YY][ia][1];
-	
+
 	/* Set unknown, with direction, or treat as known (zero grad) */
-	
+
 	if (ig + ih == 1) {
 	  normal[nunknown] = 2*ia + ih;
 	  nunknown += 1;
@@ -390,14 +393,14 @@ void gradient_6x6_kernel(kernel_ctxt_t * ktx, cs_t * cs, grad_lc_anch_t * anch,
 	    gradn[n1][ia][1] = 0.0;
 	  }
 	}
-	
+
       }
-      
+
 
       /* Boundary condition constant terms */
-      
+
       if (nunknown > 0) {
-	
+
 	/* Fluid Qab at surface */
 
 	qs[X][X] = q->data[addr_rank1(q->nsites, NQAB, index, XX)];
@@ -417,14 +420,14 @@ void gradient_6x6_kernel(kernel_ctxt_t * ktx, cs_t * cs, grad_lc_anch_t * anch,
 
 	/* Constant terms all move to RHS (hence -ve sign). Factors
 	 * of two in off-diagonals agree with matrix coefficients. */
-	
+
 	b18[XX] = -1.0*c[X][X];
 	b18[XY] = -2.0*c[X][Y];
 	b18[XZ] = -2.0*c[X][Z];
 	b18[YY] = -1.0*c[Y][Y];
 	b18[YZ] = -2.0*c[Y][Z];
 	b18[ZZ] = -1.0*c[Z][Z];
-	
+
 	/* Fill a a known value in unknown position so we
 	 * and compute a gradient as 0.5*(grad[][][0] + gradn[][][1]) */
 	ig = normal[0]/2;
@@ -433,7 +436,7 @@ void gradient_6x6_kernel(kernel_ctxt_t * ktx, cs_t * cs, grad_lc_anch_t * anch,
 	  gradn[n1][ig][ih] = gradn[n1][ig][1 - ih];
 	}
       }
-      
+
       if (nunknown > 1) {
 
 	grad_3d_7pt_bc(anch, fe->param, ic, jc, kc, status[normal[1]], qs,
@@ -445,15 +448,15 @@ void gradient_6x6_kernel(kernel_ctxt_t * ktx, cs_t * cs, grad_lc_anch_t * anch,
 	b18[1*NSYMM + YY] = -1.0*c[Y][Y];
 	b18[1*NSYMM + YZ] = -2.0*c[Y][Z];
 	b18[1*NSYMM + ZZ] = -1.0*c[Z][Z];
-	
+
 	ig = normal[1]/2;
 	ih = normal[1]%2;
 	for (n1 = 0; n1 < NSYMM; n1++) {
 	  gradn[n1][ig][ih] = gradn[n1][ig][1 - ih];
 	}
-	
+
       }
-      
+
       if (nunknown > 2) {
 
 	grad_3d_7pt_bc(anch, fe->param, ic, jc, kc, status[normal[2]], qs,
@@ -465,7 +468,7 @@ void gradient_6x6_kernel(kernel_ctxt_t * ktx, cs_t * cs, grad_lc_anch_t * anch,
 	b18[2*NSYMM + YY] = -1.0*c[Y][Y];
 	b18[2*NSYMM + YZ] = -2.0*c[Y][Z];
 	b18[2*NSYMM + ZZ] = -1.0*c[Z][Z];
-	
+
 	ig = normal[2]/2;
 	ih = normal[2]%2;
 	for (n1 = 0; n1 < NSYMM; n1++) {
@@ -473,15 +476,15 @@ void gradient_6x6_kernel(kernel_ctxt_t * ktx, cs_t * cs, grad_lc_anch_t * anch,
 	}
       }
 
-      
+
       if (nunknown == 1) {
-	
+
 	/* Special case A matrix is diagonal. */
 	/* Subtract all three gradient terms from the RHS and then cancel
 	 * the one unknown contribution ... works for any normal[0] */
-	
+
 	lc_anchoring_coefficients(kappa0, kappa1, bcs[normal[0]], bc);
-	
+
 	for (n1 = 0; n1 < NSYMM; n1++) {
 	  for (n2 = 0; n2 < NSYMM; n2++) {
 	    for (ia = 0; ia < 3; ia++) {
@@ -491,54 +494,54 @@ void gradient_6x6_kernel(kernel_ctxt_t * ktx, cs_t * cs, grad_lc_anch_t * anch,
 	    dq = 0.5*(gradn[n2][normal[0]/2][0] + gradn[n2][normal[0]/2][1]);
 	    b18[n1] += bc[n1][n2][normal[0]/2]*dq;
 	  }
-	  
+
 	  b18[n1] *= bcsign[normal[0]];
 	  x18[n1] = anch->bc.a6inv[normal[0]/2][n1]*b18[n1];
 	}
       }
-      
+
       if (nunknown == 2) {
-	
+
 	if (normal[0]/2 == X && normal[1]/2 == Y) normal[2] = Z;
 	if (normal[0]/2 == X && normal[1]/2 == Z) normal[2] = Y;
 	if (normal[0]/2 == Y && normal[1]/2 == Z) normal[2] = X;
-	
+
 	/* Compute the RHS for two unknowns and one known */
-	
+
 	lc_anchoring_coefficients(kappa0, kappa1, bcs[normal[0]], bc);
-	
+
 	for (n1 = 0; n1 < NSYMM; n1++) {
 	  for (n2 = 0; n2 < NSYMM; n2++) {
-	    
+
 	    dq = 0.5*(gradn[n2][normal[1]/2][0] + gradn[n2][normal[1]/2][1]);
 	    b18[n1] -= 0.5*bc[n1][n2][normal[1]/2]*dq;
-	    
+
 	    dq = 0.5*(gradn[n2][normal[2]][0] + gradn[n2][normal[2]][1]);
 	    b18[n1] -= bc[n1][n2][normal[2]]*dq;
-	    
+
 	  }
 	}
-	
+
 	lc_anchoring_coefficients(kappa0, kappa1, bcs[normal[1]], bc);
-	
+
 	for (n1 = 0; n1 < NSYMM; n1++) {
 	  for (n2 = 0; n2 < NSYMM; n2++) {
-	    
+
 	    dq = 0.5*(gradn[n2][normal[0]/2][0] + gradn[n2][normal[0]/2][1]);
 	    b18[NSYMM + n1] -= 0.5*bc[n1][n2][normal[0]/2]*dq;
-	    
+
 	    dq = 0.5*(gradn[n2][normal[2]][0] + gradn[n2][normal[2]][1]);
 	    b18[NSYMM + n1] -= bc[n1][n2][normal[2]]*dq;
-	    
+
 	  }
 	}
-	
-	/* Solve x = A^-1 b depending on unknown conbination */
+
+	/* Solve x = A^-1 b depending on unknown combination */
 	/* XY => ia = 0 XZ => ia = 1 YZ => ia = 2 ... */
-	
+
 	ia = normal[0]/2 + normal[1]/2 - 1;
 	assert(ia == 0 || ia == 1 || ia == 2);
-	
+
 	for (n1 = 0; n1 < 2*NSYMM; n1++) {
 	  x18[n1] = 0.0;
 	  for (n2 = 0; n2 < NSYMM; n2++) {
@@ -549,50 +552,50 @@ void gradient_6x6_kernel(kernel_ctxt_t * ktx, cs_t * cs, grad_lc_anch_t * anch,
 	  }
 	}
       }
-      
+
       if (nunknown == 3) {
-	
+
 	lc_anchoring_coefficients(kappa0, kappa1, bcs[normal[0]], bc);
-	
+
 	for (n1 = 0; n1 < NSYMM; n1++) {
 	  for (n2 = 0; n2 < NSYMM; n2++) {
 	    dq = 0.5*(gradn[n2][normal[1]/2][0] + gradn[n2][normal[1]/2][1]);
 	    b18[n1] -= 0.5*bc[n1][n2][normal[1]/2]*dq;
-	    
+
 	    dq = 0.5*(gradn[n2][normal[2]/2][0] + gradn[n2][normal[2]/2][1]);
 	    b18[n1] -= 0.5*bc[n1][n2][normal[2]/2]*dq;
 	  }
 	  b18[n1] *= bcsign[normal[0]];
 	}
-	
+
 	lc_anchoring_coefficients(kappa0, kappa1, bcs[normal[1]], bc);
-	
+
 	for (n1 = 0; n1 < NSYMM; n1++) {
 	  for (n2 = 0; n2 < NSYMM; n2++) {
 	    dq = 0.5*(gradn[n2][normal[0]/2][0] + gradn[n2][normal[0]/2][1]);
 	    b18[NSYMM + n1] -= 0.5*bc[n1][n2][normal[0]/2]*dq;
-	    
+
 	    dq = 0.5*(gradn[n2][normal[2]/2][0] + gradn[n2][normal[2]/2][1]);
 	    b18[NSYMM + n1] -= 0.5*bc[n1][n2][normal[2]/2]*dq;
 	  }
 	  b18[NSYMM + n1] *= bcsign[normal[1]];
 	}
-	
+
 	lc_anchoring_coefficients(kappa0, kappa1, bcs[normal[2]], bc);
-	
+
 	for (n1 = 0; n1 < NSYMM; n1++) {
 	  for (n2 = 0; n2 < NSYMM; n2++) {
 	    dq = 0.5*(gradn[n2][normal[0]/2][0] + gradn[n2][normal[0]/2][1]);
 	    b18[2*NSYMM + n1] -= 0.5*bc[n1][n2][normal[0]/2]*dq;
-	    
+
 	    dq = 0.5*(gradn[n2][normal[1]/2][0] + gradn[n2][normal[1]/2][1]);
 	    b18[2*NSYMM + n1] -= 0.5*bc[n1][n2][normal[1]/2]*dq;
 	  }
 	  b18[2*NSYMM + n1] *= bcsign[normal[2]];
 	}
-	
+
 	/* Solve x = A^-1 b */
-	
+
 	for (n1 = 0; n1 < 3*NSYMM; n1++) {
 	  x18[n1] = 0.0;
 	  for (n2 = 0; n2 < 3*NSYMM; n2++) {
@@ -600,22 +603,22 @@ void gradient_6x6_kernel(kernel_ctxt_t * ktx, cs_t * cs, grad_lc_anch_t * anch,
 	  }
 	}
       }
-      
+
       /* Fix the trace (don't store Qzz in the end) */
-      
+
       for (n = 0; n < nunknown; n++) {
-	
+
 	tr = r3*(x18[NSYMM*n + XX] + x18[NSYMM*n + YY] + x18[NSYMM*n + ZZ]);
 	x18[NSYMM*n + XX] -= tr;
 	x18[NSYMM*n + YY] -= tr;
-	
+
 	/* Store missing half gradients */
-	
+
 	for (n1 = 0; n1 < NQAB; n1++) {
 	  gradn[n1][normal[n]/2][normal[n] % 2] = x18[NSYMM*n + n1];
 	}
       }
-      
+
       /* The final answer is the sum of partial gradients */
 
       for (n1 = 0; n1 < NQAB; n1++) {
@@ -631,7 +634,7 @@ void gradient_6x6_kernel(kernel_ctxt_t * ktx, cs_t * cs, grad_lc_anch_t * anch,
     }
     /* Next site */
   }
- 
+
   return;
 }
 
@@ -704,13 +707,21 @@ __host__ __device__ int grad_3d_7pt_bc(grad_lc_anch_t * anch,
     dnhat[Y] = 1.0*(noffset[Y] + jc) - pc->s.r[Y];
     dnhat[Z] = 1.0*(noffset[Z] + kc) - pc->s.r[Z];
 
+    if (pc->s.shape == COLLOID_SHAPE_ELLIPSOID) {
+      int isphere = util_ellipsoid_is_sphere(pc->s.elabc);
+      double rs[3] = {0};
+      util_vector_copy(3, dnhat, rs);
+      if (!isphere) {
+	util_spheroid_surface_normal(pc->s.elabc, pc->s.m, rs, dnhat);
+      }
+    }
+
     /* unit vector */
     rd = 1.0/sqrt(dnhat[X]*dnhat[X] + dnhat[Y]*dnhat[Y] + dnhat[Z]*dnhat[Z]);
     dnhat[X] *= rd;
     dnhat[Y] *= rd;
     dnhat[Z] *= rd;
   }
-
 
 
   if (anchor == LC_ANCHORING_FIXED) {

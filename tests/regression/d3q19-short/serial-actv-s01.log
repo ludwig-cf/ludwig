@@ -83,7 +83,7 @@ Order parameter I/O format:
 I/O decomposition:            1 1 1
 
 Advection scheme order: 1
-Gradient calculation: 3d_7pt_fluid
+Gradient calculation: 2d_5pt_fluid
 
 
 Initialising Q_ab to quasi-2d with strip parallel to Y

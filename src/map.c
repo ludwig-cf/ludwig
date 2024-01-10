@@ -8,7 +8,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2012-2022 The University of Edinburgh
+ *  (c) 2012-2023 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -16,18 +16,23 @@
  *****************************************************************************/
 
 #include <assert.h>
+#include <limits.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 #include "pe.h"
 #include "coords.h"
-#include "coords_field.h"
 #include "map.h"
+#include "util.h"
 
 static int map_read(FILE * fp, int index, void * self);
 static int map_write(FILE * fp, int index, void * self);
 static int map_read_ascii(FILE * fp, int index, void * self);
 static int map_write_ascii(FILE * fp, int index, void * self);
+
+int map_halo_impl(cs_t * cs, int nall, int na, void * buf,
+		  MPI_Datatype mpidata);
 
 /*****************************************************************************
  *
@@ -53,7 +58,7 @@ __host__ int map_create(pe_t * pe, cs_t * cs, int ndata, map_t ** pobj) {
   cs_nsites(cs, &nsites);
   cs_nhalo(cs, &nhalo);
 
-  obj = (map_t*) calloc(1, sizeof(map_t));
+  obj = (map_t *) calloc(1, sizeof(map_t));
   assert(obj);
   if (obj == NULL) pe_fatal(pe, "calloc(map_t) failed\n");
 
@@ -66,18 +71,19 @@ __host__ int map_create(pe_t * pe, cs_t * cs, int ndata, map_t ** pobj) {
   obj->nsite = nsites;
   obj->ndata = ndata;
 
-  /* Could be zero-sized array */
-
-  obj->data = (double*) calloc((size_t) ndata*nsites, sizeof(double));
-  assert(obj->data);
-  if (ndata > 0 && obj->data == NULL) pe_fatal(pe, "calloc(map->data) failed\n");
-
-  coords_field_init_mpi_indexed(cs, nhalo, 1, MPI_CHAR, obj->halostatus);
-  if (obj->ndata) {
-    coords_field_init_mpi_indexed(cs, nhalo, obj->ndata, MPI_DOUBLE,
-				  obj->halodata);
+  /* Avoid overflow in allocation */
+  if (INT_MAX/(nsites*imax(1, obj->ndata)) < 1) {
+    pe_info(pe, "map_init: failure in int32_t allocation\n");
+    return -1;
   }
 
+      /* ndata may be zero, but avoid zero-sized allocations */
+
+  if (ndata > 0) {
+    obj->data = (double *) calloc((size_t) ndata*nsites, sizeof(double));
+    assert(obj->data);
+    if (obj->data == NULL) pe_fatal(pe, "calloc(map->data) failed\n");
+  }
 
   /* Allocate target copy of structure (or alias) */
 
@@ -146,16 +152,6 @@ __host__ int map_free(map_t * obj) {
       tdpAssert(tdpFree(dtmp));
     }
     tdpFree(obj->target);
-  }
-
-  MPI_Type_free(&obj->halostatus[X]);
-  MPI_Type_free(&obj->halostatus[Y]);
-  MPI_Type_free(&obj->halostatus[Z]);
-
-  if (obj->ndata > 0) {
-    MPI_Type_free(&obj->halodata[X]);
-    MPI_Type_free(&obj->halodata[Y]);
-    MPI_Type_free(&obj->halodata[Z]);
   }
 
   if (obj->info) io_info_free(obj->info);
@@ -269,17 +265,12 @@ __host__ int map_io_info(map_t * obj, io_info_t ** info) {
 
 __host__ int map_halo(map_t * obj) {
 
-  int nhalo;
-
   assert(obj);
 
-  cs_nhalo(obj->cs, &nhalo);
+  map_halo_impl(obj->cs, obj->nsite, 1, obj->status, MPI_CHAR);
 
-  coords_field_halo_rank1(obj->cs, obj->nsite, nhalo, 1, obj->status,
-			  MPI_CHAR);
   if (obj->ndata) {
-    coords_field_halo_rank1(obj->cs, obj->nsite, nhalo, obj->ndata, obj->data,
-			    MPI_DOUBLE);
+    map_halo_impl(obj->cs, obj->nsite, obj->ndata, obj->data, MPI_DOUBLE);
   }
 
   return 0;
@@ -583,6 +574,308 @@ static int map_read_ascii(FILE * fp, int index, void * self) {
     nr = fscanf(fp, " %le", obj->data + indexf);
     if (nr != 1) pe_fatal(obj->pe, "fscanf(map->data[%d]) failed\n", n);
   }
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  map_halo_impl
+ *
+ *****************************************************************************/
+
+int map_halo_impl(cs_t * cs, int nall, int na, void * mbuf,
+		  MPI_Datatype mpidata) {
+  size_t sz = 0;
+  int ic, jc, kc;
+  int ia, index;
+  int nh;
+  int ireal, ihalo;
+  int icount, nsend;
+  int pforw, pback;
+  int nlocal[3];
+  int nhcomm = 0;
+
+  unsigned char * buf;
+  unsigned char * sendforw;
+  unsigned char * sendback;
+  unsigned char * recvforw;
+  unsigned char * recvback;
+
+  MPI_Comm comm;
+  MPI_Request req[4];
+  MPI_Status status[2];
+
+  const int tagf = 2015;
+  const int tagb = 2016;
+
+  assert(cs);
+  assert(mbuf);
+  assert(mpidata == MPI_CHAR || mpidata == MPI_DOUBLE);
+
+  buf = (unsigned char *) mbuf;
+
+  comm = cs->commcart;
+  if (mpidata == MPI_CHAR) sz = sizeof(char);
+  if (mpidata == MPI_DOUBLE) sz = sizeof(double);
+  assert(sz != 0);
+
+  cs_nlocal(cs, nlocal);
+  cs_nhalo(cs, &nhcomm);
+
+  /* X-direction */
+
+  nsend = nhcomm*na*nlocal[Y]*nlocal[Z];
+  sendforw = (unsigned char *) malloc(nsend*sz);
+  sendback = (unsigned char *) malloc(nsend*sz);
+  recvforw = (unsigned char *) malloc(nsend*sz);
+  recvback = (unsigned char *) malloc(nsend*sz);
+  assert(sendforw && sendback);
+  assert(recvforw && recvback);
+  if (sendforw == NULL) pe_fatal(cs->pe, "malloc(sendforw) failed\n");
+  if (sendback == NULL) pe_fatal(cs->pe, "malloc(sendback) failed\n");
+  if (recvforw == NULL) pe_fatal(cs->pe, "malloc(recvforw) failed\n");
+  if (recvback == NULL) pe_fatal(cs->pe, "malloc(recvback) failed\n");
+
+  /* Load send buffers */
+
+  icount = 0;
+
+  for (nh = 0; nh < nhcomm; nh++) {
+    for (jc = 1; jc <= nlocal[Y]; jc++) {
+      for (kc = 1; kc <= nlocal[Z]; kc++) {
+	for (ia = 0; ia < na; ia++) {
+	  /* Backward going... */
+	  index = cs_index(cs, 1 + nh, jc, kc);
+	  ireal = addr_rank1(nall, na, index, ia);
+	  memcpy(sendback + icount*sz, buf + ireal*sz, sz);
+	  /* ...and forward going. */
+	  index = cs_index(cs, nlocal[X] - nh, jc, kc);
+	  ireal = addr_rank1(nall, na, index, ia);
+	  memcpy(sendforw + icount*sz, buf + ireal*sz, sz);
+	  icount += 1;
+	}
+      }
+    }
+  }
+
+  assert(icount == nsend);
+
+  if (cs->param->mpi_cartsz[X] == 1) {
+    memcpy(recvback, sendforw, nsend*sz);
+    memcpy(recvforw, sendback, nsend*sz);
+    req[2] = MPI_REQUEST_NULL;
+    req[3] = MPI_REQUEST_NULL;
+  }
+  else {
+    pforw = cs->mpi_cart_neighbours[CS_FORW][X];
+    pback = cs->mpi_cart_neighbours[CS_BACK][X];
+    MPI_Irecv(recvforw, nsend, mpidata, pforw, tagb, comm, req);
+    MPI_Irecv(recvback, nsend, mpidata, pback, tagf, comm, req + 1);
+    MPI_Issend(sendback, nsend, mpidata, pback, tagb, comm, req + 2);
+    MPI_Issend(sendforw, nsend, mpidata, pforw, tagf, comm, req + 3);
+    /* Wait for receives */
+    MPI_Waitall(2, req, status);
+  }
+
+  /* Unload */
+
+  icount = 0;
+
+  for (nh = 0; nh < nhcomm; nh++) {
+    for (jc = 1; jc <= nlocal[Y]; jc++) {
+      for (kc = 1; kc <= nlocal[Z]; kc++) {
+	for (ia = 0; ia < na; ia++) {
+	  index = cs_index(cs, nlocal[X] + 1 + nh, jc, kc);
+	  ihalo = addr_rank1(nall, na, index, ia);
+	  memcpy(buf + ihalo*sz, recvforw + icount*sz, sz);
+	  index = cs_index(cs, 0 - nh, jc, kc);
+	  ihalo = addr_rank1(nall, na, index, ia);
+	  memcpy(buf + ihalo*sz, recvback + icount*sz, sz);
+	  icount += 1;
+	}
+      }
+    }
+  }
+
+  assert(icount == nsend);
+
+  free(recvback);
+  free(recvforw);
+
+  MPI_Waitall(2, req + 2, status);
+
+  free(sendback);
+  free(sendforw);
+
+  /* Y direction */
+
+  nsend = nhcomm*na*(nlocal[X] + 2*nhcomm)*nlocal[Z];
+  sendforw = (unsigned char *) malloc(nsend*sz);
+  sendback = (unsigned char *) malloc(nsend*sz);
+  recvforw = (unsigned char *) malloc(nsend*sz);
+  recvback = (unsigned char *) malloc(nsend*sz);
+  assert(sendforw && sendback);
+  assert(recvforw && recvback);
+  if (sendforw == NULL) pe_fatal(cs->pe, "malloc(sendforw) failed\n");
+  if (sendback == NULL) pe_fatal(cs->pe, "malloc(sendback) failed\n");
+  if (recvforw == NULL) pe_fatal(cs->pe, "malloc(recvforw) failed\n");
+  if (recvback == NULL) pe_fatal(cs->pe, "malloc(recvback) failed\n");
+
+  /* Load buffers */
+
+  icount = 0;
+
+  for (nh = 0; nh < nhcomm; nh++) {
+    for (ic = 1 - nhcomm; ic <= nlocal[X] + nhcomm; ic++) {
+      for (kc = 1; kc <= nlocal[Z]; kc++) {
+	for (ia = 0; ia < na; ia++) {
+	  index = cs_index(cs, ic, 1 + nh, kc);
+	  ireal = addr_rank1(nall, na, index, ia);
+	  memcpy(sendback + icount*sz, buf + ireal*sz, sz);
+	  index = cs_index(cs, ic, nlocal[Y] - nh, kc);
+	  ireal = addr_rank1(nall, na, index, ia);
+	  memcpy(sendforw + icount*sz, buf + ireal*sz, sz);
+	  icount += 1;
+	}
+      }
+    }
+  }
+
+  assert(icount == nsend);
+
+  if (cs->param->mpi_cartsz[Y] == 1) {
+    memcpy(recvback, sendforw, nsend*sz);
+    memcpy(recvforw, sendback, nsend*sz);
+    req[2] = MPI_REQUEST_NULL;
+    req[3] = MPI_REQUEST_NULL;
+  }
+  else {
+    pforw = cs->mpi_cart_neighbours[CS_FORW][Y];
+    pback = cs->mpi_cart_neighbours[CS_BACK][Y];
+    MPI_Irecv(recvforw, nsend, mpidata, pforw, tagb, comm, req);
+    MPI_Irecv(recvback, nsend, mpidata, pback, tagf, comm, req + 1);
+    MPI_Issend(sendback, nsend, mpidata, pback, tagb, comm, req + 2);
+    MPI_Issend(sendforw, nsend, mpidata, pforw, tagf, comm, req + 3);
+    /* Wait for receives */
+    MPI_Waitall(2, req, status);
+  }
+
+  /* Unload */
+
+  icount = 0;
+
+  for (nh = 0; nh < nhcomm; nh++) {
+    for (ic = 1 - nhcomm; ic <= nlocal[X] + nhcomm; ic++) {
+      for (kc = 1; kc <= nlocal[Z]; kc++) {
+	for (ia = 0; ia < na; ia++) {
+	  index = cs_index(cs, ic, 0 - nh, kc);
+	  ihalo = addr_rank1(nall, na, index, ia);
+	  memcpy(buf + ihalo*sz, recvback + icount*sz, sz);
+	  index = cs_index(cs, ic, nlocal[Y] + 1 + nh, kc);
+	  ihalo = addr_rank1(nall, na, index, ia);
+	  memcpy(buf + ihalo*sz, recvforw + icount*sz, sz);
+	  icount += 1;
+	}
+      }
+    }
+  }
+
+  assert(icount == nsend);
+
+  free(recvback);
+  free(recvforw);
+
+  MPI_Waitall(2, req + 2, status);
+
+  free(sendback);
+  free(sendforw);
+
+  /* Z direction */
+
+  nsend = nhcomm*na*(nlocal[X] + 2*nhcomm)*(nlocal[Y] + 2*nhcomm);
+  sendforw = (unsigned char *) malloc(nsend*sz);
+  sendback = (unsigned char *) malloc(nsend*sz);
+  recvforw = (unsigned char *) malloc(nsend*sz);
+  recvback = (unsigned char *) malloc(nsend*sz);
+  assert(sendforw && sendback);
+  assert(recvforw && recvback);
+  if (sendforw == NULL) pe_fatal(cs->pe, "malloc(sendforw) failed\n");
+  if (sendback == NULL) pe_fatal(cs->pe, "malloc(sendback) failed\n");
+  if (recvforw == NULL) pe_fatal(cs->pe, "malloc(recvforw) failed\n");
+  if (recvback == NULL) pe_fatal(cs->pe, "malloc(recvback) failed\n");
+
+  /* Load */
+  /* Some adjustment in the load required for 2d systems (X-Y) */
+
+  icount = 0;
+
+  for (nh = 0; nh < nhcomm; nh++) {
+    for (ic = 1 - nhcomm; ic <= nlocal[X] + nhcomm; ic++) {
+      for (jc = 1 - nhcomm; jc <= nlocal[Y] + nhcomm; jc++) {
+	for (ia = 0; ia < na; ia++) {
+	  kc = imin(1 + nh, nlocal[Z]);
+	  index = cs_index(cs, ic, jc, kc);
+	  ireal = addr_rank1(nall, na, index, ia);
+	  memcpy(sendback + icount*sz, buf + ireal*sz, sz);
+	  kc = imax(nlocal[Z] - nh, 1);
+	  index = cs_index(cs, ic, jc, kc);
+	  ireal = addr_rank1(nall, na, index, ia);
+	  memcpy(sendforw + icount*sz, buf + ireal*sz, sz);
+	  icount += 1;
+	}
+      }
+    }
+  }
+
+  assert(icount == nsend);
+
+  if (cs->param->mpi_cartsz[Z] == 1) {
+    memcpy(recvback, sendforw, nsend*sz);
+    memcpy(recvforw, sendback, nsend*sz);
+    req[2] = MPI_REQUEST_NULL;
+    req[3] = MPI_REQUEST_NULL;
+  }
+  else {
+    pforw = cs->mpi_cart_neighbours[CS_FORW][Z];
+    pback = cs->mpi_cart_neighbours[CS_BACK][Z];
+    MPI_Irecv(recvforw, nsend, mpidata, pforw, tagb, comm, req);
+    MPI_Irecv(recvback, nsend, mpidata, pback, tagf, comm, req + 1);
+    MPI_Issend(sendback, nsend, mpidata, pback, tagb, comm, req + 2);
+    MPI_Issend(sendforw, nsend, mpidata, pforw, tagf, comm, req + 3);
+    /* Wait before unloading */
+    MPI_Waitall(2, req, status);
+  }
+
+  /* Unload */
+
+  icount = 0;
+
+  for (nh = 0; nh < nhcomm; nh++) {
+    for (ic = 1 - nhcomm; ic <= nlocal[X] + nhcomm; ic++) {
+      for (jc = 1 - nhcomm; jc <= nlocal[Y] + nhcomm; jc++) {
+	for (ia = 0; ia < na; ia++) {
+	  index = cs_index(cs, ic, jc, 0 - nh);
+	  ihalo = addr_rank1(nall, na, index, ia);
+	  memcpy(buf + ihalo*sz, recvback + icount*sz, sz);
+	  index = cs_index(cs, ic, jc, nlocal[Z] + 1 + nh);
+	  ihalo = addr_rank1(nall, na, index, ia);
+	  memcpy(buf + ihalo*sz, recvforw + icount*sz, sz);
+	  icount += 1;
+	}
+      }
+    }
+  }
+
+  assert(icount == nsend);
+
+  free(recvback);
+  free(recvforw);
+
+  MPI_Waitall(2, req + 2, status);
+
+  free(sendback);
+  free(sendforw);
 
   return 0;
 }
