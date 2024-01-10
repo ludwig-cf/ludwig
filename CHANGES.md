@@ -24,6 +24,11 @@ version 0.21.0
 - If you use a 2-dimensional system (L_z = 1) with an order parameter, you
   must use a 2d gradient calculation. This is related to the (non-) treatment
   of halo swaps in the third dimension for fields.
+- A `colloid_buoyancy` option has been added which is similar to
+  `colloid_gravity` but computes a force proportional to colloid volume.
+  See https://ludwig.epcc.ed.ac.uk/inputs/colloid.html#external-forces
+
+Bug fixes:
 
 - Issue 270: a colloid with an initial position placed exactly at a sub-domain
              boundary can fail to be attached to the cell list in some
