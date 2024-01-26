@@ -7,7 +7,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2020-2022 The University of Edinburgh
+ *  (c) 2020-2024 The University of Edinburgh
  *
  *  Contributing authors:
  *    Nikola Vasilev: did the original implementation in 2020.
@@ -444,4 +444,123 @@ __host__ tdpError_t tdpDeviceEnablePeerAccess(int peerDevice,
 					      unsigned int flags) {
 
   return hipDeviceEnablePeerAccess(peerDevice, flags);
+}
+
+/*****************************************************************************
+ *
+ *  tdpGraphAddKernelNode
+ *
+ *****************************************************************************/
+
+__host__ tdpError_t tdpGraphAddKernelNode(tdpGraphNode_t * pGraphNode,
+                                          tdpGraph_t graph,
+                                          const tdpGraphNode_t * pDependencies,
+                                          size_t numDependencies,
+                                          const tdpKernelNodeParams * nParams) {
+  return hipGraphAddKernelNode(pGraphNode, graph, pDependencies,
+			       numDependencies, nParams);
+}
+
+/*****************************************************************************
+ *
+ *  tdpGraphAddMemcpyNode
+ *
+ *****************************************************************************/
+
+__host__ tdpError_t tdpGraphAddMemcpyNode(tdpGraphNode_t * pGraphNode,
+                                          tdpGraph_t graph,
+                                          const tdpGraphNode_t * pDependencies,
+                                          size_t numDependencies,
+                                          const tdpMemcpy3DParms * copyParams) {
+  return hipGraphAddMemcpyNode(pGraphNode, graph, pDependencies,
+			       numDependencies, copyParams);
+}
+
+
+/*****************************************************************************
+ *
+ *  tdpGraphCreate
+ *
+ *****************************************************************************/
+
+__host__ tdpError_t tdpGraphCreate(tdpGraph_t * pGraph, unsigned int flags) {
+
+  return hipGraphCreate(pGraph, flags);
+}
+
+
+/*****************************************************************************
+ *
+ *  tdpGraphDestroy
+ *
+ *****************************************************************************/
+
+__host__ tdpError_t tdpGraphDestroy(tdpGraph_t graph) {
+
+  return hipGraphDestroy(graph);
+}
+
+/*****************************************************************************
+ *
+ *  tdpGraphInstantiate
+ *
+ *****************************************************************************/
+
+__host__ tdpError_t tdpGraphInstantiate(tdpGraphExec_t * pGraphExec,
+                                        tdpGraph_t graph,
+                                        unsigned long long flags) {
+
+  /* Note API has changed between CUDA 11 and CUDA 12 */
+  return hipGraphInstantiate(pGraphExec, graph, NULL, NULL, flags);
+}
+
+/*****************************************************************************
+ *
+ *  tdpGraphLaunch
+ *
+ *****************************************************************************/
+
+__host__ tdpError_t tdpGraphLaunch(tdpGraphExec_t exec, tdpStream_t stream) {
+
+  return hipGraphLaunch(exec, stream);
+}
+
+/*****************************************************************************
+ *
+ *  make_tdpExtent
+ *
+ *****************************************************************************/
+
+__host__ struct tdpExtent make_tdpExtent(size_t w, size_t h, size_t d) {
+
+  struct hipExtent extent = make_hipExtent(w, h, d);
+
+  return extent;
+}
+
+/*****************************************************************************
+ *
+ *  make_tdpPos
+ *
+ *****************************************************************************/
+
+__host__ struct tdpPos make_tdpPos(size_t x, size_t y, size_t z) {
+
+  struct hipPos pos = make_hipPos(x, y, z);
+
+  return pos;
+}
+
+/*****************************************************************************
+ *
+ *  make_tdpPitchedPtr
+ *
+ *****************************************************************************/
+
+__host__ struct tdpPitchedPtr make_tdpPitchedPtr(void * d, size_t p,
+                                                 size_t xsz, size_t ysz) {
+
+  struct hipPitchedPtr ptr = make_hipPitchedPtr(d, p, xsz, ysz);
+
+  return ptr;
 }
