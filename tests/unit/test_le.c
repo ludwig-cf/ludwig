@@ -10,7 +10,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2010-2023 The University of Edinburgh
+ *  (c) 2010-2024 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -292,7 +292,7 @@ int test_lees_edw_plane_uy_now(pe_t * pe, cs_t * cs) {
   /* Oscillatory shear */
   /* Parameters are to get uy cos(omega.t) = 1 ... */
   {
-    lees_edw_options_t opts = {.nplanes = 2, LE_SHEAR_TYPE_OSCILLATORY,
+    lees_edw_options_t opts = {.nplanes = 2, .type = LE_SHEAR_TYPE_OSCILLATORY,
                                .period = 3, .nt0 = 100, .uy = -2.0};
     lees_edw_t * le = NULL;
     double t  = 1.0 + 1.0*opts.nt0;
