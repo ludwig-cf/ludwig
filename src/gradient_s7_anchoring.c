@@ -75,9 +75,9 @@ struct grad_s7_anch_s {
 static grad_s7_anch_t * static_grad = NULL;
 
 
-__global__
-void grad_s7_kernel(kernel_ctxt_t * ktx, cs_t * cs, grad_s7_anch_t * anch,
-		    fe_lc_t * fe, field_grad_t * fg, map_t * map);
+__global__ void grad_s7_kernel(kernel_3d_t k3d, cs_t * cs,
+			       grad_s7_anch_t * anch,
+			       fe_lc_t * fe, field_grad_t * fg, map_t * map);
 
 __host__ __device__ int grad_s7_boundary_c(fe_lc_param_t * param,
 					   grad_s7_anch_t * anch,
@@ -141,6 +141,7 @@ __host__ int grad_s7_anchoring_create(pe_t * pe, cs_t * cs, map_t * map,
   }
 
   static_grad = obj;
+  if (pobj) *pobj = obj;
 
   return 0;
 }
@@ -231,11 +232,8 @@ __host__ int grad_s7_anchoring_d2(field_grad_t * fg) {
   int nhalo;
   int nextra;
   int nlocal[3] = {0};
-  dim3 nblk, ntpb;
 
   cs_t * cstarget = NULL;
-  kernel_info_t limits = {0};
-  kernel_ctxt_t * ctxt = NULL;
   grad_s7_anch_t * anch = NULL; /* get static instance and use */
 
   assert(static_grad);
@@ -247,26 +245,30 @@ __host__ int grad_s7_anchoring_d2(field_grad_t * fg) {
   cs_nlocal(anch->cs, nlocal);
   nextra = nhalo - 1;
 
-  limits.imin = 1 - nextra; limits.imax = nlocal[X] + nextra;
-  limits.jmin = 1 - nextra; limits.jmax = nlocal[Y] + nextra;
-  limits.kmin = 1 - nextra; limits.kmax = nlocal[Z] + nextra;
+  {
+    dim3 nblk = {};
+    dim3 ntpb = {};
+    cs_limits_t lim = {
+      .imin = 1 - nextra, .imax = nlocal[X] + nextra,
+      .jmin = 1 - nextra, .jmax = nlocal[Y] + nextra,
+      .kmin = 1 - nextra, .kmax = nlocal[Z] + nextra
+    };
+    kernel_3d_t k3d = kernel_3d(anch->cs, lim);
 
-  kernel_ctxt_create(anch->cs, NSIMDVL, limits, &ctxt);
-  kernel_ctxt_launch_param(ctxt, &nblk, &ntpb);
+    kernel_3d_launch_param(k3d.kiterations, &nblk, &ntpb);
 
-  fe_lc_param_commit(anch->fe);
+    fe_lc_param_commit(anch->fe);
 
-  cs_target(anch->cs, &cstarget);
+    cs_target(anch->cs, &cstarget);
 
-  tdpLaunchKernel(grad_s7_kernel, nblk, ntpb, 0, 0,
-		  ctxt->target, cstarget,
-		  anch->target, anch->fe->target, fg->target,
-		  anch->map->target);
+    tdpLaunchKernel(grad_s7_kernel, nblk, ntpb, 0, 0,
+		    k3d, cstarget,
+		    anch->target, anch->fe->target, fg->target,
+		    anch->map->target);
 
-  tdpAssert(tdpPeekAtLastError());
-  tdpAssert(tdpDeviceSynchronize());
-
-  kernel_ctxt_free(ctxt);
+    tdpAssert(tdpPeekAtLastError());
+    tdpAssert(tdpDeviceSynchronize());
+  }
 
   return 0;
 }
@@ -281,21 +283,16 @@ __host__ int grad_s7_anchoring_d2(field_grad_t * fg) {
  *
  *****************************************************************************/
 
-__global__
-void grad_s7_kernel(kernel_ctxt_t * ktx, cs_t * cs, grad_s7_anch_t * anch,
-		    fe_lc_t * fe, field_grad_t * fg, map_t * map) {
+__global__ void grad_s7_kernel(kernel_3d_t k3d, cs_t * cs,
+			       grad_s7_anch_t * anch,
+			       fe_lc_t * fe, field_grad_t * fg, map_t * map) {
+  int kindex = 0;
 
-  int kindex;
-  __shared__ int kiterations;
-
-  kiterations = kernel_iterations(ktx);
-
-  assert(ktx);
   assert(anch);
   assert(fg);
   assert(fg->field);
 
-  for_simt_parallel(kindex, kiterations, 1) {
+  for_simt_parallel(kindex, k3d.kiterations, 1) {
 
     int ic, jc, kc, index;
     int str[3];
@@ -325,10 +322,10 @@ void grad_s7_kernel(kernel_ctxt_t * ktx, cs_t * cs, grad_s7_anch_t * anch,
     kappa0 = fe->param->kappa0;
     kappa1 = fe->param->kappa1;
 
-    ic = kernel_coords_ic(ktx, kindex);
-    jc = kernel_coords_jc(ktx, kindex);
-    kc = kernel_coords_kc(ktx, kindex);
-    index = kernel_coords_index(ktx, ic, jc, kc);
+    ic = kernel_3d_ic(&k3d, kindex);
+    jc = kernel_3d_jc(&k3d, kindex);
+    kc = kernel_3d_kc(&k3d, kindex);
+    index = kernel_3d_cs_index(&k3d, ic, jc, kc);
 
     cs_strides(cs, str + X, str + Y, str + Z);
 

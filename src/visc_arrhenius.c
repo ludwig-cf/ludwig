@@ -17,7 +17,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2020
+ *  (c) 2020-2024
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -31,8 +31,7 @@
 #include "kernel.h"
 #include "visc_arrhenius.h"
 
-
-static __global__ void visc_update_kernel(kernel_ctxt_t * ktx,
+static __global__ void visc_update_kernel(kernel_3d_t k3d,
 				          visc_arrhenius_param_t visc_param,
 					  field_t * phi, hydro_t * hydro);
 /* Function table */
@@ -135,7 +134,8 @@ __host__ int visc_arrhenius_info(visc_arrhenius_t * visc) {
 
 __host__ int visc_arrhenius_stats(visc_arrhenius_t * visc, hydro_t * hydro) {
 
-  assert(0); /* PENDING IMPLEMENTATION */
+  assert(visc);   /* PENDING IMPLEMENTATION */
+  assert(hydro);
 
   return 0;
 }
@@ -148,30 +148,27 @@ __host__ int visc_arrhenius_stats(visc_arrhenius_t * visc, hydro_t * hydro) {
 
 __host__ int visc_arrhenius_update(visc_arrhenius_t * visc, hydro_t * hydro) {
 
-  int nlocal[3];
-  dim3 nblk, ntpb;
-  kernel_info_t limits;
-  kernel_ctxt_t * ctxt = NULL;
+  int nlocal[3] ={0};
 
   assert(visc);
   assert(hydro);
 
   cs_nlocal(visc->cs, nlocal);
 
-  limits.imin = 1; limits.imax = nlocal[X];
-  limits.jmin = 1; limits.jmax = nlocal[Y];
-  limits.kmin = 1; limits.kmax = nlocal[Z];
+  {
+    dim3 nblk = {};
+    dim3 ntpb = {};
+    cs_limits_t lim = {1, nlocal[X], 1, nlocal[Y], 1, nlocal[Z]};
+    kernel_3d_t k3d = kernel_3d(visc->cs, lim);
 
-  kernel_ctxt_create(visc->cs, NSIMDVL, limits, &ctxt);
-  kernel_ctxt_launch_param(ctxt, &nblk, &ntpb);
+    kernel_3d_launch_param(k3d.kiterations, &nblk, &ntpb);
 
-  tdpLaunchKernel(visc_update_kernel, nblk, ntpb, 0, 0, ctxt->target,
-		  *visc->param, visc->phi->target, hydro->target);
+    tdpLaunchKernel(visc_update_kernel, nblk, ntpb, 0, 0, k3d,
+		    *visc->param, visc->phi->target, hydro->target);
 
-  tdpAssert(tdpPeekAtLastError());
-  tdpAssert(tdpDeviceSynchronize());
-
-  kernel_ctxt_free(ctxt);
+    tdpAssert( tdpPeekAtLastError() );
+    tdpAssert( tdpDeviceSynchronize() );
+  }
 
   return 0;
 }
@@ -182,32 +179,26 @@ __host__ int visc_arrhenius_update(visc_arrhenius_t * visc, hydro_t * hydro) {
  *
  *****************************************************************************/
 
-static __global__ void visc_update_kernel(kernel_ctxt_t * ktx,
+static __global__ void visc_update_kernel(kernel_3d_t k3d,
 				          visc_arrhenius_param_t visc_param,
 					  field_t * phi, hydro_t * hydro) {
-  int kindex;
-  int kiter;
+  int kindex = 0;
 
-  assert(ktx);
   assert(phi);
   assert(hydro);
 
-  kiter = kernel_iterations(ktx);
+  for_simt_parallel(kindex, k3d.kiterations, 1) {
 
-  for_simt_parallel(kindex, kiter, 1) {
+    double etaplus = 0.0;
+    double etaminus = 0.0;
 
-    int ic, jc, kc, index;
-    double phi0;
-    double etaplus;
-    double etaminus;
+    int ic = kernel_3d_ic(&k3d, kindex);
+    int jc = kernel_3d_jc(&k3d, kindex);
+    int kc = kernel_3d_kc(&k3d, kindex);
 
-    ic = kernel_coords_ic(ktx, kindex);
-    jc = kernel_coords_jc(ktx, kindex);
-    kc = kernel_coords_kc(ktx, kindex);
+    int index = kernel_3d_cs_index(&k3d, ic, jc, kc);
 
-    index = kernel_coords_index(ktx, ic, jc, kc);
-
-    phi0 = phi->data[addr_rank0(phi->nsites, index)];
+    double phi0 = phi->data[addr_rank0(phi->nsites, index)];
     phi0 = phi0/visc_param.phistar;
 
     etaminus = pow(visc_param.eta_minus, 0.5*(1.0 - phi0));

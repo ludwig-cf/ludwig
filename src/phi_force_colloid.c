@@ -46,7 +46,7 @@
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *  Alan Gray (alang@epcc.ed.ac.uk) provided device implementations.
  *
- *  (c) 2010-2022 The University of Edinburgh
+ *  (c) 2010-2024 The University of Edinburgh
  *
  *****************************************************************************/
 
@@ -67,12 +67,13 @@ int pth_force_driver(pth_t * pth, colloids_info_t * cinfo,
 		     hydro_t * hydro, map_t * map, wall_t * wall,
 		     const lb_model_t * model);
 
-__global__ void pth_force_map_kernel(kernel_ctxt_t * ktx, pth_t * pth,
+__global__ void pth_force_map_kernel(kernel_3d_t k3d, pth_t * pth,
 				     hydro_t * hydro, map_t * map);
-__global__ void pth_force_wall_kernel(kernel_ctxt_t * ktx, pth_t * pth,
+__global__ void pth_force_wall_kernel(kernel_3d_t k3d, pth_t * pth,
 				      map_t * map, wall_t * wall,
 				      double fw[3]);
-__global__ void pth_force_fluid_kernel_v(kernel_ctxt_t * ktx, pth_t * pth,
+
+__global__ void pth_force_fluid_kernel_v(kernel_3d_v_t k3v, pth_t * pth,
 					 hydro_t * hydro);
 
 /*****************************************************************************
@@ -116,17 +117,11 @@ __host__ int pth_force_colloid(pth_t * pth, fe_t * fe, colloids_info_t * cinfo,
  *
  *****************************************************************************/
 
-static __device__ double fs[3];
-
 __host__ int pth_force_driver(pth_t * pth, colloids_info_t * cinfo,
 			      hydro_t * hydro, map_t * map, wall_t * wall,
 			      const lb_model_t * model) {
-  int ia;
-  int nlocal[3];
-  dim3 nblk, ntpb;
+  int nlocal[3] = {0};
   wall_t * wallt = NULL;
-  kernel_info_t limits;
-  kernel_ctxt_t * ctxt = NULL;
 
   /* Net momentum balance for wall */
   double * fwd = NULL;
@@ -142,31 +137,33 @@ __host__ int pth_force_driver(pth_t * pth, colloids_info_t * cinfo,
   cs_nlocal(pth->cs, nlocal);
   wall_target(wall, &wallt);
 
-  limits.imin = 1; limits.imax = nlocal[X];
-  limits.jmin = 1; limits.jmax = nlocal[Y];
-  limits.kmin = 1; limits.kmax = nlocal[Z];
+  {
+    dim3 nblk = {};
+    dim3 ntpb = {};
+    cs_limits_t lim = {1, nlocal[X], 1, nlocal[Y], 1, nlocal[Z]};
+    kernel_3d_t k3d = kernel_3d(pth->cs, lim);
 
-  kernel_ctxt_create(pth->cs, NSIMDVL, limits, &ctxt);
-  kernel_ctxt_launch_param(ctxt, &nblk, &ntpb);
+    kernel_3d_launch_param(k3d.kiterations, &nblk, &ntpb);
 
-  tdpGetSymbolAddress((void **) &fwd, tdpSymbol(fs));
-  tdpMemcpy(fwd, fw, 3*sizeof(double), tdpMemcpyHostToDevice);
+    tdpAssert( tdpMalloc((void **) &fwd, 3*sizeof(double)) );
+    tdpMemcpy(fwd, fw, 3*sizeof(double), tdpMemcpyHostToDevice);
 
-  TIMER_start(TIMER_PHI_FORCE_CALC);
+    TIMER_start(TIMER_PHI_FORCE_CALC);
 
-  tdpLaunchKernel(pth_force_map_kernel, nblk, ntpb, 0, 0,
-		  ctxt->target, pth->target, hydro->target, map->target);
+    tdpLaunchKernel(pth_force_map_kernel, nblk, ntpb, 0, 0,
+		    k3d, pth->target, hydro->target, map->target);
 
-  tdpLaunchKernel(pth_force_wall_kernel, nblk, ntpb, 0, 0,
-		  ctxt->target, pth->target, map->target, wallt, fwd);
-  tdpDeviceSynchronize();
- 
-  kernel_ctxt_free(ctxt);
+    tdpLaunchKernel(pth_force_wall_kernel, nblk, ntpb, 0, 0,
+		    k3d, pth->target, map->target, wallt, fwd);
+    tdpDeviceSynchronize();
+  }
 
   tdpMemcpy(fw, fwd, 3*sizeof(double), tdpMemcpyDeviceToHost);
   wall_momentum_add(wall, fw);
 
-  /* A separate kernel is requred to allow reduction of the
+  tdpAssert( tdpFree(fwd) );
+
+  /* A separate kernel is required to allow reduction of the
    * force on each particle. A truly parallel version is
    pending... */
 
@@ -181,7 +178,7 @@ __host__ int pth_force_driver(pth_t * pth, colloids_info_t * cinfo,
 
   /* All colloids, including halo */
   colloids_info_all_head(cinfo, &pc);
- 
+
   for ( ; pc; pc = pc->nextall) {
 
     p_link = pc->lnk;
@@ -203,7 +200,7 @@ __host__ int pth_force_driver(pth_t * pth, colloids_info_t * cinfo,
 	if (model->cv[p][Y]) id = Y;
 	if (model->cv[p][Z]) id = Z;
 
-	for (ia = 0; ia < 3; ia++) {
+	for (int ia = 0; ia < 3; ia++) {
 	  pc->force[ia] += 1.0*model->cv[p][id]
 	    *pth->str[addr_rank2(pth->nsites, 3, 3, p_link->i, ia, id)];
 	}
@@ -226,11 +223,8 @@ __host__ int pth_force_driver(pth_t * pth, colloids_info_t * cinfo,
 
 __host__ int pth_force_fluid_wall_driver(pth_t * pth, hydro_t * hydro,
 					 map_t * map, wall_t * wall) {
-  int nlocal[3];
-  dim3 nblk, ntpb;
+  int nlocal[3] = {0};
   wall_t * wallt = NULL;
-  kernel_info_t limits;
-  kernel_ctxt_t * ctxt = NULL;
 
   /* Net momentum balance for wall */
   double * fwd = NULL;
@@ -243,28 +237,28 @@ __host__ int pth_force_fluid_wall_driver(pth_t * pth, hydro_t * hydro,
   cs_nlocal(pth->cs, nlocal);
   wall_target(wall, &wallt);
 
-  limits.imin = 1; limits.imax = nlocal[X];
-  limits.jmin = 1; limits.jmax = nlocal[Y];
-  limits.kmin = 1; limits.kmax = nlocal[Z];
+  {
+    dim3 nblk = {};
+    dim3 ntpb = {};
+    cs_limits_t lim = {1, nlocal[X], 1, nlocal[Y], 1, nlocal[Z]};
+    kernel_3d_t k3d = kernel_3d(pth->cs, lim);
 
-  kernel_ctxt_create(pth->cs, NSIMDVL, limits, &ctxt);
-  kernel_ctxt_launch_param(ctxt, &nblk, &ntpb);
+    kernel_3d_launch_param(k3d.kiterations, &nblk, &ntpb);
 
-  tdpGetSymbolAddress((void **) &fwd, tdpSymbol(fs));
-  tdpMemcpy(fwd, fw, 3*sizeof(double), tdpMemcpyHostToDevice);
+    tdpAssert( tdpMalloc((void **) &fwd, 3*sizeof(double)) );
+    tdpAssert( tdpMemcpy(fwd, fw, 3*sizeof(double), tdpMemcpyHostToDevice) );
 
-  tdpLaunchKernel(pth_force_map_kernel, nblk, ntpb, 0, 0,
-		  ctxt->target, pth->target, hydro->target, map->target);
+    tdpLaunchKernel(pth_force_map_kernel, nblk, ntpb, 0, 0,
+		    k3d, pth->target, hydro->target, map->target);
 
-  tdpLaunchKernel(pth_force_wall_kernel, nblk, ntpb, 0, 0,
-		  ctxt->target, pth->target, map->target, wallt, fwd);
-  tdpDeviceSynchronize();
- 
-  kernel_ctxt_free(ctxt);
+    tdpLaunchKernel(pth_force_wall_kernel, nblk, ntpb, 0, 0,
+		    k3d, pth->target, map->target, wallt, fwd);
+
+    tdpAssert( tdpDeviceSynchronize() );
+  }
 
   tdpMemcpy(fw, fwd, 3*sizeof(double), tdpMemcpyDeviceToHost);
   wall_momentum_add(wall, fw);
-
 
   return 0;
 }
@@ -279,32 +273,29 @@ __host__ int pth_force_fluid_wall_driver(pth_t * pth, hydro_t * hydro,
 
 __host__ int pth_force_fluid_driver(pth_t * pth,  hydro_t * hydro) {
 
-  int nlocal[3];
-  dim3 nblk, ntpb;
-  kernel_info_t limits;
-  kernel_ctxt_t * ctxt = NULL;
-  
+  int nlocal[3] = {0};
+
   assert(pth);
   assert(hydro);
 
   cs_nlocal(pth->cs, nlocal);
 
-  limits.imin = 1; limits.imax = nlocal[X];
-  limits.jmin = 1; limits.jmax = nlocal[Y];
-  limits.kmin = 1; limits.kmax = nlocal[Z];
+  {
+    dim3 nblk = {};
+    dim3 ntpb = {};
+    cs_limits_t lim = {1, nlocal[X], 1, nlocal[Y], 1, nlocal[Z]};
+    kernel_3d_v_t k3v = kernel_3d_v(pth->cs, lim);
 
-  kernel_ctxt_create(pth->cs, NSIMDVL, limits, &ctxt);
-  kernel_ctxt_launch_param(ctxt, &nblk, &ntpb);
+    kernel_3d_launch_param(k3v.kiterations, &nblk, &ntpb);
 
-  TIMER_start(TIMER_PHI_FORCE_CALC);
+    TIMER_start(TIMER_PHI_FORCE_CALC);
 
-  tdpLaunchKernel(pth_force_fluid_kernel_v, nblk, ntpb, 0, 0,
-		  ctxt->target, pth->target, hydro->target);
-  tdpDeviceSynchronize();
+    tdpLaunchKernel(pth_force_fluid_kernel_v, nblk, ntpb, 0, 0,
+		    k3v, pth->target, hydro->target);
+    tdpAssert( tdpDeviceSynchronize() );
 
-  TIMER_stop(TIMER_PHI_FORCE_CALC);
-
-  kernel_ctxt_free(ctxt);
+    TIMER_stop(TIMER_PHI_FORCE_CALC);
+  }
 
   return 0;
 }
@@ -321,22 +312,16 @@ __host__ int pth_force_fluid_driver(pth_t * pth,  hydro_t * hydro) {
  *
  *****************************************************************************/
 
-__global__ void pth_force_fluid_kernel_v(kernel_ctxt_t * ktx, pth_t * pth,
+__global__ void pth_force_fluid_kernel_v(kernel_3d_v_t k3v, pth_t * pth,
 					 hydro_t * hydro) {
-  int kindex;
-  int kiterations;
+  int kindex = 0;
 
-  assert(ktx);
   assert(pth);
   assert(hydro);
 
-  kiterations = kernel_vector_iterations(ktx);
-
-  for_simt_parallel(kindex, kiterations, NSIMDVL) {
+  for_simt_parallel(kindex, k3v.kiterations, NSIMDVL) {
 
     int iv;
-    int ia, ib;
-    int index;                   /* first index in vector block */
     int ic[NSIMDVL];             /* ic for this iteration */
     int jc[NSIMDVL];             /* jc for this iteration */
     int kc[NSIMDVL];             /* kc ditto */
@@ -348,14 +333,14 @@ __global__ void pth_force_fluid_kernel_v(kernel_ctxt_t * ktx, pth_t * pth,
     double force[3][NSIMDVL];
 
 
-    index = kernel_baseindex(ktx, kindex);
-    kernel_coords_v(ktx, kindex, ic, jc, kc);
+    int index = k3v.kindex0 + kindex;
+    kernel_3d_v_coords(&k3v, kindex, ic, jc, kc);
 
-    kernel_mask_v(ktx, ic, jc, kc, maskv);
+    kernel_3d_v_mask(&k3v, ic, jc, kc, maskv);
 
     /* Compute pth at current point */
-    for (ia = 0; ia < 3; ia++) {
-      for (ib = 0; ib < 3; ib++) {
+    for (int ia = 0; ia < 3; ia++) {
+      for (int ib = 0; ib < 3; ib++) {
 	for_simd_v(iv, NSIMDVL) {
 	  pth0[ia][ib][iv] = pth->str[addr_rank2(pth->nsites,3,3,index+iv,ia,ib)];
 	}
@@ -365,17 +350,17 @@ __global__ void pth_force_fluid_kernel_v(kernel_ctxt_t * ktx, pth_t * pth,
     /* Compute differences */
 
     for_simd_v(iv, NSIMDVL) pm[iv] = ic[iv] + maskv[iv];
-    kernel_coords_index_v(ktx, pm, jc, kc, index1);
+    kernel_3d_v_cs_index(&k3v, pm, jc, kc, index1);
 
-    for (ia = 0; ia < 3; ia++) {
-      for (ib = 0; ib < 3; ib++) {
+    for (int ia = 0; ia < 3; ia++) {
+      for (int ib = 0; ib < 3; ib++) {
 	for_simd_v(iv, NSIMDVL) {
 	  pth1[ia][ib][iv] = pth->str[addr_rank2(pth->nsites,3,3,index1[iv],ia,ib)];
 	}
       }
     }
 
-    for (ia = 0; ia < 3; ia++) {
+    for (int ia = 0; ia < 3; ia++) {
       for_simd_v(iv, NSIMDVL) {
 	force[ia][iv] = -0.5*(pth1[ia][X][iv] + pth0[ia][X][iv]);
       }
@@ -383,85 +368,85 @@ __global__ void pth_force_fluid_kernel_v(kernel_ctxt_t * ktx, pth_t * pth,
 
 
     for_simd_v(iv, NSIMDVL) pm[iv] = ic[iv] - maskv[iv];
-    kernel_coords_index_v(ktx, pm, jc, kc, index1);
+    kernel_3d_v_cs_index(&k3v, pm, jc, kc, index1);
 
-    for (ia = 0; ia < 3; ia++) {
-      for (ib = 0; ib < 3; ib++) {
+    for (int ia = 0; ia < 3; ia++) {
+      for (int ib = 0; ib < 3; ib++) {
 	for_simd_v(iv, NSIMDVL) {
 	  pth1[ia][ib][iv] = pth->str[addr_rank2(pth->nsites,3,3,index1[iv],ia,ib)];
 	}
       }
     }
 
-    for (ia = 0; ia < 3; ia++) {
+    for (int ia = 0; ia < 3; ia++) {
       for_simd_v(iv, NSIMDVL) {
 	force[ia][iv] += 0.5*(pth1[ia][X][iv] + pth0[ia][X][iv]);
       }
     }
 
     for_simd_v(iv, NSIMDVL) pm[iv] = jc[iv] + maskv[iv];
-    kernel_coords_index_v(ktx, ic, pm, kc, index1);
+    kernel_3d_v_cs_index(&k3v, ic, pm, kc, index1);
 
-    for (ia = 0; ia < 3; ia++) {
-      for (ib = 0; ib < 3; ib++) {
-	for_simd_v(iv, NSIMDVL) { 
-	  pth1[ia][ib][iv] = pth->str[addr_rank2(pth->nsites,3,3,index1[iv],ia,ib)];
-	}
-      }
-    }
-
-    for (ia = 0; ia < 3; ia++) {
-      for_simd_v(iv, NSIMDVL) {
-	force[ia][iv] -= 0.5*(pth1[ia][Y][iv] + pth0[ia][Y][iv]);
-      }
-    }
-
-    for_simd_v(iv, NSIMDVL) pm[iv] = jc[iv] - maskv[iv];
-    kernel_coords_index_v(ktx, ic, pm, kc, index1);
-
-    for (ia = 0; ia < 3; ia++) {
-      for (ib = 0; ib < 3; ib++) {
+    for (int ia = 0; ia < 3; ia++) {
+      for (int ib = 0; ib < 3; ib++) {
 	for_simd_v(iv, NSIMDVL) {
 	  pth1[ia][ib][iv] = pth->str[addr_rank2(pth->nsites,3,3,index1[iv],ia,ib)];
 	}
       }
     }
 
-    for (ia = 0; ia < 3; ia++) {
+    for (int ia = 0; ia < 3; ia++) {
+      for_simd_v(iv, NSIMDVL) {
+	force[ia][iv] -= 0.5*(pth1[ia][Y][iv] + pth0[ia][Y][iv]);
+      }
+    }
+
+    for_simd_v(iv, NSIMDVL) pm[iv] = jc[iv] - maskv[iv];
+    kernel_3d_v_cs_index(&k3v, ic, pm, kc, index1);
+
+    for (int ia = 0; ia < 3; ia++) {
+      for (int ib = 0; ib < 3; ib++) {
+	for_simd_v(iv, NSIMDVL) {
+	  pth1[ia][ib][iv] = pth->str[addr_rank2(pth->nsites,3,3,index1[iv],ia,ib)];
+	}
+      }
+    }
+
+    for (int ia = 0; ia < 3; ia++) {
       for_simd_v(iv, NSIMDVL) {
 	force[ia][iv] += 0.5*(pth1[ia][Y][iv] + pth0[ia][Y][iv]);
       }
     }
 
     for_simd_v(iv, NSIMDVL) pm[iv] = kc[iv] + maskv[iv];
-    kernel_coords_index_v(ktx, ic, jc, pm, index1);
+    kernel_3d_v_cs_index(&k3v, ic, jc, pm, index1);
 
-    for (ia = 0; ia < 3; ia++){
-      for (ib = 0; ib < 3; ib++){
-	for_simd_v(iv, NSIMDVL) { 
+    for (int ia = 0; ia < 3; ia++){
+      for (int ib = 0; ib < 3; ib++){
+	for_simd_v(iv, NSIMDVL) {
 	  pth1[ia][ib][iv] = pth->str[addr_rank2(pth->nsites,3,3,index1[iv],ia,ib)];
 	}
       }
     }
 
-    for (ia = 0; ia < 3; ia++) {
+    for (int ia = 0; ia < 3; ia++) {
       for_simd_v(iv, NSIMDVL) {
 	force[ia][iv] -= 0.5*(pth1[ia][Z][iv] + pth0[ia][Z][iv]);
       }
     }
 
     for_simd_v(iv, NSIMDVL) pm[iv] = kc[iv] - maskv[iv];
-    kernel_coords_index_v(ktx, ic, jc, pm, index1);
+    kernel_3d_v_cs_index(&k3v, ic, jc, pm, index1);
 
-    for (ia = 0; ia < 3; ia++) {
-      for (ib = 0; ib < 3; ib++) {
-	for_simd_v(iv, NSIMDVL) { 
+    for (int ia = 0; ia < 3; ia++) {
+      for (int ib = 0; ib < 3; ib++) {
+	for_simd_v(iv, NSIMDVL) {
 	  pth1[ia][ib][iv] = pth->str[addr_rank2(pth->nsites,3,3,index1[iv],ia,ib)];
 	}
       }
     }
-    
-    for (ia = 0; ia < 3; ia++) {
+
+    for (int ia = 0; ia < 3; ia++) {
       for_simd_v(iv, NSIMDVL) {
 	force[ia][iv] += 0.5*(pth1[ia][Z][iv] + pth0[ia][Z][iv]);
       }
@@ -469,8 +454,8 @@ __global__ void pth_force_fluid_kernel_v(kernel_ctxt_t * ktx, pth_t * pth,
 
     /* Store the force on lattice */
 
-    for (ia = 0; ia < 3; ia++) {
-      for_simd_v(iv, NSIMDVL) { 
+    for (int ia = 0; ia < 3; ia++) {
+      for_simd_v(iv, NSIMDVL) {
 	hydro->force->data[addr_rank1(hydro->nsite, NHDIM, index+iv, ia)]
 	  += force[ia][iv]*maskv[iv];
       }
@@ -481,6 +466,7 @@ __global__ void pth_force_fluid_kernel_v(kernel_ctxt_t * ktx, pth_t * pth,
   return;
 }
 
+
 /*****************************************************************************
  *
  *  pth_force_map_kernel
@@ -489,166 +475,160 @@ __global__ void pth_force_fluid_kernel_v(kernel_ctxt_t * ktx, pth_t * pth,
  *
  *****************************************************************************/
 
-__global__ void pth_force_map_kernel(kernel_ctxt_t * ktx, pth_t * pth,
+__global__ void pth_force_map_kernel(kernel_3d_t k3d, pth_t * pth,
 				     hydro_t * hydro, map_t * map) {
+  int kindex = 0;
 
-  int kindex;
-  int kiterations;
-
-  assert(ktx);
   assert(pth);
   assert(hydro);
   assert(map);
 
-  kiterations = kernel_iterations(ktx);
-
-  for_simt_parallel(kindex, kiterations, 1) {
+  for_simt_parallel(kindex, k3d.kiterations, 1) {
 
     int ic, jc, kc;
-    int ia, ib;
     int index, index1;
 
     double pth0[3][3];
     double pth1[3][3];
     double force[3];
 
-    ic = kernel_coords_ic(ktx, kindex);
-    jc = kernel_coords_jc(ktx, kindex);
-    kc = kernel_coords_kc(ktx, kindex);
-    index = kernel_coords_index(ktx, ic, jc, kc);
+    ic = kernel_3d_ic(&k3d, kindex);
+    jc = kernel_3d_jc(&k3d, kindex);
+    kc = kernel_3d_kc(&k3d, kindex);
+    index = kernel_3d_cs_index(&k3d, ic, jc, kc);
 
     if (map->status[index] == MAP_FLUID) {
 
       /* Compute pth at current point */
 
-      for (ia = 0; ia < 3; ia++) {
-	for (ib = 0; ib < 3; ib++) {
+      for (int ia = 0; ia < 3; ia++) {
+	for (int ib = 0; ib < 3; ib++) {
 	  pth0[ia][ib] = pth->str[addr_rank2(pth->nsites,3,3,index,ia,ib)];
 	}
       }
-      
+
       /* Compute differences */
-      
-      index1 = kernel_coords_index(ktx, ic+1, jc, kc);
-      
+
+      index1 = kernel_3d_cs_index(&k3d, ic+1, jc, kc);
+
       if (map->status[index1] != MAP_FLUID) {
 	/* Compute the fluxes at solid/fluid boundary */
-	for (ia = 0; ia < 3; ia++) {
+	for (int ia = 0; ia < 3; ia++) {
 	  force[ia] = -pth0[ia][X];
 	}
       }
       else {
 	/* This flux is fluid-fluid */
-	for (ia = 0; ia < 3; ia++) {
-	  for (ib = 0; ib < 3; ib++) {
+	for (int ia = 0; ia < 3; ia++) {
+	  for (int ib = 0; ib < 3; ib++) {
 	    pth1[ia][ib] = pth->str[addr_rank2(pth->nsites,3,3,index1,ia,ib)];
 	  }
 	}
-	for (ia = 0; ia < 3; ia++) {
+	for (int ia = 0; ia < 3; ia++) {
 	  force[ia] = -0.5*(pth1[ia][X] + pth0[ia][X]);
 	}
       }
-      
-      index1 = kernel_coords_index(ktx, ic-1, jc, kc);
-      
+
+      index1 = kernel_3d_cs_index(&k3d, ic-1, jc, kc);
+
       if (map->status[index1] != MAP_FLUID) {
 	/* Solid-fluid */
-	for (ia = 0; ia < 3; ia++) {
+	for (int ia = 0; ia < 3; ia++) {
 	  force[ia] += pth0[ia][X];
 	}
       }
       else {
 	/* Fluid - fluid */
-	for (ia = 0; ia < 3; ia++) {
-	  for (ib = 0; ib < 3; ib++) {
+	for (int ia = 0; ia < 3; ia++) {
+	  for (int ib = 0; ib < 3; ib++) {
 	    pth1[ia][ib] = pth->str[addr_rank2(pth->nsites,3,3,index1,ia,ib)];
 	  }
 	}
-	for (ia = 0; ia < 3; ia++) {
+	for (int ia = 0; ia < 3; ia++) {
 	  force[ia] += 0.5*(pth1[ia][X] + pth0[ia][X]);
 	}
       }
-      
-      index1 = kernel_coords_index(ktx, ic, jc+1, kc);
-      
+
+      index1 = kernel_3d_cs_index(&k3d, ic, jc+1, kc);
+
       if (map->status[index1] != MAP_FLUID) {
 	/* Solid-fluid */
-	for (ia = 0; ia < 3; ia++) {
+	for (int ia = 0; ia < 3; ia++) {
 	  force[ia] -= pth0[ia][Y];
 	}
       }
       else {
 	/* Fluid-fluid */
-	for (ia = 0; ia < 3; ia++) {
-	  for (ib = 0; ib < 3; ib++) {
+	for (int ia = 0; ia < 3; ia++) {
+	  for (int ib = 0; ib < 3; ib++) {
 	    pth1[ia][ib] = pth->str[addr_rank2(pth->nsites,3,3,index1,ia,ib)];
 	  }
 	}
-	for (ia = 0; ia < 3; ia++) {
+	for (int ia = 0; ia < 3; ia++) {
 	  force[ia] -= 0.5*(pth1[ia][Y] + pth0[ia][Y]);
 	}
       }
-      
-      index1 = kernel_coords_index(ktx, ic, jc-1, kc);
-      
+
+      index1 = kernel_3d_cs_index(&k3d, ic, jc-1, kc);
+
       if (map->status[index1] != MAP_FLUID) {
 	/* Solid-fluid */
-	for (ia = 0; ia < 3; ia++) {
+	for (int ia = 0; ia < 3; ia++) {
 	  force[ia] += pth0[ia][Y];
 	}
       }
       else {
 	/* Fluid-fluid */
-	for (ia = 0; ia < 3; ia++) {
-	  for (ib = 0; ib < 3; ib++) {
+	for (int ia = 0; ia < 3; ia++) {
+	  for (int ib = 0; ib < 3; ib++) {
 	    pth1[ia][ib] = pth->str[addr_rank2(pth->nsites,3,3,index1,ia,ib)];
 	  }
 	}
-	for (ia = 0; ia < 3; ia++) {
+	for (int ia = 0; ia < 3; ia++) {
 	  force[ia] += 0.5*(pth1[ia][Y] + pth0[ia][Y]);
 	}
       }
-      
-      index1 = kernel_coords_index(ktx, ic, jc, kc+1);
-      
+
+      index1 = kernel_3d_cs_index(&k3d, ic, jc, kc+1);
+
       if (map->status[index1] != MAP_FLUID) {
 	/* Fluid-solid */
-	for (ia = 0; ia < 3; ia++) {
+	for (int ia = 0; ia < 3; ia++) {
 	  force[ia] -= pth0[ia][Z];
 	}
       }
       else {
 	/* Fluid-fluid */
-	for (ia = 0; ia < 3; ia++) {
-	  for (ib = 0; ib < 3; ib++) {
+	for (int ia = 0; ia < 3; ia++) {
+	  for (int ib = 0; ib < 3; ib++) {
 	    pth1[ia][ib] = pth->str[addr_rank2(pth->nsites,3,3,index1,ia,ib)];
 	  }
 	}
-	for (ia = 0; ia < 3; ia++) {
+	for (int ia = 0; ia < 3; ia++) {
 	  force[ia] -= 0.5*(pth1[ia][Z] + pth0[ia][Z]);
 	}
       }
-      
-      index1 = kernel_coords_index(ktx, ic, jc, kc-1);
-      
+
+      index1 = kernel_3d_cs_index(&k3d, ic, jc, kc-1);
+
       if (map->status[index1] != MAP_FLUID) {
 	/* Fluid-solid */
-	for (ia = 0; ia < 3; ia++) {
+	for (int ia = 0; ia < 3; ia++) {
 	  force[ia] += pth0[ia][Z];
 	}
       }
       else {
 	/* Fluid-fluid */
-	for (ia = 0; ia < 3; ia++) {
-	  for (ib = 0; ib < 3; ib++) {
+	for (int ia = 0; ia < 3; ia++) {
+	  for (int ib = 0; ib < 3; ib++) {
 	    pth1[ia][ib] = pth->str[addr_rank2(pth->nsites,3,3,index1,ia,ib)];
 	  }
 	}
-	for (ia = 0; ia < 3; ia++) {
+	for (int ia = 0; ia < 3; ia++) {
 	  force[ia] += 0.5*(pth1[ia][Z] + pth0[ia][Z]);
 	}
       }
-      
+
       /* Accumulate the force on lattice */
 
       hydro_f_local_add(hydro, index, force);
@@ -663,7 +643,7 @@ __global__ void pth_force_map_kernel(kernel_ctxt_t * ktx, pth_t * pth,
  *
  *  pth_force_wall_kernel
  *
- *  Tally contributions of the stress divergence transfered to
+ *  Tally contributions of the stress divergence transferred to
  *  the wall. This needs to agree with phi_force_kernel().
  *
  *  This is for accounting only; there's no dynamics.
@@ -672,11 +652,10 @@ __global__ void pth_force_map_kernel(kernel_ctxt_t * ktx, pth_t * pth,
  *
  *****************************************************************************/
 
-__global__ void pth_force_wall_kernel(kernel_ctxt_t * ktx, pth_t * pth,
+__global__ void pth_force_wall_kernel(kernel_3d_t k3d, pth_t * pth,
 				      map_t * map, wall_t * wall,
 				      double fw[3]) {
-  int kindex;
-  int kiterations;
+  int kindex = 0;
 
   int ic, jc, kc;
   int ia, ib;
@@ -690,12 +669,9 @@ __global__ void pth_force_wall_kernel(kernel_ctxt_t * ktx, pth_t * pth,
   __shared__ double fy[TARGET_MAX_THREADS_PER_BLOCK];
   __shared__ double fz[TARGET_MAX_THREADS_PER_BLOCK];
 
-  assert(ktx);
   assert(pth);
   assert(map);
   assert(wall);
-
-  kiterations = kernel_iterations(ktx);
 
   tid = threadIdx.x;
 
@@ -703,12 +679,12 @@ __global__ void pth_force_wall_kernel(kernel_ctxt_t * ktx, pth_t * pth,
   fy[tid] = 0.0;
   fz[tid] = 0.0;
 
-  for_simt_parallel(kindex, kiterations, 1) {
+  for_simt_parallel(kindex, k3d.kiterations, 1) {
 
-    ic = kernel_coords_ic(ktx, kindex);
-    jc = kernel_coords_jc(ktx, kindex);
-    kc = kernel_coords_kc(ktx, kindex);
-    index = kernel_coords_index(ktx, ic, jc, kc);
+    ic = kernel_3d_ic(&k3d, kindex);
+    jc = kernel_3d_jc(&k3d, kindex);
+    kc = kernel_3d_kc(&k3d, kindex);
+    index = kernel_3d_cs_index(&k3d, ic, jc, kc);
 
     if (map->status[index] == MAP_FLUID) {
 
@@ -719,56 +695,56 @@ __global__ void pth_force_wall_kernel(kernel_ctxt_t * ktx, pth_t * pth,
 	  pth0[ia][ib] = pth->str[addr_rank2(pth->nsites,3,3,index,ia,ib)];
 	}
       }
-      
+
       /* Contributions to surface stress */
-      
-      index1 = kernel_coords_index(ktx, ic+1, jc, kc);
-      
+
+      index1 = kernel_3d_cs_index(&k3d, ic+1, jc, kc);
+
       if (map->status[index1] == MAP_BOUNDARY) {
 	fx[tid] += -pth0[X][X];
 	fy[tid] += -pth0[Y][X];
 	fz[tid] += -pth0[Z][X];
       }
-      
-      index1 = kernel_coords_index(ktx, ic-1, jc, kc);
-      
+
+      index1 = kernel_3d_cs_index(&k3d, ic-1, jc, kc);
+
       if (map->status[index1] == MAP_BOUNDARY) {
 	fx[tid] += pth0[X][X];
 	fy[tid] += pth0[Y][X];
 	fz[tid] += pth0[Z][X];
       }
-      
-      index1 = kernel_coords_index(ktx, ic, jc+1, kc);
-      
+
+      index1 = kernel_3d_cs_index(&k3d, ic, jc+1, kc);
+
       if (map->status[index1] == MAP_BOUNDARY) {
 	fx[tid] += -pth0[X][Y];
 	fy[tid] += -pth0[Y][Y];
 	fz[tid] += -pth0[Z][Y];
       }
-      
-      index1 = kernel_coords_index(ktx, ic, jc-1, kc);
-      
+
+      index1 = kernel_3d_cs_index(&k3d, ic, jc-1, kc);
+
       if (map->status[index1] == MAP_BOUNDARY) {
 	fx[tid] += pth0[X][Y];
 	fy[tid] += pth0[Y][Y];
 	fz[tid] += pth0[Z][Y];
       }
-      
-      index1 = kernel_coords_index(ktx, ic, jc, kc+1);
-      
+
+      index1 = kernel_3d_cs_index(&k3d, ic, jc, kc+1);
+
       if (map->status[index1] == MAP_BOUNDARY) {
 	fx[tid] += -pth0[X][Z];
 	fy[tid] += -pth0[Y][Z];
 	fz[tid] += -pth0[Z][Z];
       }
-      
-      index1 = kernel_coords_index(ktx, ic, jc, kc-1);
-      
+
+      index1 = kernel_3d_cs_index(&k3d, ic, jc, kc-1);
+
       if (map->status[index1] == MAP_BOUNDARY) {
 	fx[tid] += pth0[X][Z];
 	fy[tid] += pth0[Y][Z];
 	fz[tid] += pth0[Z][Z];
-      }      
+      }
     }
     /* Next site */
   }

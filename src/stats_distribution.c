@@ -39,9 +39,8 @@ __host__ int stats_distribution_momentum_serial(lb_t * lb, map_t * map,
 __host__ int distribution_stats_momentum(lb_t * lb, map_t * map, int root,
 					 MPI_Comm comm, double gm[3]);
 
-__global__ void distribution_gm_kernel(kernel_ctxt_t * ktxt, lb_t * lb,
+__global__ void distribution_gm_kernel(kernel_3d_t k3d, lb_t * lb,
 				       map_t * map, kahan_t * gm);
-
 
 /*****************************************************************************
  *
@@ -101,7 +100,7 @@ int stats_distribution_print(lb_t * lb, map_t * map) {
   MPI_Reduce(stat_local + 4, stat_total + 4, 1, MPI_DOUBLE, MPI_MAX, 0, comm);
 
   /* Compute mean density, and the variance, and print. We
-   * assume the fluid volume (stat_total[0]) is not zero... */ 
+   * assume the fluid volume (stat_total[0]) is not zero... */
 
   /* In a uniform state the variance can be a truncation error
    * below zero, hence fabs(rhovar) */
@@ -111,7 +110,7 @@ int stats_distribution_print(lb_t * lb, map_t * map) {
 
   pe_info(lb->pe, "\nScalars - total mean variance min max\n");
   pe_info(lb->pe, "[rho] %14.2f %14.11f %14.7e %14.11f %14.11f\n",
-       stat_total[1], rhomean, fabs(rhovar), stat_total[3], stat_total[4]); 
+       stat_total[1], rhomean, fabs(rhovar), stat_total[3], stat_total[4]);
 
   return 0;
 }
@@ -193,22 +192,19 @@ int stats_distribution_momentum_serial(lb_t * lb, map_t * map, double g[3]) {
  *
  *  distribution_stats_momentum
  *
- *  Return global total momentum gm[3] with compenstated sum.
+ *  Return global total momentum gm[3] with compensated sum.
  *  This driver calls the kernel below.
  *
  *****************************************************************************/
 
-__host__ int distribution_stats_momentum(lb_t * lb, map_t * map, int root,
-					 MPI_Comm comm, double gm[3]) {
+int distribution_stats_momentum(lb_t * lb, map_t * map, int root,
+				MPI_Comm comm, double gm[3]) {
 
   assert(lb);
   assert(map);
 
-  int nlocal[3];
-  dim3 nblk, ntpb;
+  int nlocal[3] = {0};
   gm_util_t util = {0};
-  kernel_info_t limits;
-  kernel_ctxt_t * ctxt = NULL;
 
   /* Device memory for stats */
 
@@ -230,16 +226,20 @@ __host__ int distribution_stats_momentum(lb_t * lb, map_t * map, int root,
 
   cs_nlocal(lb->cs, nlocal);
 
-  limits.imin = 1; limits.imax = nlocal[X];
-  limits.jmin = 1; limits.jmax = nlocal[Y];
-  limits.kmin = 1; limits.kmax = nlocal[Z];
-  kernel_ctxt_create(lb->cs, 1, limits, &ctxt);
-  kernel_ctxt_launch_param(ctxt, &nblk, &ntpb);
+  {
+    dim3 nblk = {};
+    dim3 ntpb = {};
+    cs_limits_t lim = {1, nlocal[X], 1, nlocal[Y], 1, nlocal[Z]};
+    kernel_3d_t k3d = kernel_3d(lb->cs, lim);
 
-  tdpLaunchKernel(distribution_gm_kernel, nblk, ntpb, 0, 0,
-		  ctxt->target, lb->target, map->target, sum_d);
-  tdpAssert(tdpPeekAtLastError());
-  tdpAssert(tdpDeviceSynchronize());
+    kernel_3d_launch_param(k3d.kiterations, &nblk, &ntpb);
+
+    tdpLaunchKernel(distribution_gm_kernel, nblk, ntpb, 0, 0, k3d,
+		    lb->target, map->target, sum_d);
+
+    tdpAssert( tdpPeekAtLastError() );
+    tdpAssert( tdpDeviceSynchronize() );
+  }
 
   /* Copy back local result */
   tdpAssert(tdpMemcpy(sum, sum_d, 3*sizeof(kahan_t), tdpMemcpyDeviceToHost));
@@ -263,7 +263,6 @@ __host__ int distribution_stats_momentum(lb_t * lb, map_t * map, int root,
     MPI_Type_free(&dt);
   }
 
-  kernel_ctxt_free(ctxt);
   tdpFree(sum_d);
 
   return 0;
@@ -274,26 +273,22 @@ __host__ int distribution_stats_momentum(lb_t * lb, map_t * map, int root,
  *  distribution_gm_kernel
  *
  *
- *  Kernel with compenstated sum.
+ *  Kernel with compensated sum.
  *
  *****************************************************************************/
 
-__global__ void distribution_gm_kernel(kernel_ctxt_t * ktx, lb_t * lb,
+__global__ void distribution_gm_kernel(kernel_3d_t k3d, lb_t * lb,
 				       map_t * map, kahan_t * gm) {
-
-  assert(ktx);
   assert(lb);
   assert(map);
   assert(gm);
 
   int kindex;
   int tid;
-  int kiterations;
+
   __shared__ kahan_t gx[TARGET_MAX_THREADS_PER_BLOCK];
   __shared__ kahan_t gy[TARGET_MAX_THREADS_PER_BLOCK];
   __shared__ kahan_t gz[TARGET_MAX_THREADS_PER_BLOCK];
-
-  kiterations = kernel_iterations(ktx);
 
   tid = threadIdx.x;
 
@@ -304,17 +299,15 @@ __global__ void distribution_gm_kernel(kernel_ctxt_t * ktx, lb_t * lb,
   gz[tid].sum = 0.0;
   gz[tid].cs  = 0.0;
 
-  for_simt_parallel(kindex, kiterations, 1) {
+  for_simt_parallel(kindex, k3d.kiterations, 1) {
 
-    int ic, jc, kc;
-    int index;
     int status = 0;
 
-    ic = kernel_coords_ic(ktx, kindex);
-    jc = kernel_coords_jc(ktx, kindex);
-    kc = kernel_coords_kc(ktx, kindex);
+    int ic = kernel_3d_ic(&k3d, kindex);
+    int jc = kernel_3d_jc(&k3d, kindex);
+    int kc = kernel_3d_kc(&k3d, kindex);
 
-    index = kernel_coords_index(ktx, ic, jc, kc);
+    int index = kernel_3d_cs_index(&k3d, ic, jc, kc);
     map_status(map, index, &status);
 
     if (status == MAP_FLUID) {

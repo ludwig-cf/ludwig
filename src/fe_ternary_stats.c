@@ -8,7 +8,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2019-2021 The University of Edinburgh
+ *  (c) 2019-2024 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -29,11 +29,11 @@
 __host__ int fe_ternary_bulk(fe_ternary_t * fe, map_t * map, double * feb);
 __host__ int fe_ternary_surf(fe_ternary_t * fe, map_t * map, double * fes);
 
-__global__ void fe_ternary_bulk_kernel(kernel_ctxt_t * ktx,
+__global__ void fe_ternary_bulk_kernel(kernel_3d_t k3d,
 				       fe_ternary_t * fe, map_t * map,
 				       double febulk[1]);
 
-__global__ void fe_ternary_surf_kernel(kernel_ctxt_t * ktx,
+__global__ void fe_ternary_surf_kernel(kernel_3d_t k3d,
 				       fe_ternary_param_t param,
 				       field_t * field, map_t * map,
 				       double fes[3]);
@@ -113,40 +113,35 @@ __host__ int fe_ternary_stats_info(fe_ternary_t * fe, wall_t * wall,
 
 __host__ int fe_ternary_bulk(fe_ternary_t * fe, map_t * map, double * feb) {
 
-  int nlocal[3];
-  dim3 nblk, ntpb;
-  kernel_info_t limits;
-  kernel_ctxt_t * ctxt = NULL;
+  int nlocal[3] = {0};
 
   assert(fe);
   assert(map);
 
   cs_nlocal(fe->cs, nlocal);
 
-  limits.imin = 1; limits.imax = nlocal[X];
-  limits.jmin = 1; limits.jmax = nlocal[Y];
-  limits.kmin = 1; limits.kmax = nlocal[Z];
-
-  kernel_ctxt_create(fe->cs, NSIMDVL, limits, &ctxt);
-  kernel_ctxt_launch_param(ctxt, &nblk, &ntpb);
-
   {
+    dim3 nblk = {};
+    dim3 ntpb = {};
+    cs_limits_t lim = {1, nlocal[X], 1, nlocal[Y], 1, nlocal[Z]};
+    kernel_3d_t k3d = kernel_3d(fe->cs, lim);
+
     double * febd = NULL;
+
+    kernel_3d_launch_param(k3d.kiterations, &nblk, &ntpb);
 
     tdpAssert(tdpMalloc((void **) &febd, sizeof(double)));
     tdpAssert(tdpMemcpy(febd, feb, sizeof(double), tdpMemcpyHostToDevice));
 
     tdpLaunchKernel(fe_ternary_bulk_kernel, nblk, ntpb, 0, 0,
-		    ctxt->target, fe->target, map->target, febd);
-  
+		    k3d, fe->target, map->target, febd);
+
     tdpAssert(tdpPeekAtLastError());
     tdpAssert(tdpDeviceSynchronize());
 
     tdpAssert(tdpMemcpy(feb, febd, sizeof(double), tdpMemcpyDeviceToHost));
     tdpAssert(tdpFree(febd));
   }
-
-  kernel_ctxt_free(ctxt);
 
   return 0;
 }
@@ -156,9 +151,9 @@ __host__ int fe_ternary_bulk(fe_ternary_t * fe, map_t * map, double * feb) {
  *  fe_ternary_surf
  *
  *  Compute terms in the surface free energy.
- *  Thre terms are returned: fes[0] = h rho
- *                           fes[1] = h phi
- *                           fes[2] = h psi
+ *  Three terms are returned: fes[0] = h rho
+ *                            fes[1] = h phi
+ *                            fes[2] = h psi
  *
  *  Currently 2d only.
  *
@@ -167,39 +162,34 @@ __host__ int fe_ternary_bulk(fe_ternary_t * fe, map_t * map, double * feb) {
 __host__ int fe_ternary_surf(fe_ternary_t * fe, map_t * map, double * fes) {
 
   int nlocal[3];
-  dim3 nblk, ntpb;
   fe_ternary_param_t param;
-  kernel_info_t limits;
-  kernel_ctxt_t * ctxt = NULL;
 
   cs_nlocal(fe->cs, nlocal);
 
-  limits.imin = 1; limits.imax = nlocal[X];
-  limits.jmin = 1; limits.jmax = nlocal[Y];
-  limits.kmin = 1; limits.kmax = 1;
-
-  kernel_ctxt_create(fe->cs, NSIMDVL, limits, &ctxt);
-  kernel_ctxt_launch_param(ctxt, &nblk, &ntpb);
-
-  param = *fe->param;
-
   {
+    dim3 nblk = {};
+    dim3 ntpb = {};
+    cs_limits_t lim = {1, nlocal[X], 1, nlocal[Y], 1, 1};
+    kernel_3d_t k3d = kernel_3d(fe->cs, lim);
+
     double * fesd = NULL;
+
+    kernel_3d_launch_param(k3d.kiterations, &nblk, &ntpb);
+
+    param = *fe->param;
 
     tdpAssert(tdpMalloc((void **) &fesd, 3*sizeof(double)));
     tdpAssert(tdpMemcpy(fesd, fes, 3*sizeof(double), tdpMemcpyHostToDevice));
 
     tdpLaunchKernel(fe_ternary_surf_kernel, nblk, ntpb, 0, 0,
-		    ctxt->target, param, fe->phi->target, map->target, fesd);
-  
+		    k3d, param, fe->phi->target, map->target, fesd);
+
     tdpAssert(tdpPeekAtLastError());
     tdpAssert(tdpDeviceSynchronize());
 
     tdpAssert(tdpMemcpy(fes, fesd, 3*sizeof(double), tdpMemcpyDeviceToHost));
     tdpAssert(tdpFree(fesd));
   }
-
-  kernel_ctxt_free(ctxt);
 
   return 0;
 }
@@ -212,35 +202,30 @@ __host__ int fe_ternary_surf(fe_ternary_t * fe, map_t * map, double * fes) {
  *
  *****************************************************************************/
 
-__global__ void fe_ternary_bulk_kernel(kernel_ctxt_t * ktx, fe_ternary_t * fe,
+__global__ void fe_ternary_bulk_kernel(kernel_3d_t k3d, fe_ternary_t * fe,
 				       map_t * map, double febulk[1]) {
-  int kindex;
-  int kiterations;
+  int kindex = 0;
   int tid;
 
   double febl;
   __shared__ double fepart[TARGET_MAX_THREADS_PER_BLOCK];
 
-  assert(ktx);
   assert(fe);
   assert(febulk);
-
-  kiterations = kernel_iterations(ktx);
 
   tid = threadIdx.x;
   fepart[tid] = 0.0;
 
-  for_simt_parallel(kindex, kiterations, 1) {
+  for_simt_parallel(kindex, k3d.kiterations, 1) {
 
-    int ic, jc, kc, index;
     int status;
     double fed;
 
-    ic = kernel_coords_ic(ktx, kindex);
-    jc = kernel_coords_jc(ktx, kindex);
-    kc = kernel_coords_kc(ktx, kindex);
+    int ic = kernel_3d_ic(&k3d, kindex);
+    int jc = kernel_3d_jc(&k3d, kindex);
+    int kc = kernel_3d_kc(&k3d, kindex);
 
-    index = kernel_coords_index(ktx, ic, jc, kc);
+    int index = kernel_3d_cs_index(&k3d, ic, jc, kc);
     map_status(map, index, &status);
 
     if (status == MAP_FLUID) {
@@ -275,13 +260,12 @@ __global__ void fe_ternary_bulk_kernel(kernel_ctxt_t * ktx, fe_ternary_t * fe,
  *
  *****************************************************************************/
 
-__global__ void fe_ternary_surf_kernel(kernel_ctxt_t * ktx,
+__global__ void fe_ternary_surf_kernel(kernel_3d_t k3d,
 				       fe_ternary_param_t param,
 				       field_t * f,
 				       map_t * map,
 				       double fes[3]) {
   int kindex;
-  int kiterations;
   int tid;
   int bs_cv4[4][2] = {{-1,0}, {0,-1}, {0,1}, {1,0}};
 
@@ -292,29 +276,26 @@ __global__ void fe_ternary_surf_kernel(kernel_ctxt_t * ktx,
   __shared__ double fesphi[TARGET_MAX_THREADS_PER_BLOCK];
   __shared__ double fespsi[TARGET_MAX_THREADS_PER_BLOCK];
 
-  assert(ktx);
   assert(f);
-
-  kiterations = kernel_iterations(ktx);
 
   tid = threadIdx.x;
   fesrho[tid] = 0.0;
   fesphi[tid] = 0.0;
   fespsi[tid] = 0.0;
 
-  for_simt_parallel(kindex, kiterations, 1) {
+  for_simt_parallel(kindex, k3d.kiterations, 1) {
 
-    int ic, jc, kc, ic1, jc1;
+    int ic1, jc1;
     int index, inext, p;
     int status0, status1;
 
-    ic = kernel_coords_ic(ktx, kindex);
-    jc = kernel_coords_jc(ktx, kindex);
-    kc = 1;
+    int ic = kernel_3d_ic(&k3d, kindex);
+    int jc = kernel_3d_jc(&k3d, kindex);
+    int kc = 1;
 
-    index = kernel_coords_index(ktx, ic, jc, kc);
+    index = kernel_3d_cs_index(&k3d, ic, jc, kc);
     map_status(map, index, &status0);
-    
+
     if (status0 == MAP_FLUID) {
 
       /* Look at each neighbour; count only nearest neighbours */
@@ -323,7 +304,7 @@ __global__ void fe_ternary_surf_kernel(kernel_ctxt_t * ktx,
 	ic1 = ic + bs_cv4[p][X];
 	jc1 = jc + bs_cv4[p][Y];
 
-	inext = kernel_coords_index(ktx, ic1, jc1, kc);
+	inext = kernel_3d_cs_index(&k3d, ic1, jc1, kc);
 	map_status(map, inext, &status1);
 
         if (status1 == MAP_BOUNDARY) {
@@ -355,4 +336,3 @@ __global__ void fe_ternary_surf_kernel(kernel_ctxt_t * ktx,
 
   return;
 }
-

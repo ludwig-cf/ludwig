@@ -7,7 +7,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2011-2023 The University of Edinburgh
+ *  (c) 2011-2024 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -2215,18 +2215,17 @@ int io_replace_values(field_t * field, map_t * map, int map_id, double value) {
  *
  *****************************************************************************/
 
-__global__ void io_replace_values_kernel(kernel_ctxt_t * ktx,
+__global__ void io_replace_values_kernel(kernel_3d_t k3d,
 					 field_t * field,
 					 map_t * map,
 					 int status, double value) {
   int kindex = 0;
-  int kiterations = kernel_iterations(ktx);
 
-  for_simt_parallel(kindex, kiterations, 1) {
-    int ic = kernel_coords_ic(ktx, kindex);
-    int jc = kernel_coords_jc(ktx, kindex);
-    int kc = kernel_coords_kc(ktx, kindex);
-    int index = kernel_coords_index(ktx, ic, jc, kc);
+  for_simt_parallel(kindex, k3d.kiterations, 1) {
+    int ic = kernel_3d_ic(&k3d, kindex);
+    int jc = kernel_3d_jc(&k3d, kindex);
+    int kc = kernel_3d_kc(&k3d, kindex);
+    int index = kernel_3d_cs_index(&k3d, ic, jc, kc);
 
     if (map->status[addr_rank0(map->nsite, index)] == status) {
       for (int n = 0; n < field->nf; n++) {
@@ -2249,30 +2248,27 @@ __global__ void io_replace_values_kernel(kernel_ctxt_t * ktx,
 int io_replace_field_values(field_t * field, map_t * map, int status,
 			    double value) {
 
-  int nlocal[3];
-  dim3 nblk, ntpb;
-  kernel_info_t limits;
-  kernel_ctxt_t * ctxt = NULL;
+  int nlocal[3] = {0};
 
   assert(field);
   assert(map);
 
   cs_nlocal(field->cs, nlocal);
 
-  limits.imin = 1; limits.imax = nlocal[X];
-  limits.jmin = 1; limits.jmax = nlocal[Y];
-  limits.kmin = 1; limits.kmax = nlocal[Z];
+  {
+    dim3 nblk = {};
+    dim3 ntpb = {};
+    cs_limits_t lim = {1, nlocal[X], 1, nlocal[Y], 1, nlocal[Z]};
+    kernel_3d_t k3d = kernel_3d(field->cs, lim);
 
-  kernel_ctxt_create(field->cs, 1, limits, &ctxt);
-  kernel_ctxt_launch_param(ctxt, &nblk, &ntpb);
+    kernel_3d_launch_param(k3d.kiterations, &nblk, &ntpb);
 
-  tdpLaunchKernel(io_replace_values_kernel, nblk, ntpb, 0, 0,
-		  ctxt->target, field->target, map->target, status, value);
+    tdpLaunchKernel(io_replace_values_kernel, nblk, ntpb, 0, 0,
+		    k3d, field->target, map->target, status, value);
 
-  tdpAssert(tdpPeekAtLastError());
-  tdpAssert(tdpDeviceSynchronize());
-
-  kernel_ctxt_free(ctxt);
+    tdpAssert(tdpPeekAtLastError());
+    tdpAssert(tdpDeviceSynchronize());
+  }
 
   return 0;
 }
