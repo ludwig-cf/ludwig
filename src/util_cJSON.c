@@ -208,7 +208,7 @@ static unsigned char* cJSON_strdup(const unsigned char* string, const internal_h
     return copy;
 }
 #ifdef __HIPCC__
-/* FIXME: hipcc doesn't like this function, but we dont't need it ... */
+/* hipcc doesn't like this function, but we dont't need it ... */
 #else
 CJSON_PUBLIC(void) cJSON_InitHooks(cJSON_Hooks* hooks)
 {
