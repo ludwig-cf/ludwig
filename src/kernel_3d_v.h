@@ -25,14 +25,16 @@ struct kernel_3d_v_s {
   int nhalo;       /* physical system - number of halo sites */
   int nlocal[3];   /* local system extent */
 
-  int kindex0;     /* first index for kernel executtion */
+  int kindex0;     /* first index for kernel execution */
   int kiterations; /* Number of iterations required for kernel (1d) */
 
   int nklocal[3];  /* local kernel extent */
   cs_limits_t lim; /* coordinate limits of the kernel (inclusive) */
+  int nsimdvl;     /* Requested vector length */
 };
 
-kernel_3d_v_t kernel_3d_v(cs_t * cs, cs_limits_t lim);
+kernel_3d_v_t kernel_3d_v(cs_t * cs, cs_limits_t lim, int nsimdvl);
+int kernel_3d_v_exec_conf(const kernel_3d_v_t * k3v, dim3 * nblk, dim3 * ntpb);
 
 /*****************************************************************************
  *
@@ -46,10 +48,13 @@ kernel_3d_v_t kernel_3d_v(cs_t * cs, cs_limits_t lim);
  *
  *  kernel_3d_v_coords
  *
+ *  Note that the offset kindex0 gets added to the argument kindex here.
+ *  kindex if then the index from for_simt_parallel().
+ *
  *****************************************************************************/
 
 __host__ __device__ static inline void kernel_3d_v_coords(const kernel_3d_v_t * k3v,
-					    int kindex0,
+					    int kindex,
 					    int ic[NSIMDVL],
 					    int jc[NSIMDVL],
 					    int kc[NSIMDVL]) {
@@ -64,7 +69,7 @@ __host__ __device__ static inline void kernel_3d_v_coords(const kernel_3d_v_t * 
   xs = k3v->nklocal[Y]*k3v->nklocal[Z];
 
   for_simd_v(iv, NSIMDVL) {
-    index = k3v->kindex0 + kindex0 + iv;
+    index = k3v->kindex0 + kindex + iv;
 
     icv[iv] = index/xs;
     jcv[iv] = (index - icv[iv]*xs)/k3v->nklocal[Z];
@@ -144,11 +149,10 @@ __host__ __device__ static inline void kernel_3d_v_cs_index(const kernel_3d_v_t 
   xstr = ystr*(k3v->nlocal[Y] + 2*nh);
 
   for_simd_v(iv, NSIMDVL) {
-    index[iv] = xstr*(nh + icv[iv] - 1) + ystr*(nh + jcv[iv] - 1) + nh + kcv[iv] - 1; 
+    index[iv] = xstr*(nh + icv[iv] - 1) + ystr*(nh + jcv[iv] - 1) + nh + kcv[iv] - 1;
   }
 
   return;
 }
 
 #endif
-

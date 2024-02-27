@@ -46,12 +46,16 @@ __host__ int main(int argc, char ** argv) {
 
 __host__ int tests_create(int argc, char ** argv) {
 
+  /* Fundamentals: parallel environment, coordinate systems */
   test_pe_suite();
   test_coords_suite();
   test_cs_limits_suite();
+  test_le_suite();
 
-  test_kernel_suite();
+  /* Kernel helpers */
   test_kernel_3d_suite();
+  test_kernel_3d_v_suite();
+  test_kernel_suite();
 
   test_gradient_d3q27_suite();
   test_angle_cosine_suite();
@@ -99,7 +103,6 @@ __host__ int tests_create(int argc, char ** argv) {
   test_lb_bc_outflow_opts_suite();
   test_lb_bc_outflow_rhou_suite();
   test_lc_anchoring_suite();
-  test_le_suite();
   test_lubrication_suite();
   test_map_suite();
   test_map_init_suite();

@@ -16,10 +16,12 @@ int test_kernel_3d(pe_t * pe);
 int test_kernel_3d_ic(pe_t * pe);
 int test_kernel_3d_jc(pe_t * pe);
 int test_kernel_3d_kc(pe_t * pe);
+int test_kernel_3d_cs_index(pe_t * pe);
 
 __global__ void test_kernel_3d_ic_kernel(kernel_3d_t k3d);
 __global__ void test_kernel_3d_jc_kernel(kernel_3d_t k3d);
 __global__ void test_kernel_3d_kc_kernel(kernel_3d_t k3d);
+__global__ void test_kernel_3d_cs_index_kernel(kernel_3d_t k3d, cs_t * cs);
 
 /*****************************************************************************
  *
@@ -37,8 +39,9 @@ int test_kernel_3d_suite(void) {
   test_kernel_3d_ic(pe);
   test_kernel_3d_jc(pe);
   test_kernel_3d_kc(pe);
+  test_kernel_3d_cs_index(pe);
 
-  /* Hard limit for pass-by-value object */
+  /* Hard limit 64 bytes for pass-by-value object must not be exceeded */
   assert(sizeof(kernel_3d_t) <= 64);
 
   pe_info(pe, "%-9s %s\n", "PASS", __FILE__);
@@ -85,14 +88,14 @@ int test_kernel_3d(pe_t * pe) {
     assert(k3d.lim.jmin    == lim.jmin);
     assert(k3d.lim.jmax    == lim.jmax);
     assert(k3d.lim.kmin    == lim.kmin);
-    assert(k3d.lim.kmax    == lim.kmax); 
+    assert(k3d.lim.kmax    == lim.kmax);
   }
 
   /* kernel halo = (1, 1, 0) */
   {
     cs_limits_t lim = {0, nlocal[X]+1, 0, nlocal[Y]+1, 1, nlocal[Z]};
     kernel_3d_t k3d = kernel_3d(cs, lim);
-    assert(k3d.kindex0 == cs_index(cs, 0, 0, 1));
+    assert(k3d.kindex0     == cs_index(cs, 0, 0, 1));
     assert(k3d.kiterations == (nlocal[X] + 2)*(nlocal[Y] + 2)*nlocal[Z]);
     assert(k3d.nklocal[X]  == nlocal[X] + 2);
     assert(k3d.nklocal[Y]  == nlocal[Y] + 2);
@@ -127,7 +130,6 @@ int test_kernel_3d(pe_t * pe) {
 
   return ifail;
 }
-
 
 /*****************************************************************************
  *
@@ -166,7 +168,6 @@ int test_kernel_3d_ic(pe_t * pe) {
   return ifail;
 }
 
-
 /*****************************************************************************
  *
  *  test_kernel_3d_jc
@@ -204,7 +205,6 @@ int test_kernel_3d_jc(pe_t * pe) {
   return ifail;
 }
 
-
 /*****************************************************************************
  *
  *  test_kernel_3d_kc
@@ -238,10 +238,47 @@ int test_kernel_3d_kc(pe_t * pe) {
   }
 
   cs_free(cs);
-  
+
   return ifail;
 }
 
+/*****************************************************************************
+ *
+ *  test_kernel_3d_cs_index
+ *
+ *****************************************************************************/
+
+int test_kernel_3d_cs_index(pe_t * pe) {
+
+  int ifail = 0;
+  int nhalo = 2;
+  int ntotal[3] = {64, 32, 16};
+  int nlocal[3] = {0};
+  cs_t * cs = NULL;
+
+  cs_create(pe, &cs);
+  cs_ntotal_set(cs, ntotal);
+  cs_nhalo_set(cs, nhalo);
+  cs_init(cs);
+  cs_nlocal(cs, nlocal);
+
+  {
+    dim3 nblk = {};
+    dim3 ntpb = {};
+    cs_limits_t lim = {-1, nlocal[X]+2, -1, nlocal[Y]+2, -1, nlocal[Z]+2};
+    kernel_3d_t k3d = kernel_3d(cs, lim);
+
+    kernel_3d_launch_param(k3d.kiterations, &nblk, &ntpb);
+
+    tdpLaunchKernel(test_kernel_3d_cs_index_kernel, nblk, ntpb, 0, 0,
+		    k3d, cs->target);
+
+    tdpAssert( tdpPeekAtLastError() );
+    tdpAssert( tdpDeviceSynchronize() );
+  }
+
+  return ifail;
+}
 
 /*****************************************************************************
  *
@@ -292,6 +329,30 @@ __global__ void test_kernel_3d_kc_kernel(kernel_3d_t k3d) {
   for_simt_parallel(kindex, k3d.kiterations, 1) {
     int kc = kernel_3d_kc(&k3d, kindex);
     assert(k3d.lim.kmin <= kc && kc <= k3d.lim.kmax);
+  }
+
+  return;
+}
+
+/*****************************************************************************
+ *
+ *  test_kernel_3d_cs_index_kernel
+ *
+ *****************************************************************************/
+
+__global__ void test_kernel_3d_cs_index_kernel(kernel_3d_t k3d, cs_t * cs) {
+
+  int kindex = 0;
+
+  for_simt_parallel(kindex, k3d.kiterations, 1) {
+    int ic = kernel_3d_ic(&k3d, kindex);
+    int jc = kernel_3d_jc(&k3d, kindex);
+    int kc = kernel_3d_kc(&k3d, kindex);
+    int i0 = kernel_3d_cs_index(&k3d, ic, jc, kc);
+    {
+      int index = cs_index(cs, ic, jc, kc);
+      assert(index == i0);
+    }
   }
 
   return;

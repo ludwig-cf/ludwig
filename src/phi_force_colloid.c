@@ -284,7 +284,7 @@ __host__ int pth_force_fluid_driver(pth_t * pth,  hydro_t * hydro) {
     dim3 nblk = {};
     dim3 ntpb = {};
     cs_limits_t lim = {1, nlocal[X], 1, nlocal[Y], 1, nlocal[Z]};
-    kernel_3d_v_t k3v = kernel_3d_v(pth->cs, lim);
+    kernel_3d_v_t k3v = kernel_3d_v(pth->cs, lim, NSIMDVL);
 
     kernel_3d_launch_param(k3v.kiterations, &nblk, &ntpb);
 

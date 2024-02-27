@@ -186,7 +186,7 @@ __host__ int lb_collision_mrt(lb_t * lb, hydro_t * hydro, map_t * map,
     dim3 nblk = {};
     dim3 ntpb = {};
     cs_limits_t lim = {1, nlocal[X], 1, nlocal[Y], 1, nlocal[Z]};
-    kernel_3d_v_t k3v = kernel_3d_v(lb->cs, lim);
+    kernel_3d_v_t k3v = kernel_3d_v(lb->cs, lim, NSIMDVL);
 
     kernel_3d_launch_param(k3v.kiterations, &nblk, &ntpb);
 
@@ -618,7 +618,7 @@ __host__ int lb_collision_binary(lb_t * lb, hydro_t * hydro, noise_t * noise,
     dim3 nblk = {};
     dim3 ntpb = {};
     cs_limits_t lim = {1, nlocal[X], 1, nlocal[Y], 1, nlocal[Z]};
-    kernel_3d_v_t k3v = kernel_3d_v(lb->cs, lim);
+    kernel_3d_v_t k3v = kernel_3d_v(lb->cs, lim, NSIMDVL);
 
     kernel_3d_launch_param(k3v.kiterations, &nblk, &ntpb);
 

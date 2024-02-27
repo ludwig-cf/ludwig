@@ -25,7 +25,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2010-2016 The University of Edinburgh
+ *  (c) 2010-2024 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -202,7 +202,7 @@ __host__ int grad_3d_7pt_fluid_operator(cs_t * cs, lees_edw_t * le,
       .jmin = 1 - nextra, .jmax = nlocal[Y] + nextra,
       .kmin = 1 - nextra, .kmax = nlocal[Z] + nextra
     };
-    kernel_3d_v_t k3v = kernel_3d_v(cs, lim);
+    kernel_3d_v_t k3v = kernel_3d_v(cs, lim, NSIMDVL);
 
     kernel_3d_launch_param(k3v.kiterations, &nblk, &ntpb);
 
@@ -471,7 +471,7 @@ __host__ int grad_3d_7pt_dab_compute(cs_t * cs, lees_edw_t * le,
       .jmin = 1 - nextra, .jmax = nlocal[Y] + nextra,
       .kmin = 1 - nextra, .kmax = nlocal[Z] + nextra
     };
-    kernel_3d_v_t k3v = kernel_3d_v(cs, lim);
+    kernel_3d_v_t k3v = kernel_3d_v(cs, lim, NSIMDVL);
 
     kernel_3d_launch_param(k3v.kiterations, &nblk, &ntpb);
 

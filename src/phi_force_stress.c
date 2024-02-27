@@ -189,7 +189,7 @@ __host__ int pth_stress_compute(pth_t * pth, fe_t * fe) {
       .jmin = 1 - nextra, .jmax = nlocal[Y] + nextra,
       .kmin = 1 - nextra, .kmax = nlocal[Z] + nextra
     };
-    kernel_3d_v_t k3v = kernel_3d_v(pth->cs, lim);
+    kernel_3d_v_t k3v = kernel_3d_v(pth->cs, lim, NSIMDVL);
 
     kernel_3d_launch_param(k3v.kiterations, &nblk, &ntpb);
 

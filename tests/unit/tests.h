@@ -80,6 +80,7 @@ int test_lc_anchoring_suite(void);
 int test_le_suite(void);
 int test_kernel_suite(void);
 int test_kernel_3d_suite(void);
+int test_kernel_3d_v_suite(void);
 int test_lubrication_suite(void);
 int test_map_suite(void);
 int test_map_init_suite(void);

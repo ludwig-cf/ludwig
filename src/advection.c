@@ -637,7 +637,7 @@ __host__ int advection_le_2nd(advflux_t * flux, hydro_t * hydro,
     dim3 nblk = {};
     dim3 ntpb = {};
     cs_limits_t lim = {1, nlocal[X], 0, nlocal[Y], 0, nlocal[Z]};
-    kernel_3d_v_t k3v = kernel_3d_v(flux->cs, lim);
+    kernel_3d_v_t k3v = kernel_3d_v(flux->cs, lim, NSIMDVL);
 
     kernel_3d_launch_param(k3v.kiterations, &nblk, &ntpb);
 
@@ -901,7 +901,7 @@ __host__ int advection_le_3rd(advflux_t * flux, hydro_t * hydro,
     dim3 nblk = {};
     dim3 ntpb = {};
     cs_limits_t lim = {1, nlocal[X], 0, nlocal[Y], 0, nlocal[Z]};
-    kernel_3d_v_t k3v = kernel_3d_v(flux->cs, lim);
+    kernel_3d_v_t k3v = kernel_3d_v(flux->cs, lim, NSIMDVL);
 
     kernel_3d_launch_param(k3v.kiterations, &nblk, &ntpb);
     lees_edw_target(flux->le, &letarget);
@@ -1467,7 +1467,7 @@ __host__ int advflux_cs_compute(advflux_t * flux, hydro_t * h, field_t * f) {
       {
 	dim3 nblk = {};
 	dim3 ntpb = {};
-	kernel_3d_v_t k3v = kernel_3d_v(flux->cs, lim);
+	kernel_3d_v_t k3v = kernel_3d_v(flux->cs, lim, NSIMDVL);
 
 	kernel_3d_launch_param(k3v.kiterations, &nblk, &ntpb);
 

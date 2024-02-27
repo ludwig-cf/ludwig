@@ -52,7 +52,7 @@ int advection_bcs_no_normal_flux(advflux_t * flux, map_t * map) {
     dim3 nblk = {};
     dim3 ntpb = {};
     cs_limits_t lim = {1, nlocal[X], 0, nlocal[Y], 0, nlocal[Z]};
-    kernel_3d_v_t k3v = kernel_3d_v(flux->cs, lim);
+    kernel_3d_v_t k3v = kernel_3d_v(flux->cs, lim, NSIMDVL);
 
     kernel_3d_launch_param(k3v.kiterations, &nblk, &ntpb);
 
