@@ -25,7 +25,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2010-2016 The University of Edinburgh
+ *  (c) 2010-2024 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -56,15 +56,13 @@ __host__ int grad_3d_7pt_dab_compute(cs_t * cs, lees_edw_t * le,
 				     int nextra);
 
 
-__global__
-void grad_3d_7pt_fluid_kernel_v(kernel_ctxt_t * ktx, int nop, int ys,
-				lees_edw_t * le,
-				field_t * field, 
-				field_grad_t * fgrad);
-__global__
-void grad_3d_7pt_dab_kernel_v(kernel_ctxt_t * ktx, lees_edw_t * le,
-			      field_grad_t * df, int nsites,
-			      int ys);
+__global__ void grad_3d_7pt_fluid_kernel_v(kernel_3d_v_t k3v, int nop, int ys,
+					   lees_edw_t * le,
+					   field_t * field,
+					   field_grad_t * fgrad);
+__global__ void grad_3d_7pt_dab_kernel_v(kernel_3d_v_t k3v, lees_edw_t * le,
+					 field_grad_t * df, int nsites,
+					 int ys);
 
 /*****************************************************************************
  *
@@ -162,7 +160,7 @@ __host__ int grad_3d_7pt_fluid_dab(field_grad_t * fgrad) {
   assert(fgrad->field);
   assert(fgrad->field->le);
   assert(fgrad->field->nf == 1); /* Scalars only */
-  
+
   cs = fgrad->field->cs;
   le = fgrad->field->le;
   lees_edw_nhalo(le, &nhalo);
@@ -188,10 +186,7 @@ __host__ int grad_3d_7pt_fluid_operator(cs_t * cs, lees_edw_t * le,
 
   int nlocal[3];
   int xs, ys, zs;
-  dim3 nblk, ntpb;
   lees_edw_t * letarget = NULL;
-  kernel_info_t limits;
-  kernel_ctxt_t * ctxt = NULL;
 
   assert(le);
 
@@ -199,24 +194,28 @@ __host__ int grad_3d_7pt_fluid_operator(cs_t * cs, lees_edw_t * le,
   lees_edw_strides(le, &xs, &ys, &zs);
   lees_edw_target(le, &letarget);
 
-  limits.imin = 1 - nextra; limits.imax = nlocal[X] + nextra;
-  limits.jmin = 1 - nextra; limits.jmax = nlocal[Y] + nextra;
-  limits.kmin = 1 - nextra; limits.kmax = nlocal[Z] + nextra;
+  {
+    dim3 nblk = {};
+    dim3 ntpb = {};
+    cs_limits_t lim = {
+      .imin = 1 - nextra, .imax = nlocal[X] + nextra,
+      .jmin = 1 - nextra, .jmax = nlocal[Y] + nextra,
+      .kmin = 1 - nextra, .kmax = nlocal[Z] + nextra
+    };
+    kernel_3d_v_t k3v = kernel_3d_v(cs, lim, NSIMDVL);
 
-  kernel_ctxt_create(cs, NSIMDVL, limits, &ctxt);
-  kernel_ctxt_launch_param(ctxt, &nblk, &ntpb);
+    kernel_3d_launch_param(k3v.kiterations, &nblk, &ntpb);
 
-  TIMER_start(TIMER_PHI_GRAD_KERNEL);
+    TIMER_start(TIMER_PHI_GRAD_KERNEL);
 
-  tdpLaunchKernel(grad_3d_7pt_fluid_kernel_v, nblk, ntpb, 0, 0,
-		  ctxt->target,
-		  fg->field->nf, ys, letarget, fg->field->target, fg->target);
-  tdpAssert(tdpPeekAtLastError());
-  tdpAssert(tdpDeviceSynchronize());
+    tdpLaunchKernel(grad_3d_7pt_fluid_kernel_v, nblk, ntpb, 0, 0,
+		    k3v, fg->field->nf, ys, letarget, fg->field->target,
+		    fg->target);
+    tdpAssert(tdpPeekAtLastError());
+    tdpAssert(tdpDeviceSynchronize());
 
-  TIMER_stop(TIMER_PHI_GRAD_KERNEL);
-
-  kernel_ctxt_free(ctxt);
+    TIMER_stop(TIMER_PHI_GRAD_KERNEL);
+  }
 
   return 0;
 }
@@ -229,25 +228,18 @@ __host__ int grad_3d_7pt_fluid_operator(cs_t * cs, lees_edw_t * le,
  *
  *****************************************************************************/
 
-__global__
-void grad_3d_7pt_fluid_kernel_v(kernel_ctxt_t * ktx, int nf, int ys,
-				lees_edw_t * le,
-				field_t * field, 
-				field_grad_t * fgrad) {
+__global__ void grad_3d_7pt_fluid_kernel_v(kernel_3d_v_t k3v, int nf, int ys,
+					   lees_edw_t * le,
+					   field_t * field,
+					   field_grad_t * fgrad) {
+  int kindex = 0;
 
-  int kindex;
-  int kiterations;
-
-  assert(ktx);
   assert(le);
   assert(field);
   assert(fgrad);
 
-  kiterations = kernel_vector_iterations(ktx);
+  for_simt_parallel(kindex, k3v.kiterations, NSIMDVL) {
 
-  for_simt_parallel(kindex, kiterations, NSIMDVL) {
-
-    int n;
     int iv;
     int index;
 
@@ -258,34 +250,34 @@ void grad_3d_7pt_fluid_kernel_v(kernel_ctxt_t * ktx, int nf, int ys,
     int indexp1[NSIMDVL];
     int maskv[NSIMDVL];
 
-    kernel_coords_v(ktx, kindex, ic, jc, kc);
-    index = kernel_baseindex(ktx, kindex);
-    kernel_mask_v(ktx, ic, jc, kc, maskv);
+    kernel_3d_v_coords(&k3v, kindex, ic, jc, kc);
+    index = k3v.kindex0 + kindex;
+    kernel_3d_v_mask(&k3v, ic, jc, kc, maskv);
 
     for_simd_v(iv, NSIMDVL) im1[iv] = lees_edw_ic_to_buff(le, ic[iv], -1);
     for_simd_v(iv, NSIMDVL) ip1[iv] = lees_edw_ic_to_buff(le, ic[iv], +1);
 
-    kernel_coords_index_v(ktx, im1, jc, kc, indexm1);
-    kernel_coords_index_v(ktx, ip1, jc, kc, indexp1);
+    kernel_3d_v_cs_index(&k3v, im1, jc, kc, indexm1);
+    kernel_3d_v_cs_index(&k3v, ip1, jc, kc, indexp1);
 
-    for (n = 0; n < nf; n++) {
-      for_simd_v(iv, NSIMDVL) { 
+    for (int n = 0; n < nf; n++) {
+      for_simd_v(iv, NSIMDVL) {
 	if (maskv[iv]) {
 	  fgrad->grad[addr_rank2(fgrad->nsite,nf,3,index+iv,n,X)] = 0.5*
 	    (field->data[addr_rank1(field->nsites,nf,indexp1[iv],n)] -
-	     field->data[addr_rank1(field->nsites,nf,indexm1[iv],n)]); 
+	     field->data[addr_rank1(field->nsites,nf,indexm1[iv],n)]);
 	}
       }
-      
-      for_simd_v(iv, NSIMDVL) { 
+
+      for_simd_v(iv, NSIMDVL) {
 	if (maskv[iv]) {
 	  fgrad->grad[addr_rank2(fgrad->nsite,nf,3,index+iv,n,Y)] = 0.5*
 	    (field->data[addr_rank1(field->nsites,nf,index+iv+ys,n)] -
 	     field->data[addr_rank1(field->nsites,nf,index+iv-ys,n)]);
 	}
       }
-      
-      for_simd_v(iv, NSIMDVL) { 
+
+      for_simd_v(iv, NSIMDVL) {
 	if (maskv[iv]) {
 	  fgrad->grad[addr_rank2(fgrad->nsite,nf,3,index+iv,n,Z)] = 0.5*
 	    (field->data[addr_rank1(field->nsites,nf,index+iv+1,n)] -
@@ -293,7 +285,7 @@ void grad_3d_7pt_fluid_kernel_v(kernel_ctxt_t * ktx, int nf, int ys,
 	}
       }
 
-      for_simd_v(iv, NSIMDVL) { 
+      for_simd_v(iv, NSIMDVL) {
 	if (maskv[iv]) {
 	  fgrad->delsq[addr_rank1(fgrad->nsite,nf,index+iv,n)]
 	    = field->data[addr_rank1(field->nsites,nf,indexp1[iv],n)]
@@ -461,10 +453,7 @@ __host__ int grad_3d_7pt_dab_compute(cs_t * cs, lees_edw_t * le,
 				     int nextra) {
   int nlocal[3];
   int xs, ys, zs;
-  dim3 nblk, ntpb;
   lees_edw_t * letarget = NULL;
-  kernel_info_t limits;
-  kernel_ctxt_t * ctxt = NULL;
 
   assert(cs);
   assert(le);
@@ -474,20 +463,24 @@ __host__ int grad_3d_7pt_dab_compute(cs_t * cs, lees_edw_t * le,
   lees_edw_strides(le, &xs, &ys, &zs);
   lees_edw_target(le, &letarget);
 
-  limits.imin = 1 - nextra; limits.imax = nlocal[X] + nextra;
-  limits.jmin = 1 - nextra; limits.jmax = nlocal[Y] + nextra;
-  limits.kmin = 1 - nextra; limits.kmax = nlocal[Z] + nextra;
+  {
+    dim3 nblk = {};
+    dim3 ntpb = {};
+    cs_limits_t lim = {
+      .imin = 1 - nextra, .imax = nlocal[X] + nextra,
+      .jmin = 1 - nextra, .jmax = nlocal[Y] + nextra,
+      .kmin = 1 - nextra, .kmax = nlocal[Z] + nextra
+    };
+    kernel_3d_v_t k3v = kernel_3d_v(cs, lim, NSIMDVL);
 
-  kernel_ctxt_create(cs, NSIMDVL, limits, &ctxt);
-  kernel_ctxt_launch_param(ctxt, &nblk, &ntpb);
+    kernel_3d_launch_param(k3v.kiterations, &nblk, &ntpb);
 
-  tdpLaunchKernel(grad_3d_7pt_dab_kernel_v, nblk, ntpb, 0, 0,
-		  ctxt->target, letarget, df->target, df->field->nsites, ys);
+    tdpLaunchKernel(grad_3d_7pt_dab_kernel_v, nblk, ntpb, 0, 0,
+		    k3v, letarget, df->target, df->field->nsites, ys);
 
-  tdpAssert(tdpPeekAtLastError());
-  tdpAssert(tdpDeviceSynchronize());
-
-  kernel_ctxt_free(ctxt);
+    tdpAssert(tdpPeekAtLastError());
+    tdpAssert(tdpDeviceSynchronize());
+  }
 
   return 0;
 }
@@ -500,25 +493,21 @@ __host__ int grad_3d_7pt_dab_compute(cs_t * cs, lees_edw_t * le,
  *
  *****************************************************************************/
 
-__global__ void grad_3d_7pt_dab_kernel_v(kernel_ctxt_t * ktx, lees_edw_t * le,
+__global__ void grad_3d_7pt_dab_kernel_v(kernel_3d_v_t k3v, lees_edw_t * le,
 					 field_grad_t * df, int nsites,
 					 int ys) {
   int kindex;
-  int kiterations;
   int index;
   double * __restrict__ dab;
   double * __restrict__ field;
 
-  assert(ktx);
   assert(le);
   assert(df);
 
   field = df->field->data;
   dab = df->d_ab;
 
-  kiterations = kernel_vector_iterations(ktx);
-
-  for_simt_parallel(kindex, kiterations, NSIMDVL) {
+  for_simt_parallel(kindex, k3v.kiterations, NSIMDVL) {
 
     int iv;
     int ic[NSIMDVL], jc[NSIMDVL], kc[NSIMDVL];
@@ -528,9 +517,9 @@ __global__ void grad_3d_7pt_dab_kernel_v(kernel_ctxt_t * ktx, lees_edw_t * le,
     int indexp1[NSIMDVL];
     int maskv[NSIMDVL];
 
-    kernel_coords_v(ktx, kindex, ic, jc, kc);
-    index = kernel_baseindex(ktx, kindex);
-    kernel_mask_v(ktx, ic, jc, kc, maskv);
+    kernel_3d_v_coords(&k3v, kindex, ic, jc, kc);
+    index = k3v.kindex0 + kindex;
+    kernel_3d_v_mask(&k3v, ic, jc, kc, maskv);
 
     for_simd_v(iv, NSIMDVL) {
       im1[iv] = lees_edw_ic_to_buff(le, ic[iv], -1);
@@ -539,10 +528,10 @@ __global__ void grad_3d_7pt_dab_kernel_v(kernel_ctxt_t * ktx, lees_edw_t * le,
       ip1[iv] = lees_edw_ic_to_buff(le, ic[iv], +1);
     }
 
-    kernel_coords_index_v(ktx, im1, jc, kc, indexm1);
-    kernel_coords_index_v(ktx, ip1, jc, kc, indexp1);
+    kernel_3d_v_cs_index(&k3v, im1, jc, kc, indexm1);
+    kernel_3d_v_cs_index(&k3v, ip1, jc, kc, indexp1);
 
-    for_simd_v(iv, NSIMDVL) { 
+    for_simd_v(iv, NSIMDVL) {
       if (maskv[iv]) {
 	dab[addr_rank1(nsites, NSYMM, index+iv, XX)] =
 	  (+ 1.0*field[addr_rank0(nsites, indexp1[iv])]

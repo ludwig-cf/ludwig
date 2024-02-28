@@ -46,14 +46,16 @@ struct sum_s {
 
 int stats_field_q_reduce(field_t * field, map_t * map, int nxx, sum_t * sum,
 			 int rank, MPI_Comm comm);
-__global__ void stats_field_q_kernel(kernel_ctxt_t * ktx, field_t * q,
-				     map_t * map, int nxx, sum_t * sum);
 
 int stats_field_reduce(field_t * obj, map_t * map, double * fmin,
 		       double * fmax, double * fsum, double * fvar,
 		       double * fvol, int rank, MPI_Comm comm);
 int stats_field_local(field_t * obj, map_t * map, double * fmin, double * fmax,
 		      double * fsum, double * fvar, double * fvol);
+
+
+__global__ void stats_field_q_kernel(kernel_3d_t k3d, field_t * q,
+				     map_t * map, int nxx, sum_t * sum);
 
 /*****************************************************************************
  *
@@ -159,20 +161,18 @@ int stats_field_q_reduce(field_t * field, map_t * map, int nxx, sum_t * sum,
   tdpAssert(tdpMemcpy(dsum, &sum_local, sizeof(sum_t), tdpMemcpyHostToDevice));
 
   {
-    kernel_info_t lim = {1, nlocal[X], 1, nlocal[Y], 1, nlocal[Z]};
-    kernel_ctxt_t * ctxt = NULL;
-    dim3 nblk, ntpb;
+    dim3 nblk = {};
+    dim3 ntpb = {};
+    cs_limits_t lim = {1, nlocal[X], 1, nlocal[Y], 1, nlocal[Z]};
+    kernel_3d_t k3d = kernel_3d(field->cs, lim);
 
-    kernel_ctxt_create(field->cs, 1, lim, &ctxt);
-    kernel_ctxt_launch_param(ctxt, &nblk, &ntpb);
+    kernel_3d_launch_param(k3d.kiterations, &nblk, &ntpb);
 
-    tdpLaunchKernel(stats_field_q_kernel, nblk, ntpb, 0, 0,
-		    ctxt->target, field->target, map->target, nxx, dsum);
+    tdpLaunchKernel(stats_field_q_kernel, nblk, ntpb, 0, 0, k3d,
+		    field->target, map->target, nxx, dsum);
 
-    tdpAssert(tdpPeekAtLastError());
-    tdpAssert(tdpDeviceSynchronize());
-
-    kernel_ctxt_free(ctxt);
+    tdpAssert( tdpPeekAtLastError() );
+    tdpAssert( tdpDeviceSynchronize() );
   }
 
   tdpAssert(tdpMemcpy(&sum_local, dsum, sizeof(sum_t), tdpMemcpyDeviceToHost));
@@ -208,28 +208,25 @@ int stats_field_q_reduce(field_t * field, map_t * map, int nxx, sum_t * sum,
  *
  *****************************************************************************/
 
-__global__ void stats_field_q_kernel(kernel_ctxt_t * ktx, field_t * field,
+__global__ void stats_field_q_kernel(kernel_3d_t k3d, field_t * field,
 				     map_t * map, int nxx, sum_t * sum) {
   int kindex = 0;
-  int kiterations = 0;
+  int tid = threadIdx.x;
+  __shared__ sum_t lsum[TARGET_MAX_THREADS_PER_BLOCK];
 
   assert(field);
   assert(map);
 
-  __shared__ sum_t lsum[TARGET_MAX_THREADS_PER_BLOCK];
-  int tid = threadIdx.x;
-
   /* Local sum */
 
   lsum[tid] = sum_zero();
-  kiterations = kernel_iterations(ktx);
 
-  for_simt_parallel(kindex, kiterations, 1) {
+  for_simt_parallel(kindex, k3d.kiterations, 1) {
 
-    int ic = kernel_coords_ic(ktx, kindex);
-    int jc = kernel_coords_jc(ktx, kindex);
-    int kc = kernel_coords_kc(ktx, kindex);
-    int index = kernel_coords_index(ktx, ic, jc, kc);
+    int ic = kernel_3d_ic(&k3d, kindex);
+    int jc = kernel_3d_jc(&k3d, kindex);
+    int kc = kernel_3d_kc(&k3d, kindex);
+    int index = kernel_3d_cs_index(&k3d, ic, jc, kc);
     int status = MAP_BOUNDARY;
 
     map_status(map, index, &status);

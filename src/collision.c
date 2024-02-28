@@ -13,7 +13,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2011-2022 The University of Edinburgh
+ *  (c) 2011-2024 The University of Edinburgh
  *
  *  Contributing authors:
  *    Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -38,12 +38,12 @@
 
 #include "symmetric.h"
 
-__global__
-void lb_collision_mrt1(kernel_ctxt_t * ktx, lb_t * lb, hydro_t * hydro,
-		       map_t * map, noise_t * noise, fe_t * fe);
-__global__
-void lb_collision_mrt2(kernel_ctxt_t * ktx, lb_t * lb, hydro_t * hydro,
-		       fe_symm_t * fe, noise_t * noise);
+__global__ void lb_collision_mrt1(kernel_3d_v_t k3v, lb_t * lb,
+				  hydro_t * hydro,
+				  map_t * map, noise_t * noise, fe_t * fe);
+__global__ void lb_collision_mrt2(kernel_3d_v_t k3d, lb_t * lb,
+				  hydro_t * hydro,
+				  fe_symm_t * fe, noise_t * noise);
 
 int lb_collision_mrt(lb_t * lb, hydro_t * hydro, map_t * map,
 		     noise_t * noise, fe_t * fe, visc_t * visc);
@@ -137,7 +137,7 @@ __host__ __device__ int lb_relaxation_time_ghosts_v(lb_t * lb,
  *  Driver routine for the collision stage.
  *
  *  We allow hydro to be NULL, in which case there is no hydrodynamics!
- * 
+ *
  *****************************************************************************/
 
 __host__
@@ -172,11 +172,8 @@ int lb_collide(lb_t * lb, hydro_t * hydro, map_t * map, noise_t * noise,
 
 __host__ int lb_collision_mrt(lb_t * lb, hydro_t * hydro, map_t * map,
 			      noise_t * noise, fe_t * fe, visc_t * visc) {
-  int nlocal[3];
-  dim3 nblk, ntpb;
+  int nlocal[3] = {0};
   fe_t * fetarget = NULL;
-  kernel_info_t limits;
-  kernel_ctxt_t * ctxt = NULL;
 
   assert(lb);
   assert(hydro);
@@ -185,28 +182,28 @@ __host__ int lb_collision_mrt(lb_t * lb, hydro_t * hydro, map_t * map,
   cs_nlocal(lb->cs, nlocal);
 
   /* Local extent */
-  limits.imin = 1; limits.imax = nlocal[X];
-  limits.jmin = 1; limits.jmax = nlocal[Y];
-  limits.kmin = 1; limits.kmax = nlocal[Z];
+  {
+    dim3 nblk = {};
+    dim3 ntpb = {};
+    cs_limits_t lim = {1, nlocal[X], 1, nlocal[Y], 1, nlocal[Z]};
+    kernel_3d_v_t k3v = kernel_3d_v(lb->cs, lim, NSIMDVL);
 
-  kernel_ctxt_create(lb->cs, NSIMDVL, limits, &ctxt);
-  kernel_ctxt_launch_param(ctxt, &nblk, &ntpb);
+    kernel_3d_launch_param(k3v.kiterations, &nblk, &ntpb);
 
-  lb_collision_parameters_commit(lb, visc);
-  if (fe) fe->func->target(fe, &fetarget);
+    lb_collision_parameters_commit(lb, visc);
+    if (fe) fe->func->target(fe, &fetarget);
 
-  TIMER_start(TIMER_COLLIDE_KERNEL);
+    TIMER_start(TIMER_COLLIDE_KERNEL);
 
-  tdpLaunchKernel(lb_collision_mrt1, nblk, ntpb, 0, 0, ctxt->target,
-		  lb->target, hydro->target, map->target, noise->target,
-		  fetarget);
+    tdpLaunchKernel(lb_collision_mrt1, nblk, ntpb, 0, 0,
+		    k3v, lb->target, hydro->target, map->target, noise->target,
+		    fetarget);
 
-  tdpAssert(tdpPeekAtLastError());
-  tdpAssert(tdpDeviceSynchronize());
+    tdpAssert(tdpPeekAtLastError());
+    tdpAssert(tdpDeviceSynchronize());
 
-  TIMER_stop(TIMER_COLLIDE_KERNEL);
-
-  kernel_ctxt_free(ctxt);
+    TIMER_stop(TIMER_COLLIDE_KERNEL);
+  }
 
   return 0;
 }
@@ -220,17 +217,13 @@ __host__ int lb_collision_mrt(lb_t * lb, hydro_t * hydro, map_t * map,
  *
  *****************************************************************************/
 
-__global__
-void lb_collision_mrt1(kernel_ctxt_t * ktx, lb_t * lb, hydro_t * hydro,
-		       map_t * map, noise_t * noise, fe_t * fe) {
-  int kindex;
-  int kiter;
+__global__ void lb_collision_mrt1(kernel_3d_v_t k3v, lb_t * lb,
+				  hydro_t * hydro,
+				  map_t * map, noise_t * noise, fe_t * fe) {
+  int kindex = 0;
 
-  kiter = kernel_vector_iterations(ktx);
-
-  for_simt_parallel(kindex, kiter, NSIMDVL) {
-    int index0;
-    index0 = kernel_baseindex(ktx, kindex);
+  for_simt_parallel(kindex, k3v.kiterations, NSIMDVL) {
+    int index0 = k3v.kindex0 + kindex;
     lb_collision_mrt1_site(lb, hydro, map, noise, fe, index0);
   }
 
@@ -259,7 +252,7 @@ void lb_collision_mrt1(kernel_ctxt_t * ktx, lb_t * lb, hydro_t * hydro,
 static __device__
 void lb_collision_mrt1_site(lb_t * lb, hydro_t * hydro, map_t * map,
 			    noise_t * noise, fe_t * fe, const int index0) {
-  
+
   int p, m;                               /* velocity index */
   int ia, ib;                             /* indices ("alphabeta") */
   int iv=0;                               /* SIMD loop counter */
@@ -322,17 +315,17 @@ void lb_collision_mrt1_site(lb_t * lb, hydro_t * hydro, map_t * map,
   /* Load SIMD vectors for distribution and force */
 
   for (p = 0; p < NVEL; p++) {
-    for_simd_v(iv, NSIMDVL) fchunk[p*NSIMDVL+iv] = 
+    for_simd_v(iv, NSIMDVL) fchunk[p*NSIMDVL+iv] =
       lb->f[ LB_ADDR(_lbp.nsite, 1, NVEL, index0 + iv, LB_RHO, p) ];
   }
 
   for (ia = 0; ia < 3; ia++) {
     for_simd_v(iv, NSIMDVL) {
-      force[ia][iv] = _cp.force_global[ia] 
+      force[ia][iv] = _cp.force_global[ia]
 	+ hydro->force->data[addr_rank1(hydro->nsite, 3, index0+iv, ia)];
     }
   }
-  
+
   /* Compute all the modes */
 
 #ifdef _D3Q19_
@@ -364,7 +357,7 @@ void lb_collision_mrt1_site(lb_t * lb, hydro_t * hydro, map_t * map,
       m++;
     }
   }
-    
+
   for (ia = 1; ia < NDIM; ia++) {
     for (ib = 0; ib < ia; ib++) {
       for_simd_v(iv, NSIMDVL) s[ia][ib][iv] = s[ib][ia][iv];
@@ -372,12 +365,12 @@ void lb_collision_mrt1_site(lb_t * lb, hydro_t * hydro, map_t * map,
   }
 
   /* Compute the local velocity, taking account of any body force */
-    
+
   for_simd_v(iv, NSIMDVL) rrho[iv] = 1.0/rho[iv];
 
-  for (ia = 0; ia < NDIM; ia++) {      
+  for (ia = 0; ia < NDIM; ia++) {
     for_simd_v(iv, NSIMDVL) {
-      u[ia][iv] = rrho[iv]*(u[ia][iv] + 0.5*force[ia][iv]);  
+      u[ia][iv] = rrho[iv]*(u[ia][iv] + 0.5*force[ia][iv]);
     }
   }
 
@@ -445,7 +438,7 @@ void lb_collision_mrt1_site(lb_t * lb, hydro_t * hydro, map_t * map,
       }
     }
   }
-    
+
   /* Form traceless parts */
   for (ia = 0; ia < NDIM; ia++) {
     for_simd_v(iv, NSIMDVL){
@@ -453,7 +446,7 @@ void lb_collision_mrt1_site(lb_t * lb, hydro_t * hydro, map_t * map,
       seq[ia][ia][iv] -= rdim*tr_seq[iv];
     }
   }
-    
+
   /* Relax each mode */
   for_simd_v(iv, NSIMDVL) {
     tr_s[iv] = tr_s[iv] - rtau_bulk[iv]*(tr_s[iv] - tr_seq[iv]);
@@ -464,9 +457,9 @@ void lb_collision_mrt1_site(lb_t * lb, hydro_t * hydro, map_t * map,
       for_simd_v(iv, NSIMDVL) {
 	s[ia][ib][iv] -= rtau[iv]*(s[ia][ib][iv] - seq[ia][ib][iv]);
 	s[ia][ib][iv] += d[ia][ib]*rdim*tr_s[iv];
-	  
+
 	/* Correction from body force (assumes equal relaxation times) */
-	      
+
 	s[ia][ib][iv] += (2.0 - rtau[iv])
 	  *(u[ia][iv]*force[ib][iv] + force[ia][iv]*u[ib][iv]);
       }
@@ -474,7 +467,7 @@ void lb_collision_mrt1_site(lb_t * lb, hydro_t * hydro, map_t * map,
   }
 
   if (noise->on[NOISE_RHO]) {
-	
+
     double shat1[3][3];
     double ghat1[NVEL];
     double var, var_bulk;
@@ -519,7 +512,7 @@ void lb_collision_mrt1_site(lb_t * lb, hydro_t * hydro, map_t * map,
   /* Now reset the hydrodynamic modes to post-collision values:
    * rho is unchanged, velocity unchanged if no force,
    * independent components of stress, and ghosts. */
-    
+
   for (ia = 0; ia < NDIM; ia++) {
     for_simd_v(iv, NSIMDVL) mode[(1 + ia)*NSIMDVL+iv] += force[ia][iv];
   }
@@ -536,7 +529,7 @@ void lb_collision_mrt1_site(lb_t * lb, hydro_t * hydro, map_t * map,
 
   /* Ghost modes are relaxed toward zero equilibrium. */
 
-  for (m = NHYDRO; m < NVEL; m++) {  
+  for (m = NHYDRO; m < NVEL; m++) {
     for_simd_v(iv, NSIMDVL) {
       mode[m*NSIMDVL+iv] = mode[m*NSIMDVL+iv]
 	- rtau_ghost[m][iv]*(mode[m*NSIMDVL+iv] - 0.0) + ghat[m][iv];
@@ -563,7 +556,7 @@ void lb_collision_mrt1_site(lb_t * lb, hydro_t * hydro, map_t * map,
   if (fullchunk) {
     /* distribution */
     for (p = 0; p < NVEL; p++) {
-      for_simd_v(iv, NSIMDVL) { 
+      for_simd_v(iv, NSIMDVL) {
 	lb->f[LB_ADDR(_lbp.nsite, _lbp.ndist, NVEL, index0+iv, LB_RHO, p)] = fchunk[p*NSIMDVL+iv];
       }
     }
@@ -584,7 +577,7 @@ void lb_collision_mrt1_site(lb_t * lb, hydro_t * hydro, map_t * map,
 	/* distribution */
 	for (p = 0; p < NVEL; p++) {
 	  lb->f[LB_ADDR(_lbp.nsite, _lbp.ndist, NVEL, index0 + iv, LB_RHO, p)]
-	    = fchunk[p*NSIMDVL+iv]; 
+	    = fchunk[p*NSIMDVL+iv];
 	}
 	/* velocity */
 	for (ia = 0; ia < 3; ia++) {
@@ -610,10 +603,7 @@ void lb_collision_mrt1_site(lb_t * lb, hydro_t * hydro, map_t * map,
 __host__ int lb_collision_binary(lb_t * lb, hydro_t * hydro, noise_t * noise,
 				 fe_symm_t * fe, visc_t * visc) {
 
-  int nlocal[3];
-  dim3 nblk, ntpb;
-  kernel_info_t limits;
-  kernel_ctxt_t * ctxt = NULL;
+  int nlocal[3] = {0};
 
   assert (NDIM == 3); /* NDIM = 2 warrants additional tests here. */
   assert(lb);
@@ -624,26 +614,26 @@ __host__ int lb_collision_binary(lb_t * lb, hydro_t * hydro, noise_t * noise,
   cs_nlocal(lb->cs, nlocal);
 
   /* Kernel extent */
-  limits.imin = 1; limits.imax = nlocal[X];
-  limits.jmin = 1; limits.jmax = nlocal[Y];
-  limits.kmin = 1; limits.kmax = nlocal[Z];
+  {
+    dim3 nblk = {};
+    dim3 ntpb = {};
+    cs_limits_t lim = {1, nlocal[X], 1, nlocal[Y], 1, nlocal[Z]};
+    kernel_3d_v_t k3v = kernel_3d_v(lb->cs, lim, NSIMDVL);
 
-  kernel_ctxt_create(lb->cs, NSIMDVL, limits, &ctxt);
-  kernel_ctxt_launch_param(ctxt, &nblk, &ntpb);
+    kernel_3d_launch_param(k3v.kiterations, &nblk, &ntpb);
 
-  lb_collision_parameters_commit(lb, visc);
+    lb_collision_parameters_commit(lb, visc);
 
-  TIMER_start(TIMER_COLLIDE_KERNEL);
+    TIMER_start(TIMER_COLLIDE_KERNEL);
 
-  tdpLaunchKernel(lb_collision_mrt2, nblk, ntpb, 0, 0, ctxt->target,
-		  lb->target, hydro->target, fe->target, noise->target);
+    tdpLaunchKernel(lb_collision_mrt2, nblk, ntpb, 0, 0,
+		    k3v, lb->target, hydro->target, fe->target, noise->target);
 
-  tdpAssert(tdpPeekAtLastError());
-  tdpAssert(tdpDeviceSynchronize());
+    tdpAssert(tdpPeekAtLastError());
+    tdpAssert(tdpDeviceSynchronize());
 
-  TIMER_stop(TIMER_COLLIDE_KERNEL);
-
-  kernel_ctxt_free(ctxt);
+    TIMER_stop(TIMER_COLLIDE_KERNEL);
+  }
 
   return 0;
 }
@@ -657,17 +647,13 @@ __host__ int lb_collision_binary(lb_t * lb, hydro_t * hydro, noise_t * noise,
  *
  *****************************************************************************/
 
-__global__ void lb_collision_mrt2(kernel_ctxt_t * ktx, lb_t * lb,
+__global__ void lb_collision_mrt2(kernel_3d_v_t k3v, lb_t * lb,
 				  hydro_t * hydro, fe_symm_t * fe,
 				  noise_t * noise) {
-  int kindex;
-  int kiter;
+  int kindex = 0;
 
-  kiter = kernel_vector_iterations(ktx);
-
-  for_simt_parallel(kindex, kiter, NSIMDVL) {
-    int index0;
-    index0 = kernel_baseindex(ktx, kindex);
+  for_simt_parallel(kindex, k3v.kiterations, NSIMDVL) {
+    int index0 = k3v.kindex0 + kindex;
     lb_collision_mrt2_site(lb, hydro, fe, noise, index0);
   }
 
@@ -698,7 +684,7 @@ __global__ void lb_collision_mrt2(kernel_ctxt_t * ktx, lb_t * lb,
  *       fix sphi[i][j] = phi*u[i]*u[j] + mobility*mu*d_[i][j]
  *       so the mobility enters with chemical potential (Kendon etal 2001).
  *
- *       Note thare is an extra factor of cs^2 before the mobility,
+ *       Note there is an extra factor of cs^2 before the mobility,
  *       which should be taken into account if quoting the actual
  *       mobility. The factor is somewhat arbitrary and is there
  *       to try to ensure both methods are stable for given input
@@ -723,20 +709,20 @@ __device__ void lb_collision_mrt2_site(lb_t * lb, hydro_t * hydro,
   int ia, ib, m, p;
   double f[NVEL*NSIMDVL];
   double mode[NVEL*NSIMDVL];    /* Modes; hydrodynamic + ghost */
-  double rho[NSIMDVL]; 
+  double rho[NSIMDVL];
   double rrho[NSIMDVL];         /* Density, reciprocal density */
-    
+
   double u[3][NSIMDVL];         /* Velocity */
   double s[3][3][NSIMDVL];      /* Stress */
   double seq[3][3][NSIMDVL];    /* equilibrium stress */
   double shat[3][3][NSIMDVL];   /* random stress */
   double ghat[NVEL][NSIMDVL];   /* noise for ghosts */
-  
+
   double force[3][NSIMDVL];     /* External force */
 
-  double tr_s[NSIMDVL];         /* Trace of stress */ 
+  double tr_s[NSIMDVL];         /* Trace of stress */
   double tr_seq[NSIMDVL];       /* Equilibrium value thereof */
-  double phi[NSIMDVL];          /* phi */ 
+  double phi[NSIMDVL];          /* phi */
   double jphi[3][NSIMDVL];      /* phi flux */
   double jdotc[NSIMDVL];        /* Contraction jphi_a cv_ia */
   double sphidotq[NSIMDVL];     /* phi second moment */
@@ -748,7 +734,7 @@ __device__ void lb_collision_mrt2_site(lb_t * lb, hydro_t * hydro,
   KRONECKER_DELTA_CHAR(d);
 
   /* index for SIMD vectors */
-  int iv=0;        
+  int iv=0;
 
   assert(lb);
   assert(hydro);
@@ -789,7 +775,7 @@ __device__ void lb_collision_mrt2_site(lb_t * lb, hydro_t * hydro,
 #endif
 
   /* For convenience, write out the physical modes. */
-  
+
   for_simd_v(iv, NSIMDVL) rho[iv] = mode[0*NSIMDVL+iv];
   for (ia = 0; ia < 3; ia++) {
     for_simd_v(iv, NSIMDVL) u[ia][iv] = mode[(1 + ia)*NSIMDVL+iv];
@@ -810,14 +796,14 @@ __device__ void lb_collision_mrt2_site(lb_t * lb, hydro_t * hydro,
   }
 
   /* Compute the local velocity, taking account of any body force */
-  
+
   for_simd_v(iv, NSIMDVL) rrho[iv] = 1.0/rho[iv];
-  
+
   for (ia = 0; ia < 3; ia++) {
     for_simd_v(iv, NSIMDVL) {
       int haddr = addr_rank1(hydro->nsite, 3, index0 + iv, ia);
       force[ia][iv] = _cp.force_global[ia]  + hydro->force->data[haddr];
-      u[ia][iv] = rrho[iv]*(u[ia][iv] + 0.5*force[ia][iv]);  
+      u[ia][iv] = rrho[iv]*(u[ia][iv] + 0.5*force[ia][iv]);
     }
   }
 
@@ -827,18 +813,18 @@ __device__ void lb_collision_mrt2_site(lb_t * lb, hydro_t * hydro,
       hydro->u->data[haddr] = u[ia][iv];
     }
   }
-  
+
   /* Compute the thermodynamic component of the stress */
 
   fe_symm_str_v(fe, index0, sth);
 
   /* Relax stress with different shear and bulk viscosity */
-  
+
   for_simd_v(iv, NSIMDVL) {
     tr_s[iv]   = 0.0;
     tr_seq[iv] = 0.0;
   }
-  
+
   for (ia = 0; ia < 3; ia++) {
     /* Set equilibrium stress, which includes thermodynamic part */
     for (ib = 0; ib < 3; ib++) {
@@ -852,7 +838,7 @@ __device__ void lb_collision_mrt2_site(lb_t * lb, hydro_t * hydro,
       tr_seq[iv] += seq[ia][ia][iv];
     }
   }
-  
+
   /* Form traceless parts */
   for (ia = 0; ia < 3; ia++) {
     for_simd_v(iv, NSIMDVL) {
@@ -861,20 +847,20 @@ __device__ void lb_collision_mrt2_site(lb_t * lb, hydro_t * hydro,
     }
   }
 
-  
+
   /* Relax each mode */
   for_simd_v(iv, NSIMDVL)
     tr_s[iv] = tr_s[iv] - _lbp.rtau[LB_TAU_BULK]*(tr_s[iv] - tr_seq[iv]);
-  
+
   for (ia = 0; ia < 3; ia++) {
     for (ib = 0; ib < 3; ib++) {
 
       for_simd_v(iv, NSIMDVL) {
 	s[ia][ib][iv] -= _lbp.rtau[LB_TAU_SHEAR]*(s[ia][ib][iv] - seq[ia][ib][iv]);
 	s[ia][ib][iv] += d[ia][ib]*r3*tr_s[iv];
-      
+
 	/* Correction from body force (assumes equal relaxation times) */
-      
+
 	s[ia][ib][iv] += (2.0 - _lbp.rtau[LB_TAU_SHEAR])
 	               *(u[ia][iv]*force[ib][iv] + force[ia][iv]*u[ib][iv]);
       }
@@ -886,7 +872,7 @@ __device__ void lb_collision_mrt2_site(lb_t * lb, hydro_t * hydro,
     /* Not vectorised */
 
     for (iv = 0; iv < NSIMDVL; iv++) {
-      
+
       double shat1[3][3];
       double ghat1[NVEL];
 
@@ -900,13 +886,13 @@ __device__ void lb_collision_mrt2_site(lb_t * lb, hydro_t * hydro,
       for (p = 0; p < NVEL; p++) {
 	ghat[p][iv] = ghat1[p];
       }
-    }    
-  }    
-  
+    }
+  }
+
   /* Now reset the hydrodynamic modes to post-collision values:
    * rho is unchanged, velocity unchanged if no force,
    * independent components of stress, and ghosts. */
-    
+
   for (ia = 0; ia < NDIM; ia++) {
     for_simd_v(iv, NSIMDVL) mode[(1 + ia)*NSIMDVL+iv] += force[ia][iv];
   }
@@ -923,16 +909,16 @@ __device__ void lb_collision_mrt2_site(lb_t * lb, hydro_t * hydro,
 
   /* Ghost modes are relaxed toward zero equilibrium. */
 
-  for (m = NHYDRO; m < NVEL; m++) { 
+  for (m = NHYDRO; m < NVEL; m++) {
     for_simd_v(iv, NSIMDVL)  {
-      mode[m*NSIMDVL+iv] = mode[m*NSIMDVL+iv] 
+      mode[m*NSIMDVL+iv] = mode[m*NSIMDVL+iv]
 	- lb->param->rtau[m]*(mode[m*NSIMDVL+iv] - 0.0) + ghat[m][iv];
     }
   }
 
   /* Project post-collision modes back onto the distribution */
 
-#ifdef _D3Q19_  
+#ifdef _D3Q19_
   d3q19_mode2f_chunk(mode, f);
   for (p = 0; p < NVEL; p++) {
     for_simd_v(iv, NSIMDVL) {
@@ -940,7 +926,7 @@ __device__ void lb_collision_mrt2_site(lb_t * lb, hydro_t * hydro,
 	f[p*NSIMDVL+iv];
     }
   }
-#else    
+#else
   for (p = 0; p < NVEL; p++) {
     for_simd_v(iv, NSIMDVL) f[p*NSIMDVL+iv] = 0.0;
     for (m = 0; m < NVEL; m++) {
@@ -967,7 +953,7 @@ __device__ void lb_collision_mrt2_site(lb_t * lb, hydro_t * hydro,
   for (p = 1; p < NVEL; p++) {
     for (ia = 0; ia < 3; ia++) {
       for_simd_v(iv, NSIMDVL) {
-	jphi[ia][iv] += _lbp.cv[p][ia]* 
+	jphi[ia][iv] += _lbp.cv[p][ia]*
 	lb->f[ LB_ADDR(_lbp.nsite, _lbp.ndist, NVEL, index0+iv, LB_PHI, p) ];
       }
     }
@@ -977,7 +963,7 @@ __device__ void lb_collision_mrt2_site(lb_t * lb, hydro_t * hydro,
 
   for (ia = 0; ia < 3; ia++) {
     for (ib = 0; ib < 3; ib++) {
-      for_simd_v(iv, NSIMDVL) { 
+      for_simd_v(iv, NSIMDVL) {
 	sphi[ia][ib][iv] = phi[iv]*u[ia][iv]*u[ib][iv] + mu[iv]*d[ia][ib];
         /* The alternate form would be:
 	   sphi[ia][ib] = phi*u[ia]*u[ib] + cs2*mobility*mu*d_[ia][ib]; */
@@ -988,23 +974,23 @@ __device__ void lb_collision_mrt2_site(lb_t * lb, hydro_t * hydro,
       /* The alternate form would be: "jphi[ia] = phi*u[ia];" */
     }
   }
-  
+
   /* Now update the distribution */
-  
+
 #ifdef _D3Q19_
   d3q19_mode2f_phi(jdotc,sphidotq,sphi,phi,jphi, lb->f, index0);
 #else
 
   for (p = 0; p < NVEL; p++) {
     LB_CS2_DOUBLE(cs2);
-    
+
     int dp0 = (p == 0);
 
     for_simd_v(iv, NSIMDVL) {
       jdotc[iv]    = 0.0;
       sphidotq[iv] = 0.0;
     }
-    
+
     for (ia = 0; ia < 3; ia++) {
       for_simd_v(iv, NSIMDVL) jdotc[iv] += jphi[ia][iv]*_lbp.cv[p][ia];
       for (ib = 0; ib < 3; ib++) {
@@ -1013,11 +999,11 @@ __device__ void lb_collision_mrt2_site(lb_t * lb, hydro_t * hydro,
 	}
       }
     }
-    
+
     /* Project all this back to the distributions. The magic
      * here is to move phi into the non-propagating distribution. */
-    for_simd_v(iv, NSIMDVL) { 
-      lb->f[ LB_ADDR(_lbp.nsite, _lbp.ndist, NVEL, index0+iv, LB_PHI, p) ] 
+    for_simd_v(iv, NSIMDVL) {
+      lb->f[ LB_ADDR(_lbp.nsite, _lbp.ndist, NVEL, index0+iv, LB_PHI, p) ]
       = _lbp.wv[p]*(jdotc[iv]*3.0 + sphidotq[iv]*4.5) + phi[iv]*dp0;
     }
   }
@@ -1200,7 +1186,7 @@ __host__ int lb_collision_relaxation_times_set(lb_t * lb) {
   lb->param->rho0 = rho0;
 
   /* Initialise the relaxation times */
- 
+
   physics_eta_shear(phys, &eta_shear);
   physics_eta_bulk(phys, &eta_bulk);
 
@@ -1675,7 +1661,7 @@ static __host__ __device__
   assert(NNOISE_MAX >= (NVEL - NHYDRO));
   assert(NDIM == 2 || NDIM == 3);
 
-  /* Set symetric random stress matrix (elements with unit variance);
+  /* Set symmetric random stress matrix (elements with unit variance);
    * in practice always 3d (= 6 elements) required */
 
   noise_reap_n(noise, index, 6, random);
@@ -1833,7 +1819,7 @@ __host__ __device__ int lb_fluctuations_stress(noise_t * noise, int index,
   assert(noise);
   assert(NDIM == 2 || NDIM == 3);
 
-  /* Set symetric random stress matrix (elements with unit variance);
+  /* Set symmetric random stress matrix (elements with unit variance);
    * in practice always 3d (= 6 elements) required */
 
   noise_reap_n(noise, index, 6, random);
@@ -1886,7 +1872,7 @@ __host__ __device__ int lb_fluctuations_stress(noise_t * noise, int index,
  *
  *  lb_fluctuations_ghosts
  *
- *  Note. Beacuse the random numbers are just assigned to the modes
+ *  Note. Because the random numbers are just assigned to the modes
  *  on the basis of order of appearance in M^a, the order of the
  *  ghost modes is significant here.
  *
@@ -1946,7 +1932,7 @@ static __host__ int lb_collision_parameters_commit(lb_t * lb, visc_t * visc) {
   physics_fbody(phys, force_constant);
 
   /* Bare fluid visocisities */
- 
+
   physics_kt(phys, &p.kt);
   physics_eta_shear(phys, &p.eta_shear);
   physics_eta_bulk(phys, &p.eta_bulk);
@@ -1959,7 +1945,7 @@ static __host__ int lb_collision_parameters_commit(lb_t * lb, visc_t * visc) {
   physics_fpulse_frequency(phys, &fpulse_frequency);
 
   t = physics_control_timestep(phys);
-  fpulse_frequency_rad =  2.0*pi*fpulse_frequency; 
+  fpulse_frequency_rad =  2.0*pi*fpulse_frequency;
 
   for (ia = 0; ia < 3; ia++) {
     force_pulsatile[ia] = fpulse_amplitude[ia]*sin(fpulse_frequency_rad*t);
@@ -1983,9 +1969,9 @@ static __host__ int lb_collision_parameters_commit(lb_t * lb, visc_t * visc) {
 
 #ifdef _D3Q19_
 
-/*  below are specialized fast unrolled version of the d3q19 19x19 matrix 
- *  multiplications. These are significantly faster because there is 
- * duplication in the 19x19 matrix. Explicitly coding the values means 
+/*  below are specialized fast unrolled version of the d3q19 19x19 matrix
+ *  multiplications. These are significantly faster because there is
+ * duplication in the 19x19 matrix. Explicitly coding the values means
  * less data movement on the chip. */
 
 #define w0 (12.0/36.0)
@@ -2014,8 +2000,8 @@ __device__ void d3q19_f2mode_chunk(double* mode, const double* __restrict__ fchu
 
   int m, iv;
 
-   for (m = 0; m < NVEL; m++) { 
-       for_simd_v(iv, NSIMDVL) mode[m*NSIMDVL+iv] = 0.0; 
+   for (m = 0; m < NVEL; m++) {
+       for_simd_v(iv, NSIMDVL) mode[m*NSIMDVL+iv] = 0.0;
    }
 
 
@@ -2417,7 +2403,7 @@ __device__ void d3q19_f2mode_chunk(double* mode, const double* __restrict__ fchu
   for_simd_v(iv, NSIMDVL) mode[18*NSIMDVL+iv] += fchunk[16*NSIMDVL+iv]*-c2;
   for_simd_v(iv, NSIMDVL) mode[18*NSIMDVL+iv] += fchunk[17*NSIMDVL+iv]*c1;
   for_simd_v(iv, NSIMDVL) mode[18*NSIMDVL+iv] += fchunk[18*NSIMDVL+iv]*c1;
- 
+
 }
 
 __device__ void d3q19_mode2f_chunk(double* mode, double* fchunk) {
@@ -2426,7 +2412,7 @@ __device__ void d3q19_mode2f_chunk(double* mode, double* fchunk) {
 
   int iv;
 
-  
+
   for_simd_v(iv, NSIMDVL) ftmp[iv]=0.;
   for_simd_v(iv, NSIMDVL) ftmp[iv] += w0*mode[0*NSIMDVL+iv];
   for_simd_v(iv, NSIMDVL) ftmp[iv] += c0*mode[1*NSIMDVL+iv];
@@ -2448,7 +2434,7 @@ __device__ void d3q19_mode2f_chunk(double* mode, double* fchunk) {
   for_simd_v(iv, NSIMDVL) ftmp[iv] += c0*mode[17*NSIMDVL+iv];
   for_simd_v(iv, NSIMDVL) ftmp[iv] += r6*mode[18*NSIMDVL+iv];
   for_simd_v(iv, NSIMDVL)   fchunk[0*NSIMDVL+iv] = ftmp[iv];
-  
+
   /* p=1*/
   for_simd_v(iv, NSIMDVL) ftmp[iv]=0.;
   for_simd_v(iv, NSIMDVL) ftmp[iv] += w2*mode[0*NSIMDVL+iv];
@@ -2471,7 +2457,7 @@ __device__ void d3q19_mode2f_chunk(double* mode, double* fchunk) {
   for_simd_v(iv, NSIMDVL) ftmp[iv] += c0*mode[17*NSIMDVL+iv];
   for_simd_v(iv, NSIMDVL) ftmp[iv] += wc*mode[18*NSIMDVL+iv];
   for_simd_v(iv, NSIMDVL) fchunk[1*NSIMDVL+iv] = ftmp[iv];
-  
+
   /* p=2*/
   for_simd_v(iv, NSIMDVL) ftmp[iv]=0.;
   for_simd_v(iv, NSIMDVL) ftmp[iv] += w2*mode[0*NSIMDVL+iv];
@@ -2494,7 +2480,7 @@ __device__ void d3q19_mode2f_chunk(double* mode, double* fchunk) {
   for_simd_v(iv, NSIMDVL) ftmp[iv] += -r8*mode[17*NSIMDVL+iv];
   for_simd_v(iv, NSIMDVL) ftmp[iv] += wc*mode[18*NSIMDVL+iv];
   for_simd_v(iv, NSIMDVL) fchunk[2*NSIMDVL+iv] =  ftmp[iv];
-  
+
   /* p=3*/
   for_simd_v(iv, NSIMDVL) ftmp[iv]=0.;
   for_simd_v(iv, NSIMDVL) ftmp[iv] += w1*mode[0*NSIMDVL+iv];
@@ -2517,7 +2503,7 @@ __device__ void d3q19_mode2f_chunk(double* mode, double* fchunk) {
   for_simd_v(iv, NSIMDVL) ftmp[iv] += c0*mode[17*NSIMDVL+iv];
   for_simd_v(iv, NSIMDVL) ftmp[iv] += -w1*mode[18*NSIMDVL+iv];
   for_simd_v(iv, NSIMDVL) fchunk[3*NSIMDVL+iv] =  ftmp[iv];
-  
+
   /* p=4*/
   for_simd_v(iv, NSIMDVL) ftmp[iv]=0.;
   for_simd_v(iv, NSIMDVL) ftmp[iv] += w2*mode[0*NSIMDVL+iv];
@@ -2540,7 +2526,7 @@ __device__ void d3q19_mode2f_chunk(double* mode, double* fchunk) {
   for_simd_v(iv, NSIMDVL) ftmp[iv] += r8*mode[17*NSIMDVL+iv];
   for_simd_v(iv, NSIMDVL) ftmp[iv] += wc*mode[18*NSIMDVL+iv];
   for_simd_v(iv, NSIMDVL) fchunk[4*NSIMDVL+iv] = ftmp[iv];
-  
+
   /* p=5 */
   for_simd_v(iv, NSIMDVL) ftmp[iv]=0.;
   for_simd_v(iv, NSIMDVL) ftmp[iv] += w2*mode[0*NSIMDVL+iv];
@@ -2563,7 +2549,7 @@ __device__ void d3q19_mode2f_chunk(double* mode, double* fchunk) {
   for_simd_v(iv, NSIMDVL) ftmp[iv] += c0*mode[17*NSIMDVL+iv];
   for_simd_v(iv, NSIMDVL) ftmp[iv] += wc*mode[18*NSIMDVL+iv];
   for_simd_v(iv, NSIMDVL) fchunk[5*NSIMDVL+iv] = ftmp[iv];
-  
+
   /* p=6 */
   for_simd_v(iv, NSIMDVL) ftmp[iv]=0.;
   for_simd_v(iv, NSIMDVL) ftmp[iv] += w2*mode[0*NSIMDVL+iv];
@@ -2586,7 +2572,7 @@ __device__ void d3q19_mode2f_chunk(double* mode, double* fchunk) {
   for_simd_v(iv, NSIMDVL) ftmp[iv] += r8*mode[17*NSIMDVL+iv];
   for_simd_v(iv, NSIMDVL) ftmp[iv] += wc*mode[18*NSIMDVL+iv];
   for_simd_v(iv, NSIMDVL) fchunk[6*NSIMDVL+iv] =  ftmp[iv];
-  
+
   /* p=7 */
   for_simd_v(iv, NSIMDVL) ftmp[iv]=0.;
   for_simd_v(iv, NSIMDVL) ftmp[iv] += w1*mode[0*NSIMDVL+iv];
@@ -2609,7 +2595,7 @@ __device__ void d3q19_mode2f_chunk(double* mode, double* fchunk) {
   for_simd_v(iv, NSIMDVL) ftmp[iv] += c0*mode[17*NSIMDVL+iv];
   for_simd_v(iv, NSIMDVL) ftmp[iv] += -w1*mode[18*NSIMDVL+iv];
   for_simd_v(iv, NSIMDVL) fchunk[7*NSIMDVL+iv] = ftmp[iv];
-  
+
   /* p=8 */
   for_simd_v(iv, NSIMDVL) ftmp[iv]=0.;
   for_simd_v(iv, NSIMDVL) ftmp[iv] += w2*mode[0*NSIMDVL+iv];
@@ -2632,7 +2618,7 @@ __device__ void d3q19_mode2f_chunk(double* mode, double* fchunk) {
   for_simd_v(iv, NSIMDVL) ftmp[iv] += -r8*mode[17*NSIMDVL+iv];
   for_simd_v(iv, NSIMDVL) ftmp[iv] += wc*mode[18*NSIMDVL+iv];
   for_simd_v(iv, NSIMDVL) fchunk[8*NSIMDVL+iv] =  ftmp[iv];
-  
+
   /* p=9*/
   for_simd_v(iv, NSIMDVL) ftmp[iv]=0.;
   for_simd_v(iv, NSIMDVL) ftmp[iv] += w1*mode[0*NSIMDVL+iv];
@@ -2655,7 +2641,7 @@ __device__ void d3q19_mode2f_chunk(double* mode, double* fchunk) {
   for_simd_v(iv, NSIMDVL) ftmp[iv] += c0*mode[17*NSIMDVL+iv];
   for_simd_v(iv, NSIMDVL) ftmp[iv] += -w1*mode[18*NSIMDVL+iv];
   for_simd_v(iv, NSIMDVL) fchunk[9*NSIMDVL+iv] = ftmp[iv];
-  
+
   /* p=10*/
   for_simd_v(iv, NSIMDVL) ftmp[iv]=0.;
   for_simd_v(iv, NSIMDVL) ftmp[iv] += w1*mode[0*NSIMDVL+iv];
@@ -2678,7 +2664,7 @@ __device__ void d3q19_mode2f_chunk(double* mode, double* fchunk) {
   for_simd_v(iv, NSIMDVL) ftmp[iv] += c0*mode[17*NSIMDVL+iv];
   for_simd_v(iv, NSIMDVL) ftmp[iv] += -w1*mode[18*NSIMDVL+iv];
   for_simd_v(iv, NSIMDVL) fchunk[10*NSIMDVL+iv] = ftmp[iv];
-  
+
   /* p=11 */
   for_simd_v(iv, NSIMDVL) ftmp[iv]=0.;
   for_simd_v(iv, NSIMDVL) ftmp[iv] += w2*mode[0*NSIMDVL+iv];
@@ -2701,7 +2687,7 @@ __device__ void d3q19_mode2f_chunk(double* mode, double* fchunk) {
   for_simd_v(iv, NSIMDVL) ftmp[iv] += r8*mode[17*NSIMDVL+iv];
   for_simd_v(iv, NSIMDVL) ftmp[iv] += wc*mode[18*NSIMDVL+iv];
   for_simd_v(iv, NSIMDVL) fchunk[11*NSIMDVL+iv] =  ftmp[iv];
-  
+
   /* p=12*/
   for_simd_v(iv, NSIMDVL) ftmp[iv]=0.;
   for_simd_v(iv, NSIMDVL) ftmp[iv] += w1*mode[0*NSIMDVL+iv];
@@ -2724,7 +2710,7 @@ __device__ void d3q19_mode2f_chunk(double* mode, double* fchunk) {
   for_simd_v(iv, NSIMDVL) ftmp[iv] += c0*mode[17*NSIMDVL+iv];
   for_simd_v(iv, NSIMDVL) ftmp[iv] += -w1*mode[18*NSIMDVL+iv];
   for_simd_v(iv, NSIMDVL) fchunk[12*NSIMDVL+iv] = ftmp[iv];
-  
+
   /* p=13 */
   for_simd_v(iv, NSIMDVL) ftmp[iv]=0.;
   for_simd_v(iv, NSIMDVL) ftmp[iv] += w2*mode[0*NSIMDVL+iv];
@@ -2747,7 +2733,7 @@ __device__ void d3q19_mode2f_chunk(double* mode, double* fchunk) {
   for_simd_v(iv, NSIMDVL) ftmp[iv] += -r8*mode[17*NSIMDVL+iv];
   for_simd_v(iv, NSIMDVL) ftmp[iv] += wc*mode[18*NSIMDVL+iv];
   for_simd_v(iv, NSIMDVL) fchunk[13*NSIMDVL+iv] =  ftmp[iv];
-  
+
   /* p=14 */
   for_simd_v(iv, NSIMDVL) ftmp[iv]=0.;
   for_simd_v(iv, NSIMDVL) ftmp[iv] += w2*mode[0*NSIMDVL+iv];
@@ -2770,7 +2756,7 @@ __device__ void d3q19_mode2f_chunk(double* mode, double* fchunk) {
   for_simd_v(iv, NSIMDVL) ftmp[iv] += c0*mode[17*NSIMDVL+iv];
   for_simd_v(iv, NSIMDVL) ftmp[iv] += wc*mode[18*NSIMDVL+iv];
   for_simd_v(iv, NSIMDVL) fchunk[14*NSIMDVL+iv] =  ftmp[iv];
-  
+
   /* p=15*/
   for_simd_v(iv, NSIMDVL) ftmp[iv]=0.;
   for_simd_v(iv, NSIMDVL) ftmp[iv] += w2*mode[0*NSIMDVL+iv];
@@ -2793,7 +2779,7 @@ __device__ void d3q19_mode2f_chunk(double* mode, double* fchunk) {
   for_simd_v(iv, NSIMDVL) ftmp[iv] += -r8*mode[17*NSIMDVL+iv];
   for_simd_v(iv, NSIMDVL) ftmp[iv] += wc*mode[18*NSIMDVL+iv];
   for_simd_v(iv, NSIMDVL) fchunk[15*NSIMDVL+iv] =  ftmp[iv];
-  
+
   /* p=16*/
   for_simd_v(iv, NSIMDVL) ftmp[iv]=0.;
   for_simd_v(iv, NSIMDVL) ftmp[iv] += w1*mode[0*NSIMDVL+iv];
@@ -2816,7 +2802,7 @@ __device__ void d3q19_mode2f_chunk(double* mode, double* fchunk) {
   for_simd_v(iv, NSIMDVL) ftmp[iv] += c0*mode[17*NSIMDVL+iv];
   for_simd_v(iv, NSIMDVL) ftmp[iv] += -w1*mode[18*NSIMDVL+iv];
   for_simd_v(iv, NSIMDVL) fchunk[16*NSIMDVL+iv] =ftmp[iv];
-  
+
   /* p=17*/
   for_simd_v(iv, NSIMDVL) ftmp[iv]=0.;
   for_simd_v(iv, NSIMDVL) ftmp[iv] += w2*mode[0*NSIMDVL+iv];
@@ -2839,7 +2825,7 @@ __device__ void d3q19_mode2f_chunk(double* mode, double* fchunk) {
   for_simd_v(iv, NSIMDVL) ftmp[iv] += r8*mode[17*NSIMDVL+iv];
   for_simd_v(iv, NSIMDVL) ftmp[iv] += wc*mode[18*NSIMDVL+iv];
   for_simd_v(iv, NSIMDVL) fchunk[17*NSIMDVL+iv] = ftmp[iv];
-  
+
   /* p=18*/
   for_simd_v(iv, NSIMDVL) ftmp[iv]=0.;
   for_simd_v(iv, NSIMDVL) ftmp[iv] += w2*mode[0*NSIMDVL+iv];
@@ -2887,19 +2873,19 @@ __device__ void d3q19_mode2f_phi(double jdotc[NSIMDVL],
   const double r2rcs4 = (9.0/2.0);
 
   /* cv[p = 0] = {0,0,0} */
-  for_simd_v(iv, NSIMDVL) { jdotc[iv]    = 0.0; sphidotq[iv] = 0.0;} 
+  for_simd_v(iv, NSIMDVL) { jdotc[iv]    = 0.0; sphidotq[iv] = 0.0;}
 
   for_simd_v(iv, NSIMDVL)  sphidotq[iv] += sphi[0][0][iv]*-3.3333333333333331e-01;
   for_simd_v(iv, NSIMDVL)  sphidotq[iv] += sphi[1][1][iv]*-3.3333333333333331e-01;
   for_simd_v(iv, NSIMDVL)  sphidotq[iv] += sphi[2][2][iv]*-3.3333333333333331e-01;
 
-  for_simd_v(iv, NSIMDVL) 
-     f[ LB_ADDR(_lbp.nsite, NDIST, NVEL, baseIndex+iv, LB_PHI, 0) ] 
+  for_simd_v(iv, NSIMDVL)
+     f[ LB_ADDR(_lbp.nsite, NDIST, NVEL, baseIndex+iv, LB_PHI, 0) ]
         = w0*(jdotc[iv]*rcs2 + sphidotq[iv]*r2rcs4) + phi[iv];
 
 
   /* cv[p = 1] = {1,1,0} */
-  for_simd_v(iv, NSIMDVL) { jdotc[iv]    = 0.0; sphidotq[iv] = 0.0;} 
+  for_simd_v(iv, NSIMDVL) { jdotc[iv]    = 0.0; sphidotq[iv] = 0.0;}
 
   for_simd_v(iv, NSIMDVL)  jdotc[iv] += jphi[X][iv];
   for_simd_v(iv, NSIMDVL)  jdotc[iv] += jphi[Y][iv];
@@ -2909,13 +2895,13 @@ __device__ void d3q19_mode2f_phi(double jdotc[NSIMDVL],
   for_simd_v(iv, NSIMDVL)  sphidotq[iv] += sphi[1][1][iv]*6.6666666666666663e-01;
   for_simd_v(iv, NSIMDVL)  sphidotq[iv] += sphi[2][2][iv]*-3.3333333333333331e-01;
 
- for_simd_v(iv, NSIMDVL) 
-     f[ LB_ADDR(_lbp.nsite, NDIST, NVEL, baseIndex+iv, LB_PHI, 1) ] 
+ for_simd_v(iv, NSIMDVL)
+     f[ LB_ADDR(_lbp.nsite, NDIST, NVEL, baseIndex+iv, LB_PHI, 1) ]
         = w2*(jdotc[iv]*rcs2 + sphidotq[iv]*r2rcs4);
 
 
  /* cv[p = 2] = {1,0,1} */
- for_simd_v(iv, NSIMDVL) { jdotc[iv]    = 0.0; sphidotq[iv] = 0.0;} 
+ for_simd_v(iv, NSIMDVL) { jdotc[iv]    = 0.0; sphidotq[iv] = 0.0;}
 
   for_simd_v(iv, NSIMDVL)  jdotc[iv] += jphi[X][iv];
   for_simd_v(iv, NSIMDVL)  jdotc[iv] += jphi[Z][iv];
@@ -2925,20 +2911,20 @@ __device__ void d3q19_mode2f_phi(double jdotc[NSIMDVL],
   for_simd_v(iv, NSIMDVL)  sphidotq[iv] += sphi[2][0][iv]*1.0000000000000000e+00;
   for_simd_v(iv, NSIMDVL)  sphidotq[iv] += sphi[2][2][iv]*6.6666666666666663e-01;
 
- for_simd_v(iv, NSIMDVL) 
-     f[ LB_ADDR(_lbp.nsite, NDIST, NVEL, baseIndex+iv, LB_PHI, 2) ] 
+ for_simd_v(iv, NSIMDVL)
+     f[ LB_ADDR(_lbp.nsite, NDIST, NVEL, baseIndex+iv, LB_PHI, 2) ]
         = w2*(jdotc[iv]*rcs2 + sphidotq[iv]*r2rcs4);
 
  /* cv[p = 3] = {1,0,0} */
- for_simd_v(iv, NSIMDVL) { jdotc[iv]    = 0.0; sphidotq[iv] = 0.0;} 
+ for_simd_v(iv, NSIMDVL) { jdotc[iv]    = 0.0; sphidotq[iv] = 0.0;}
 
   for_simd_v(iv, NSIMDVL)  jdotc[iv] += jphi[X][iv];
   for_simd_v(iv, NSIMDVL)  sphidotq[iv] += sphi[0][0][iv]*6.6666666666666663e-01;
   for_simd_v(iv, NSIMDVL)  sphidotq[iv] += sphi[1][1][iv]*-3.3333333333333331e-01;
   for_simd_v(iv, NSIMDVL)  sphidotq[iv] += sphi[2][2][iv]*-3.3333333333333331e-01;
 
- for_simd_v(iv, NSIMDVL) 
-     f[ LB_ADDR(_lbp.nsite, NDIST, NVEL, baseIndex+iv, LB_PHI, 3) ] 
+ for_simd_v(iv, NSIMDVL)
+     f[ LB_ADDR(_lbp.nsite, NDIST, NVEL, baseIndex+iv, LB_PHI, 3) ]
         = w1*(jdotc[iv]*rcs2 + sphidotq[iv]*r2rcs4);
 
   /* cv[p = 4] = {1,0,-1} */
@@ -2952,13 +2938,13 @@ __device__ void d3q19_mode2f_phi(double jdotc[NSIMDVL],
   for_simd_v(iv, NSIMDVL)  sphidotq[iv] += sphi[2][0][iv]*-1.0000000000000000e+00;
   for_simd_v(iv, NSIMDVL)  sphidotq[iv] += sphi[2][2][iv]*6.6666666666666663e-01;
 
- for_simd_v(iv, NSIMDVL) 
-     f[ LB_ADDR(_lbp.nsite, NDIST, NVEL, baseIndex+iv, LB_PHI, 4) ] 
+ for_simd_v(iv, NSIMDVL)
+     f[ LB_ADDR(_lbp.nsite, NDIST, NVEL, baseIndex+iv, LB_PHI, 4) ]
         = w2*(jdotc[iv]*rcs2 + sphidotq[iv]*r2rcs4);
 
 
  /* cv[p = 5] = {1,-1,0} */
- for_simd_v(iv, NSIMDVL) { jdotc[iv]    = 0.0; sphidotq[iv] = 0.0;} 
+ for_simd_v(iv, NSIMDVL) { jdotc[iv]    = 0.0; sphidotq[iv] = 0.0;}
 
   for_simd_v(iv, NSIMDVL)  jdotc[iv] += jphi[X][iv];
   for_simd_v(iv, NSIMDVL)  jdotc[iv] -= jphi[Y][iv];
@@ -2968,13 +2954,13 @@ __device__ void d3q19_mode2f_phi(double jdotc[NSIMDVL],
   for_simd_v(iv, NSIMDVL)  sphidotq[iv] += sphi[1][1][iv]*6.6666666666666663e-01;
   for_simd_v(iv, NSIMDVL)  sphidotq[iv] += sphi[2][2][iv]*-3.3333333333333331e-01;
 
- for_simd_v(iv, NSIMDVL) 
-     f[ LB_ADDR(_lbp.nsite, NDIST, NVEL, baseIndex+iv, LB_PHI, 5) ] 
+ for_simd_v(iv, NSIMDVL)
+     f[ LB_ADDR(_lbp.nsite, NDIST, NVEL, baseIndex+iv, LB_PHI, 5) ]
         = w2*(jdotc[iv]*rcs2 + sphidotq[iv]*r2rcs4);
 
 
  /* cv[p = 6] = {0,1,1} */
- for_simd_v(iv, NSIMDVL) { jdotc[iv]    = 0.0; sphidotq[iv] = 0.0;} 
+ for_simd_v(iv, NSIMDVL) { jdotc[iv]    = 0.0; sphidotq[iv] = 0.0;}
 
   for_simd_v(iv, NSIMDVL)  jdotc[iv] += jphi[Y][iv];
   for_simd_v(iv, NSIMDVL)  jdotc[iv] += jphi[Z][iv];
@@ -2984,24 +2970,24 @@ __device__ void d3q19_mode2f_phi(double jdotc[NSIMDVL],
   for_simd_v(iv, NSIMDVL)  sphidotq[iv] += sphi[2][1][iv]*1.0000000000000000e+00;
   for_simd_v(iv, NSIMDVL)  sphidotq[iv] += sphi[2][2][iv]*6.6666666666666663e-01;
 
- for_simd_v(iv, NSIMDVL) 
-     f[ LB_ADDR(_lbp.nsite, NDIST, NVEL, baseIndex+iv, LB_PHI, 6) ] 
+ for_simd_v(iv, NSIMDVL)
+     f[ LB_ADDR(_lbp.nsite, NDIST, NVEL, baseIndex+iv, LB_PHI, 6) ]
         = w2*(jdotc[iv]*rcs2 + sphidotq[iv]*r2rcs4);
 
  /* cv[p = 7] = {0,1,0} */
- for_simd_v(iv, NSIMDVL) { jdotc[iv]    = 0.0; sphidotq[iv] = 0.0;} 
+ for_simd_v(iv, NSIMDVL) { jdotc[iv]    = 0.0; sphidotq[iv] = 0.0;}
 
   for_simd_v(iv, NSIMDVL)  jdotc[iv] += jphi[Y][iv];
   for_simd_v(iv, NSIMDVL)  sphidotq[iv] += sphi[0][0][iv]*-3.3333333333333331e-01;
   for_simd_v(iv, NSIMDVL)  sphidotq[iv] += sphi[1][1][iv]*6.6666666666666663e-01;
   for_simd_v(iv, NSIMDVL)  sphidotq[iv] += sphi[2][2][iv]*-3.3333333333333331e-01;
 
- for_simd_v(iv, NSIMDVL) 
-     f[ LB_ADDR(_lbp.nsite, NDIST, NVEL, baseIndex+iv, LB_PHI, 7) ] 
+ for_simd_v(iv, NSIMDVL)
+     f[ LB_ADDR(_lbp.nsite, NDIST, NVEL, baseIndex+iv, LB_PHI, 7) ]
         = w1*(jdotc[iv]*rcs2 + sphidotq[iv]*r2rcs4);
 
  /* cv[p = 8] = {0,1,-1} */
- for_simd_v(iv, NSIMDVL) { jdotc[iv]    = 0.0; sphidotq[iv] = 0.0;} 
+ for_simd_v(iv, NSIMDVL) { jdotc[iv]    = 0.0; sphidotq[iv] = 0.0;}
 
   for_simd_v(iv, NSIMDVL)  jdotc[iv] += jphi[Y][iv];
   for_simd_v(iv, NSIMDVL)  jdotc[iv] -= jphi[Z][iv];
@@ -3011,36 +2997,36 @@ __device__ void d3q19_mode2f_phi(double jdotc[NSIMDVL],
   for_simd_v(iv, NSIMDVL)  sphidotq[iv] += sphi[2][1][iv]*-1.0000000000000000e+00;
   for_simd_v(iv, NSIMDVL)  sphidotq[iv] += sphi[2][2][iv]*6.6666666666666663e-01;
 
- for_simd_v(iv, NSIMDVL) 
-     f[ LB_ADDR(_lbp.nsite, NDIST, NVEL, baseIndex+iv, LB_PHI, 8) ] 
+ for_simd_v(iv, NSIMDVL)
+     f[ LB_ADDR(_lbp.nsite, NDIST, NVEL, baseIndex+iv, LB_PHI, 8) ]
         = w2*(jdotc[iv]*rcs2 + sphidotq[iv]*r2rcs4);
 
  /* cv[p = 9] = {0,0,1} */
- for_simd_v(iv, NSIMDVL) { jdotc[iv]    = 0.0; sphidotq[iv] = 0.0;} 
+ for_simd_v(iv, NSIMDVL) { jdotc[iv]    = 0.0; sphidotq[iv] = 0.0;}
 
   for_simd_v(iv, NSIMDVL)  jdotc[iv] += jphi[Z][iv];
   for_simd_v(iv, NSIMDVL)  sphidotq[iv] += sphi[0][0][iv]*-3.3333333333333331e-01;
   for_simd_v(iv, NSIMDVL)  sphidotq[iv] += sphi[1][1][iv]*-3.3333333333333331e-01;
   for_simd_v(iv, NSIMDVL)  sphidotq[iv] += sphi[2][2][iv]*6.6666666666666663e-01;
 
- for_simd_v(iv, NSIMDVL) 
-     f[ LB_ADDR(_lbp.nsite, NDIST, NVEL, baseIndex+iv, LB_PHI, 9) ] 
+ for_simd_v(iv, NSIMDVL)
+     f[ LB_ADDR(_lbp.nsite, NDIST, NVEL, baseIndex+iv, LB_PHI, 9) ]
         = w1*(jdotc[iv]*rcs2 + sphidotq[iv]*r2rcs4);
 
  /* cv[p = 10] = {0,0,-1} */
- for_simd_v(iv, NSIMDVL) { jdotc[iv]    = 0.0; sphidotq[iv] = 0.0;} 
+ for_simd_v(iv, NSIMDVL) { jdotc[iv]    = 0.0; sphidotq[iv] = 0.0;}
 
   for_simd_v(iv, NSIMDVL)  jdotc[iv] -= jphi[Z][iv];
   for_simd_v(iv, NSIMDVL)  sphidotq[iv] += sphi[0][0][iv]*-3.3333333333333331e-01;
   for_simd_v(iv, NSIMDVL)  sphidotq[iv] += sphi[1][1][iv]*-3.3333333333333331e-01;
   for_simd_v(iv, NSIMDVL)  sphidotq[iv] += sphi[2][2][iv]*6.6666666666666663e-01;
 
- for_simd_v(iv, NSIMDVL) 
-     f[ LB_ADDR(_lbp.nsite, NDIST, NVEL, baseIndex+iv, LB_PHI, 10) ] 
+ for_simd_v(iv, NSIMDVL)
+     f[ LB_ADDR(_lbp.nsite, NDIST, NVEL, baseIndex+iv, LB_PHI, 10) ]
         = w1*(jdotc[iv]*rcs2 + sphidotq[iv]*r2rcs4);
 
  /* cv[p = 11] = {0,-1,1} */
- for_simd_v(iv, NSIMDVL) { jdotc[iv]    = 0.0; sphidotq[iv] = 0.0;} 
+ for_simd_v(iv, NSIMDVL) { jdotc[iv]    = 0.0; sphidotq[iv] = 0.0;}
 
   for_simd_v(iv, NSIMDVL)  jdotc[iv] -= jphi[Y][iv];
   for_simd_v(iv, NSIMDVL)  jdotc[iv] += jphi[Z][iv];
@@ -3050,24 +3036,24 @@ __device__ void d3q19_mode2f_phi(double jdotc[NSIMDVL],
   for_simd_v(iv, NSIMDVL)  sphidotq[iv] += sphi[2][1][iv]*-1.0000000000000000e+00;
   for_simd_v(iv, NSIMDVL)  sphidotq[iv] += sphi[2][2][iv]*6.6666666666666663e-01;
 
- for_simd_v(iv, NSIMDVL) 
-     f[ LB_ADDR(_lbp.nsite, NDIST, NVEL, baseIndex+iv, LB_PHI, 11) ] 
+ for_simd_v(iv, NSIMDVL)
+     f[ LB_ADDR(_lbp.nsite, NDIST, NVEL, baseIndex+iv, LB_PHI, 11) ]
         = w2*(jdotc[iv]*rcs2 + sphidotq[iv]*r2rcs4);
 
  /* cv[p = 12] = {0,-1,0} */
- for_simd_v(iv, NSIMDVL) { jdotc[iv]    = 0.0; sphidotq[iv] = 0.0;} 
+ for_simd_v(iv, NSIMDVL) { jdotc[iv]    = 0.0; sphidotq[iv] = 0.0;}
 
   for_simd_v(iv, NSIMDVL)  jdotc[iv] -= jphi[Y][iv];
   for_simd_v(iv, NSIMDVL)  sphidotq[iv] += sphi[0][0][iv]*-3.3333333333333331e-01;
   for_simd_v(iv, NSIMDVL)  sphidotq[iv] += sphi[1][1][iv]*6.6666666666666663e-01;
   for_simd_v(iv, NSIMDVL)  sphidotq[iv] += sphi[2][2][iv]*-3.3333333333333331e-01;
 
- for_simd_v(iv, NSIMDVL) 
-     f[ LB_ADDR(_lbp.nsite, NDIST, NVEL, baseIndex+iv, LB_PHI, 12) ] 
+ for_simd_v(iv, NSIMDVL)
+     f[ LB_ADDR(_lbp.nsite, NDIST, NVEL, baseIndex+iv, LB_PHI, 12) ]
         = w1*(jdotc[iv]*rcs2 + sphidotq[iv]*r2rcs4);
 
  /* cv[p = 13] = {0,-1,-1} */
- for_simd_v(iv, NSIMDVL) { jdotc[iv]    = 0.0; sphidotq[iv] = 0.0;} 
+ for_simd_v(iv, NSIMDVL) { jdotc[iv]    = 0.0; sphidotq[iv] = 0.0;}
 
   for_simd_v(iv, NSIMDVL)  jdotc[iv] -= jphi[Y][iv];
   for_simd_v(iv, NSIMDVL)  jdotc[iv] -= jphi[Z][iv];
@@ -3077,12 +3063,12 @@ __device__ void d3q19_mode2f_phi(double jdotc[NSIMDVL],
   for_simd_v(iv, NSIMDVL)  sphidotq[iv] += sphi[2][1][iv]*1.0000000000000000e+00;
   for_simd_v(iv, NSIMDVL)  sphidotq[iv] += sphi[2][2][iv]*6.6666666666666663e-01;
 
- for_simd_v(iv, NSIMDVL) 
-     f[ LB_ADDR(_lbp.nsite, NDIST, NVEL, baseIndex+iv, LB_PHI, 13) ] 
+ for_simd_v(iv, NSIMDVL)
+     f[ LB_ADDR(_lbp.nsite, NDIST, NVEL, baseIndex+iv, LB_PHI, 13) ]
         = w2*(jdotc[iv]*rcs2 + sphidotq[iv]*r2rcs4);
 
  /* cv[p = 14] = {-1,1,0} */
- for_simd_v(iv, NSIMDVL) { jdotc[iv]    = 0.0; sphidotq[iv] = 0.0;} 
+ for_simd_v(iv, NSIMDVL) { jdotc[iv]    = 0.0; sphidotq[iv] = 0.0;}
 
   for_simd_v(iv, NSIMDVL)  jdotc[iv] -= jphi[X][iv];
   for_simd_v(iv, NSIMDVL)  jdotc[iv] += jphi[Y][iv];
@@ -3092,12 +3078,12 @@ __device__ void d3q19_mode2f_phi(double jdotc[NSIMDVL],
   for_simd_v(iv, NSIMDVL)  sphidotq[iv] += sphi[1][1][iv]*6.6666666666666663e-01;
   for_simd_v(iv, NSIMDVL)  sphidotq[iv] += sphi[2][2][iv]*-3.3333333333333331e-01;
 
- for_simd_v(iv, NSIMDVL) 
-     f[ LB_ADDR(_lbp.nsite, NDIST, NVEL, baseIndex+iv, LB_PHI, 14) ] 
+ for_simd_v(iv, NSIMDVL)
+     f[ LB_ADDR(_lbp.nsite, NDIST, NVEL, baseIndex+iv, LB_PHI, 14) ]
         = w2*(jdotc[iv]*rcs2 + sphidotq[iv]*r2rcs4);
 
  /* cv[p = 15] = {-1,0,1} */
- for_simd_v(iv, NSIMDVL) { jdotc[iv]    = 0.0; sphidotq[iv] = 0.0;} 
+ for_simd_v(iv, NSIMDVL) { jdotc[iv]    = 0.0; sphidotq[iv] = 0.0;}
 
   for_simd_v(iv, NSIMDVL)  jdotc[iv] -= jphi[X][iv];
   for_simd_v(iv, NSIMDVL)  jdotc[iv] += jphi[Z][iv];
@@ -3107,24 +3093,24 @@ __device__ void d3q19_mode2f_phi(double jdotc[NSIMDVL],
   for_simd_v(iv, NSIMDVL)  sphidotq[iv] += sphi[2][0][iv]*-1.0000000000000000e+00;
   for_simd_v(iv, NSIMDVL)  sphidotq[iv] += sphi[2][2][iv]*6.6666666666666663e-01;
 
- for_simd_v(iv, NSIMDVL) 
-     f[ LB_ADDR(_lbp.nsite, NDIST, NVEL, baseIndex+iv, LB_PHI, 15) ] 
+ for_simd_v(iv, NSIMDVL)
+     f[ LB_ADDR(_lbp.nsite, NDIST, NVEL, baseIndex+iv, LB_PHI, 15) ]
         = w2*(jdotc[iv]*rcs2 + sphidotq[iv]*r2rcs4);
 
  /* cv[p = 16] = {-1,0,0} */
- for_simd_v(iv, NSIMDVL) { jdotc[iv]    = 0.0; sphidotq[iv] = 0.0;} 
+ for_simd_v(iv, NSIMDVL) { jdotc[iv]    = 0.0; sphidotq[iv] = 0.0;}
 
   for_simd_v(iv, NSIMDVL)  jdotc[iv] -= jphi[X][iv];
   for_simd_v(iv, NSIMDVL)  sphidotq[iv] += sphi[0][0][iv]*6.6666666666666663e-01;
   for_simd_v(iv, NSIMDVL)  sphidotq[iv] += sphi[1][1][iv]*-3.3333333333333331e-01;
   for_simd_v(iv, NSIMDVL)  sphidotq[iv] += sphi[2][2][iv]*-3.3333333333333331e-01;
 
- for_simd_v(iv, NSIMDVL) 
-     f[ LB_ADDR(_lbp.nsite, NDIST, NVEL, baseIndex+iv, LB_PHI, 16) ] 
+ for_simd_v(iv, NSIMDVL)
+     f[ LB_ADDR(_lbp.nsite, NDIST, NVEL, baseIndex+iv, LB_PHI, 16) ]
         = w1*(jdotc[iv]*rcs2 + sphidotq[iv]*r2rcs4);
 
  /* cv[p = 17] = {-1,0,-1} */
- for_simd_v(iv, NSIMDVL) { jdotc[iv]    = 0.0; sphidotq[iv] = 0.0;} 
+ for_simd_v(iv, NSIMDVL) { jdotc[iv]    = 0.0; sphidotq[iv] = 0.0;}
 
   for_simd_v(iv, NSIMDVL)  jdotc[iv] -= jphi[X][iv];
   for_simd_v(iv, NSIMDVL)  jdotc[iv] -= jphi[Z][iv];
@@ -3134,12 +3120,12 @@ __device__ void d3q19_mode2f_phi(double jdotc[NSIMDVL],
   for_simd_v(iv, NSIMDVL)  sphidotq[iv] += sphi[2][0][iv]*1.0000000000000000e+00;
   for_simd_v(iv, NSIMDVL)  sphidotq[iv] += sphi[2][2][iv]*6.6666666666666663e-01;
 
- for_simd_v(iv, NSIMDVL) 
-     f[ LB_ADDR(_lbp.nsite, NDIST, NVEL, baseIndex+iv, LB_PHI, 17) ] 
+ for_simd_v(iv, NSIMDVL)
+     f[ LB_ADDR(_lbp.nsite, NDIST, NVEL, baseIndex+iv, LB_PHI, 17) ]
         = w2*(jdotc[iv]*rcs2 + sphidotq[iv]*r2rcs4);
 
  /* cv[p = 18] = {1,1,0} */
- for_simd_v(iv, NSIMDVL) { jdotc[iv]    = 0.0; sphidotq[iv] = 0.0;} 
+ for_simd_v(iv, NSIMDVL) { jdotc[iv]    = 0.0; sphidotq[iv] = 0.0;}
 
   for_simd_v(iv, NSIMDVL)  jdotc[iv] -= jphi[X][iv];
   for_simd_v(iv, NSIMDVL)  jdotc[iv] -= jphi[Y][iv];
@@ -3149,8 +3135,8 @@ __device__ void d3q19_mode2f_phi(double jdotc[NSIMDVL],
   for_simd_v(iv, NSIMDVL)  sphidotq[iv] += sphi[1][1][iv]*6.6666666666666663e-01;
   for_simd_v(iv, NSIMDVL)  sphidotq[iv] += sphi[2][2][iv]*-3.3333333333333331e-01;
 
- for_simd_v(iv, NSIMDVL) 
-     f[ LB_ADDR(_lbp.nsite, NDIST, NVEL, baseIndex+iv, LB_PHI, 18) ] 
+ for_simd_v(iv, NSIMDVL)
+     f[ LB_ADDR(_lbp.nsite, NDIST, NVEL, baseIndex+iv, LB_PHI, 18) ]
         = w2*(jdotc[iv]*rcs2 + sphidotq[iv]*r2rcs4);
 
   return;

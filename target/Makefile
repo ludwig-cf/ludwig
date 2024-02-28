@@ -35,11 +35,11 @@ endif
 
 TARGETSRC = target_x86.c
 
-ifeq ($(CC),nvcc)
+ifeq ($(TARGET),nvcc)
 TARGETSRC = target_cuda.c
 endif
 
-ifeq ($(CC),hipcc)
+ifeq ($(TARGET),hipcc)
 TARGETSRC = target_hip.c
 endif
 

@@ -1,7 +1,7 @@
 /*****************************************************************************
  *
  *  phi_force_stress.c
- *  
+ *
  *  Storage and computation of the "thermodynamic" stress which
  *  depends on the choice of free energy.
  *
@@ -9,7 +9,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2012-2022 The University of Edinburgh
+ *  (c) 2012-2024 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -25,9 +25,9 @@
 #include "kernel.h"
 #include "phi_force_stress.h"
 
-__global__ void pth_kernel(kernel_ctxt_t * ktx, pth_t * pth, fe_t * fe);
-__global__ void pth_kernel_v(kernel_ctxt_t * ktx, pth_t * pth, fe_t * fe);
-__global__ void pth_kernel_a_v(kernel_ctxt_t * ktx, pth_t * pth, fe_t * fe);
+__global__ void pth_kernel(kernel_3d_t k3d, pth_t * pth, fe_t * fe);
+__global__ void pth_kernel_v(kernel_3d_v_t k3v, pth_t * pth, fe_t * fe);
+__global__ void pth_kernel_a_v(kernel_3d_v_t k3v, pth_t * pth, fe_t * fe);
 
 /*****************************************************************************
  *
@@ -71,7 +71,7 @@ __host__ int pth_create(pe_t * pe, cs_t * cs, int method, pth_t ** pobj) {
   else {
     /* Allocate data only if really required */
     int imem = (method == FE_FORCE_METHOD_STRESS_DIVERGENCE)
-            || (method == FE_FORCE_METHOD_RELAXATION_ANTI); 
+            || (method == FE_FORCE_METHOD_RELAXATION_ANTI);
 
     tdpMalloc((void **) &obj->target, sizeof(pth_t));
     tdpMemset(obj->target, 0, sizeof(pth_t));
@@ -172,9 +172,6 @@ __host__ int pth_stress_compute(pth_t * pth, fe_t * fe) {
 
   int nextra;
   int nlocal[3];
-  dim3 nblk, ntpb;
-  kernel_info_t limits;
-  kernel_ctxt_t * ctxt = NULL;
   fe_t * fe_target = NULL;
 
   assert(pth);
@@ -184,33 +181,37 @@ __host__ int pth_stress_compute(pth_t * pth, fe_t * fe) {
   cs_nlocal(pth->cs, nlocal);
   nextra = 1; /* Limits extend one point into the halo */
 
-  limits.imin = 1 - nextra; limits.imax = nlocal[X] + nextra;
-  limits.jmin = 1 - nextra; limits.jmax = nlocal[Y] + nextra;
-  limits.kmin = 1 - nextra; limits.kmax = nlocal[Z] + nextra;
+  {
+    dim3 nblk = {};
+    dim3 ntpb = {};
+    cs_limits_t lim = {
+      .imin = 1 - nextra, .imax = nlocal[X] + nextra,
+      .jmin = 1 - nextra, .jmax = nlocal[Y] + nextra,
+      .kmin = 1 - nextra, .kmax = nlocal[Z] + nextra
+    };
+    kernel_3d_v_t k3v = kernel_3d_v(pth->cs, lim, NSIMDVL);
 
-  kernel_ctxt_create(pth->cs, NSIMDVL, limits, &ctxt);
-  kernel_ctxt_launch_param(ctxt, &nblk, &ntpb);
+    kernel_3d_launch_param(k3v.kiterations, &nblk, &ntpb);
 
-  fe->func->target(fe, &fe_target);
+    fe->func->target(fe, &fe_target);
 
-  if (fe->use_stress_relaxation) {
-    /* Antisymmetric part only required; if no antisymmetric part,
-     * do nothing. */
-    if (fe->func->str_anti != NULL) {
-      tdpLaunchKernel(pth_kernel_a_v, nblk, ntpb, 0, 0,
-	  ctxt->target, pth->target, fe_target);
+    if (fe->use_stress_relaxation) {
+      /* Antisymmetric part only required; if no antisymmetric part,
+       * do nothing. */
+      if (fe->func->str_anti != NULL) {
+	tdpLaunchKernel(pth_kernel_a_v, nblk, ntpb, 0, 0,
+			k3v, pth->target, fe_target);
+      }
     }
-  }
-  else {
-    /* Full stress */
-    tdpLaunchKernel(pth_kernel_v, nblk, ntpb, 0, 0,
-		    ctxt->target, pth->target, fe_target);
-  }
+    else {
+      /* Full stress */
+      tdpLaunchKernel(pth_kernel_v, nblk, ntpb, 0, 0,
+		      k3v, pth->target, fe_target);
+    }
 
-  tdpAssert(tdpPeekAtLastError());
-  tdpAssert(tdpDeviceSynchronize());
-
-  kernel_ctxt_free(ctxt);
+    tdpAssert(tdpPeekAtLastError());
+    tdpAssert(tdpDeviceSynchronize());
+  }
 
   return 0;
 }
@@ -223,26 +224,21 @@ __host__ int pth_stress_compute(pth_t * pth, fe_t * fe) {
  *
  *****************************************************************************/
 
-__global__ void pth_kernel(kernel_ctxt_t * ktx, pth_t * pth, fe_t * fe) {
+__global__ void pth_kernel(kernel_3d_t k3d, pth_t * pth, fe_t * fe) {
 
-  int kiter;
-  int kindex;
-  int ic, jc, kc, index;
-  double s[3][3];
+  int kindex = 0;
 
-  assert(ktx);
   assert(pth);
   assert(fe);
   assert(fe->func->stress);
 
-  kiter = kernel_iterations(ktx);
+  for_simt_parallel(kindex, k3d.kiterations, 1) {
 
-  for_simt_parallel(kindex, kiter, 1) {
-
-    ic = kernel_coords_ic(ktx, kindex);
-    jc = kernel_coords_jc(ktx, kindex);
-    kc = kernel_coords_kc(ktx, kindex);
-    index = kernel_coords_index(ktx, ic, jc, kc);
+    int ic = kernel_3d_ic(&k3d, kindex);
+    int jc = kernel_3d_jc(&k3d, kindex);
+    int kc = kernel_3d_kc(&k3d, kindex);
+    int index = kernel_3d_cs_index(&k3d, ic, jc, kc);
+    double s[3][3] = {0};
 
     fe->func->stress(fe, index, s);
     pth_stress_set(pth, index, s);
@@ -257,30 +253,24 @@ __global__ void pth_kernel(kernel_ctxt_t * ktx, pth_t * pth, fe_t * fe) {
  *
  *****************************************************************************/
 
-__global__ void pth_kernel_v(kernel_ctxt_t * ktx, pth_t * pth, fe_t * fe) {
+__global__ void pth_kernel_v(kernel_3d_v_t k3v, pth_t * pth, fe_t * fe) {
 
-  int kiter;
-  int kindex;
-  int index;
-  int ia, ib, iv;
+  int kindex = 0;
 
-  double s[3][3][NSIMDVL] = {0};
-
-  assert(ktx);
   assert(pth);
   assert(fe);
   assert(fe->func->stress_v);
 
-  kiter = kernel_vector_iterations(ktx);
+  for_simt_parallel(kindex, k3v.kiterations, NSIMDVL) {
 
-  for_simt_parallel(kindex, kiter, NSIMDVL) {
-
-    index = kernel_baseindex(ktx, kindex);
+    int index = k3v.kindex0 + kindex;
+    double s[3][3][NSIMDVL] = {0};
 
     fe->func->stress_v(fe, index, s);
 
-    for (ia = 0; ia < 3; ia++) {
-      for (ib = 0; ib < 3; ib++) {
+    for (int ia = 0; ia < 3; ia++) {
+      for (int ib = 0; ib < 3; ib++) {
+	int iv = 0;
 	for_simd_v(iv, NSIMDVL) {
 	  pth->str[addr_rank2(pth->nsites,3,3,index+iv,ia,ib)] = s[ia][ib][iv];
 	}
@@ -299,30 +289,24 @@ __global__ void pth_kernel_v(kernel_ctxt_t * ktx, pth_t * pth, fe_t * fe) {
  *
  *****************************************************************************/
 
-__global__ void pth_kernel_a_v(kernel_ctxt_t * ktx, pth_t * pth, fe_t * fe) {
+__global__ void pth_kernel_a_v(kernel_3d_v_t k3v, pth_t * pth, fe_t * fe) {
 
-  int kiter;
-  int kindex;
-  int index;
-  int ia, ib, iv;
+  int kindex = 0;
 
-  double s[3][3][NSIMDVL];
-
-  assert(ktx);
   assert(pth);
   assert(fe);
   assert(fe->func->str_anti_v);
 
-  kiter = kernel_vector_iterations(ktx);
+  for_simt_parallel(kindex, k3v.kiterations, NSIMDVL) {
 
-  for_simt_parallel(kindex, kiter, NSIMDVL) {
-
-    index = kernel_baseindex(ktx, kindex);
+    int index = k3v.kindex0 + kindex;
+    double s[3][3][NSIMDVL];
 
     fe->func->str_anti_v(fe, index, s);
 
-    for (ia = 0; ia < 3; ia++) {
-      for (ib = 0; ib < 3; ib++) {
+    for (int ia = 0; ia < 3; ia++) {
+      for (int ib = 0; ib < 3; ib++) {
+	int iv = 0;
 	for_simd_v(iv, NSIMDVL) {
 	  pth->str[addr_rank2(pth->nsites,3,3,index+iv,ia,ib)] = s[ia][ib][iv];
 	}

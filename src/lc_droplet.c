@@ -8,7 +8,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2012-2022 The University of Edinburgh
+ *  (c) 2012-2024 The University of Edinburgh
  *
  *  Contributing authors:
  *  Juho Lituvuori  (juho.lintuvuori@u-bordeaux.fr)
@@ -81,10 +81,9 @@ __host__ __device__
 int fe_lc_droplet_active_stress(const fe_lc_droplet_param_t * fp, double phi,
 				double q[3][3], double s[3][3]);
 
-__global__ void fe_lc_droplet_bf_kernel(kernel_ctxt_t * ktx,
+__global__ void fe_lc_droplet_bf_kernel(kernel_3d_t k3d,
 					fe_lc_droplet_t * fe,
 					hydro_t * hydro);
-
 
 static __constant__ fe_lc_droplet_param_t const_param;
 static __constant__ fe_lc_param_t const_lc;
@@ -248,7 +247,7 @@ __host__ int fe_lc_droplet_target(fe_lc_droplet_t * fe, fe_t ** target) {
  *
  *  Return the free energy density at lattice site index
  *
- *  f = f_symmetric + f_lc + f_anchoring  
+ *  f = f_symmetric + f_lc + f_anchoring
  *
  *****************************************************************************/
 
@@ -261,7 +260,7 @@ __host__ __device__ int fe_lc_droplet_fed(fe_lc_droplet_t * fe, int index,
   double dphi[3];
   double dq[3][3][3];
   double fed_symm, fed_lc, fed_anch;
-  
+
   assert(fe);
 
   fe_symm_fed(fe->symm, index, &fed_symm);
@@ -303,7 +302,7 @@ __host__ __device__ int fe_lc_droplet_gamma(fe_lc_droplet_t * fe, int index,
   field_scalar(fe->symm->phi, index, &phi);
 
   *gamma = fe->param->gamma0 + fe->param->delta*(1.0 + phi);
-  
+
   return 0;
 }
 
@@ -317,14 +316,14 @@ __host__ __device__ int fe_lc_droplet_gamma(fe_lc_droplet_t * fe, int index,
 
 __host__ __device__ int fe_lc_droplet_mol_field(fe_lc_droplet_t * fe,
 						int index, double h[3][3]) {
-  
+
   int ia,ib;
   double q[3][3];
   double dq[3][3][3];
   double dsq[3][3];
   double h1[3][3], h2[3][3];
   double gamma;
-  
+
   assert(fe);
 
   fe_lc_droplet_gamma(fe, index, &gamma);
@@ -334,9 +333,9 @@ __host__ __device__ int fe_lc_droplet_mol_field(fe_lc_droplet_t * fe,
   field_grad_tensor_delsq(fe->lc->dq, index, dsq);
 
   fe_lc_compute_h(fe->lc, gamma, q, dq, dsq, h1);
-  
+
   fe_lc_droplet_anchoring_h(fe, index, h2);
-    
+
   for (ia = 0; ia < 3; ia++){
     for(ib = 0; ib < 3; ib++){
       h[ia][ib] = h1[ia][ib] + h2[ia][ib];
@@ -384,7 +383,7 @@ __host__ __device__ void fe_lc_droplet_mol_field_v(fe_lc_droplet_t * fe,
 
 __host__ __device__ int fe_lc_droplet_anchoring_h(fe_lc_droplet_t * fe,
 						  int index, double h[3][3]) {
-  
+
   int ia, ib;
   double dphi[3];
   double delsq_phi;
@@ -393,7 +392,7 @@ __host__ __device__ int fe_lc_droplet_anchoring_h(fe_lc_droplet_t * fe,
   KRONECKER_DELTA_CHAR(d);
 
   assert(fe);
-  
+
   field_grad_scalar_grad(fe->symm->dphi, index, dphi);
   field_grad_scalar_delsq(fe->symm->dphi, index, &delsq_phi);
 
@@ -425,7 +424,7 @@ __host__ __device__ int fe_lc_droplet_anchoring_h(fe_lc_droplet_t * fe,
 
 __host__ __device__ int fe_lc_droplet_mu(fe_lc_droplet_t * fe, int index,
 					 double * mu) {
-  
+
   int ia, ib, ic;
   double q[3][3];
   double dphi[3];
@@ -443,7 +442,7 @@ __host__ __device__ int fe_lc_droplet_mu(fe_lc_droplet_t * fe, int index,
   field_grad_tensor_grad(fe->lc->dq, index, dq);
   field_grad_scalar_grad(fe->symm->dphi, index, dphi);
   field_grad_scalar_dab(fe->symm->dphi, index, dabphi);
-  
+
   q2 = 0.0;
 
   /* Q_ab^2 */
@@ -560,7 +559,7 @@ int fe_lc_droplet_str_symm(fe_lc_droplet_t * fe, int index, double sth[3][3]){
   xi = fe->lc->param->xi;
 
   /* No redshift at the moment */
-  
+
   field_tensor(fe->lc->q, index, q);
   fe_lc_droplet_mol_field(fe, index, h);
 
@@ -573,9 +572,9 @@ int fe_lc_droplet_str_symm(fe_lc_droplet_t * fe, int index, double sth[3][3]){
   }
 
   /* The term in the isotropic pressure, plus that in qh */
-  /* we have, for now, ignored the isotropic contribution 
+  /* we have, for now, ignored the isotropic contribution
    * po = rho*T - lc_droplet_free_energy_density(index); */
-  
+
   for (ia = 0; ia < 3; ia++) {
     for (ib = 0; ib < 3; ib++) {
       sth[ia][ib] = 2.0*xi*(q[ia][ib] + r3*d[ia][ib])*qh;
@@ -695,7 +694,7 @@ int fe_lc_droplet_str_anti(fe_lc_droplet_t * fe, int index, double sth[3][3]) {
   assert(fe);
 
   /* No redshift at the moment */
-  
+
   field_tensor(fe->lc->q, index, q);
   fe_lc_droplet_mol_field(fe, index, h);
 
@@ -721,7 +720,7 @@ int fe_lc_droplet_str_anti(fe_lc_droplet_t * fe, int index, double sth[3][3]) {
       }
     }
   }
-  
+
   /*  Additional minus sign. */
   for (ia = 0; ia < 3; ia++) {
     for (ib = 0; ib < 3; ib++) {
@@ -766,30 +765,27 @@ void fe_lc_droplet_str_anti_v(fe_lc_droplet_t * fe, int index,
 
 __host__ int fe_lc_droplet_bodyforce(fe_lc_droplet_t * fe, hydro_t * hydro) {
 
-  int nlocal[3];
-  dim3 nblk, ntpb;
-  kernel_info_t limits;
-  kernel_ctxt_t * ctxt = NULL;
+  int nlocal[3] = {0};
 
   assert(fe);
   assert(hydro);
 
   cs_nlocal(fe->cs, nlocal);
 
-  limits.imin = 1; limits.imax = nlocal[X];
-  limits.jmin = 1; limits.jmax = nlocal[Y];
-  limits.kmin = 1; limits.kmax = nlocal[Z];
+  {
+    dim3 nblk = {};
+    dim3 ntpb = {};
+    cs_limits_t lim = {1, nlocal[X], 1, nlocal[Y], 1, nlocal[Z]};
+    kernel_3d_t k3d = kernel_3d(fe->cs, lim);
 
-  kernel_ctxt_create(fe->cs, 1, limits, &ctxt);
-  kernel_ctxt_launch_param(ctxt, &nblk, &ntpb);
+    kernel_3d_launch_param(k3d.kiterations, &nblk, &ntpb);
 
-  tdpLaunchKernel(fe_lc_droplet_bf_kernel, nblk, ntpb, 0, 0,
-		  ctxt->target, fe->target, hydro->target);
+    tdpLaunchKernel(fe_lc_droplet_bf_kernel, nblk, ntpb, 0, 0,
+		    k3d, fe->target, hydro->target);
 
-  tdpAssert(tdpPeekAtLastError());
-  tdpAssert(tdpDeviceSynchronize());
-
-  kernel_ctxt_free(ctxt);
+    tdpAssert(tdpPeekAtLastError());
+    tdpAssert(tdpDeviceSynchronize());
+  }
 
   return 0;
 }
@@ -802,8 +798,8 @@ __host__ int fe_lc_droplet_bodyforce(fe_lc_droplet_t * fe, hydro_t * hydro) {
  *
  *    f_a = - H_gn \nabla_a Q_gn - phi \nabla_a mu
  *
- *  this is appropriate for the LC droplets including symmtric and blue_phase 
- *  free energies. Additonal force terms are included in the stress tensor.
+ *  this is appropriate for the LC droplets including symmtric and blue_phase
+ *  free energies. Additional force terms are included in the stress tensor.
  *
  *  The gradient of the chemical potential is computed as
  *
@@ -811,21 +807,16 @@ __host__ int fe_lc_droplet_bodyforce(fe_lc_droplet_t * fe, hydro_t * hydro) {
  *
  ****************************************************************************/
 
-__global__ void fe_lc_droplet_bf_kernel(kernel_ctxt_t * ktx,
+__global__ void fe_lc_droplet_bf_kernel(kernel_3d_t k3d,
 					fe_lc_droplet_t * fe,
 					hydro_t * hydro) {
-  int kindex;
-  int kiterations;
+  int kindex = 0;
 
-  assert(ktx);
   assert(fe);
   assert(hydro);
 
-  kiterations = kernel_iterations(ktx);
+  for_simt_parallel(kindex, k3d.kiterations, 1) {
 
-  for_simt_parallel(kindex, kiterations, 1) {
-
-    int ic, jc, kc;
     int ia, ib;
     int index0, indexm1, indexp1;
     double mum1, mup1;
@@ -836,11 +827,11 @@ __global__ void fe_lc_droplet_bf_kernel(kernel_ctxt_t * ktx,
     double dq[3][3][3];
     double phi;
 
-    ic = kernel_coords_ic(ktx, kindex);
-    jc = kernel_coords_jc(ktx, kindex);
-    kc = kernel_coords_kc(ktx, kindex);
+    int ic = kernel_3d_ic(&k3d, kindex);
+    int jc = kernel_3d_jc(&k3d, kindex);
+    int kc = kernel_3d_kc(&k3d, kindex);
 
-    index0 = kernel_coords_index(ktx, ic, jc, kc);
+    index0 = kernel_3d_cs_index(&k3d, ic, jc, kc);
 
     field_scalar(fe->symm->phi, index0, &phi);
     field_tensor(fe->lc->q, index0, q);
@@ -848,32 +839,32 @@ __global__ void fe_lc_droplet_bf_kernel(kernel_ctxt_t * ktx,
     field_grad_tensor_grad(fe->lc->dq, index0, dq);
     fe_lc_droplet_mol_field(fe, index0, h);
 
-    indexm1 = kernel_coords_index(ktx, ic-1, jc, kc);
-    indexp1 = kernel_coords_index(ktx, ic+1, jc, kc);
+    indexm1 = kernel_3d_cs_index(&k3d, ic-1, jc, kc);
+    indexp1 = kernel_3d_cs_index(&k3d, ic+1, jc, kc);
 
     fe_lc_droplet_mu(fe, indexm1, &mum1);
     fe_lc_droplet_mu(fe, indexp1, &mup1);
- 
+
     /* X */
 
     force[X] = - phi*0.5*(mup1 - mum1);
- 
+
     for (ia = 0; ia < 3; ia++ ) {
       for(ib = 0; ib < 3; ib++ ) {
 	force[X] -= h[ia][ib]*dq[X][ia][ib];
       }
     }
- 
+
     /* Y */
 
-    indexm1 = kernel_coords_index(ktx, ic, jc-1, kc);
-    indexp1 = kernel_coords_index(ktx, ic, jc+1, kc);
+    indexm1 = kernel_3d_cs_index(&k3d, ic, jc-1, kc);
+    indexp1 = kernel_3d_cs_index(&k3d, ic, jc+1, kc);
 
     fe_lc_droplet_mu(fe, indexm1, &mum1);
     fe_lc_droplet_mu(fe, indexp1, &mup1);
 
     force[Y] = -phi*0.5*(mup1 - mum1);
- 
+
     for (ia = 0; ia < 3; ia++ ) {
       for(ib = 0; ib < 3; ib++ ) {
 	force[Y] -= h[ia][ib]*dq[Y][ia][ib];
@@ -882,14 +873,14 @@ __global__ void fe_lc_droplet_bf_kernel(kernel_ctxt_t * ktx,
 
     /* Z */
 
-    indexm1 = kernel_coords_index(ktx, ic, jc, kc-1);
-    indexp1 = kernel_coords_index(ktx, ic, jc, kc+1);
+    indexm1 = kernel_3d_cs_index(&k3d, ic, jc, kc-1);
+    indexp1 = kernel_3d_cs_index(&k3d, ic, jc, kc+1);
 
     fe_lc_droplet_mu(fe, indexm1, &mum1);
     fe_lc_droplet_mu(fe, indexp1, &mup1);
 
     force[Z] = -phi*0.5*(mup1 - mum1);
- 
+
     for (ia = 0; ia < 3; ia++ ) {
       for(ib = 0; ib < 3; ib++ ) {
 	force[Z] -= h[ia][ib]*dq[Z][ia][ib];
@@ -912,11 +903,11 @@ __global__ void fe_lc_droplet_bf_kernel(kernel_ctxt_t * ktx,
  *
  *    f_a = - H_gn \nabla_a Q_gn - phi \nabla_a mu
  *
- *  This is appropriate for the LC droplets including symmtric and blue_phase 
- *  free energies. Additonal force terms are included in the stress tensor.
+ *  This is appropriate for the LC droplets including symmtric and blue_phase
+ *  free energies. Additional force terms are included in the stress tensor.
  *
  *  The routine takes care of gradients at walls by extrapolating the
- *  gradients from the adjacent fluid site. The gradients are computed on a 
+ *  gradients from the adjacent fluid site. The gradients are computed on a
  *  27-point stencil basis.
  *
  *****************************************************************************/
@@ -965,7 +956,7 @@ int fe_lc_droplet_bodyforce_wall(fe_lc_droplet_t * fe, lees_edw_t * le,
 
 	  field_scalar(fe->symm->phi, index0, &phi);
 	  field_tensor(fe->lc->q, index0, q);
-    
+
 	  field_grad_tensor_grad(fe->lc->dq, index0, dq);
 	  fe_lc_droplet_mol_field(fe, index0, h);
 
@@ -973,12 +964,12 @@ int fe_lc_droplet_bodyforce_wall(fe_lc_droplet_t * fe, lees_edw_t * le,
 	  for (p = 1; p < NGRAD_; p++) {
 
 	    ic1 = ic + bs_cv[p][X];
-	    jc1 = jc + bs_cv[p][Y]; 
+	    jc1 = jc + bs_cv[p][Y];
 	    kc1 = kc + bs_cv[p][Z];
-	      
+
 	    isite[p] = cs_index(cs, ic1, jc1, kc1);
 	    map_status(map, isite[p], &status);
-	    if (status != MAP_FLUID) isite[p] = -1; 
+	    if (status != MAP_FLUID) isite[p] = -1;
 
 	  }
 
@@ -1012,8 +1003,8 @@ int fe_lc_droplet_bodyforce_wall(fe_lc_droplet_t * fe, lees_edw_t * le,
 
 	    if (isite[p] == -1) {
 
-	      gradt[p] = (bs_cv[p][X]*gradn[X] + 
-			  bs_cv[p][Y]*gradn[Y] + 
+	      gradt[p] = (bs_cv[p][X]*gradn[X] +
+			  bs_cv[p][Y]*gradn[Y] +
 			  bs_cv[p][Z]*gradn[Z]);
 
 	    }
@@ -1051,7 +1042,7 @@ int fe_lc_droplet_bodyforce_wall(fe_lc_droplet_t * fe, lees_edw_t * le,
 	  /* Store the force on lattice */
 	  hydro_f_local_add(hydro, index0, force);
 
-	}	
+	}
 
       }
     }
@@ -1059,5 +1050,3 @@ int fe_lc_droplet_bodyforce_wall(fe_lc_droplet_t * fe, lees_edw_t * le,
 
   return 0;
 }
-
-

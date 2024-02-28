@@ -83,10 +83,10 @@ static grad_lc_anch_t * static_grad = NULL;
 __host__ int gradient_6x6(grad_lc_anch_t * anch, field_grad_t *grad,
 			  int nextra);
 
-__global__
-void gradient_6x6_kernel(kernel_ctxt_t * ktx, cs_t * cs, grad_lc_anch_t * anch,
-			 fe_lc_t * fe, field_grad_t * fg,
-			 map_t * map, colloids_info_t * cinfo);
+__global__ void gradient_6x6_kernel(kernel_3d_t k3d, cs_t * cs,
+				    grad_lc_anch_t * anch,
+				    fe_lc_t * fe, field_grad_t * fg,
+				    map_t * map);
 
 __host__ __device__ int grad_3d_7pt_bc(grad_lc_anch_t * anch,
 				       fe_lc_param_t * fep,
@@ -157,6 +157,7 @@ __host__ int grad_lc_anch_create(pe_t * pe, cs_t * cs, map_t * map,
   }
 
   static_grad = obj;
+  if (pobj) *pobj = obj;
 
   return 0;
 }
@@ -244,33 +245,34 @@ __host__
 int gradient_6x6(grad_lc_anch_t * anch, field_grad_t * fg, int nextra) {
 
   int nlocal[3];
-  dim3 nblk, ntpb;
   cs_t * cstarget = NULL;
-  kernel_info_t limits;
-  kernel_ctxt_t * ctxt = NULL;
 
   assert(anch);
   assert(fg);
 
   cs_nlocal(anch->cs, nlocal);
 
-  limits.imin = 1 - nextra; limits.imax = nlocal[X] + nextra;
-  limits.jmin = 1 - nextra; limits.jmax = nlocal[Y] + nextra;
-  limits.kmin = 1 - nextra; limits.kmax = nlocal[Z] + nextra;
+  {
+    dim3 nblk = {};
+    dim3 ntpb = {};
+    cs_limits_t lim = {
+      .imin = 1 - nextra, .imax = nlocal[X] + nextra,
+      .jmin = 1 - nextra, .jmax = nlocal[Y] + nextra,
+      .kmin = 1 - nextra, .kmax = nlocal[Z] + nextra
+    };
+    kernel_3d_t k3d = kernel_3d(anch->cs, lim);
 
-  kernel_ctxt_create(anch->cs, NSIMDVL, limits, &ctxt);
-  kernel_ctxt_launch_param(ctxt, &nblk, &ntpb);
+    kernel_3d_launch_param(k3d.kiterations, &nblk, &ntpb);
 
-  fe_lc_param_commit(anch->fe);
-  cs_target(anch->cs, &cstarget);
+    fe_lc_param_commit(anch->fe);
+    cs_target(anch->cs, &cstarget);
 
-  tdpLaunchKernel(gradient_6x6_kernel, nblk, ntpb, 0, 0,
-		  ctxt->target, cstarget,
-		  anch->target, anch->fe->target, fg->target,
-		  anch->map->target, anch->cinfo->target);
-  tdpDeviceSynchronize();
-
-  kernel_ctxt_free(ctxt);
+    tdpLaunchKernel(gradient_6x6_kernel, nblk, ntpb, 0, 0,
+		    k3d, cstarget,
+		    anch->target, anch->fe->target, fg->target,
+		    anch->map->target);
+    tdpDeviceSynchronize();
+  }
 
   return 0;
 }
@@ -285,22 +287,18 @@ int gradient_6x6(grad_lc_anch_t * anch, field_grad_t * fg, int nextra) {
  *
  *****************************************************************************/
 
-__global__
-void gradient_6x6_kernel(kernel_ctxt_t * ktx, cs_t * cs, grad_lc_anch_t * anch,
-			 fe_lc_t * fe, field_grad_t * fg,
-			 map_t * map, colloids_info_t * cinfo) {
+__global__ void gradient_6x6_kernel(kernel_3d_t k3d, cs_t * cs,
+				    grad_lc_anch_t * anch,
+				    fe_lc_t * fe, field_grad_t * fg,
+				    map_t * map) {
 
-  int kindex;
-  __shared__ int kiterations;
+  int kindex = 0;
 
-  kiterations = kernel_iterations(ktx);
-
-  assert(ktx);
   assert(anch);
   assert(fg);
   assert(fg->field);
 
-  for_simt_parallel(kindex, kiterations, 1) {
+  for_simt_parallel(kindex, k3d.kiterations, 1) {
 
     int ic, jc, kc, index;
     int str[3];
@@ -330,10 +328,10 @@ void gradient_6x6_kernel(kernel_ctxt_t * ktx, cs_t * cs, grad_lc_anch_t * anch,
     kappa0 = fe->param->kappa0;
     kappa1 = fe->param->kappa1;
 
-    ic = kernel_coords_ic(ktx, kindex);
-    jc = kernel_coords_jc(ktx, kindex);
-    kc = kernel_coords_kc(ktx, kindex);
-    index = kernel_coords_index(ktx, ic, jc, kc);
+    ic = kernel_3d_ic(&k3d, kindex);
+    jc = kernel_3d_jc(&k3d, kindex);
+    kc = kernel_3d_kc(&k3d, kindex);
+    index = kernel_3d_cs_index(&k3d, ic, jc, kc);
 
     cs_strides(cs, str + X, str + Y, str + Z);
 

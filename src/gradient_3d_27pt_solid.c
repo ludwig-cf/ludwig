@@ -13,7 +13,7 @@
  *
  *  Note that fluid free energy and surface free energy parameters
  *  are required for wetting. Fluid parameters are via free_energy.h
- *  and surface paramter via site_map.h.
+ *  and surface parameter via site_map.h.
  *
  *  Explicitly, Desplat et al. assume
  *
@@ -27,7 +27,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2010-2021 The University of Edinburgh
+ *  (c) 2010-2024 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -67,7 +67,7 @@ static __constant__ int bs_cv[NGRAD_][3] = {{ 0, 0, 0},
 				 { 1, 1,-1}, { 1, 1, 0}, { 1, 1, 1}};
 
 
-__global__ void grad_3d_27pt_solid_kernel(kernel_ctxt_t * ktx,
+__global__ void grad_3d_27pt_solid_kernel(kernel_3d_t k3d,
 					  field_grad_t * fg,
 					  map_t * map,
 					  solid_t solid);
@@ -132,9 +132,6 @@ __host__ int grad_3d_27pt_solid_d2(field_grad_t * fgrad) {
 
   int nextra;
   int nlocal[3];
-  dim3 nblk, ntpb;
-  kernel_info_t limits;
-  kernel_ctxt_t * ctxt = NULL;
   fe_symm_param_t param;
 
   cs_nhalo(fgrad->field->cs, &nextra);
@@ -147,19 +144,24 @@ __host__ int grad_3d_27pt_solid_d2(field_grad_t * fgrad) {
 
   fe_symm_param(static_solid.fe_symm, &param);
 
-  limits.imin = 1 - nextra; limits.imax = nlocal[X] + nextra;
-  limits.jmin = 1 - nextra; limits.jmax = nlocal[Y] + nextra;
-  limits.kmin = 1 - nextra; limits.kmax = nlocal[Z] + nextra;
+  {
+    dim3 nblk = {};
+    dim3 ntpb = {};
+    cs_limits_t lim = {
+      .imin = 1 - nextra, .imax = nlocal[X] + nextra,
+      .jmin = 1 - nextra, .jmax = nlocal[Y] + nextra,
+      .kmin = 1 - nextra, .kmax = nlocal[Z] + nextra
+    };
+    kernel_3d_t k3d = kernel_3d(fgrad->field->cs, lim);
 
-  kernel_ctxt_create(fgrad->field->cs, NSIMDVL, limits, &ctxt);
-  kernel_ctxt_launch_param(ctxt, &nblk, &ntpb);
+    kernel_3d_launch_param(k3d.kiterations, &nblk, &ntpb);
 
-  tdpLaunchKernel(grad_3d_27pt_solid_kernel, nblk, ntpb, 0, 0,
-		  ctxt->target,
-		  fgrad->target, static_solid.map->target, static_solid);
-  tdpDeviceSynchronize();
+    tdpLaunchKernel(grad_3d_27pt_solid_kernel, nblk, ntpb, 0, 0,
+		    k3d, fgrad->target, static_solid.map->target, static_solid);
 
-  kernel_ctxt_free(ctxt);
+    tdpAssert( tdpPeekAtLastError() );
+    tdpAssert( tdpDeviceSynchronize() );
+  }
 
   return 0;
 }
@@ -169,23 +171,19 @@ __host__ int grad_3d_27pt_solid_d2(field_grad_t * fgrad) {
  *  grad_3d_27pt_solid_kernel
  *
  *  kappa is the interfacial energy penalty in the symmetric picture.
- *  rkappa is (1.0/kappa). 
+ *  rkappa is (1.0/kappa).
  *
  ****************************************************************************/
 
-__global__ void grad_3d_27pt_solid_kernel(kernel_ctxt_t * ktx,
+__global__ void grad_3d_27pt_solid_kernel(kernel_3d_t k3d,
 					  field_grad_t * fg,
 					  map_t * map,
 					  solid_t solid) {
-  int kindex;
-  int kiterations;
+  int kindex = 0;
   const double r9 = (1.0/9.0);     /* normaliser for grad */
   const double r18 = (1.0/18.0);   /* normaliser for delsq */
 
-
-  kiterations = kernel_iterations(ktx);
-
-  for_simt_parallel(kindex, kiterations, 1) {
+  for_simt_parallel(kindex, k3d.kiterations, 1) {
 
     int nop;
     int ic, jc, kc, ic1, jc1, kc1;
@@ -208,11 +206,11 @@ __global__ void grad_3d_27pt_solid_kernel(kernel_ctxt_t * ktx,
     nop = fg->field->nf;
     phi = fg->field;
 
-    ic = kernel_coords_ic(ktx, kindex);
-    jc = kernel_coords_jc(ktx, kindex);
-    kc = kernel_coords_kc(ktx, kindex);
+    ic = kernel_3d_ic(&k3d, kindex);
+    jc = kernel_3d_jc(&k3d, kindex);
+    kc = kernel_3d_kc(&k3d, kindex);
 
-    index = kernel_coords_index(ktx, ic, jc, kc);
+    index = kernel_3d_cs_index(&k3d, ic, jc, kc);
     map_status(map, index, &status);
 
     if (status == MAP_FLUID) {
@@ -224,7 +222,7 @@ __global__ void grad_3d_27pt_solid_kernel(kernel_ctxt_t * ktx,
 	jc1 = jc + bs_cv[p][Y];
 	kc1 = kc + bs_cv[p][Z];
 
-	isite[p] = kernel_coords_index(ktx, ic1, jc1, kc1);
+	isite[p] = kernel_3d_cs_index(&k3d, ic1, jc1, kc1);
 	map_status(map, isite[p], &status);
 	if (status != MAP_FLUID) isite[p] = -1;
       }
@@ -235,7 +233,7 @@ __global__ void grad_3d_27pt_solid_kernel(kernel_ctxt_t * ktx,
 	  count[ia] = 0.0;
 	  gradn[ia] = 0.0;
 	}
-	  
+
 	for (p = 1; p < NGRAD_; p++) {
 
 	  if (isite[p] == -1) continue;
@@ -266,8 +264,8 @@ __global__ void grad_3d_27pt_solid_kernel(kernel_ctxt_t * ktx,
 
 	    /* Set gradient phi at boundary following wetting properties */
 
-	    ia = kernel_coords_index(ktx, ic + bs_cv[p][X], jc + bs_cv[p][Y],
-				     kc + bs_cv[p][Z]);
+	    ia = kernel_3d_cs_index(&k3d, ic + bs_cv[p][X], jc + bs_cv[p][Y],
+				    kc + bs_cv[p][Z]);
 	    if (solid.uniform) {
 	      c = solid.c;
 	      h = solid.h;
@@ -286,7 +284,7 @@ __global__ void grad_3d_27pt_solid_kernel(kernel_ctxt_t * ktx,
 	    gradt[p] = -(c*phi_b + h)*solid.rkappa;
 	  }
 	}
- 
+
 	/* Accumulate the final gradients */
 
 	dphi = 0.0;

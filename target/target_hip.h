@@ -5,7 +5,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- * (c) 2020-2022 The University of Edinburgh
+ * (c) 2020-2024 The University of Edinburgh
  *
  *  Contributing authors:
  *    Nikola Vasilev did the original implementation in 2020.
@@ -60,6 +60,43 @@ typedef hipDeviceP2PAttr         tdpDeviceP2PAttr;
 
 typedef hipStream_t tdpStream_t;
 typedef hipError_t tdpError_t;
+
+/* Graph API and related */
+
+typedef hipArray_t     tdpArray_t;
+
+typedef hipGraph_t     tdpGraph_t;
+typedef hipGraphExec_t tdpGraphExec_t;
+typedef hipGraphNode_t tdpGraphNode_t;
+
+typedef hipKernelNodeParams tdpKernelNodeParams;
+typedef hipMemcpy3DParms    tdpMemcpy3DParms;
+
+#define tdpExtent       hipExtent
+#define tdpPos          hipPos
+#define tdpPitchedPtr   hipPitchedPtr
+
+__host__ tdpError_t tdpGraphAddKernelNode(tdpGraphNode_t * pGraphNode,
+                                          tdpGraph_t graph,
+                                          const tdpGraphNode_t * pDependencies,
+                                          size_t numDependencies,
+                                          const tdpKernelNodeParams * nParams);
+__host__ tdpError_t tdpGraphAddMemcpyNode(tdpGraphNode_t * pGraphNode,
+                                          tdpGraph_t graph,
+                                          const tdpGraphNode_t * pDependencies,
+                                          size_t numDependencies,
+                                          const tdpMemcpy3DParms * copyParams);
+__host__ tdpError_t tdpGraphCreate(tdpGraph_t * pGraph, unsigned int flags);
+__host__ tdpError_t tdpGraphDestroy(tdpGraph_t graph);
+__host__ tdpError_t tdpGraphInstantiate(tdpGraphExec_t * pGraphExec,
+                                        tdpGraph_t graph,
+                                        unsigned long long flags);
+__host__ tdpError_t tdpGraphLaunch(tdpGraphExec_t exec, tdpStream_t stream);
+
+__host__ struct tdpExtent make_tdpExtent(size_t w, size_t h, size_t d);
+__host__ struct tdpPos    make_tdpPos(size_t x, size_t y, size_t z);
+__host__ struct tdpPitchedPtr make_tdpPitchedPtr(void * d, size_t p,
+                                                 size_t xsz, size_t ysz);
 
 
 #define TARGET_MAX_THREADS_PER_BLOCK 128

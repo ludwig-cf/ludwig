@@ -5,7 +5,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2010-2023 The University of Edinburgh
+ *  (c) 2010-2024 The University of Edinburgh
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *
@@ -79,6 +79,8 @@ int test_lb_bc_outflow_rhou_suite(void);
 int test_lc_anchoring_suite(void);
 int test_le_suite(void);
 int test_kernel_suite(void);
+int test_kernel_3d_suite(void);
+int test_kernel_3d_v_suite(void);
 int test_lubrication_suite(void);
 int test_map_suite(void);
 int test_map_init_suite(void);
