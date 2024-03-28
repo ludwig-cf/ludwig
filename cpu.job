@@ -1,0 +1,33 @@
+#!/bin/bash
+
+#SBATCH --account=m22oc-S2329216
+#SBATCH --job-name=Xad
+#SBATCH --time=00:40:00
+#SBATCH --nodes=1
+#SBATCH --ntasks=1
+#SBATCH --tasks-per-node=1
+#SBATCH --cpus-per-task=18
+
+#SBATCH --qos=standard
+#SBATCH --partition=standard
+
+#SBATCH --output=%x-%j.out
+#SBATCH --error=%x-%j.err
+#SBATCH --exclusive
+
+#SBATCH --hint=nomultithread
+#SBATCH --distribution=block:block
+
+module --silent load intel-compilers-19
+module --silent load mpt
+#module load gcc
+
+
+# Set the number of threads 
+export OMP_NUM_THREADS=18
+export OMP_PLACES=cores
+
+
+srun  ./src/Ludwig.exe input
+
+
