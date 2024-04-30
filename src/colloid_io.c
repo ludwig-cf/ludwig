@@ -757,6 +757,8 @@ int colloid_io_format_output_binary_set(colloid_io_t * cio) {
 
 static int colloid_io_filename(colloid_io_t * cio, char * filename,
 			       const char * stub) {
+
+  int index = 0;
   assert(cio);
   assert(stub);
   assert(strlen(stub) < FILENAME_MAX/2);  /* Check stub not too long */
@@ -765,9 +767,11 @@ static int colloid_io_filename(colloid_io_t * cio, char * filename,
     pe_fatal(cio->pe, "Format botch for cio stub %s\n", stub);
   }
   else {
-    snprintf(filename, FILENAME_MAX/2-1, "%s.%3.3d-%3.3d", stub, cio->n_io,
-	     cio->index + 1);
+    index = cio->index;
   }
+
+  snprintf(filename, FILENAME_MAX/2-1, "%s.%3.3d-%3.3d", stub, cio->n_io,
+	   index + 1);
 
   return 0;
 }
