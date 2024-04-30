@@ -45,6 +45,18 @@ int colloid_io_run_time(pe_t * pe, rt_t * rt, cs_t * cs,
   rt_int_parameter_vector(rt, "default_io_grid", io_grid);
   rt_int_parameter_vector(rt, "colloid_io_grid", io_grid);
 
+  {
+    int isvalid = 1;
+    if (0 > io_grid[X] || io_grid[X] > pe_mpi_size(pe)) isvalid = 0;
+    if (0 > io_grid[Y] || io_grid[Y] > pe_mpi_size(pe)) isvalid = 0;
+    if (0 > io_grid[Z] || io_grid[Z] > pe_mpi_size(pe)) isvalid = 0;
+    if (isvalid == 0) {
+      pe_info(pe, "Colloid i/o grid out-of-range\n");
+      pe_info(pe, "io_grid: %d %d %d\n", io_grid[X], io_grid[Y], io_grid[Z]);
+      pe_exit(pe, "Please check and try again\n");
+    }
+  }
+
   colloid_io_create(pe, cs, io_grid, cinfo, &cio);
   assert(cio);
 
