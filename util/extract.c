@@ -631,7 +631,10 @@ void read_meta_data_file(const char * filename, metadata_v1_t * meta) {
   p = fgets(tmp, FILENAME_MAX, fp_meta);
   assert(p);
   ifail = sscanf(tmp+ncharoffset, "%d\n", &nrbyte);
-  assert(ifail == 1);
+  if (ifail != 1) {
+    printf("Meta data number of bytes in record size not read correctly\n");
+    exit(-1);
+  }
   printf("Record size (bytes): %d\n", nrbyte);
 
   /* PENDING: this deals with different formats until improved meta data
@@ -652,13 +655,19 @@ void read_meta_data_file(const char * filename, metadata_v1_t * meta) {
   p = fgets(tmp, FILENAME_MAX, fp_meta);
   assert(p);
   ifail = sscanf(tmp+ncharoffset, "%d", &input_isbigendian_);
-  assert(ifail == 1);
+  if (ifail != 1) {
+    printf("Meta data endianness not read correctly\n");
+    exit(-1);
+  }
   assert(input_isbigendian_ == 0 || input_isbigendian_ == 1);
 
   p =  fgets(tmp, FILENAME_MAX, fp_meta);
   assert(p);
   ifail = sscanf(tmp+ncharoffset, "%d\n", &meta->npe);
-  assert(ifail == 1);
+  if (ifail != 1) {
+    printf("Meta data total number of processes not read correctly\n");
+    exit(-1);
+  }
   printf("Total number of processors %d\n", meta->npe);
 
   p = fgets(tmp, FILENAME_MAX, fp_meta);
