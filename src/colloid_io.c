@@ -764,9 +764,10 @@ static int colloid_io_filename(colloid_io_t * cio, char * filename,
   if (cio->index >= 1000) {
     pe_fatal(cio->pe, "Format botch for cio stub %s\n", stub);
   }
-
-  snprintf(filename, FILENAME_MAX/2-1, "%s.%3.3d-%3.3d", stub, cio->n_io,
-	   cio->index + 1);
+  else {
+    snprintf(filename, FILENAME_MAX/2-1, "%s.%3.3d-%3.3d", stub, cio->n_io,
+	     cio->index + 1);
+  }
 
   return 0;
 }
