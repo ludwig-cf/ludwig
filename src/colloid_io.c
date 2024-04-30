@@ -125,6 +125,8 @@ int colloid_io_create(pe_t * pe, cs_t * cs, int io_grid[3],
   obj->index = obj->coords[X] + obj->coords[Y]*io_grid[X]
     + obj->coords[Z]*io_grid[X]*io_grid[Y];
 
+  assert(0 <= obj->index && obj->index < pe_mpi_size(pe));
+
   MPI_Comm_split(cartcomm, obj->index, cs_cart_rank(cs), &obj->comm);
   MPI_Comm_rank(obj->comm, &obj->rank);
   MPI_Comm_size(obj->comm, &obj->size);
