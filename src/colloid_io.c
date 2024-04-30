@@ -763,13 +763,14 @@ static int colloid_io_filename(colloid_io_t * cio, char * filename,
   assert(stub);
   assert(strlen(stub) < FILENAME_MAX/2);  /* Check stub not too long */
 
+  /*
   if (cio->index >= 998 || cio->index < 0) {
     pe_fatal(cio->pe, "Format botch for cio stub %s\n", stub);
   }
   else {
     index = cio->index;
   }
-
+  */
   snprintf(filename, FILENAME_MAX/2-1, "%s.%3.3d-%3.3d", stub, cio->n_io,
 	   index + 1);
 
