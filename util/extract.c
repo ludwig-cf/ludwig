@@ -674,7 +674,10 @@ void read_meta_data_file(const char * filename, metadata_v1_t * meta) {
   assert(p);
   ifail = sscanf(tmp+ncharoffset, "%d %d %d",
 		 &meta->pe[0], &meta->pe[1], &meta->pe[2]);
-  assert(ifail == 3);
+  if (ifail != 3) {
+    printf("Meta data process decomposition not read correctly\n");
+    exit(-1);
+  }
   printf("Decomposition is %d %d %d\n", meta->pe[0], meta->pe[1], meta->pe[2]);
   assert(meta->npe == meta->pe[0]*meta->pe[1]*meta->pe[2]);
 
@@ -682,20 +685,29 @@ void read_meta_data_file(const char * filename, metadata_v1_t * meta) {
   assert(p);
   ifail = sscanf(tmp+ncharoffset, "%d %d %d",
 		 &meta->ntotal[0], &meta->ntotal[1], &meta->ntotal[2]);
-  assert(ifail == 3);
+  if (ifail != 3) {
+    printf("Meta data system size not read correctly\n");
+    exit(-1);
+  }
   printf("System size is %d %d %d\n",
 	 meta->ntotal[0], meta->ntotal[1], meta->ntotal[2]);
 
   p = fgets(tmp, FILENAME_MAX, fp_meta);
   assert(p);
   ifail = sscanf(tmp+ncharoffset, "%d", &meta->nplanes);
-  assert(ifail == 1);
+  if (ifail != 1) {
+    printf("Meta data nplanes not read correctly\n");
+    exit(-1);
+  }
   assert(meta->nplanes >= 0);
   printf("Number of Lees Edwards planes %d\n", meta->nplanes);
   p =  fgets(tmp, FILENAME_MAX, fp_meta);
   assert(p);
   ifail = sscanf(tmp+ncharoffset, "%lf", &le_speed_);
-  assert(ifail == 1);
+  if (ifail != 1) {
+    printf("Meta data LE plane speed not read correctly\n");
+    exit(-1);
+  }
   printf("Lees Edwards speed: %f\n", le_speed_);
 
   /* Number of I/O groups */
