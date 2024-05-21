@@ -180,5 +180,6 @@ __host__ int colloid_rb_ub(colloids_info_t * info, colloid_t * pc, int index,
 			   double rb[3], double ub[3]);
 __host__ double colloids_largest_dimension(colloid_t * pc);
 __host__ int is_site_inside_colloid(colloid_t * pc, double rsep[3]);
+__host__ void calculate_ellipsoidAmatrix(colloid_t * pc, double elA[3][3]);
 
 #endif
