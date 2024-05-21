@@ -240,14 +240,34 @@ __host__ int is_site_inside_colloid(colloid_t * pc, double rsep[3]) {
   double radius;
   double lhs,rhs;
 
+  double elA[3][3];
+
+  if (pc->s.shape == COLLOID_SHAPE_ELLIPSOID) {
+    calculate_ellipsoidAmatrix(pc, elA);
+    lhs = ellipsoid_eqn_lhs(elA, rsep);
+    rhs = 1.0;
+  }
+  else {
+    lhs	= dot_product(rsep, rsep);
+    radius = pc->s.a0;
+    rhs    = radius*radius;
+  }
+  return (lhs < rhs);
+}
+/*****************************************************************************
+ *
+ *  Compute the A matrix for the ellipsoid equation
+ *
+ *****************************************************************************/
+
+__host__ void calculate_ellipsoidAmatrix(colloid_t * pc, double elA[3][3]) {
+
   double * elabc, *quater;
   double elev1[3], elev2[3], elev3[3];
   double worldv1[3]={1.0,0.0,0.0};
   double worldv2[3]={0.0,1.0,0.0};
   double elL[3][3] = {{0.0,0.0,0.0},{0.0,0.0,0.0},{0.0,0.0,0.0}};
-  double elQ[3][3], elQT[3][3], elA[3][3], elAp[3][3];
-
-  if (pc->s.shape == COLLOID_SHAPE_ELLIPSOID) {
+  double elQ[3][3], elQT[3][3], elAp[3][3];
 
     /*Constructing Lambda matrix*/
     elabc  = pc->s.elabc;
@@ -275,21 +295,8 @@ __host__ int is_site_inside_colloid(colloid_t * pc, double rsep[3]) {
     matrix_product((const double (*)[])elQ,(const double (*)[])elL,elAp);
     matrix_transpose((const double (*)[])elQ,elQT);
     matrix_product((const double (*)[])elAp,(const double (*)[])elQT,elA);
-    /*Evaluating quadratic equation*/
-    lhs = elA[0][0]*rsep[X]*rsep[X]
-	+ elA[1][1]*rsep[Y]*rsep[Y]
-	+ elA[2][2]*rsep[Z]*rsep[Z]
-	+ (elA[0][1]+elA[1][0])*rsep[X]*rsep[Y]
-	+ (elA[0][2]+elA[2][0])*rsep[X]*rsep[Z]
-	+ (elA[1][2]+elA[2][1])*rsep[Y]*rsep[Z];
-    rhs = 1.0;
-  }
-  else {
-    lhs	= dot_product(rsep, rsep);
-    radius = pc->s.a0;
-    rhs    = radius*radius;
-  }
-  return (lhs < rhs);
+  
+  return;
 }
 /*****************************************************************************
  *

@@ -20,11 +20,14 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <math.h>
 
 #include "kernel.h"
 #include "physics.h"
 #include "util.h"
 #include "wall.h"
+#include "util_ellipsoid.h"
+#include "util_vector.h"
 
 typedef enum wall_init_enum {WALL_INIT_COUNT_ONLY,
 			     WALL_INIT_ALLOCATE} wall_init_enum_t;
@@ -1484,6 +1487,23 @@ __host__ int wall_shear_init(wall_t * wall) {
 
   return 0;
 }
+ /*****************************************************************************/
+
+__host__ int wall_lubr_shape(wall_t * wall, colloid_t *pc, double drag[3]) {
+
+  int iret = 0;
+  assert(pc);
+  if (pc->s.shape == COLLOID_SHAPE_SPHERE) {
+    iret = wall_lubr_sphere(wall, pc->s.ah, pc->s.r, drag);
+  }                          
+
+  if (pc->s.shape == COLLOID_SHAPE_ELLIPSOID) {
+    iret = wall_lubr_ellipsoid(wall, pc, drag);
+  }
+
+  return iret;
+
+}
 
 /******************************************************************************
  *
@@ -1560,6 +1580,90 @@ __host__ int wall_lubr_sphere(wall_t * wall, double ah, const double r[3],
 
   return 0;
 }
+/******************************************************************************/
+
+__host__ int wall_lubr_ellipsoid(wall_t * wall, colloid_t * pc, double drag[3]) {
+
+  double eta;
+  double lmin[3];
+  double ltot[3];
+  physics_t * phys = NULL;
+
+  double hb[3],ht[3],hlub[3],dh[3];
+  double ah;
+  colloid_link_t * linkbot[3];
+  colloid_link_t * linktop[3];
+  for(int ia = 0; ia < 3; ia++) {
+    linkbot[ia]=NULL;
+    linktop[ia]=NULL;
+  }
+
+  drag[X] = 0.0;
+  drag[Y] = 0.0;
+  drag[Z] = 0.0;
+
+  if (wall == NULL) return 0;
+
+  assert(wall);
+  assert(pc);
+  cs_lmin(wall->cs, lmin);
+  cs_ltot(wall->cs, ltot);
+
+  physics_ref(&phys);
+  physics_eta_shear(phys, &eta);
+
+  double elA[3][3];
+  calculate_ellipsoidAmatrix(pc, elA);
+ 
+  /* Lower, then upper wall X, Y, and Z */
+
+  for(int ia = 0; ia < 3; ia++) {
+    dh[ia] = wall->param->lubr_dh[ia];
+    hlub[ia] = wall->param->lubr_rc[ia];
+  }
+  /*Determining the links representing nearest boundary in all directions in one go*/
+  ellipsoid_nearest_boundary(pc, linkbot, linktop, hb, ht, ltot);
+ 
+  if (wall->param->isboundary[X]) {
+    /*Left plate*/
+    if(hb[X]<(hlub[X]+dh[X])) {
+      hb[X]=ellipsoid_lubr_force(wall, pc, elA, linkbot[X]->rb, X, 1, &ah);
+      drag[X] += wall_lubr_drag(eta, ah, hb[X], hlub[X]);
+    }
+    /*Right plate*/
+    if(ht[X]<(hlub[X]+dh[X])) {
+      ht[X]=ellipsoid_lubr_force(wall, pc, elA, linktop[X]->rb, X, -1, &ah);
+      drag[X] += wall_lubr_drag(eta, ah, ht[X], hlub[X]);
+    }
+  }
+
+  if (wall->param->isboundary[Y]) {
+    /*Bottom plate*/
+    if(hb[Y]<(hlub[Y]+dh[Y])) {
+      hb[Y]=ellipsoid_lubr_force(wall, pc, elA, linkbot[Y]->rb, Y, 1, &ah);
+      drag[Y] += wall_lubr_drag(eta, ah, hb[Y], hlub[Y]);
+    }
+    /*Top plate*/
+    if(ht[Y]<(hlub[Y]+dh[Y])) {
+      ht[Y]=ellipsoid_lubr_force(wall, pc, elA, linktop[Y]->rb, Y, -1, &ah);
+      drag[Y] += wall_lubr_drag(eta, ah, ht[Y], hlub[Y]);
+    }
+  }
+
+  if (wall->param->isboundary[Z]) {
+    /*Bottom plate*/
+    if(hb[Z]<(hlub[Z]+dh[Z])) {
+      hb[Z]=ellipsoid_lubr_force(wall, pc, elA, linkbot[Z]->rb, Z, 1, &ah);
+      drag[Z] += wall_lubr_drag(eta, ah, hb[Z], hlub[Z]);
+    }
+    /*Top plate*/
+    if(ht[Z]<(hlub[Z]+dh[Z])) {
+      ht[Z]=ellipsoid_lubr_force(wall, pc, elA, linktop[Z]->rb, Z, -1, &ah);
+      drag[Z] += wall_lubr_drag(eta, ah, ht[Z], hlub[Z]);
+    }
+  }
+  return 0;
+}
 
 /*****************************************************************************
  *
@@ -1581,3 +1685,141 @@ __host__ double wall_lubr_drag(double eta, double ah, double h, double hc) {
   if (h < hc) zeta = -6.0*pi*eta*ah*ah*(1.0/h - 1.0/hc);
   return zeta;
 }
+
+/*****************************************************************************
+* Determines where the ellipsoid surface cuts a line between two points along
+* the principal directions p = (px,py,pz) = 0,1,2 with directions indicated by 
+* d = (dx, dy, dz) = 1 to the left, - 1 to the right and so on
+*****************************************************************************/
+__host__ int ellipsoid_surface_cut(const double elA[3][3], double sep[3], int p, int d){
+
+  int issueret = -1;
+  double mid = sep[p];
+  double rsep[3],rseq[3],rsem[3];
+  double lhs,rhs,mhs;
+
+  for(int ia = 0; ia < 3; ia++) {
+    rsep[ia]=sep[ia];
+    rseq[ia]=sep[ia];
+    rsem[ia]=sep[ia];
+  }
+  rseq[p]=rsep[p]+d;
+  rsem[p]=0.5*(rsep[p]+rseq[p]);
+
+  lhs = ellipsoid_eqn_lhs(elA, rsep) - 1.0;
+  rhs = ellipsoid_eqn_lhs(elA, rseq) - 1.0;
+  if((lhs<0)&&(rhs>0)){
+    return issueret;
+  }
+
+  int bi=0,bimax=10; /*Talk to Kevin about fixing bimax, bisecacc*/
+  double bisecacc=0.001; 
+  double accateach=fabs(rsep[p]-rseq[p]);
+
+  while(accateach>bisecacc){
+    mhs = ellipsoid_eqn_lhs(elA, rsem) - 1.0;
+    if(mhs>0) {rsep[p]=rsem[p];}
+    else {rseq[p]=rsem[p];}
+    rsem[p]=(rsep[p]+rseq[p])/2.0;
+    mid = rsem[p];
+    accateach=fabs(rsep[p]-rseq[p]);
+    bi++;
+    if(bi>bimax) {
+      break;
+      return issueret;
+    }
+  }
+  sep[p]=mid;
+
+  return(0);
+
+}
+
+/*****************************************************************************
+* Function that calculates the actual location on the surface of ellipsoid
+* that is closest to the wall and determines the force that arises from
+* lubrication if it is strong enough.
+*****************************************************************************/
+__host__ double ellipsoid_lubr_force(wall_t *wall, colloid_t * pc, const double elA[3][3], const double rb[3], int p, int d, double *ah){
+
+  double lmin[3];
+  double ltot[3];
+  double nrst[3],rsep[3],rotsep[3],r[3];
+  double hb;
+  double dh;
+  double *quater;
+  double *elabc;
+  int iret;
+  
+  assert(wall);
+  assert(pc);
+  cs_lmin(wall->cs, lmin);
+  cs_ltot(wall->cs, ltot);
+
+  quater = pc->s.quater;
+  elabc = pc->s.elabc;
+  
+  for(int ib = 0; ib < 3; ib++) {
+    r[ib]=pc->s.r[ib];
+    nrst[ib]=rb[ib]+r[ib];
+  }
+
+  dh = wall->param->lubr_dh[p];
+  
+  if(d>0) {
+    hb = nrst[p] - (lmin[p] + dh);
+  }
+  else {
+    hb = (lmin[p] + (ltot[p]-dh))- nrst[p];
+  }      
+  for(int ia = 0; ia < 3; ia++){
+    rsep[ia]=nrst[ia]-r[ia];
+  }
+  iret=ellipsoid_surface_cut(elA, rsep, p, d);
+  if(iret!=0) {
+    pe_fatal(wall->pe, "Bisection failed in ellipsoid lubrication with wall\n");
+  }
+  rotate_tobodyframe_quaternion(quater, rsep, rotsep);
+  *ah=Gaussian_RadCurv_ellipsoid(elabc, rotsep);
+  if(d>0) {
+    hb = (r[p]+rsep[p]) - (lmin[p] + dh);
+  }
+  else {
+    hb = (lmin[p] + (ltot[p]-dh))- (r[p]+rsep[p]);
+  }
+  return(hb);
+} 
+
+/*****************************************************************************
+* Function that calculates the nearest location of the boundary nodes to 
+* each wall
+*****************************************************************************/
+__host__ void ellipsoid_nearest_boundary(colloid_t * pc, colloid_link_t *linkbot[3], colloid_link_t *linktop[3], double hb[3], double ht[3], const double ltot[3]){
+
+  double r[3]; 
+  double hbm[3];
+  double htm[3];
+  colloid_link_t * p_link = NULL;
+  
+  for(int ia = 0; ia < 3; ia++) {
+    hb[ia]=ltot[ia];
+    ht[ia]=ltot[ia];
+    r[ia]  =pc->s.r[ia];
+  }
+
+  p_link = pc->lnk;
+  if(p_link == NULL) return ;
+
+  for( ; p_link; p_link=p_link->next){
+    if (p_link->status == LINK_UNUSED) continue;
+    if (p_link->status == LINK_FLUID) {
+      for(int ia = 0; ia < 3; ia++) {
+          hbm[ia] = p_link->rb[ia]+r[ia];
+          htm[ia] = ltot[ia]- hbm[ia];
+          if(hb[ia]>hbm[ia]) {hb[ia]=hbm[ia];linkbot[ia]=p_link;}
+          if(ht[ia]>htm[ia]) {ht[ia]=htm[ia];linktop[ia]=p_link;}
+      }
+    }
+  }
+  return;
+} 

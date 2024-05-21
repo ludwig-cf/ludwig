@@ -41,4 +41,6 @@ __host__ __device__ void euler_from_vectors(double a[3], double b[3], double *eu
 __host__ __device__ void dcm_from_vectors(double const a[3], double const b[3], double const c[3], double r[3][3]);
 __host__ __device__ double mass_ellipsoid(const double dim[3], const double density);
 __host__ __device__ void unsteady_mI(const double q[4], const double I[3], const double omega[3], double F[3][3]);
+__host__ __device__ double ellipsoid_eqn_lhs(const double elA[3][3], const double rsep[3]);
+__host__ __device__ double Gaussian_RadCurv_ellipsoid(const double *elabc, const double x[3]);
 #endif

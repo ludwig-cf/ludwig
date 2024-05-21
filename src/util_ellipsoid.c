@@ -612,4 +612,35 @@ F[2][2] = -4.0*Izz*(q[0]*(ox*q[1] + oy*q[2]) + (oy*q[1] - ox*q[2])*q[3])*(-1.0 +
 return;
 }
 
+/*****************************************************************************
+ *
+ *  Calculate the lhs of the equation for an ellipsoid using the equation of the ellipsoid
+ *
+ ****************************************************************************/
+__host__ __device__ double ellipsoid_eqn_lhs(const double elA[3][3], const double rsep[3]){
+
+  return ( elA[0][0]*rsep[X]*rsep[X]
+	 + elA[1][1]*rsep[Y]*rsep[Y]
+	 + elA[2][2]*rsep[Z]*rsep[Z]
+	 + (elA[0][1]+elA[1][0])*rsep[X]*rsep[Y]
+	 + (elA[0][2]+elA[2][0])*rsep[X]*rsep[Z]
+	 + (elA[1][2]+elA[2][1])*rsep[Y]*rsep[Z]);
+
+  }
+
+/*****************************************************************************
+ *
+ *  Calculate the Gaussian curvature of an ellipsoid in the body fixed coordinate system
+ *
+ ****************************************************************************/
+__host__ __device__ double Gaussian_RadCurv_ellipsoid(const double *elabc, const double x[3]){
+
+  double a2=elabc[0]*elabc[0];
+  double b2=elabc[1]*elabc[1];
+  double c2=elabc[2]*elabc[2];
+  double s1=((x[0]*x[0])/(a2*a2))+((x[1]*x[1])/(b2*b2))+((x[2]*x[2])/(c2*c2));
+  return (elabc[0]*elabc[1]*elabc[2]*s1);
+
+  }
+
 /*****************************************************************************/

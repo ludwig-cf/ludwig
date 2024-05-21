@@ -21,6 +21,7 @@
 #include "coords.h"
 #include "lb_data.h"
 #include "map.h"
+#include "colloids.h"
 
 typedef enum wall_slip_enum {WALL_NO_SLIP = 0,
 			     WALL_SLIP_XBOT, WALL_SLIP_XTOP,
@@ -98,6 +99,8 @@ __host__ int wall_memcpy(wall_t * wall, tdpMemcpyKind flag);
 
 __host__ int wall_bbl(wall_t * wall);
 __host__ int wall_set_wall_distributions(wall_t * wall);
+__host__ int wall_lubr_shape(wall_t * wall, colloid_t * , double  drag[3]);
+__host__ int wall_lubr_ellipsoid(wall_t * wall,  colloid_t *, double  drag[3]);
 __host__ int wall_lubr_sphere(wall_t * wall,  double ah, const double r[3],
 			      double  drag[3]);
 __host__ int wall_momentum(wall_t * wall, double g[3]);
@@ -109,5 +112,7 @@ __host__ __device__ int wall_present_dim(wall_t * wall, int iswall[3]);
 
 /* A "class" method */
 __host__ double wall_lubr_drag(double eta, double ah, double h, double hlub);
-
+__host__ int ellipsoid_surface_cut(const double elA[3][3], double rsep[3], int p, int d);
+__host__ double ellipsoid_lubr_force(wall_t * wall, colloid_t * pc, const double elA[3][3], const double rb[3], int p, int d, double *ah);
+__host__ void ellipsoid_nearest_boundary(colloid_t * pc, colloid_link_t * linkbot[3], colloid_link_t *linktop[3], double hb[3], double ht[3], const double ltot[3]);
 #endif

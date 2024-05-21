@@ -864,7 +864,6 @@ int bbl_update_colloids(bbl_t * bbl, wall_t * wall, colloids_info_t * cinfo) {
   /* All colloids, including halo */
 
   colloids_info_all_head(cinfo, &pc);
-
   for ( ; pc; pc = pc->nextall) {
 
     if (pc->s.bc != COLLOID_BC_BBL) continue;
@@ -946,7 +945,7 @@ int bbl_update_colloid_default(bbl_t * bbl, wall_t * wall, colloid_t * pc,
   moment = (2.0/5.0)*mass*pow(pc->s.a0, 2);
 
   /* Wall lubrication correction */
-  wall_lubr_sphere(wall, pc->s.ah, pc->s.r, dwall);
+  wall_lubr_shape(wall, pc, dwall);
 
   /* Add inertial terms to diagonal elements */
 
@@ -1176,7 +1175,7 @@ void setter_ladd_ellipsoid(colloid_t *pc, wall_t * wall, double rho0, double a[6
   mI_P[2] = (1.0/5.0)*mass*(pow(elabc[0],2)+pow(elabc[1],2));
   inertia_tensor_quaternion(pc->s.quater, mI_P, mI);
 
-  wall_lubr_sphere(wall, pc->s.ah, pc->s.r, dwall);
+  wall_lubr_shape(wall, pc, dwall);
   /* Add inertial terms to diagonal elements */
 
   a[0][0] = (mass/frn) +   zeta[0] - dwall[X];
@@ -1367,7 +1366,7 @@ static int bbl_wall_lubrication_account(bbl_t * bbl, wall_t * wall,
 
   for (; pc; pc = pc->nextlocal) {
     if (pc->s.bc != COLLOID_BC_BBL) continue;
-    wall_lubr_sphere(wall, pc->s.ah, pc->s.r, dwall);
+    wall_lubr_shape(wall, pc, dwall);
     f[X] -= pc->s.v[X]*dwall[X];
     f[Y] -= pc->s.v[Y]*dwall[Y];
     f[Z] -= pc->s.v[Z]*dwall[Z];
