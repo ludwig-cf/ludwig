@@ -277,6 +277,8 @@ int test_kernel_3d_cs_index(pe_t * pe) {
     tdpAssert( tdpDeviceSynchronize() );
   }
 
+  cs_free(cs);
+
   return ifail;
 }
 

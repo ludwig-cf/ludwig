@@ -6,7 +6,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2023 The University of Edinburgh
+ *  (c) 2023-2024 The University of Edinburgh
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *
@@ -291,6 +291,8 @@ int test_psi_solver_options_from_json(void) {
     assert(fabs(pso.reltol - 0.01) < DBL_EPSILON);
     assert(fabs(pso.abstol - 0.02) < DBL_EPSILON);
   }
+
+  cJSON_Delete(json);
 
   return ifail;
 }

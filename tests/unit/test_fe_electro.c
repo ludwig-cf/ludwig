@@ -7,7 +7,7 @@
  *  Edinburgh Soft Matter and Statistical Phsyics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2014-2023 The University of Edinburgh
+ *  (c) 2014-2024 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -183,6 +183,7 @@ int do_test2(pe_t * pe, cs_t * cs, physics_t * phys) {
   assert(cs);
   assert(phys);
 
+  /* We need a slightly better way to construct nk /= 2 case */
   {
     int nhalo = 0;
     cs_nhalo(cs, &nhalo);
@@ -194,6 +195,7 @@ int do_test2(pe_t * pe, cs_t * cs, physics_t * phys) {
       opts.valency[0] = valency[0];
       opts.valency[1] = valency[1];
       opts.valency[2] = valency[2];
+      opts.rho = field_options_ndata_nhalo(3, nhalo);
       psi_create(pe, cs, &opts, &psi);
     }
   }
