@@ -269,10 +269,12 @@ __global__ void test_kernel_3d_v_coords_kernel(kernel_3d_v_t k3v, cs_t * cs) {
 
   int kindex = 0;
 
+  assert(k3v.nsimdvl == NSIMDVL);
+
   for_simt_parallel(kindex, k3v.kiterations, k3v.nsimdvl) {
-    int icv[k3v.nsimdvl];
-    int jcv[k3v.nsimdvl];
-    int kcv[k3v.nsimdvl];
+    int icv[NSIMDVL];
+    int jcv[NSIMDVL];
+    int kcv[NSIMDVL];
     kernel_3d_v_coords(&k3v, kindex, icv, jcv, kcv);
     for (int iv = 0; iv < k3v.nsimdvl; iv++) {
       int ic = icv[iv];
@@ -295,11 +297,13 @@ __global__ void test_kernel_3d_v_mask_kernel(kernel_3d_v_t k3v) {
 
   int kindex = 0;
 
+  assert(k3v.nsimdvl == NSIMDVL);
+
   for_simt_parallel(kindex, k3v.kiterations, k3v.nsimdvl) {
-    int icv[k3v.nsimdvl];
-    int jcv[k3v.nsimdvl];
-    int kcv[k3v.nsimdvl];
-    int maskv[k3v.nsimdvl];
+    int icv[NSIMDVL];
+    int jcv[NSIMDVL];
+    int kcv[NSIMDVL];
+    int maskv[NSIMDVL];
 
     kernel_3d_v_coords(&k3v, kindex, icv, jcv, kcv);
     kernel_3d_v_mask(&k3v, icv, jcv, kcv, maskv);
@@ -340,11 +344,13 @@ __global__ void test_kernel_3d_v_cs_index_kernel(kernel_3d_v_t k3v, cs_t *cs) {
 
   int kindex = 0;
 
+  assert(k3v.nsimdvl == NSIMDVL);
+
   for_simt_parallel(kindex, k3v.kiterations, k3v.nsimdvl) {
-    int icv[k3v.nsimdvl];
-    int jcv[k3v.nsimdvl];
-    int kcv[k3v.nsimdvl];
-    int indexv[k3v.nsimdvl];
+    int icv[NSIMDVL];
+    int jcv[NSIMDVL];
+    int kcv[NSIMDVL];
+    int indexv[NSIMDVL];
 
     kernel_3d_v_coords(&k3v, kindex, icv, jcv, kcv);
     kernel_3d_v_cs_index(&k3v, icv, jcv, kcv, indexv);
