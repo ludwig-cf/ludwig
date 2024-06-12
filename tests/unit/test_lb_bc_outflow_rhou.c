@@ -6,7 +6,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2021-2022 The University of Edinburgh
+ *  (c) 2021-2024 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -81,6 +81,8 @@ __host__ int test_lb_bc_outflow_rhou_create(pe_t * pe, cs_t * cs) {
   assert(outflow->linkp);
   assert(outflow->linki);
   assert(outflow->linkj);
+
+  lb_bc_outflow_rhou_free(outflow);
 
   return 0;
 }

@@ -280,10 +280,18 @@ __host__ int advflux_free(advflux_t * obj) {
     tdpFree(obj->target);
   }
 
-  free(obj->fe);
-  free(obj->fw);
-  free(obj->fy);
-  free(obj->fz);
+  if (obj->le == NULL) {
+    free(obj->fx);
+    free(obj->fy);
+    free(obj->fz);
+  }
+  else {
+    free(obj->fe);
+    free(obj->fw);
+    free(obj->fy);
+    free(obj->fz);
+  }
+
   free(obj);
 
   return 0;
