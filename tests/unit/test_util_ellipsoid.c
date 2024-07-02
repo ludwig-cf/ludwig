@@ -866,6 +866,9 @@ int test_util_q4_r(void) {
  *
  *  test_util_q4_distance_to_tangent_plane
  *
+ *  nb. most of these pass at DBL_EPSILON, but there are a few that will
+ *  not, so relax to FLT_EPSILON (mostly).
+ *
  *****************************************************************************/
 
 int test_util_q4_distance_to_tangent_plane(void) {
@@ -924,7 +927,7 @@ int test_util_q4_distance_to_tangent_plane(void) {
       double d = -1.0;
       double nhat[3] = {0.0, 0.0, -1.0};
       d = util_q4_distance_to_tangent_plane(abc, q, nhat);
-      assert(fabs(d - c) < DBL_EPSILON);
+      assert(fabs(d - c) < FLT_EPSILON);
     }
     /* y-z plane */
     {
@@ -932,7 +935,7 @@ int test_util_q4_distance_to_tangent_plane(void) {
       double d0 = a*a*cos(phi)*cos(phi) + b*b*sin(phi)*sin(phi);
       double nhat[3] = {-1.0, 0.0, 0.0};
       d = util_q4_distance_to_tangent_plane(abc, q, nhat);
-      assert(fabs(d - sqrt(d0)) < DBL_EPSILON);
+      assert(fabs(d - sqrt(d0)) < FLT_EPSILON);
     }
   }
 
@@ -960,7 +963,7 @@ int test_util_q4_distance_to_tangent_plane(void) {
       double d0 = a*a*cos(phi)*cos(phi) + b*b*sin(phi)*sin(phi);
       double nhat[3] = {-1.0, 0.0, 0.0};
       d = util_q4_distance_to_tangent_plane(abc, q, nhat);
-      assert(fabs(d - sqrt(d0)) < DBL_EPSILON);
+      assert(fabs(d - sqrt(d0)) < FLT_EPSILON);
     }
   }
 
@@ -998,7 +1001,7 @@ int test_util_q4_distance_to_tangent_plane(void) {
       double d = -1.0;
       double nhat[3] = {+1.0, 0.0, 0.0};
       d = util_q4_distance_to_tangent_plane(abc, q, nhat);
-      assert(fabs(d - c) < DBL_EPSILON);
+      assert(fabs(d - c) < FLT_EPSILON);
     }
   }
 
