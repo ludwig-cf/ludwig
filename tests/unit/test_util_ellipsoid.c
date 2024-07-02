@@ -31,6 +31,9 @@ int test_util_q4_from_omega(void);
 int test_util_q4_is_inside_ellipsoid(void);
 int test_util_q4_inertia_tensor(void);
 
+int test_util_q4_r(void);
+int test_util_q4_distance_to_tangent_plane(void);
+
 int test_util_ellipsoid_is_sphere(void);
 int test_util_ellipsoid_euler_from_vectors(void);
 int test_util_ellipsoid_prolate_settling_velocity(void);
@@ -57,6 +60,9 @@ int test_util_ellipsoid_suite(void) {
   test_util_q4_to_euler_angles();
   test_util_q4_is_inside_ellipsoid();
   test_util_q4_inertia_tensor();
+
+  test_util_q4_r();
+  test_util_q4_distance_to_tangent_plane();
 
   test_util_ellipsoid_is_sphere();
   test_util_ellipsoid_euler_from_vectors();
@@ -769,6 +775,231 @@ int test_util_discrete_volume_ellipsoid(void) {
     if (ivol != 4) ifail = -1;
     assert(ifail == 0);
     assert(fabs(rvol - 1.0*ivol) < DBL_EPSILON);
+  }
+
+  return ifail;
+}
+
+/*****************************************************************************
+ *
+ *  test_util_q4_r
+ *
+ *  Quaternion to rotation matrix.
+ *
+ *****************************************************************************/
+
+int test_util_q4_r(void) {
+
+  int ifail = 0;
+  PI_DOUBLE(pi);
+
+  /* trivial case */
+  {
+    double q[4] = {1.0, 0.0, 0.0, 0.0};
+    double r[3][3] = {0};
+
+    util_q4_to_r(q, r);
+
+    assert(fabs(r[0][0] - 1.0) < DBL_EPSILON);
+    assert(fabs(r[0][1] - 0.0) < DBL_EPSILON);
+    assert(fabs(r[0][2] - 0.0) < DBL_EPSILON);
+    assert(fabs(r[1][0] - 0.0) < DBL_EPSILON);
+    assert(fabs(r[1][1] - 1.0) < DBL_EPSILON);
+    assert(fabs(r[1][2] - 0.0) < DBL_EPSILON);
+    assert(fabs(r[2][0] - 0.0) < DBL_EPSILON);
+    assert(fabs(r[2][1] - 0.0) < DBL_EPSILON);
+    assert(fabs(r[2][2] - 1.0) < DBL_EPSILON);
+  }
+
+  /* Rotate around z */
+  {
+    double phi = pi/6.0;
+    double theta = 0.0;
+    double psi = 0.0;
+    double q[4] = {0};
+    double r[3][3] = {0};
+
+    ifail = util_q4_from_euler_angles(phi, theta, psi, q);
+    assert(ifail == 0);
+
+    util_q4_to_r(q, r);
+
+    assert(fabs(r[0][0] - cos(phi)) < DBL_EPSILON);
+    assert(fabs(r[0][1] + sin(phi)) < DBL_EPSILON);
+    assert(fabs(r[0][2] - 0.0     ) < DBL_EPSILON);
+    assert(fabs(r[1][0] - sin(phi)) < DBL_EPSILON);
+    assert(fabs(r[1][1] - cos(phi)) < DBL_EPSILON);
+    assert(fabs(r[1][2] - 0.0     ) < DBL_EPSILON);
+    assert(fabs(r[2][0] - 0.0     ) < DBL_EPSILON);
+    assert(fabs(r[2][1] - 0.0     ) < DBL_EPSILON);
+    assert(fabs(r[2][2] - 1.0     ) < DBL_EPSILON);
+  }
+
+  /* Rotate around x (no z rotation) */
+  {
+    double phi = 0.0;
+    double theta = pi/3.0;
+    double psi = 0.0;
+    double q[4] = {0};
+    double r[3][3] = {0};
+
+    ifail = util_q4_from_euler_angles(phi, theta, psi, q);
+    assert(ifail == 0);
+
+    util_q4_to_r(q, r);
+
+    assert(fabs(r[0][0] - 1.0       ) < 2.0*DBL_EPSILON); /* v. close */
+    assert(fabs(r[0][1] - 0.0       ) <     DBL_EPSILON);
+    assert(fabs(r[0][2] - 0.0       ) <     DBL_EPSILON);
+    assert(fabs(r[1][0] - 0.0       ) <     DBL_EPSILON);
+    assert(fabs(r[1][1] - cos(theta)) <     DBL_EPSILON);
+    assert(fabs(r[1][2] + sin(theta)) <     DBL_EPSILON);
+    assert(fabs(r[2][0] - 0.0       ) <     DBL_EPSILON);
+    assert(fabs(r[2][1] - sin(theta)) <     DBL_EPSILON);
+    assert(fabs(r[2][2] - cos(theta)) <     DBL_EPSILON);
+  }
+
+  return ifail;
+}
+
+/*****************************************************************************
+ *
+ *  test_util_q4_distance_to_tangent_plane
+ *
+ *****************************************************************************/
+
+int test_util_q4_distance_to_tangent_plane(void) {
+
+  int ifail = 0;
+
+  double a = 3.0;
+  double b = 4.0;
+  double c = 5.0;
+  double abc[3] = {a, b, c};
+
+  PI_DOUBLE(pi);
+
+  /* Principal axes aligned with lab frame. */
+  {
+    double q[4] = {1.0, 0.0, 0.0, 0.0};
+
+    /* x-y plane */
+    {
+      double d = -1.0;
+      double nhat[3] = {0.0, 0.0, 1.0};
+      d = util_q4_distance_to_tangent_plane(abc, q, nhat);
+      assert(fabs(d - c) < DBL_EPSILON);
+    }
+
+    /* y-z plane */
+    {
+      double d = -1.0;
+      double nhat[3] = {1.0, 0.0, 0.0};
+      d = util_q4_distance_to_tangent_plane(abc, q, nhat);
+      assert(fabs(d - a) < DBL_EPSILON);
+    }
+
+    /* x-z plane */
+    {
+      double d = -1.0;
+      double nhat[3] = {0.0, 1.0, 0.0};
+      d = util_q4_distance_to_tangent_plane(abc, q, nhat);
+      assert(fabs(d - b) < DBL_EPSILON);
+    }
+  }
+
+
+  /* z-rotation of principal axes (30^o)*/
+  {
+    double phi   = pi/6.0;
+    double theta = 0.0;
+    double psi   = 0.0;
+    double q[4] = {0};
+
+    ifail = util_q4_from_euler_angles(phi, theta, psi, q);
+    assert(ifail == 0);
+
+    /* x-y plane (should be unchanged) */
+    {
+      double d = -1.0;
+      double nhat[3] = {0.0, 0.0, -1.0};
+      d = util_q4_distance_to_tangent_plane(abc, q, nhat);
+      assert(fabs(d - c) < DBL_EPSILON);
+    }
+    /* y-z plane */
+    {
+      double d = -1.0;
+      double d0 = a*a*cos(phi)*cos(phi) + b*b*sin(phi)*sin(phi);
+      double nhat[3] = {-1.0, 0.0, 0.0};
+      d = util_q4_distance_to_tangent_plane(abc, q, nhat);
+      assert(fabs(d - sqrt(d0)) < DBL_EPSILON);
+    }
+  }
+
+
+  /* z-rotation of principal axes (60^o)*/
+  {
+    double phi   = pi/3.0;
+    double theta = 0.0;
+    double psi   = 0.0;
+    double q[4] = {0};
+
+    ifail = util_q4_from_euler_angles(phi, theta, psi, q);
+    assert(ifail == 0);
+
+    /* x-y plane (should be unchanged) */
+    {
+      double d = -1.0;
+      double nhat[3] = {0.0, 0.0, -1.0};
+      d = util_q4_distance_to_tangent_plane(abc, q, nhat);
+      assert(fabs(d - c) < FLT_EPSILON);
+    }
+    /* y-z plane */
+    {
+      double d = -1.0;
+      double d0 = a*a*cos(phi)*cos(phi) + b*b*sin(phi)*sin(phi);
+      double nhat[3] = {-1.0, 0.0, 0.0};
+      d = util_q4_distance_to_tangent_plane(abc, q, nhat);
+      assert(fabs(d - sqrt(d0)) < DBL_EPSILON);
+    }
+  }
+
+
+  /* z-rotation of principal axes (90^o)*/
+  {
+    double phi   = pi/2.0;
+    double theta = 0.0;
+    double psi   = 0.0;
+    double q[4] = {0};
+
+    ifail = util_q4_from_euler_angles(phi, theta, psi, q);
+    assert(ifail == 0);
+
+    {
+      double d = -1.0;
+      double nhat[3] = {+1.0, 0.0, 0.0};
+      d = util_q4_distance_to_tangent_plane(abc, q, nhat);
+      assert(fabs(d - b) < FLT_EPSILON);
+    }
+  }
+
+  /* Rotation about z- and x'- axes. */
+  /* This differentiates q and q^*, unlike the previous cases. */
+  {
+    double phi   = pi/2.0;
+    double theta = pi/2.0;
+    double psi   = 0.0;
+    double q[4] = {0};
+
+    ifail = util_q4_from_euler_angles(phi, theta, psi, q);
+    assert(ifail == 0);
+
+    {
+      double d = -1.0;
+      double nhat[3] = {+1.0, 0.0, 0.0};
+      d = util_q4_distance_to_tangent_plane(abc, q, nhat);
+      assert(fabs(d - c) < DBL_EPSILON);
+    }
   }
 
   return ifail;
