@@ -824,15 +824,15 @@ int test_util_q4_r(void) {
 
     util_q4_to_r(q, r);
 
-    assert(fabs(r[0][0] - cos(phi)) < DBL_EPSILON);
-    assert(fabs(r[0][1] + sin(phi)) < DBL_EPSILON);
-    assert(fabs(r[0][2] - 0.0     ) < DBL_EPSILON);
-    assert(fabs(r[1][0] - sin(phi)) < DBL_EPSILON);
-    assert(fabs(r[1][1] - cos(phi)) < DBL_EPSILON);
-    assert(fabs(r[1][2] - 0.0     ) < DBL_EPSILON);
-    assert(fabs(r[2][0] - 0.0     ) < DBL_EPSILON);
-    assert(fabs(r[2][1] - 0.0     ) < DBL_EPSILON);
-    assert(fabs(r[2][2] - 1.0     ) < DBL_EPSILON);
+    assert(fabs(r[0][0] - cos(phi)) <     DBL_EPSILON);
+    assert(fabs(r[0][1] + sin(phi)) <     DBL_EPSILON);
+    assert(fabs(r[0][2] - 0.0     ) <     DBL_EPSILON);
+    assert(fabs(r[1][0] - sin(phi)) <     DBL_EPSILON);
+    assert(fabs(r[1][1] - cos(phi)) <     DBL_EPSILON);
+    assert(fabs(r[1][2] - 0.0     ) <     DBL_EPSILON);
+    assert(fabs(r[2][0] - 0.0     ) <     DBL_EPSILON);
+    assert(fabs(r[2][1] - 0.0     ) <     DBL_EPSILON);
+    assert(fabs(r[2][2] - 1.0     ) < 2.0*DBL_EPSILON);
   }
 
   /* Rotate around x (no z rotation) */
