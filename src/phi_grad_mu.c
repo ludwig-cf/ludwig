@@ -10,7 +10,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2021-2022 The University of Edinburgh
+ *  (c) 2021-2024 The University of Edinburgh
  *
  *  Contributing authors
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -24,20 +24,20 @@
 #include "physics.h"
 #include "phi_grad_mu.h"
 
-__global__ void phi_grad_mu_fluid_kernel(kernel_ctxt_t * ktx, field_t * phi,
+__global__ void phi_grad_mu_fluid_kernel(kernel_3d_t k3d, field_t * phi,
 					 fe_t * fe, hydro_t * hydro);
-__global__ void phi_grad_mu_solid_kernel(kernel_ctxt_t * ktx, field_t * phi,
+__global__ void phi_grad_mu_solid_kernel(kernel_3d_t k3d, field_t * phi,
 					 fe_t * fe, hydro_t * hydro,
 					 map_t * map);
-__global__ void phi_grad_mu_external_kernel(kernel_ctxt_t * ktx, field_t * phi,
+__global__ void phi_grad_mu_external_kernel(kernel_3d_t k3d, field_t * phi,
 					    double3 grad_mu, hydro_t * hydro);
 
-__global__ void phi_grad_mu_correction_kernel(kernel_ctxt_t * ktx,
+__global__ void phi_grad_mu_correction_kernel(kernel_3d_t k3d,
 					      field_t * phi, fe_t * fe,
 					      hydro_t * hydro, map_t * map,
 					      double * fcorrect);
 
-__global__ void phi_grad_mu_force_kernel(kernel_ctxt_t * ktx, hydro_t * hydro,
+__global__ void phi_grad_mu_force_kernel(kernel_3d_t k3d, hydro_t * hydro,
 					 map_t * map, double3 fcorrect);
 
 /*****************************************************************************
@@ -51,12 +51,8 @@ __global__ void phi_grad_mu_force_kernel(kernel_ctxt_t * ktx, hydro_t * hydro,
 
 __host__ int phi_grad_mu_fluid(cs_t * cs, field_t * phi, fe_t * fe,
 			       hydro_t * hydro) {
-  int nlocal[3];
-  dim3 nblk, ntpb;
-
-  fe_t * fe_target;
-  kernel_info_t limits;
-  kernel_ctxt_t * ctxt = NULL;
+  int nlocal[3] = {0};
+  fe_t * fe_target = NULL;
 
   assert(cs);
   assert(phi);
@@ -65,20 +61,20 @@ __host__ int phi_grad_mu_fluid(cs_t * cs, field_t * phi, fe_t * fe,
   cs_nlocal(cs, nlocal);
   fe->func->target(fe, &fe_target);
 
-  limits.imin = 1; limits.imax = nlocal[X];
-  limits.jmin = 1; limits.jmax = nlocal[Y];
-  limits.kmin = 1; limits.kmax = nlocal[Z];
+  {
+    dim3 nblk = {};
+    dim3 ntpb = {};
+    cs_limits_t lim = {1, nlocal[X], 1, nlocal[Y], 1, nlocal[Z]};
+    kernel_3d_t k3d = kernel_3d(cs, lim);
 
-  kernel_ctxt_create(cs, 1, limits, &ctxt);
-  kernel_ctxt_launch_param(ctxt, &nblk, &ntpb);
+    kernel_3d_launch_param(k3d.kiterations, &nblk, &ntpb);
 
-  tdpLaunchKernel(phi_grad_mu_fluid_kernel, nblk, ntpb, 0, 0,
-		  ctxt->target, phi->target, fe_target, hydro->target);
+    tdpLaunchKernel(phi_grad_mu_fluid_kernel, nblk, ntpb, 0, 0,
+		    k3d, phi->target, fe_target, hydro->target);
 
-  tdpAssert(tdpPeekAtLastError());
-  tdpAssert(tdpDeviceSynchronize());
-
-  kernel_ctxt_free(ctxt);
+    tdpAssert(tdpPeekAtLastError());
+    tdpAssert(tdpDeviceSynchronize());
+  }
 
   return 0;
 }
@@ -93,12 +89,8 @@ __host__ int phi_grad_mu_fluid(cs_t * cs, field_t * phi, fe_t * fe,
 
 __host__ int phi_grad_mu_solid(cs_t * cs, field_t * phi, fe_t * fe,
 			       hydro_t * hydro, map_t * map) {
-  int nlocal[3];
-  dim3 nblk, ntpb;
-
-  fe_t * fe_target;
-  kernel_info_t limits;
-  kernel_ctxt_t * ctxt = NULL;
+  int nlocal[3] = {0};
+  fe_t * fe_target = NULL;
 
   assert(cs);
   assert(phi);
@@ -108,21 +100,20 @@ __host__ int phi_grad_mu_solid(cs_t * cs, field_t * phi, fe_t * fe,
   cs_nlocal(cs, nlocal);
   fe->func->target(fe, &fe_target);
 
-  limits.imin = 1; limits.imax = nlocal[X];
-  limits.jmin = 1; limits.jmax = nlocal[Y];
-  limits.kmin = 1; limits.kmax = nlocal[Z];
+  {
+    dim3 nblk = {};
+    dim3 ntpb = {};
+    cs_limits_t lim = {1, nlocal[X], 1, nlocal[Y], 1, nlocal[Z]};
+    kernel_3d_t k3d = kernel_3d(cs, lim);
 
-  kernel_ctxt_create(cs, 1, limits, &ctxt);
-  kernel_ctxt_launch_param(ctxt, &nblk, &ntpb);
+    kernel_3d_launch_param(k3d.kiterations, &nblk, &ntpb);
 
-  tdpLaunchKernel(phi_grad_mu_solid_kernel, nblk, ntpb, 0, 0,
-		  ctxt->target, phi->target, fe_target, hydro->target,
-		  map->target);
+    tdpLaunchKernel(phi_grad_mu_solid_kernel, nblk, ntpb, 0, 0,
+		    k3d, phi->target, fe_target, hydro->target, map->target);
 
-  tdpAssert(tdpPeekAtLastError());
-  tdpAssert(tdpDeviceSynchronize());
-
-  kernel_ctxt_free(ctxt);
+    tdpAssert(tdpPeekAtLastError());
+    tdpAssert(tdpDeviceSynchronize());
+  }
 
   return 0;
 }
@@ -138,13 +129,9 @@ __host__ int phi_grad_mu_solid(cs_t * cs, field_t * phi, fe_t * fe,
 
 __host__ int phi_grad_mu_external(cs_t * cs, field_t * phi, hydro_t * hydro) {
 
-  int nlocal[3];
+  int nlocal[3] = {0};
   int is_grad_mu = 0;     /* Short circuit the kernel if not required. */
-  dim3 nblk, ntpb;
   double3 grad_mu = {0.0,0.0,0.0};
-
-  kernel_info_t limits;
-  kernel_ctxt_t * ctxt = NULL;
 
   assert(cs);
   assert(phi);
@@ -169,20 +156,18 @@ __host__ int phi_grad_mu_external(cs_t * cs, field_t * phi, hydro_t * hydro) {
 
   if (is_grad_mu && phi->nf == 1) {
 
-    limits.imin = 1; limits.imax = nlocal[X];
-    limits.jmin = 1; limits.jmax = nlocal[Y];
-    limits.kmin = 1; limits.kmax = nlocal[Z];
+    dim3 nblk = {};
+    dim3 ntpb = {};
+    cs_limits_t lim = {1, nlocal[X], 1, nlocal[Y], 1, nlocal[Z]};
+    kernel_3d_t k3d = kernel_3d(cs, lim);
 
-    kernel_ctxt_create(cs, 1, limits, &ctxt);
-    kernel_ctxt_launch_param(ctxt, &nblk, &ntpb);
+    kernel_3d_launch_param(k3d.kiterations, &nblk, &ntpb);
 
     tdpLaunchKernel(phi_grad_mu_external_kernel, nblk, ntpb, 0, 0,
-		    ctxt->target, phi->target, grad_mu, hydro->target);
+		    k3d, phi->target, grad_mu, hydro->target);
 
     tdpAssert(tdpPeekAtLastError());
     tdpAssert(tdpDeviceSynchronize());
-
-    kernel_ctxt_free(ctxt);
   }
 
   return 0;
@@ -205,14 +190,11 @@ __host__ int phi_grad_mu_correction(cs_t * cs, field_t * phi, fe_t * fe,
 				    hydro_t * hydro, map_t * map, int opt) {
 
   int nlocal[3] = {0};
-  dim3 nblk, ntpb;
 
   size_t sz = 4*sizeof(double);
   double * flocal_d = NULL;        /* Local contribution to correction */
 
   fe_t * fe_target = NULL;
-  kernel_info_t limits = {0};
-  kernel_ctxt_t * ctxt = NULL;
 
   assert(cs);
   assert(phi);
@@ -222,23 +204,25 @@ __host__ int phi_grad_mu_correction(cs_t * cs, field_t * phi, fe_t * fe,
   cs_nlocal(cs, nlocal);
   fe->func->target(fe, &fe_target);
 
-  limits.imin = 1; limits.imax = nlocal[X];
-  limits.jmin = 1; limits.jmax = nlocal[Y];
-  limits.kmin = 1; limits.kmax = nlocal[Z];
+  {
+    dim3 nblk = {};
+    dim3 ntpb = {};
+    cs_limits_t lim = {1, nlocal[X], 1, nlocal[Y], 1, nlocal[Z]};
+    kernel_3d_t k3d = kernel_3d(cs, lim);
 
-  /* Allocate and initialise the accumulator */
-  tdpAssert(tdpMalloc((void **) &flocal_d, sz));
-  tdpAssert(tdpMemset(flocal_d, 0, sz));
+    /* Allocate and initialise the accumulator */
+    tdpAssert(tdpMalloc((void **) &flocal_d, sz));
+    tdpAssert(tdpMemset(flocal_d, 0, sz));
 
-  kernel_ctxt_create(cs, 1, limits, &ctxt);
-  kernel_ctxt_launch_param(ctxt, &nblk, &ntpb);
+    kernel_3d_launch_param(k3d.kiterations, &nblk, &ntpb);
 
-  tdpLaunchKernel(phi_grad_mu_correction_kernel, nblk, ntpb, 0, 0,
-		  ctxt->target, phi->target, fe_target, hydro->target,
-		  map->target, flocal_d);
+    tdpLaunchKernel(phi_grad_mu_correction_kernel, nblk, ntpb, 0, 0,
+		    k3d, phi->target, fe_target, hydro->target,
+		    map->target, flocal_d);
 
-  tdpAssert(tdpPeekAtLastError());
-  tdpAssert(tdpDeviceSynchronize());
+    tdpAssert(tdpPeekAtLastError());
+    tdpAssert(tdpDeviceSynchronize());
+  }
 
   /* Accumulate the total (all ranks) */
 
@@ -265,16 +249,22 @@ __host__ int phi_grad_mu_correction(cs_t * cs, field_t * phi, fe_t * fe,
     }
 
     {
+      dim3 nblk = {};
+      dim3 ntpb = {};
+      cs_limits_t lim = {1, nlocal[X], 1, nlocal[Y], 1, nlocal[Z]};
+      kernel_3d_t k3d = kernel_3d(cs, lim);
+
       double3 f = {ftotal[1], ftotal[2], ftotal[3]};
+
+      kernel_3d_launch_param(k3d.kiterations, &nblk, &ntpb);
       tdpLaunchKernel(phi_grad_mu_force_kernel, nblk, ntpb, 0, 0,
-		      ctxt->target, hydro->target, map->target, f);
+		      k3d, hydro->target, map->target, f);
       tdpAssert(tdpPeekAtLastError());
       tdpAssert(tdpDeviceSynchronize());
     }
   }
 
   tdpAssert(tdpFree(flocal_d));
-  kernel_ctxt_free(ctxt);
 
   return 0;
 }
@@ -291,23 +281,19 @@ __host__ int phi_grad_mu_correction(cs_t * cs, field_t * phi, fe_t * fe,
  *
  *****************************************************************************/
 
-__global__ void phi_grad_mu_fluid_kernel(kernel_ctxt_t * ktx, field_t * phi,
+__global__ void phi_grad_mu_fluid_kernel(kernel_3d_t k3d, field_t * phi,
 					 fe_t * fe, hydro_t * hydro) {
-  int kiterations;
-  int kindex;
+  int kindex = 0;
 
-  assert(ktx);
   assert(phi);
   assert(hydro);
 
-  kiterations = kernel_iterations(ktx);
+  for_simt_parallel(kindex, k3d.kiterations, 1) {
 
-  for_simt_parallel(kindex, kiterations, 1) {
-
-    int ic    = kernel_coords_ic(ktx, kindex);
-    int jc    = kernel_coords_jc(ktx, kindex);
-    int kc    = kernel_coords_kc(ktx, kindex);
-    int index = kernel_coords_index(ktx, ic, jc, kc);
+    int ic    = kernel_3d_ic(&k3d, kindex);
+    int jc    = kernel_3d_jc(&k3d, kindex);
+    int kc    = kernel_3d_kc(&k3d, kindex);
+    int index = kernel_3d_cs_index(&k3d, ic, jc, kc);
 
     /* NVECTOR is max size of order parameter field as need fixed array[] */
     assert(phi->nf <= NVECTOR);
@@ -322,8 +308,8 @@ __global__ void phi_grad_mu_fluid_kernel(kernel_ctxt_t * ktx, field_t * phi,
     }
 
     {
-      int indexm1 = kernel_coords_index(ktx, ic-1, jc, kc);
-      int indexp1 = kernel_coords_index(ktx, ic+1, jc, kc);
+      int indexm1 = kernel_3d_cs_index(&k3d, ic-1, jc, kc);
+      int indexp1 = kernel_3d_cs_index(&k3d, ic+1, jc, kc);
       fe->func->mu(fe, indexm1, mum1);
       fe->func->mu(fe, indexp1, mup1);
       force[X] = 0.0;
@@ -333,8 +319,8 @@ __global__ void phi_grad_mu_fluid_kernel(kernel_ctxt_t * ktx, field_t * phi,
     }
 
     {
-      int indexm1 = kernel_coords_index(ktx, ic, jc-1, kc);
-      int indexp1 = kernel_coords_index(ktx, ic, jc+1, kc);
+      int indexm1 = kernel_3d_cs_index(&k3d, ic, jc-1, kc);
+      int indexp1 = kernel_3d_cs_index(&k3d, ic, jc+1, kc);
       fe->func->mu(fe, indexm1, mum1);
       fe->func->mu(fe, indexp1, mup1);
       force[Y] = 0.0;
@@ -344,8 +330,8 @@ __global__ void phi_grad_mu_fluid_kernel(kernel_ctxt_t * ktx, field_t * phi,
     }
 
     {
-      int indexm1 = kernel_coords_index(ktx, ic, jc, kc-1);
-      int indexp1 = kernel_coords_index(ktx, ic, jc, kc+1);
+      int indexm1 = kernel_3d_cs_index(&k3d, ic, jc, kc-1);
+      int indexp1 = kernel_3d_cs_index(&k3d, ic, jc, kc+1);
       fe->func->mu(fe, indexm1, mum1);
       fe->func->mu(fe, indexp1, mup1);
       force[Z] = 0.0;
@@ -385,25 +371,21 @@ __global__ void phi_grad_mu_fluid_kernel(kernel_ctxt_t * ktx, field_t * phi,
  *
  *****************************************************************************/
 
-__global__ void phi_grad_mu_solid_kernel(kernel_ctxt_t * ktx, field_t * field,
+__global__ void phi_grad_mu_solid_kernel(kernel_3d_t k3d, field_t * field,
 					 fe_t * fe, hydro_t * hydro,
 					 map_t * map) {
-  int kiterations;
-  int kindex;
+  int kindex = 0;
 
-  assert(ktx);
   assert(field);
   assert(hydro);
   assert(field->nf <= NVECTOR);
 
-  kiterations = kernel_iterations(ktx);
+  for_simt_parallel(kindex, k3d.kiterations, 1) {
 
-  for_simt_parallel(kindex, kiterations, 1) {
-
-    int ic     = kernel_coords_ic(ktx, kindex);
-    int jc     = kernel_coords_jc(ktx, kindex);
-    int kc     = kernel_coords_kc(ktx, kindex);
-    int index0 = kernel_coords_index(ktx, ic, jc, kc);
+    int ic     = kernel_3d_ic(&k3d, kindex);
+    int jc     = kernel_3d_jc(&k3d, kindex);
+    int kc     = kernel_3d_kc(&k3d, kindex);
+    int index0 = kernel_3d_cs_index(&k3d, ic, jc, kc);
 
     double force[3]      = {0};
     double phi[NVECTOR]  = {0};
@@ -414,8 +396,8 @@ __global__ void phi_grad_mu_solid_kernel(kernel_ctxt_t * ktx, field_t * field,
 
     /* x-direction */
     {
-      int indexm1 = kernel_coords_index(ktx, ic-1, jc, kc);
-      int indexp1 = kernel_coords_index(ktx, ic+1, jc, kc);
+      int indexm1 = kernel_3d_cs_index(&k3d, ic-1, jc, kc);
+      int indexp1 = kernel_3d_cs_index(&k3d, ic+1, jc, kc);
       int mapm1   = MAP_FLUID;
       int mapp1   = MAP_FLUID;
 
@@ -446,8 +428,8 @@ __global__ void phi_grad_mu_solid_kernel(kernel_ctxt_t * ktx, field_t * field,
 
     /* y-direction */
     {
-      int indexm1 = kernel_coords_index(ktx, ic, jc-1, kc);
-      int indexp1 = kernel_coords_index(ktx, ic, jc+1, kc);
+      int indexm1 = kernel_3d_cs_index(&k3d, ic, jc-1, kc);
+      int indexp1 = kernel_3d_cs_index(&k3d, ic, jc+1, kc);
       int mapm1   = MAP_FLUID;
       int mapp1   = MAP_FLUID;
 
@@ -478,8 +460,8 @@ __global__ void phi_grad_mu_solid_kernel(kernel_ctxt_t * ktx, field_t * field,
 
     /* z-direction */
     {
-      int indexm1 = kernel_coords_index(ktx, ic, jc, kc-1);
-      int indexp1 = kernel_coords_index(ktx, ic, jc, kc+1);
+      int indexm1 = kernel_3d_cs_index(&k3d, ic, jc, kc-1);
+      int indexp1 = kernel_3d_cs_index(&k3d, ic, jc, kc+1);
       int mapm1   = MAP_FLUID;
       int mapp1   = MAP_FLUID;
 
@@ -525,23 +507,19 @@ __global__ void phi_grad_mu_solid_kernel(kernel_ctxt_t * ktx, field_t * field,
  *
  *****************************************************************************/
 
-__global__ void phi_grad_mu_external_kernel(kernel_ctxt_t * ktx, field_t * phi,
+__global__ void phi_grad_mu_external_kernel(kernel_3d_t k3d, field_t * phi,
 					    double3 grad_mu, hydro_t * hydro) {
-  int kiterations;
-  int kindex;
+  int kindex = 0;
 
-  assert(ktx);
   assert(phi);
   assert(hydro);
 
-  kiterations = kernel_iterations(ktx);
+  for_simt_parallel(kindex, k3d.kiterations, 1) {
 
-  for_simt_parallel(kindex, kiterations, 1) {
-
-    int ic    = kernel_coords_ic(ktx, kindex);
-    int jc    = kernel_coords_jc(ktx, kindex);
-    int kc    = kernel_coords_kc(ktx, kindex);
-    int index = kernel_coords_index(ktx, ic, jc, kc);
+    int ic    = kernel_3d_ic(&k3d, kindex);
+    int jc    = kernel_3d_jc(&k3d, kindex);
+    int kc    = kernel_3d_kc(&k3d, kindex);
+    int index = kernel_3d_cs_index(&k3d, ic, jc, kc);
 
     double force[3] = {0};
     double phi0 = phi->data[addr_rank1(phi->nsites, 1, index, 0)];
@@ -568,12 +546,11 @@ __global__ void phi_grad_mu_external_kernel(kernel_ctxt_t * ktx, field_t * phi,
  *
  *****************************************************************************/
 
-__global__ void phi_grad_mu_correction_kernel(kernel_ctxt_t * ktx,
+__global__ void phi_grad_mu_correction_kernel(kernel_3d_t k3d,
 					      field_t * field,
 					      fe_t * fe, hydro_t * hydro,
 					      map_t * map, double * fcorrect) {
-  int kiterations;
-  int kindex;
+  int kindex  = 0;
   int tid = threadIdx.x;
 
   __shared__ double fv[TARGET_PAD*TARGET_MAX_THREADS_PER_BLOCK];
@@ -581,7 +558,6 @@ __global__ void phi_grad_mu_correction_kernel(kernel_ctxt_t * ktx,
   __shared__ double fy[TARGET_PAD*TARGET_MAX_THREADS_PER_BLOCK];
   __shared__ double fz[TARGET_PAD*TARGET_MAX_THREADS_PER_BLOCK];
 
-  assert(ktx);
   assert(field);
   assert(hydro);
   assert(field->nf <= NVECTOR);
@@ -591,14 +567,12 @@ __global__ void phi_grad_mu_correction_kernel(kernel_ctxt_t * ktx,
   fy[TARGET_PAD*tid] = 0.0;
   fz[TARGET_PAD*tid] = 0.0;
 
-  kiterations = kernel_iterations(ktx);
+  for_simt_parallel(kindex, k3d.kiterations, 1) {
 
-  for_simt_parallel(kindex, kiterations, 1) {
-
-    int ic     = kernel_coords_ic(ktx, kindex);
-    int jc     = kernel_coords_jc(ktx, kindex);
-    int kc     = kernel_coords_kc(ktx, kindex);
-    int index0 = kernel_coords_index(ktx, ic, jc, kc);
+    int ic     = kernel_3d_ic(&k3d, kindex);
+    int jc     = kernel_3d_jc(&k3d, kindex);
+    int kc     = kernel_3d_kc(&k3d, kindex);
+    int index0 = kernel_3d_cs_index(&k3d, ic, jc, kc);
     int map0   = -1;
 
     map_status(map, index0, &map0);
@@ -614,8 +588,8 @@ __global__ void phi_grad_mu_correction_kernel(kernel_ctxt_t * ktx,
 
       /* x-direction */
       {
-	int indexm1 = kernel_coords_index(ktx, ic-1, jc, kc);
-	int indexp1 = kernel_coords_index(ktx, ic+1, jc, kc);
+	int indexm1 = kernel_3d_cs_index(&k3d, ic-1, jc, kc);
+	int indexp1 = kernel_3d_cs_index(&k3d, ic+1, jc, kc);
 	int mapm1   = MAP_FLUID;
 	int mapp1   = MAP_FLUID;
 
@@ -646,8 +620,8 @@ __global__ void phi_grad_mu_correction_kernel(kernel_ctxt_t * ktx,
 
       /* y-direction */
       {
-	int indexm1 = kernel_coords_index(ktx, ic, jc-1, kc);
-	int indexp1 = kernel_coords_index(ktx, ic, jc+1, kc);
+	int indexm1 = kernel_3d_cs_index(&k3d, ic, jc-1, kc);
+	int indexp1 = kernel_3d_cs_index(&k3d, ic, jc+1, kc);
 	int mapm1   = MAP_FLUID;
 	int mapp1   = MAP_FLUID;
 
@@ -678,8 +652,8 @@ __global__ void phi_grad_mu_correction_kernel(kernel_ctxt_t * ktx,
 
       /* z-direction */
       {
-	int indexm1 = kernel_coords_index(ktx, ic, jc, kc-1);
-	int indexp1 = kernel_coords_index(ktx, ic, jc, kc+1);
+	int indexm1 = kernel_3d_cs_index(&k3d, ic, jc, kc-1);
+	int indexp1 = kernel_3d_cs_index(&k3d, ic, jc, kc+1);
 	int mapm1   = MAP_FLUID;
 	int mapp1   = MAP_FLUID;
 
@@ -752,23 +726,19 @@ __global__ void phi_grad_mu_correction_kernel(kernel_ctxt_t * ktx,
  *
  *****************************************************************************/
 
-__global__ void phi_grad_mu_force_kernel(kernel_ctxt_t * ktx, hydro_t * hydro,
+__global__ void phi_grad_mu_force_kernel(kernel_3d_t k3d, hydro_t * hydro,
 					 map_t * map, double3 fcorrect) {
-  int kiterations;
-  int kindex;
+  int kindex = 0;
 
-  assert(ktx);
   assert(hydro);
   assert(map);
 
-  kiterations = kernel_iterations(ktx);
+  for_simt_parallel(kindex, k3d.kiterations, 1) {
 
-  for_simt_parallel(kindex, kiterations, 1) {
-
-    int ic    = kernel_coords_ic(ktx, kindex);
-    int jc    = kernel_coords_jc(ktx, kindex);
-    int kc    = kernel_coords_kc(ktx, kindex);
-    int index = kernel_coords_index(ktx, ic, jc, kc);
+    int ic    = kernel_3d_ic(&k3d, kindex);
+    int jc    = kernel_3d_jc(&k3d, kindex);
+    int kc    = kernel_3d_kc(&k3d, kindex);
+    int index = kernel_3d_cs_index(&k3d, ic, jc, kc);
     int map0  = -1;
 
     map_status(map, index, &map0);

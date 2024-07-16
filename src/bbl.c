@@ -60,7 +60,7 @@ static int bbl_active_conservation(bbl_t * bbl, lb_t * lb,
 static int bbl_wall_lubrication_account(bbl_t * bbl, wall_t * wall,
 					colloids_info_t * cinfo);
 
-__global__ void bbl_pass0_kernel(kernel_ctxt_t * ktxt, cs_t * cs, lb_t * lb,
+__global__ void bbl_pass0_kernel(kernel_3d_t k3d, cs_t * cs, lb_t * lb,
 				 colloids_info_t * cinfo);
 
 static __constant__ lb_collide_param_t lbp;
@@ -307,10 +307,7 @@ int bbl_pass0(bbl_t * bbl, lb_t * lb, colloids_info_t * cinfo) {
 
   int nlocal[3];
   int nextra;
-  dim3 nblk, ntpb;
   cs_t * cstarget = NULL;
-  kernel_info_t limits;
-  kernel_ctxt_t * ctxt = NULL;
 
   assert(bbl);
   assert(lb);
@@ -321,22 +318,27 @@ int bbl_pass0(bbl_t * bbl, lb_t * lb, colloids_info_t * cinfo) {
 
   nextra = 1;
 
-  limits.imin = 1 - nextra; limits.imax = nlocal[X] + nextra;
-  limits.jmin = 1 - nextra; limits.jmax = nlocal[Y] + nextra;
-  limits.kmin = 1 - nextra; limits.kmax = nlocal[Z] + nextra;
+  {
+    dim3 nblk = {};
+    dim3 ntpb = {};
+    cs_limits_t lim = {
+      1 - nextra, nlocal[X] + nextra,
+      1 - nextra, nlocal[Y] + nextra,
+      1 - nextra, nlocal[Z] + nextra
+    };
+    kernel_3d_t k3d = kernel_3d(bbl->cs, lim);
 
-  tdpMemcpyToSymbol(tdpSymbol(lbp), lb->param, sizeof(lb_collide_param_t), 0,
-		    tdpMemcpyHostToDevice);
+    tdpMemcpyToSymbol(tdpSymbol(lbp), lb->param, sizeof(lb_collide_param_t), 0,
+		      tdpMemcpyHostToDevice);
 
-  kernel_ctxt_create(bbl->cs, 1, limits, &ctxt);
-  kernel_ctxt_launch_param(ctxt, &nblk, &ntpb);
 
-  tdpLaunchKernel(bbl_pass0_kernel, nblk, ntpb, 0, 0,
-		  ctxt->target, cstarget, lb->target, cinfo->target);
-  tdpAssert(tdpPeekAtLastError());
-  tdpAssert(tdpDeviceSynchronize());
+    kernel_3d_launch_param(k3d.kiterations, &nblk, &ntpb);
 
-  kernel_ctxt_free(ctxt);
+    tdpLaunchKernel(bbl_pass0_kernel, nblk, ntpb, 0, 0,
+		    k3d, cstarget, lb->target, cinfo->target);
+    tdpAssert(tdpPeekAtLastError());
+    tdpAssert(tdpDeviceSynchronize());
+  }
 
   return 0;
 }
@@ -349,39 +351,30 @@ int bbl_pass0(bbl_t * bbl, lb_t * lb, colloids_info_t * cinfo) {
  *
  *****************************************************************************/
 
-__global__ void bbl_pass0_kernel(kernel_ctxt_t * ktxt, cs_t * cs, lb_t * lb,
+__global__ void bbl_pass0_kernel(kernel_3d_t k3d, cs_t * cs, lb_t * lb,
 				 colloids_info_t * cinfo) {
 
   int kindex;
-  int kiter;
   LB_CS2_DOUBLE(cs2);
   LB_RCS2_DOUBLE(rcs2);
 
-  assert(ktxt);
   assert(cs);
   assert(lb);
   assert(cinfo);
 
-  kiter = kernel_iterations(ktxt);
+  for_simt_parallel(kindex, k3d.kiterations, 1) {
 
-  for_simt_parallel(kindex, kiter, 1) {
-
-    int ic, jc, kc, index;
-    int ia, ib, p;
     int noffset[3];
 
     double r[3], r0[3], rb[3], ub[3];
     double udotc, sdotq;
 
-    colloid_t * pc = NULL;
+    int ic = kernel_3d_ic(&k3d, kindex);
+    int jc = kernel_3d_jc(&k3d, kindex);
+    int kc = kernel_3d_kc(&k3d, kindex);
 
-    ic = kernel_coords_ic(ktxt, kindex);
-    jc = kernel_coords_jc(ktxt, kindex);
-    kc = kernel_coords_kc(ktxt, kindex);
-
-    index = kernel_coords_index(ktxt, ic, jc, kc);
-
-    pc = cinfo->map_new[index];
+    int index = kernel_3d_cs_index(&k3d, ic, jc, kc);
+    colloid_t * pc = cinfo->map_new[index];
 
     if (pc && (pc->s.bc == COLLOID_BC_BBL)) {
       cs_nlocal_offset(cs, noffset);
@@ -401,11 +394,11 @@ __global__ void bbl_pass0_kernel(kernel_ctxt_t * ktxt, cs_t * cs, lb_t * lb,
       ub[Y] = pc->s.v[Y] + pc->s.w[Z]*rb[X] - pc->s.w[X]*rb[Z];
       ub[Z] = pc->s.v[Z] + pc->s.w[X]*rb[Y] - pc->s.w[Y]*rb[X];
 
-      for (p = 1; p < lbp.nvel; p++) {
+      for (int p = 1; p < lbp.nvel; p++) {
 	udotc = lbp.cv[p][X]*ub[X] + lbp.cv[p][Y]*ub[Y] + lbp.cv[p][Z]*ub[Z];
 	sdotq = 0.0;
-	for (ia = 0; ia < 3; ia++) {
-	  for (ib = 0; ib < 3; ib++) {
+	for (int ia = 0; ia < 3; ia++) {
+	  for (int ib = 0; ib < 3; ib++) {
 	    double dab = (ia == ib);
 	    sdotq += (lbp.cv[p][ia]*lbp.cv[p][ib] - cs2*dab)*ub[ia]*ub[ib];
 	  }
@@ -1381,6 +1374,7 @@ static int bbl_wall_lubrication_account(bbl_t * bbl, wall_t * wall,
   double dwall[3];
   colloid_t * pc = NULL;
 
+  assert(bbl);
   assert(cinfo);
 
   /* Local colloids */

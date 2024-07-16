@@ -207,7 +207,9 @@ static unsigned char* cJSON_strdup(const unsigned char* string, const internal_h
 
     return copy;
 }
-
+#ifdef __HIPCC__
+/* hipcc doesn't like this function, but we dont't need it ... */
+#else
 CJSON_PUBLIC(void) cJSON_InitHooks(cJSON_Hooks* hooks)
 {
     if (hooks == NULL)
@@ -238,7 +240,7 @@ CJSON_PUBLIC(void) cJSON_InitHooks(cJSON_Hooks* hooks)
         global_hooks.reallocate = realloc;
     }
 }
-
+#endif
 /* Internal constructor. */
 static cJSON *cJSON_New_Item(const internal_hooks * const hooks)
 {

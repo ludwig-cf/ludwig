@@ -7,7 +7,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2009-2023 The University of Edinburgh
+ *  (c) 2009-2024 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -26,12 +26,10 @@
 #include "timer.h"
 #include "advection_bcs.h"
 
-__global__
-void advection_bcs_no_flux_kernel_v(kernel_ctxt_t * ktx, advflux_t * flux,
-				    map_t * map);
-__global__
-void advflux_cs_no_flux_kernel(kernel_ctxt_t * ktx, advflux_t * flux,
-			       map_t * map);
+__global__ void advection_bcs_no_flux_kernel_v(kernel_3d_v_t k3v,
+					       advflux_t * flux, map_t * map);
+__global__ void advflux_cs_no_flux_kernel(kernel_3d_t k3d, advflux_t * flux,
+					  map_t * map);
 
 /*****************************************************************************
  *
@@ -41,36 +39,32 @@ void advflux_cs_no_flux_kernel(kernel_ctxt_t * ktx, advflux_t * flux,
  *
  *****************************************************************************/
 
-__host__
-int advection_bcs_no_normal_flux(int nf, advflux_t * flux, map_t * map) {
+int advection_bcs_no_normal_flux(advflux_t * flux, map_t * map) {
 
-  int nlocal[3];
-  dim3 nblk, ntpb;
-  kernel_info_t limits;
-  kernel_ctxt_t * ctxt = NULL;
+  int nlocal[3] = {0};
 
   assert(flux);
   assert(map);
 
   cs_nlocal(flux->cs, nlocal);
 
-  limits.imin = 1; limits.imax = nlocal[X];
-  limits.jmin = 0; limits.jmax = nlocal[Y];
-  limits.kmin = 0; limits.kmax = nlocal[Z];
+  {
+    dim3 nblk = {};
+    dim3 ntpb = {};
+    cs_limits_t lim = {1, nlocal[X], 0, nlocal[Y], 0, nlocal[Z]};
+    kernel_3d_v_t k3v = kernel_3d_v(flux->cs, lim, NSIMDVL);
 
-  kernel_ctxt_create(flux->cs, NSIMDVL, limits, &ctxt);
-  kernel_ctxt_launch_param(ctxt, &nblk, &ntpb);
+    kernel_3d_launch_param(k3v.kiterations, &nblk, &ntpb);
 
-  TIMER_start(ADVECTION_BCS_KERNEL);
+    TIMER_start(ADVECTION_BCS_KERNEL);
 
-  tdpLaunchKernel(advection_bcs_no_flux_kernel_v, nblk, ntpb, 0, 0,
-		  ctxt->target, flux->target, map->target);
+    tdpLaunchKernel(advection_bcs_no_flux_kernel_v, nblk, ntpb, 0, 0,
+		    k3v, flux->target, map->target);
 
-  tdpDeviceSynchronize();
+    tdpAssert( tdpDeviceSynchronize() );
 
-  TIMER_stop(ADVECTION_BCS_KERNEL);
-
-  kernel_ctxt_free(ctxt);
+    TIMER_stop(ADVECTION_BCS_KERNEL);
+  }
 
   return 0;
 }
@@ -83,18 +77,13 @@ int advection_bcs_no_normal_flux(int nf, advflux_t * flux, map_t * map) {
  *
  *****************************************************************************/
 
-__global__
-void advection_bcs_no_flux_kernel_v(kernel_ctxt_t * ktx,
-				    advflux_t * flux,
-				    map_t * map) {
-  int kindex;
-  __shared__ int kiter;
+__global__ void advection_bcs_no_flux_kernel_v(kernel_3d_v_t k3v,
+					       advflux_t * flux,
+					       map_t * map) {
+  int kindex = 0;
 
-  kiter = kernel_vector_iterations(ktx);
+  for_simt_parallel(kindex, k3v.kiterations, NSIMDVL) {
 
-  for_simt_parallel(kindex, kiter, NSIMDVL) {
-
-    int n;
     int iv;
     int index0;
     int ic[NSIMDVL], jc[NSIMDVL], kc[NSIMDVL];
@@ -108,31 +97,31 @@ void advection_bcs_no_flux_kernel_v(kernel_ctxt_t * ktx,
     double masky[NSIMDVL];  /* mask for flux->fy */
     double maskz[NSIMDVL];  /* mask for flux->fz */
 
-    kernel_coords_v(ktx, kindex, ic, jc, kc);
-    kernel_mask_v(ktx, ic, jc, kc, maskv);
-      
-    kernel_coords_index_v(ktx, ic, jc, kc, index);
-    for_simd_v(iv, NSIMDVL) mask[iv] = (map->status[index[iv]] == MAP_FLUID);  
+    kernel_3d_v_coords(&k3v, kindex, ic, jc, kc);
+    kernel_3d_v_mask(&k3v, ic, jc, kc, maskv);
+
+    kernel_3d_v_cs_index(&k3v, ic, jc, kc, index);
+    for_simd_v(iv, NSIMDVL) mask[iv] = (map->status[index[iv]] == MAP_FLUID);
 
     for_simd_v(iv, NSIMDVL) ix[iv] = ic[iv] - maskv[iv];
-    kernel_coords_index_v(ktx, ix, jc, kc, index);
-    for_simd_v(iv, NSIMDVL) maskw[iv] = (map->status[index[iv]] == MAP_FLUID);    
+    kernel_3d_v_cs_index(&k3v, ix, jc, kc, index);
+    for_simd_v(iv, NSIMDVL) maskw[iv] = (map->status[index[iv]] == MAP_FLUID);
 
     for_simd_v(iv, NSIMDVL) ix[iv] = ic[iv] + maskv[iv];
-    kernel_coords_index_v(ktx, ix, jc, kc, index);
+    kernel_3d_v_cs_index(&k3v, ix, jc, kc, index);
     for_simd_v(iv, NSIMDVL) maske[iv] = (map->status[index[iv]] == MAP_FLUID);
 
     for_simd_v(iv, NSIMDVL) ix[iv] = jc[iv] + maskv[iv];
-    kernel_coords_index_v(ktx, ic, ix, kc, index);
+    kernel_3d_v_cs_index(&k3v, ic, ix, kc, index);
     for_simd_v(iv, NSIMDVL) masky[iv] = (map->status[index[iv]] == MAP_FLUID);
 
     for_simd_v(iv, NSIMDVL) ix[iv] = kc[iv] + maskv[iv];
-    kernel_coords_index_v(ktx, ic, jc, ix, index);
+    kernel_3d_v_cs_index(&k3v, ic, jc, ix, index);
     for_simd_v(iv, NSIMDVL) maskz[iv] = (map->status[index[iv]] == MAP_FLUID);
 
-    index0 = kernel_baseindex(ktx, kindex);
+    index0 = k3v.kindex0 + kindex;
 
-    for (n = 0;  n < flux->nf; n++) {
+    for (int n = 0;  n < flux->nf; n++) {
       for_simd_v(iv, NSIMDVL) {
 	index[iv] = addr_rank1(flux->nsite, flux->nf, index0 + iv, n);
       }
@@ -157,34 +146,31 @@ void advection_bcs_no_flux_kernel_v(kernel_ctxt_t * ktx,
 
 __host__ int advflux_cs_no_normal_flux(advflux_t * flux, map_t * map) {
 
-  int nlocal[3];
-  dim3 nblk, ntpb;
-  kernel_info_t limits;
-  kernel_ctxt_t * ctxt = NULL;
+  int nlocal[3] = {0};
 
   assert(flux);
   assert(map);
 
   cs_nlocal(flux->cs, nlocal);
 
-  limits.imin = 0; limits.imax = nlocal[X];
-  limits.jmin = 0; limits.jmax = nlocal[Y];
-  limits.kmin = 0; limits.kmax = nlocal[Z];
+  {
+    dim3 nblk = {};
+    dim3 ntpb = {};
+    cs_limits_t lim = {0, nlocal[X], 0, nlocal[Y], 0, nlocal[Z]};
+    kernel_3d_t k3d = kernel_3d(flux->cs, lim);
 
-  kernel_ctxt_create(flux->cs, NSIMDVL, limits, &ctxt);
-  kernel_ctxt_launch_param(ctxt, &nblk, &ntpb);
+    kernel_3d_launch_param(k3d.kiterations, &nblk, &ntpb);
 
-  TIMER_start(ADVECTION_BCS_KERNEL);
+    TIMER_start(ADVECTION_BCS_KERNEL);
 
-  tdpLaunchKernel(advflux_cs_no_flux_kernel, nblk, ntpb, 0, 0,
-		  ctxt->target, flux->target, map->target);
+    tdpLaunchKernel(advflux_cs_no_flux_kernel, nblk, ntpb, 0, 0,
+		    k3d, flux->target, map->target);
 
-  tdpAssert(tdpPeekAtLastError());
-  tdpAssert(tdpDeviceSynchronize());
+    tdpAssert(tdpPeekAtLastError());
+    tdpAssert(tdpDeviceSynchronize());
 
-  TIMER_stop(ADVECTION_BCS_KERNEL);
-
-  kernel_ctxt_free(ctxt);
+    TIMER_stop(ADVECTION_BCS_KERNEL);
+  }
 
   return 0;
 }
@@ -197,45 +183,37 @@ __host__ int advflux_cs_no_normal_flux(advflux_t * flux, map_t * map) {
  *
  *****************************************************************************/
 
-__global__ void advflux_cs_no_flux_kernel(kernel_ctxt_t * ktx,
+__global__ void advflux_cs_no_flux_kernel(kernel_3d_t k3d,
 					  advflux_t * flux, map_t * map) {
-  int kindex;
-  __shared__ int kiter;
+  int kindex = 0;
 
-  kiter = kernel_iterations(ktx);
+  for_simt_parallel(kindex, k3d.kiterations, 1) {
 
-  for_simt_parallel(kindex, kiter, 1) {
+    int ic = kernel_3d_ic(&k3d, kindex);
+    int jc = kernel_3d_jc(&k3d, kindex);
+    int kc = kernel_3d_kc(&k3d, kindex);
 
-    int n;
-    int index0, index1;
-    int ic, jc, kc;
-    double m0, mask;
+    int index0 = kernel_3d_cs_index(&k3d, ic, jc, kc);
+    int index1 = kernel_3d_cs_index(&k3d, ic+1, jc, kc);
 
-    ic = kernel_coords_ic(ktx, kindex);
-    jc = kernel_coords_jc(ktx, kindex);
-    kc = kernel_coords_kc(ktx, kindex);
+    double m0   =    (map->status[index0] == MAP_FLUID);
+    double mask = m0*(map->status[index1] == MAP_FLUID);
 
-    index0 = kernel_coords_index(ktx, ic, jc, kc);
-    m0     = (map->status[index0] == MAP_FLUID);  
-
-    index1 = kernel_coords_index(ktx, ic+1, jc, kc);
-    mask   = m0*(map->status[index1] == MAP_FLUID);  
-
-    for (n = 0; n < flux->nf; n++) {
+    for (int n = 0; n < flux->nf; n++) {
       flux->fx[addr_rank1(flux->nsite, flux->nf, index0, n)] *= mask;
     }
 
-    index1 = kernel_coords_index(ktx, ic, jc+1, kc);
-    mask   = m0*(map->status[index1] == MAP_FLUID);  
+    index1 = kernel_3d_cs_index(&k3d, ic, jc+1, kc);
+    mask   = m0*(map->status[index1] == MAP_FLUID);
 
-    for (n = 0; n < flux->nf; n++) {
+    for (int n = 0; n < flux->nf; n++) {
       flux->fy[addr_rank1(flux->nsite, flux->nf, index0, n)] *= mask;
     }
 
-    index1 = kernel_coords_index(ktx, ic, jc, kc+1);
-    mask   = m0*(map->status[index1] == MAP_FLUID);  
+    index1 = kernel_3d_cs_index(&k3d, ic, jc, kc+1);
+    mask   = m0*(map->status[index1] == MAP_FLUID);
 
-    for (n = 0; n < flux->nf; n++) {
+    for (int n = 0; n < flux->nf; n++) {
       flux->fz[addr_rank1(flux->nsite, flux->nf, index0, n)] *= mask;
     }
 

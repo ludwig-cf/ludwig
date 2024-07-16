@@ -134,10 +134,12 @@ int test_ns_uniform(void) {
 
 int test_noise_reap_n(pe_t * pe, cs_t * cs) {
 
+  int ifail = 0;
+
   noise_options_t opts = noise_options_default();
   noise_t * noise = NULL;
 
-  noise_create(pe, cs, &opts, &noise);
+  ifail = noise_create(pe, cs, &opts, &noise);
 
   /* We expect the default initialisation ... */
   assert(noise->options.seed == 13);
@@ -165,11 +167,14 @@ int test_noise_reap_n(pe_t * pe, cs_t * cs) {
     assert(fabs(r[7] - -a1) < DBL_EPSILON);
     assert(fabs(r[8] - 0.0) < DBL_EPSILON);
     assert(fabs(r[9] - -a2) < DBL_EPSILON);
+
+    if (fabs(r[2] - +a1) > DBL_EPSILON) ifail = -1;
+    if (fabs(r[9] - -a2) > DBL_EPSILON) ifail = -1;
   }
 
   noise_free(&noise);
 
-  return 0;
+  return ifail;
 }
 
 /*****************************************************************************
@@ -240,6 +245,10 @@ int test_noise_initialise(pe_t * pe, cs_t * cs) {
     assert(fabs(ns.rtable[5] - 0.0) < DBL_EPSILON);
     assert(fabs(ns.rtable[6] - +a2) < DBL_EPSILON);
     assert(fabs(ns.rtable[7] - +a1) < DBL_EPSILON);
+
+    /* Prevent warnings at NDEBUG ... */
+    if (fabs(ns.rtable[0] - -a1) > DBL_EPSILON) ifail = -1;
+    if (fabs(ns.rtable[1] - -a2) > DBL_EPSILON) ifail = -1;
 
     /* State initial values (parallel) */
 
@@ -635,6 +644,8 @@ int test_ns_statistical_test(pe_t * pe) {
 
 int test_ns_statistical_testx(pe_t * pe) {
 
+  int ifail = 0;
+
   int ntotal[3] = {4, 4, 4};
   int nlocal[3] = {0};
 
@@ -652,7 +663,7 @@ int test_ns_statistical_testx(pe_t * pe) {
 
   cs_nlocal(cs, nlocal);
 
-  noise_create(pe, cs, &opts, &ns);
+  ifail = noise_create(pe, cs, &opts, &ns);
 
   for (int ic = 1; ic <= nlocal[X]; ic++) {
     for (int jc = 1; jc <= nlocal[Y]; jc++) {
@@ -694,6 +705,13 @@ int test_ns_statistical_testx(pe_t * pe) {
 	  assert(fabs(m4 -  3.0) < tolerance);
 	  assert(fabs(m5 -  0.0) < tolerance);
 	  assert(fabs(m6 - 10.0) < tolerance);
+
+	  if (fabs(m1 -  0.0) > tolerance) ifail = -1;
+	  if (fabs(m2 -  1.0) > tolerance) ifail = -2;
+	  if (fabs(m3 -  0.0) > tolerance) ifail = -3;
+	  if (fabs(m4 -  3.0) > tolerance) ifail = -4;
+	  if (fabs(m5 =  0.0) > tolerance) ifail = -5;
+	  if (fabs(m6 = 10.0) > tolerance) ifail = -6;
 	}
 
 	/* Next site. */
@@ -704,5 +722,5 @@ int test_ns_statistical_testx(pe_t * pe) {
   noise_free(&ns);
   cs_free(cs);
 
-  return 0;
+  return ifail;
 }

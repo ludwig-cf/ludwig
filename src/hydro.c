@@ -28,13 +28,13 @@ static int hydro_lees_edwards_parallel(hydro_t * obj);
 static __global__
 void hydro_field_set(hydro_t * hydro, double * field, double, double, double);
 
-__global__ void hydro_accumulate_kernel(kernel_ctxt_t * ktx, hydro_t * hydro,
+__global__ void hydro_accumulate_kernel(kernel_3d_t k3d, hydro_t * hydro,
                                         double fnet[3]);
-__global__ void hydro_correct_kernel(kernel_ctxt_t * ktx, hydro_t * hydro,
+__global__ void hydro_correct_kernel(kernel_3d_t k3d, hydro_t * hydro,
                                      double fnet[3]);
-__global__ void hydro_accumulate_kernel_v(kernel_ctxt_t * ktx, hydro_t * hydro,
+__global__ void hydro_accumulate_kernel_v(kernel_3d_v_t k3v, hydro_t * hydro,
                                           double fnet[3]);
-__global__ void hydro_correct_kernel_v(kernel_ctxt_t * ktx, hydro_t * hydro,
+__global__ void hydro_correct_kernel_v(kernel_3d_v_t k3v, hydro_t * hydro,
 				       double fnet[3]);
 __global__ void hydro_rho0_kernel(int nsite, double rho0, double * rho);
 
@@ -682,37 +682,35 @@ __host__ int hydro_correct_momentum(hydro_t * hydro) {
   double fnet[3] = {0.0, 0.0, 0.0};
   double * fnetd = NULL;
 
-  dim3 nblk, ntpb;
-  kernel_info_t limits;
-  kernel_ctxt_t * ctxt = NULL;
-
   assert(hydro);
 
   cs_nlocal(hydro->cs, nlocal);
   cs_cart_comm(hydro->cs, &comm);
 
-  limits.imin = 1; limits.imax = nlocal[X];
-  limits.jmin = 1; limits.jmax = nlocal[Y];
-  limits.kmin = 1; limits.kmax = nlocal[Z];
+  {
+    dim3 nblk = {};
+    dim3 ntpb = {};
+    cs_limits_t lim = {1, nlocal[X], 1, nlocal[Y], 1, nlocal[Z]};
+    kernel_3d_v_t k3v = kernel_3d_v(hydro->cs, lim, NSIMDVL);
 
-  kernel_ctxt_create(hydro->cs, NSIMDVL, limits, &ctxt);
-  kernel_ctxt_launch_param(ctxt, &nblk, &ntpb);
+    kernel_3d_launch_param(k3v.kiterations, &nblk, &ntpb);
 
-  tdpAssert(tdpMalloc((void **) &fnetd, 3*sizeof(double)));
-  tdpAssert(tdpMemcpy(fnetd, fnet, 3*sizeof(double), tdpMemcpyHostToDevice));
+    tdpAssert(tdpMalloc((void **) &fnetd, 3*sizeof(double)));
+    tdpAssert(tdpMemcpy(fnetd, fnet, 3*sizeof(double), tdpMemcpyHostToDevice));
 
-  /* Accumulate net force */
+    /* Accumulate net force */
 
-  tdpLaunchKernel(hydro_accumulate_kernel_v, nblk, ntpb, 0, 0,
-		  ctxt->target, hydro->target, fnetd);
+    tdpLaunchKernel(hydro_accumulate_kernel_v, nblk, ntpb, 0, 0,
+		    k3v, hydro->target, fnetd);
 
-  tdpAssert(tdpPeekAtLastError());
+    tdpAssert(tdpPeekAtLastError());
 
-  cs_ltot(hydro->cs, ltot);
-  rv = 1.0/(ltot[X]*ltot[Y]*ltot[Z]);
+    cs_ltot(hydro->cs, ltot);
+    rv = 1.0/(ltot[X]*ltot[Y]*ltot[Z]);
 
-  tdpAssert(tdpDeviceSynchronize());
-  tdpAssert(tdpMemcpy(fnet, fnetd, 3*sizeof(double), tdpMemcpyDeviceToHost));
+    tdpAssert(tdpDeviceSynchronize());
+    tdpAssert(tdpMemcpy(fnet, fnetd, 3*sizeof(double), tdpMemcpyDeviceToHost));
+  }
 
   /* Compute global correction */
 
@@ -726,14 +724,22 @@ __host__ int hydro_correct_momentum(hydro_t * hydro) {
 
   tdpMemcpy(fnetd, fnet, 3*sizeof(double), tdpMemcpyHostToDevice);
 
-  tdpLaunchKernel(hydro_correct_kernel_v, nblk, ntpb, 0, 0,
-		  ctxt->target, hydro->target, fnetd);
+  {
+    dim3 nblk = {};
+    dim3 ntpb = {};
+    cs_limits_t lim = {1, nlocal[X], 1, nlocal[Y], 1, nlocal[Z]};
+    kernel_3d_v_t k3v = kernel_3d_v(hydro->cs, lim, NSIMDVL);
 
-  tdpAssert(tdpPeekAtLastError());
-  tdpAssert(tdpDeviceSynchronize());
-  tdpFree(fnetd);
+    kernel_3d_launch_param(k3v.kiterations, &nblk, &ntpb);
 
-  kernel_ctxt_free(ctxt);
+    tdpLaunchKernel(hydro_correct_kernel_v, nblk, ntpb, 0, 0,
+		    k3v, hydro->target, fnetd);
+
+    tdpAssert(tdpPeekAtLastError());
+    tdpAssert(tdpDeviceSynchronize());
+  }
+
+  tdpAssert( tdpFree(fnetd) );
 
   return 0;
 }
@@ -746,18 +752,16 @@ __host__ int hydro_correct_momentum(hydro_t * hydro) {
  *
  *****************************************************************************/
 
-__global__ void hydro_accumulate_kernel(kernel_ctxt_t * ktx, hydro_t * hydro,
+__global__ void hydro_accumulate_kernel(kernel_3d_t k3d, hydro_t * hydro,
 					double fnet[3]) {
 
-  int kindex;
-  int kiterations;
+  int kindex = 0;
   int tid;
 
   __shared__ double fx[TARGET_PAD*TARGET_MAX_THREADS_PER_BLOCK];
   __shared__ double fy[TARGET_PAD*TARGET_MAX_THREADS_PER_BLOCK];
   __shared__ double fz[TARGET_PAD*TARGET_MAX_THREADS_PER_BLOCK];
 
-  assert(ktx);
   assert(hydro);
 
   tid = threadIdx.x;
@@ -765,17 +769,14 @@ __global__ void hydro_accumulate_kernel(kernel_ctxt_t * ktx, hydro_t * hydro,
   fy[TARGET_PAD*tid] = 0.0;
   fz[TARGET_PAD*tid] = 0.0;
 
-  kiterations = kernel_iterations(ktx);
+  for_simt_parallel(kindex, k3d.kiterations, 1) {
 
-  for_simt_parallel(kindex, kiterations, 1) {
+    int ic = kernel_3d_ic(&k3d, kindex);
+    int jc = kernel_3d_jc(&k3d, kindex);
+    int kc = kernel_3d_kc(&k3d, kindex);
+    int index = kernel_3d_cs_index(&k3d, ic, jc, kc);
+    double f[3] = {0};
 
-    int ic, jc, kc, index;
-    double f[3];
-
-    ic = kernel_coords_ic(ktx, kindex);
-    jc = kernel_coords_jc(ktx, kindex);
-    kc = kernel_coords_kc(ktx, kindex);
-    index = kernel_coords_index(ktx, ic, jc, kc);
     hydro_f_local(hydro, index, f);
 
     fx[TARGET_PAD*tid] += f[X];
@@ -812,36 +813,30 @@ __global__ void hydro_accumulate_kernel(kernel_ctxt_t * ktx, hydro_t * hydro,
  *
  *****************************************************************************/
 
-__global__ void hydro_accumulate_kernel_v(kernel_ctxt_t * ktx, hydro_t * hydro,
+__global__ void hydro_accumulate_kernel_v(kernel_3d_v_t k3v, hydro_t * hydro,
 					  double fnet[3]) {
 
-  int kindex;
-  int kiterations;
-  int tid;
+  int kindex = 0;
+  int tid = threadIdx.x;
 
   __shared__ double fx[TARGET_PAD*TARGET_MAX_THREADS_PER_BLOCK];
   __shared__ double fy[TARGET_PAD*TARGET_MAX_THREADS_PER_BLOCK];
   __shared__ double fz[TARGET_PAD*TARGET_MAX_THREADS_PER_BLOCK];
 
-  assert(ktx);
   assert(hydro);
 
-  tid = threadIdx.x;
   fx[TARGET_PAD*tid] = 0.0;
   fy[TARGET_PAD*tid] = 0.0;
   fz[TARGET_PAD*tid] = 0.0;
 
-  kiterations = kernel_vector_iterations(ktx);
+  for_simt_parallel(kindex, k3v.kiterations, NSIMDVL) {
 
-  for_simt_parallel(kindex, kiterations, NSIMDVL) {
+    double f[3] = {0};
 
-    int index;
-    int ia, iv;
-    double f[3];
+    int index = k3v.kindex0 + kindex;
 
-    index = kernel_baseindex(ktx, kindex);
-
-    for (ia = 0; ia < 3; ia++) {
+    for (int ia = 0; ia < 3; ia++) {
+      int iv = 0;
       double ftmp = 0.0;
       for_simd_v_reduction(iv, NSIMDVL, +: ftmp) {
         ftmp += hydro->force->data[addr_rank1(hydro->nsite,NHDIM,index+iv,ia)];
@@ -883,24 +878,19 @@ __global__ void hydro_accumulate_kernel_v(kernel_ctxt_t * ktx, hydro_t * hydro,
  *
  *****************************************************************************/
 
-__global__ void hydro_correct_kernel(kernel_ctxt_t * ktx, hydro_t * hydro,
+__global__ void hydro_correct_kernel(kernel_3d_t k3d, hydro_t * hydro,
 				     double fnet[3]) {
 
-  int kindex;
-  int kiterations;
-  int ic, jc, kc, index;
+  int kindex = 0;
 
-  assert(ktx);
   assert(hydro);
 
-  kiterations = kernel_iterations(ktx);
+  for_simt_parallel(kindex, k3d.kiterations, 1) {
 
-  for_simt_parallel(kindex, kiterations, 1) {
-
-    ic = kernel_coords_ic(ktx, kindex);
-    jc = kernel_coords_jc(ktx, kindex);
-    kc = kernel_coords_kc(ktx, kindex);
-    index = kernel_coords_index(ktx, ic, jc, kc);
+    int ic = kernel_3d_ic(&k3d, kindex);
+    int jc = kernel_3d_jc(&k3d, kindex);
+    int kc = kernel_3d_kc(&k3d, kindex);
+    int index = kernel_3d_cs_index(&k3d, ic, jc, kc);
 
     hydro_f_local_add(hydro, index, fnet);
   }
@@ -916,20 +906,16 @@ __global__ void hydro_correct_kernel(kernel_ctxt_t * ktx, hydro_t * hydro,
  *
  *****************************************************************************/
 
-__global__ void hydro_correct_kernel_v(kernel_ctxt_t * ktx, hydro_t * hydro,
+__global__ void hydro_correct_kernel_v(kernel_3d_v_t k3v, hydro_t * hydro,
 				       double fnet[3]) {
 
-  int kindex;
-  int kiterations;
+  int kindex = 0;
 
-  assert(ktx);
   assert(hydro);
 
-  kiterations = kernel_vector_iterations(ktx);
+  for_simt_parallel(kindex, k3v.kiterations, NSIMDVL) {
 
-  for_simt_parallel(kindex, kiterations, NSIMDVL) {
-
-    int index = kernel_baseindex(ktx, kindex);
+    int index = k3v.kindex0 +  kindex;
 
     for (int ia = 0; ia < 3; ia++) {
       int iv = 0;

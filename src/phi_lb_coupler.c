@@ -8,7 +8,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2010-2022 The University of Edinburgh
+ *  (c) 2010-2024 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -24,7 +24,7 @@
 
 #define NDIST 2
 
-__global__ void phi_lb_to_field_kernel(kernel_ctxt_t * ktxt, field_t * phi,
+__global__ void phi_lb_to_field_kernel(kernel_3d_t k3d, field_t * phi,
 				       lb_t * lb);
 
 /*****************************************************************************
@@ -38,27 +38,27 @@ __global__ void phi_lb_to_field_kernel(kernel_ctxt_t * ktxt, field_t * phi,
 
 __host__ int phi_lb_to_field(field_t * phi, lb_t  * lb) {
 
-  int nlocal[3];
-  dim3 nblk, ntpb;
-  kernel_info_t limits;
-  kernel_ctxt_t * ctxt = NULL;
+  int nlocal[3] = {0};
 
   assert(phi);
   assert(lb);
 
   cs_nlocal(phi->cs, nlocal);
 
-  limits.imin = 1; limits.imax = nlocal[X];
-  limits.jmin = 1; limits.jmax = nlocal[Y];
-  limits.kmin = 1; limits.kmax = nlocal[Z];
+  {
+    dim3 nblk = {};
+    dim3 ntpb = {};
+    cs_limits_t lim = {1, nlocal[X], 1, nlocal[Y], 1, nlocal[Z]};
+    kernel_3d_t k3d = kernel_3d(phi->cs, lim);
 
-  kernel_ctxt_create(phi->cs, 1, limits, &ctxt);
-  kernel_ctxt_launch_param(ctxt, &nblk, &ntpb);
+    kernel_3d_launch_param(k3d.kiterations, &nblk, &ntpb);
 
-  tdpLaunchKernel(phi_lb_to_field_kernel, nblk, ntpb, 0, 0,
-		  ctxt->target, phi->target, lb->target);
+    tdpLaunchKernel(phi_lb_to_field_kernel, nblk, ntpb, 0, 0, k3d,
+		    phi->target, lb->target);
 
-  kernel_ctxt_free(ctxt);
+    tdpAssert( tdpPeekAtLastError() );
+    tdpAssert( tdpDeviceSynchronize() );
+  }
 
   return 0;
 }
@@ -69,29 +69,22 @@ __host__ int phi_lb_to_field(field_t * phi, lb_t  * lb) {
  *
  *****************************************************************************/
 
-__global__ void phi_lb_to_field_kernel(kernel_ctxt_t * ktx, field_t * phi,
+__global__ void phi_lb_to_field_kernel(kernel_3d_t k3d, field_t * phi,
 				       lb_t * lb) {
-  int kiter;
-  int kindex;
-  int ic, jc, kc, index;
-  int p;
-  double phi0;
+  int kindex = 0;
 
-  assert(ktx);
   assert(phi);
   assert(lb);
 
-  kiter = kernel_iterations(ktx);
+  for_simt_parallel(kindex, k3d.kiterations, 1) {
 
-  for_simt_parallel(kindex, kiter, 1) {
+    int ic = kernel_3d_ic(&k3d, kindex);
+    int jc = kernel_3d_jc(&k3d, kindex);
+    int kc = kernel_3d_kc(&k3d, kindex);
+    int index = kernel_3d_cs_index(&k3d, ic, jc, kc);
 
-    ic = kernel_coords_ic(ktx, kindex);
-    jc = kernel_coords_jc(ktx, kindex);
-    kc = kernel_coords_kc(ktx, kindex);
-    index = kernel_coords_index(ktx, ic, jc, kc);
-    
-    phi0 = 0.0;
-    for (p = 0; p < NVEL; p++) {
+    double phi0 = 0.0;
+    for (int p = 0; p < NVEL; p++) {
       phi0 += lb->f[LB_ADDR(lb->nsite, NDIST, NVEL, index, LB_PHI, p)];
     }
 

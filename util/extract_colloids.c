@@ -157,7 +157,10 @@ int main(int argc, char ** argv) {
       nread = fread(&ncolloid, sizeof(int), 1, fp_colloids);
       assert(nread == 1);
     }
-    if (nread != 1) printf("Warning: problem reading number of collloids\n");
+    if (nread != 1) {
+      printf("Fatal: problem reading number of collloids\n");
+      exit(-1);
+    }
 
     printf("Reading %d colloids from %s\n", ncolloid, argv[1]);
 

@@ -1146,8 +1146,7 @@ int free_energy_init_rt(ludwig_t * ludwig) {
     lees_edw_info(le);
     pth_create(pe, cs, FE_FORCE_METHOD_NO_FORCE, &ludwig->pth);
   }
-  else if (strcmp(description, "symmetric") == 0 ||
-	   strcmp(description, "symmetric_noise") == 0) {
+  else if (strcmp(description, "symmetric") == 0) {
 
     phi_ch_info_t ch_options = {0};
     fe_symm_t * fe = NULL;
@@ -1158,12 +1157,80 @@ int free_energy_init_rt(ludwig_t * ludwig) {
     nhalo = 2;   /* Require stress divergence. */
     ngrad = 2;   /* \nabla^2 required */
 
-    /* Noise requires additional stencil point for Cahn Hilliard */
+    cs_nhalo_set(cs, nhalo);
+    coords_init_rt(pe, rt, cs);
+    lees_edw_create(pe, cs, info, &le);
+    lees_edw_info(le);
 
-    if (strcmp(description, "symmetric_noise") == 0) {
-      nhalo = 3;
-      ch_options.noise = 1;
+    {
+      field_options_t opts = field_options_ndata_nhalo(nf, nhalo);
+      io_info_args_rt(rt, RT_FATAL, "phi", IO_INFO_READ_WRITE, &opts.iodata);
+      field_create(pe, cs, le, "phi", &opts, &ludwig->phi);
+      field_grad_create(pe, ludwig->phi, ngrad, &ludwig->phi_grad);
     }
+
+    pe_info(pe, "\n");
+    pe_info(pe, "Free energy details\n");
+    pe_info(pe, "-------------------\n\n");
+    fe_symm_create(pe, cs, ludwig->phi, ludwig->phi_grad, &fe);
+    fe_symmetric_init_rt(pe, rt, fe);
+
+    pe_info(pe, "\n");
+    pe_info(pe, "Using Cahn-Hilliard finite difference solver.\n");
+
+    rt_key_required(rt, "mobility", RT_FATAL);
+    rt_double_parameter(rt, "mobility", &value);
+    physics_mobility_set(ludwig->phys, value);
+    pe_info(pe, "Mobility M            = %12.5e\n", value);
+
+    pe_info(pe, "Order parameter noise = %3s\n", "off");
+
+    rt_int_parameter(rt, "cahn_hilliard_options_conserve",
+		     &ch_options.conserve);
+    phi_ch_create(pe, cs, le, &ch_options, &ludwig->pch);
+
+    /* Force */
+
+    {
+      fe_force_method_enum_t method = fe_force_method_default();
+
+      fe_force_method_rt_messages(rt, RT_INFO);
+      fe_force_method_rt(rt, RT_FATAL, &method);
+
+      /* The following are supported */
+      switch (method) {
+      case FE_FORCE_METHOD_NO_FORCE:
+      case FE_FORCE_METHOD_STRESS_DIVERGENCE:
+      case FE_FORCE_METHOD_PHI_GRADMU:
+      case FE_FORCE_METHOD_PHI_GRADMU_CORRECTION:
+	break;
+      case FE_FORCE_METHOD_RELAXATION_SYMM:
+	fe->super.use_stress_relaxation = 1;
+	break;
+      default:
+	pe_fatal(pe, "symmetric free energy force_method not available\n");
+      }
+
+      pth_create(pe, cs, method, &ludwig->pth);
+      pe_info(pe, "Force calculation:      %s\n",
+	      fe_force_method_to_string(method));
+    }
+
+    ludwig->fe_symm = fe;
+    ludwig->fe = (fe_t *) fe;
+  }
+  else if (strcmp(description, "symmetric_noise") == 0) {
+
+    phi_ch_info_t ch_options = {0};
+    fe_symm_t * fe = NULL;
+
+    /* Symmetric via finite difference plus isothermal fluctuations */
+
+    nf = 1;      /* 1 scalar order parameter */
+    nhalo = 3;   /* Additional point cf no noise */
+    ngrad = 2;   /* \nabla^2 required */
+
+    ch_options.noise = 1;  /* "symmetric_noise" => fluctuations */
 
     cs_nhalo_set(cs, nhalo);
     coords_init_rt(pe, rt, cs);
@@ -1198,7 +1265,6 @@ int free_energy_init_rt(ludwig_t * ludwig) {
     /* Order parameter noise */
 
     pe_info(pe, "Order parameter noise = %3s\n", (ch_options.noise == 0) ? "off" : " on");
-
 
     /* Force */
 
@@ -2185,18 +2251,17 @@ int io_replace_values(field_t * field, map_t * map, int map_id, double value) {
  *
  *****************************************************************************/
 
-__global__ void io_replace_values_kernel(kernel_ctxt_t * ktx,
+__global__ void io_replace_values_kernel(kernel_3d_t k3d,
 					 field_t * field,
 					 map_t * map,
 					 int status, double value) {
   int kindex = 0;
-  int kiterations = kernel_iterations(ktx);
 
-  for_simt_parallel(kindex, kiterations, 1) {
-    int ic = kernel_coords_ic(ktx, kindex);
-    int jc = kernel_coords_jc(ktx, kindex);
-    int kc = kernel_coords_kc(ktx, kindex);
-    int index = kernel_coords_index(ktx, ic, jc, kc);
+  for_simt_parallel(kindex, k3d.kiterations, 1) {
+    int ic = kernel_3d_ic(&k3d, kindex);
+    int jc = kernel_3d_jc(&k3d, kindex);
+    int kc = kernel_3d_kc(&k3d, kindex);
+    int index = kernel_3d_cs_index(&k3d, ic, jc, kc);
 
     if (map->status[addr_rank0(map->nsite, index)] == status) {
       for (int n = 0; n < field->nf; n++) {
@@ -2219,30 +2284,27 @@ __global__ void io_replace_values_kernel(kernel_ctxt_t * ktx,
 int io_replace_field_values(field_t * field, map_t * map, int status,
 			    double value) {
 
-  int nlocal[3];
-  dim3 nblk, ntpb;
-  kernel_info_t limits;
-  kernel_ctxt_t * ctxt = NULL;
+  int nlocal[3] = {0};
 
   assert(field);
   assert(map);
 
   cs_nlocal(field->cs, nlocal);
 
-  limits.imin = 1; limits.imax = nlocal[X];
-  limits.jmin = 1; limits.jmax = nlocal[Y];
-  limits.kmin = 1; limits.kmax = nlocal[Z];
+  {
+    dim3 nblk = {};
+    dim3 ntpb = {};
+    cs_limits_t lim = {1, nlocal[X], 1, nlocal[Y], 1, nlocal[Z]};
+    kernel_3d_t k3d = kernel_3d(field->cs, lim);
 
-  kernel_ctxt_create(field->cs, 1, limits, &ctxt);
-  kernel_ctxt_launch_param(ctxt, &nblk, &ntpb);
+    kernel_3d_launch_param(k3d.kiterations, &nblk, &ntpb);
 
-  tdpLaunchKernel(io_replace_values_kernel, nblk, ntpb, 0, 0,
-		  ctxt->target, field->target, map->target, status, value);
+    tdpLaunchKernel(io_replace_values_kernel, nblk, ntpb, 0, 0,
+		    k3d, field->target, map->target, status, value);
 
-  tdpAssert(tdpPeekAtLastError());
-  tdpAssert(tdpDeviceSynchronize());
-
-  kernel_ctxt_free(ctxt);
+    tdpAssert(tdpPeekAtLastError());
+    tdpAssert(tdpDeviceSynchronize());
+  }
 
   return 0;
 }

@@ -7,7 +7,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2013-2023 The University of Edinburgh
+ *  (c) 2013-2024 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -145,6 +145,8 @@ static int do_test1(pe_t * pe) {
   /* Finish. */
 
   fe_es_free(fe);
+  fe_symm_free(fe_symm);
+  fe_electro_free(fe_elec);
   field_grad_free(dphi);
   field_free(phi);
   psi_free(&psi);

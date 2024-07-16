@@ -56,6 +56,10 @@ int test_noise_options_default(void) {
   int ifail = 0;
 
   noise_options_t opts = noise_options_default();
+
+  if (opts.seed != 13) ifail = -1;
+  assert(ifail == 0);
+
   assert(opts.seed   == 13);
   assert(opts.nextra == 1);
   assert(strcmp(opts.filestub, "noise") == 0);
@@ -77,6 +81,10 @@ int test_noise_options_seed(void) {
   {
     unsigned int seed = 17;
     noise_options_t opts = noise_options_seed(seed);
+
+    if (opts.seed != seed) ifail = -1;
+    assert(ifail == 0);
+
     assert(opts.seed   == seed);
     assert(opts.nextra == 1);
   }
@@ -99,6 +107,10 @@ int test_noise_options_seed_nextra(void) {
     unsigned int seed = 37;
     int nextra = 2;
     noise_options_t opts = noise_options_seed_nextra(seed, nextra);
+
+    if (opts.nextra != nextra) ifail = -1;
+    assert(ifail == 0);
+
     assert(opts.seed   == seed);
     assert(opts.nextra == nextra);
   }

@@ -49,11 +49,14 @@ __host__ int tests_create(int argc, char ** argv) {
   /* This is largely alphabetical order, but a better order related
    * to dependencies might be more appropriate */
 
+  /* Fundamentals: parallel environment, coordinate systems */
+
   test_pe_suite();
   test_coords_suite();
   test_cs_limits_suite();
+  test_le_suite();
 
-  /* i/o */
+  /* i/o infrastructure */
   test_io_aggregator_suite();
   test_io_element_suite();
   test_io_options_suite();
@@ -64,7 +67,10 @@ __host__ int tests_create(int argc, char ** argv) {
   test_io_metadata_suite();
   test_io_impl_mpio_suite();
 
-  test_kernel_suite();
+  /* Kernel helpers */
+  test_kernel_3d_suite();
+  test_kernel_3d_v_suite();
+
   test_gradient_d3q27_suite();
   test_angle_cosine_suite();
   test_assumptions_suite();
@@ -102,7 +108,6 @@ __host__ int tests_create(int argc, char ** argv) {
   test_lb_bc_outflow_opts_suite();
   test_lb_bc_outflow_rhou_suite();
   test_lc_anchoring_suite();
-  test_le_suite();
   test_lubrication_suite();
 
   /* Map tests */

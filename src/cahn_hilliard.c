@@ -36,11 +36,11 @@
 __host__ int ch_update_forward_step(ch_t * ch, field_t * phif);
 __host__ int ch_flux_mu1(ch_t * ch, fe_t * fe);
 
-__global__ void ch_flux_mu1_kernel(kernel_ctxt_t * ktx, ch_t * ch, fe_t * fe,
+__global__ void ch_flux_mu1_kernel(kernel_3d_t k3d, ch_t * ch, fe_t * fe,
 				   ch_info_t info);
-__global__ void ch_update_kernel_2d(kernel_ctxt_t * ktx, ch_t * ch,
+__global__ void ch_update_kernel_2d(kernel_3d_t k3d, ch_t * ch,
 				    field_t * field, ch_info_t info, int xs, int ys);
-__global__ void ch_update_kernel_3d(kernel_ctxt_t * ktx, ch_t * ch,
+__global__ void ch_update_kernel_3d(kernel_3d_t k3d, ch_t * ch,
 				    field_t * field, ch_info_t info, int xs, int ys);
 
 /*****************************************************************************
@@ -138,7 +138,7 @@ __host__ int ch_info(ch_t * ch) {
   pe_info(ch->pe, "Number of fields      = %2d\n", ch->info->nfield);
   pe_info(ch->pe, "Mobility (phi)        = %12.5e\n", ch->info->mobility[0]);
   pe_info(ch->pe, "Mobility (psi)        = %12.5e\n", ch->info->mobility[1]);
-  
+
   return 0;
 }
 
@@ -206,11 +206,8 @@ __host__ int ch_solver(ch_t * ch, fe_t * fe, field_t * phi, hydro_t * hydro,
 
 __host__ int ch_flux_mu1(ch_t * ch, fe_t * fe) {
 
-  int nlocal[3];
-  dim3 nblk, ntpb;
-  kernel_info_t limits;
+  int nlocal[3] = {0};
   fe_t * fetarget = NULL;
-  kernel_ctxt_t * ctxt = NULL;
 
   assert(ch);
   assert(fe);
@@ -218,20 +215,20 @@ __host__ int ch_flux_mu1(ch_t * ch, fe_t * fe) {
   cs_nlocal(ch->cs, nlocal);
   fe->func->target(fe, &fetarget);
 
-  limits.imin = 0; limits.imax = nlocal[X];
-  limits.jmin = 0; limits.jmax = nlocal[Y];
-  limits.kmin = 0; limits.kmax = nlocal[Z];
+  {
+    dim3 nblk = {};
+    dim3 ntpb = {};
+    cs_limits_t lim = {0, nlocal[X], 0, nlocal[Y], 0, nlocal[Z]};
+    kernel_3d_t k3d = kernel_3d(ch->cs, lim);
 
-  kernel_ctxt_create(ch->cs, 1, limits, &ctxt);
-  kernel_ctxt_launch_param(ctxt, &nblk, &ntpb);
+    kernel_3d_launch_param(k3d.kiterations, &nblk, &ntpb);
 
-  tdpLaunchKernel(ch_flux_mu1_kernel, nblk, ntpb, 0, 0,
-		  ctxt->target, ch->target, fetarget, *ch->info);
+    tdpLaunchKernel(ch_flux_mu1_kernel, nblk, ntpb, 0, 0,
+		    k3d, ch->target, fetarget, *ch->info);
 
-  tdpAssert(tdpPeekAtLastError());
-  tdpAssert(tdpDeviceSynchronize());
-
-  kernel_ctxt_free(ctxt);
+    tdpAssert(tdpPeekAtLastError());
+    tdpAssert(tdpDeviceSynchronize());
+  }
 
   return 0;
 }
@@ -251,21 +248,16 @@ __host__ int ch_flux_mu1(ch_t * ch, fe_t * fe) {
  *
  *****************************************************************************/
 
-__global__ void ch_flux_mu1_kernel(kernel_ctxt_t * ktx, ch_t * ch, fe_t * fe,
+__global__ void ch_flux_mu1_kernel(kernel_3d_t k3d, ch_t * ch, fe_t * fe,
 				   ch_info_t info) {
 
-  int kindex;
-  int kiterations;
+  int kindex = 0;
 
-  assert(ktx);
   assert(ch);
   assert(fe);
   assert(fe->func->mu);
 
-
-  kiterations = kernel_iterations(ktx);
-
-  for_simt_parallel(kindex, kiterations, 1) {
+  for_simt_parallel(kindex, k3d.kiterations, 1) {
 
     int ic, jc, kc;
     int index0, index1;
@@ -274,17 +266,17 @@ __global__ void ch_flux_mu1_kernel(kernel_ctxt_t * ktx, ch_t * ch, fe_t * fe,
 
     assert(info.nfield == ch->flux->nf);
 
-    ic = kernel_coords_ic(ktx, kindex);
-    jc = kernel_coords_jc(ktx, kindex);
-    kc = kernel_coords_kc(ktx, kindex);
+    ic = kernel_3d_ic(&k3d, kindex);
+    jc = kernel_3d_jc(&k3d, kindex);
+    kc = kernel_3d_kc(&k3d, kindex);
 
-    index0 = cs_index(ch->cs, ic, jc, kc);
+    index0 = kernel_3d_cs_index(&k3d, ic, jc, kc);
 
     fe->func->mu(fe, index0, mu0);
 
     /* between ic and ic+1 */
 
-    index1 = cs_index(ch->cs, ic+1, jc, kc);
+    index1 = kernel_3d_cs_index(&k3d, ic+1, jc, kc);
     fe->func->mu(fe, index1, mu1);
     for (int n = 0; n < info.nfield; n++) {
       flux = info.mobility[n]*(mu1[n] - mu0[n]);
@@ -293,7 +285,7 @@ __global__ void ch_flux_mu1_kernel(kernel_ctxt_t * ktx, ch_t * ch, fe_t * fe,
 
     /* y direction */
 
-    index1 = cs_index(ch->cs, ic, jc+1, kc);
+    index1 = kernel_3d_cs_index(&k3d, ic, jc+1, kc);
     fe->func->mu(fe, index1, mu1);
     for (int n = 0; n < info.nfield; n++) {
       flux = info.mobility[n]*(mu1[n] - mu0[n]);
@@ -302,7 +294,7 @@ __global__ void ch_flux_mu1_kernel(kernel_ctxt_t * ktx, ch_t * ch, fe_t * fe,
 
     /* z direction */
 
-    index1 = cs_index(ch->cs, ic, jc, kc+1);
+    index1 = kernel_3d_cs_index(&k3d, ic, jc, kc+1);
     fe->func->mu(fe, index1, mu1);
     for (int n = 0; n < info.nfield; n++) {
       flux = info.mobility[n]*(mu1[n] - mu0[n]);
@@ -332,34 +324,30 @@ __host__ int ch_update_forward_step(ch_t * ch, field_t * phif) {
 
   int nlocal[3];
   int xs, ys, zs;
-  dim3 nblk, ntpb;
-
-  kernel_info_t limits;
-  kernel_ctxt_t * ctxt = NULL;
 
   cs_nlocal(ch->cs, nlocal);
   cs_strides(ch->cs, &xs, &ys, &zs);
 
-  limits.imin = 1; limits.imax = nlocal[X];
-  limits.jmin = 1; limits.jmax = nlocal[Y];
-  limits.kmin = 1; limits.kmax = nlocal[Z];
+  {
+    dim3 nblk = {};
+    dim3 ntpb = {};
+    cs_limits_t lim = {1, nlocal[X], 1, nlocal[Y], 1, nlocal[Z]};
+    kernel_3d_t k3d = kernel_3d(ch->cs, lim);
 
-  kernel_ctxt_create(ch->cs, 1, limits, &ctxt);
-  kernel_ctxt_launch_param(ctxt, &nblk, &ntpb);
+    kernel_3d_launch_param(k3d.kiterations, &nblk, &ntpb);
 
-  if (nlocal[Z] == 1) {
-    tdpLaunchKernel(ch_update_kernel_2d, nblk, ntpb, 0, 0,
-		    ctxt->target, ch->target, phif->target, *ch->info, xs, ys);
+    if (nlocal[Z] == 1) {
+      tdpLaunchKernel(ch_update_kernel_2d, nblk, ntpb, 0, 0,
+		      k3d, ch->target, phif->target, *ch->info, xs, ys);
+    }
+    else {
+      tdpLaunchKernel(ch_update_kernel_3d, nblk, ntpb, 0, 0,
+		      k3d, ch->target, phif->target, *ch->info, xs, ys);
+    }
+
+    tdpAssert(tdpPeekAtLastError());
+    tdpAssert(tdpDeviceSynchronize());
   }
-  else {
-    tdpLaunchKernel(ch_update_kernel_3d, nblk, ntpb, 0, 0,
-		    ctxt->target, ch->target, phif->target, *ch->info, xs, ys);
-  }
-
-  tdpAssert(tdpPeekAtLastError());
-  tdpAssert(tdpDeviceSynchronize());
-
-  kernel_ctxt_free(ctxt);
 
   return 0;
 }
@@ -372,24 +360,21 @@ __host__ int ch_update_forward_step(ch_t * ch, field_t * phif) {
  *
  *****************************************************************************/
 
-__global__ void ch_update_kernel_2d(kernel_ctxt_t * ktx, ch_t * ch,
-				    field_t * field, ch_info_t info, int xs, int ys) {
+__global__ void ch_update_kernel_2d(kernel_3d_t k3d, ch_t * ch,
+				    field_t * field, ch_info_t info,
+				    int xs, int ys) {
 
-  int kindex;
-  int kiterations;
+  int kindex = 0;
 
-  assert(ktx);
   assert(ch);
   assert(field);
 
-  kiterations = kernel_iterations(ktx);
+  for_simt_parallel(kindex, k3d.kiterations, 1) {
 
-  for_simt_parallel(kindex, kiterations, 1) {
+    int ic = kernel_3d_ic(&k3d, kindex);
+    int jc = kernel_3d_jc(&k3d, kindex);
 
-    int ic = kernel_coords_ic(ktx, kindex);
-    int jc = kernel_coords_jc(ktx, kindex);
-
-    int index = cs_index(ch->cs, ic, jc, 1);
+    int index = kernel_3d_cs_index(&k3d, ic, jc, 1);
 
     for (int n = 0; n < info.nfield; n++) {
       double phi = field->data[addr_rank1(ch->flux->nsite, info.nfield, index, n)];
@@ -413,26 +398,22 @@ __global__ void ch_update_kernel_2d(kernel_ctxt_t * ktx, ch_t * ch,
  *
  *****************************************************************************/
 
-__global__ void ch_update_kernel_3d(kernel_ctxt_t * ktx, ch_t * ch,
+__global__ void ch_update_kernel_3d(kernel_3d_t k3d, ch_t * ch,
 				    field_t * field, ch_info_t info,
 				    int xs, int ys) {
 
-  int kindex;
-  int kiterations;
+  int kindex = 0;
 
-  assert(ktx);
   assert(ch);
   assert(field);
 
-  kiterations = kernel_iterations(ktx);
+  for_simt_parallel(kindex, k3d.kiterations, 1) {
 
-  for_simt_parallel(kindex, kiterations, 1) {
+    int ic = kernel_3d_ic(&k3d, kindex);
+    int jc = kernel_3d_jc(&k3d, kindex);
+    int kc = kernel_3d_kc(&k3d, kindex);
 
-    int ic = kernel_coords_ic(ktx, kindex);
-    int jc = kernel_coords_jc(ktx, kindex);
-    int kc = kernel_coords_kc(ktx, kindex);
-
-    int index = cs_index(ch->cs, ic, jc, kc);
+    int index = kernel_3d_cs_index(&k3d, ic, jc, kc);
 
     for (int n = 0; n < info.nfield; n++) {
       double phi = field->data[addr_rank1(ch->flux->nsite, info.nfield, index, n)];

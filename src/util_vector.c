@@ -7,7 +7,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2023 The University of Edinburgh
+ *  (c) 2023-2024 The University of Edinburgh
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *
@@ -66,26 +66,6 @@ void util_vector_normalise(int n, double * a) {
   return;
 }
 
-/*****************************************************************************
- *
- *  util_vector_copy
- *
- *  Copy a to b.
- *
- *****************************************************************************/
-
-void util_vector_copy(int n, const double * a, double * b) {
-
-  assert(n > 0);
-  assert(a);
-  assert(b);
-
-  for (int ia = 0; ia < n; ia++) {
-    b[ia] = a[ia];
-  }
-
-  return;
-}
 /*****************************************************************************
  *
  *  util_vector_orthonormalise

@@ -13,7 +13,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2022 The University of Edinburgh
+ *  (c) 2022-2024 The University of Edinburgh
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *
@@ -274,6 +274,7 @@ int io_impl_mpio_write_end(io_impl_mpio_t * io) {
   assert(io);
 
   MPI_File_write_all_end(io->fh, io->super.aggr->buf, &io->status);
+  MPI_File_close(&io->fh);
 
   return 0;
 }
