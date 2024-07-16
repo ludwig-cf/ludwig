@@ -27,18 +27,10 @@ int io_impl_create(const io_metadata_t * metadata, io_impl_t ** io) {
 
   *io = NULL;
 
-  switch (metadata->options.mode) {
-  case IO_MODE_MPIIO:
-    {
-      io_impl_mpio_t * mpio = NULL;
-      ifail = io_impl_mpio_create(metadata, &mpio);
-      *io = (io_impl_t *) mpio;
-    }
-    break;
-  default:
-    /* Internal error */
-    assert(0);
-    ifail = -1;
+  if (metadata->options.mode == IO_MODE_MPIIO) {
+    io_impl_mpio_t * mpio = NULL;
+    ifail = io_impl_mpio_create(metadata, &mpio);
+    *io = (io_impl_t *) mpio;
   }
 
   return ifail;

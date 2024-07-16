@@ -158,14 +158,8 @@ __host__ int io_options_metadata_version_valid(const io_options_t * options) {
 
   /* Should be consistent with mode */
 
-  switch (options->metadata_version) {
-
-  case IO_METADATA_V2:
+  if (options->metadata_version == IO_METADATA_V2) {
     valid = (options->mode == IO_MODE_MPIIO);
-    break;
-
-  default:
-    ;
   }
 
   return valid;
@@ -183,16 +177,15 @@ __host__ io_options_t io_options_with_mode(io_mode_enum_t mode) {
 
   io_options_t options = io_options_default();
 
-  switch (mode) {
-  case IO_MODE_MPIIO:
+  if (mode == IO_MODE_MPIIO) {
     options.mode             = IO_MODE_MPIIO;
     options.iorformat        = IO_RECORD_BINARY;
     options.metadata_version = IO_METADATA_V2;
     options.report           = 1;
     options.asynchronous     = 0;
     options.compression_levl = 0;
-    break;
-  default:
+  }
+  else {
     /* User error ... */
     options.mode             = IO_MODE_INVALID;
   }
@@ -249,13 +242,9 @@ __host__ const char * io_mode_to_string(io_mode_enum_t mode) {
 
   const char * str = NULL;
 
-  switch (mode) {
-  case IO_MODE_MPIIO:
-    str = "mpiio";
-    break;
-  default:
-    str = "invalid";
-  }
+  str = "invalid";
+
+  if (mode == IO_MODE_MPIIO) str = "mpiio";
 
   return str;
 }
