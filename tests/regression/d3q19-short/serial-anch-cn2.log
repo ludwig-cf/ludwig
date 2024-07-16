@@ -49,7 +49,7 @@ Colloid anchoring w2:         4.0000000e-03
 
 Using Beris-Edwards solver:
 Rotational diffusion const =  5.0000000e-01
-LC fluctuations:           =  off
+LC fluctuations            =  off
 
 System properties
 ----------------
@@ -86,11 +86,6 @@ Ghost relaxation time:    1.00000e+00
 Hydrodynamics
 -------------
 Hydrodynamics: off
-
-Order parameter I/O
--------------------
-Order parameter I/O format:   
-I/O decomposition:            1 1 1
 
 Advection scheme order:  1 (default)
 

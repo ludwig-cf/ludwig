@@ -108,6 +108,7 @@ static int test_nernst_planck_driver(pe_t * pe) {
   double epsilon = 3.3e3;      /* ... epsilon, and ... */
   double beta = 3.0e4;         /* ... the Boltzmann factor i.e., t ~ 10^5 */
 
+  map_options_t mapopts = map_options_default();
   psi_options_t opts = psi_options_default(nhalo);
 
   assert(pe);
@@ -123,7 +124,7 @@ static int test_nernst_planck_driver(pe_t * pe) {
     int grid[3] = {pe_mpi_size(pe), 1, 1};
     cs_decomposition_set(cs, grid);
   }
-  
+
   cs_init(cs);
 
   cs_ltot(cs, ltot);
@@ -132,7 +133,7 @@ static int test_nernst_planck_driver(pe_t * pe) {
   cs_cartsz(cs, mpi_cartsz);
   cs_cart_coords(cs, mpi_cartcoords);
 
-  map_create(pe, cs, 0, &map);
+  map_create(pe, cs, &mapopts, &map);
   assert(map);
 
   opts.beta     = beta;
@@ -172,7 +173,7 @@ static int test_nernst_planck_driver(pe_t * pe) {
       for (int kc = 1; kc <= nlocal[Z]; kc++) {
 
 	int index = cs_index(cs, ic, jc, kc);
-	map_status_set(map, index, MAP_BOUNDARY); 
+	map_status_set(map, index, MAP_BOUNDARY);
 
 	psi_rho_set(psi, index, 0, rho_w);
 	psi_rho_set(psi, index, 1, 0.0);
@@ -225,7 +226,7 @@ static int test_nernst_planck_driver(pe_t * pe) {
     int jc = 2;
     int kc = 2;
     int index = cs_index(cs, ic, jc, kc);
- 
+
     if (noffst[X] + ic == ntotal[X] / 2) {
       psi_ionic_strength(psi, index, &rho_b_local);
     }
@@ -254,7 +255,7 @@ static int test_nernst_planck_driver(pe_t * pe) {
     assert(fabs(yd     - 5.18713579e-05) < FLT_EPSILON);
   }
 
-  map_free(map);
+  map_free(&map);
   fe_electro_free(fe);
   psi_free(&psi);
   cs_free(cs);

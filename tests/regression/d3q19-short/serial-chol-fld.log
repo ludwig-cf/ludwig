@@ -46,7 +46,7 @@ Dimensionless field e      =  4.0134320e-01
 
 Using Beris-Edwards solver:
 Rotational diffusion const =  3.0000000e-01
-LC fluctuations:           =  off
+LC fluctuations            =  off
 
 System properties
 ----------------
@@ -84,14 +84,9 @@ Hydrodynamics
 -------------
 Hydrodynamics: on
 
-Order parameter I/O
--------------------
-Order parameter I/O format:   
-I/O decomposition:            1 1 1
-
 Advection scheme order: 2
 
-Initial distribution: 3d uniform desnity/velocity
+Initial distribution: 3d uniform density/velocity
 Density:               1.0000000e+00
 Velocity:              0.0000000e+00  0.0000000e+00  0.0000000e+00
 

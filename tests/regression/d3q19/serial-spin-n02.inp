@@ -29,10 +29,10 @@ grid 2_2_2
 #
 ##############################################################################
 
-viscosity 0.00625
-temperature 0.000001
-isothermal_fluctuations on
-ghost_modes off
+viscosity        0.00625
+temperature      0.000001
+lb_fluctuations  on
+ghost_modes      off
 
 ##############################################################################
 #

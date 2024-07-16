@@ -17,10 +17,15 @@
  *  L'Ecuyer and Simard in ACM TOMS 33 Article 22 (2007). The state is
  *  4 --- 4-byte --- unsigned integers.
  *
+ *  The halo for the RNG is 1 point in the case that fluxes are required.
+ *  This will will need to be handled if restarting from a saved file.
+ *  It is not at present.
+ *
+ *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2013-2022 The University of Edinburgh
+ *  (c) 2013-2024 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -30,69 +35,62 @@
 #include <assert.h>
 #include <limits.h>
 #include <math.h>
-#include <stdio.h>
-#include <stdlib.h>
+#include <string.h>
 
-#include "pe.h"
-#include "coords.h"
-#include "memory.h"
 #include "noise.h"
 
-static int noise_write(FILE * fp, int index, void * self);
-static int noise_read(FILE * fp, int index, void * self);
+static const int nchar_per_ascii_int32_ = NOISE_RECORD_LENGTH_ASCII;
+static int noise_initialise_state(noise_t * ns);
 
 /*****************************************************************************
  *
  *  noise_create
  *
- *  TODO: remove separate create/init in favour of create => use;
- *        separation can cause confusion.
- *        Note if cs is not initialised then cannot allocate state here. 
- *
  *****************************************************************************/
 
-__host__ int noise_create(pe_t * pe, cs_t * cs, noise_t ** pobj) {
+int noise_create(pe_t * pe, cs_t * cs, const noise_options_t * options,
+		 noise_t ** ns) {
 
-  int ndevice;
   noise_t * obj = NULL;
 
   assert(pe);
   assert(cs);
-  assert(pobj);
+  assert(options);
+  assert(ns);
 
   obj = (noise_t *) calloc(1, sizeof(noise_t));
-  assert(obj);
-  if (obj == NULL) pe_fatal(pe, "calloc(noise_t) failed\n");
+  if (obj == NULL) goto err;
+  if (noise_initialise(pe, cs, options, obj) != 0) goto err;
 
-  obj->pe = pe;
-  obj->cs = cs;
-
-  /* Here are the tabulated discrete random values with unit variance */
-
-  obj->rtable[0] = -sqrt(2.0 + sqrt(2.0));
-  obj->rtable[1] = -sqrt(2.0 - sqrt(2.0));
-  obj->rtable[2] = 0.0;
-  obj->rtable[3] = 0.0;
-  obj->rtable[4] = 0.0;
-  obj->rtable[5] = 0.0;
-  obj->rtable[6] = +sqrt(2.0 - sqrt(2.0));
-  obj->rtable[7] = +sqrt(2.0 + sqrt(2.0));
-
-  tdpGetDeviceCount(&ndevice);
-
-  if (ndevice == 0) {
-    obj->target = obj;
-  }
-  else {
-    tdpMalloc((void **) &obj->target, sizeof(noise_t));
-    tdpMemset(obj->target, 0, sizeof(noise_t));
-    tdpMemcpy(obj->target->rtable, obj->rtable, 8*sizeof(double),
-	      tdpMemcpyHostToDevice);
-  }
-
-  *pobj = obj;
+  *ns = obj;
 
   return 0;
+
+ err:
+  if (obj) free(obj);
+
+  return -1;
+}
+
+/*****************************************************************************
+ *
+ *  noise_create_seed
+ *
+ *  Convenience for seed-only argument
+ *
+ *  If the input seed is negative, it may get converted to
+ *  an unsinged int which is positive. This may not be what
+ *  one expects. So check.
+ *
+ *****************************************************************************/
+
+int noise_create_seed(pe_t * pe, cs_t * cs, int seed, noise_t ** ns) {
+
+  noise_options_t opts = noise_options_default();
+
+  if (seed > 1) opts = noise_options_seed(seed);
+
+  return noise_create(pe, cs, &opts, ns);
 }
 
 /*****************************************************************************
@@ -101,89 +99,219 @@ __host__ int noise_create(pe_t * pe, cs_t * cs, noise_t ** pobj) {
  *
  *****************************************************************************/
 
-__host__ int noise_free(noise_t * obj) {
+int noise_free(noise_t ** ns) {
 
-  assert(obj);
+  assert(ns);
 
-  if (obj->target != obj && obj->state) {
-    unsigned int * tmp = NULL;
-    tdpMemcpy(&tmp, &obj->target->state, sizeof(unsigned int *),
-	      tdpMemcpyDeviceToHost);
-    tdpFree(obj->target);
-  }
-
-  if (obj->state) free(obj->state);
-  free(obj);
+  noise_finalise(*ns);
+  free(*ns);
+  *ns = NULL;
 
   return 0;
 }
 
 /*****************************************************************************
  *
- *  noise_init
+ *  noise_initialise
  *
- *  Decomposition independent initialisation.
- *
- *  The seed is based on a global (ig, jg, kg) position index
- *  for which we need to set only the local sites (plus halo).
- *
- *  The halo extends 1 point into the halo to allow mid-point
- *  random numbers to be computed. The halo points must have
- *  the appropriate initialisation based on global (ig, jg, kg).
- * 
  *****************************************************************************/
 
-__host__ int noise_init(noise_t * obj, int master_seed) {
+int noise_initialise(pe_t * pe, cs_t * cs, const noise_options_t * options,
+		     noise_t * ns) {
 
-  int ic, jc, kc, index;
-  int ig, jg, kg;
-  int ndevice;
-  int nextra;
-  int nstat;
-  int nlocal[3];
-  int noffset[3];
-  int ntotal[3];
+  int ndevice = 0;
+  int nstate = 0;
 
-  unsigned int state0[NNOISE_STATE] = {13, 12953, 712357, 22383979};
-  unsigned int state[NNOISE_STATE];
-  unsigned int state_local[NNOISE_STATE];
+  assert(pe);
+  assert(cs);
+  assert(options);
+  assert(ns);
 
-  assert(obj);
+  ns->pe = pe;
+  ns->cs = cs;
 
-  /* Can take the full default if valid seed is not provided */
+  cs_nsites(cs, &ns->nsites);
+  assert(ns->nsites > 0);
 
-  if (master_seed > 0) {
-    obj->master_seed = master_seed;
-    state0[0] = master_seed;
+  /* Check validity of options here */
+  if (noise_options_valid(options) == 0) {
+    pe_warn(pe, "One or more noise options is invalid\n");
+    goto err;
   }
 
-  cs_nsites(obj->cs, &obj->nsites);
-  nstat = NNOISE_STATE*obj->nsites;
-  assert(obj->nsites > 0);
+  ns->options = *options;
 
-  obj->state = (unsigned int *) calloc(nstat, sizeof(unsigned int));
-  if (obj->state == NULL) pe_fatal(obj->pe, "calloc(obj->state) failed\n");
+  /* Allocate state */
+  nstate = NNOISE_STATE*ns->nsites;
 
-  nextra = 1;
-  cs_ntotal(obj->cs, ntotal);
-  cs_nlocal(obj->cs, nlocal);
-  cs_nlocal_offset(obj->cs, noffset);
+  ns->state = (unsigned int *) malloc(nstate*sizeof(unsigned int));
+  assert(ns->state);
+  if (ns->state == NULL) {
+    pe_warn(pe, "noise_initialise: calloc(ns->state) failed\n");
+    goto err;
+  }
 
-  for (ic = 1 - nextra; ic <= nlocal[X] + nextra; ic++) {
+  /* Here are the tabulated discrete random values with unit variance */
 
-    ig = noffset[X] + ic;
-    if (ig < 1) ig += ntotal[X];
-    if (ig > ntotal[X]) ig -= ntotal[X];
+  ns->rtable[0] = -sqrt(2.0 + sqrt(2.0));
+  ns->rtable[1] = -sqrt(2.0 - sqrt(2.0));
+  ns->rtable[2] = 0.0;
+  ns->rtable[3] = 0.0;
+  ns->rtable[4] = 0.0;
+  ns->rtable[5] = 0.0;
+  ns->rtable[6] = +sqrt(2.0 - sqrt(2.0));
+  ns->rtable[7] = +sqrt(2.0 + sqrt(2.0));
 
-    for (jc = 1 - nextra; jc <= nlocal[Y] + nextra; jc++) {
+  /* I/O details and metadata initialisation */
+  {
+    int ifail = 0;
+    io_element_t element = {};
 
-      jg = noffset[Y] + jc;
-      if (jg < 1) jg += ntotal[Y];
-      if (jg > ntotal[Y]) jg -= ntotal[Y];
+    io_element_t ascii = {
+      .datatype = MPI_CHAR,
+      .datasize = sizeof(char),
+      .count    = 4*nchar_per_ascii_int32_ + 1,
+      .endian   = io_endianness()
+    };
+    io_element_t binary = {
+      .datatype = MPI_UNSIGNED,
+      .datasize = sizeof(unsigned int),
+      .count    = NNOISE_STATE,
+      .endian   = io_endianness()
+    };
 
-      for (kc = 1 - nextra; kc <= nlocal[Z] + nextra; kc++) {
+    ns->ascii = ascii;
+    ns->binary = binary;
 
-        kg = noffset[Z] + kc;
+    if (options->iodata.input.iorformat == IO_RECORD_ASCII) element = ascii;
+    if (options->iodata.input.iorformat == IO_RECORD_BINARY) element = binary;
+
+    ifail = io_metadata_initialise(cs, &options->iodata.input, &element,
+				   &ns->input);
+    if (ifail != 0) {
+      pe_warn(pe, "Failed to initlaise noise input metadata\n");
+      goto err;
+    }
+
+    if (options->iodata.output.iorformat == IO_RECORD_ASCII) element = ascii;
+    if (options->iodata.output.iorformat == IO_RECORD_BINARY) element = binary;
+
+    ifail = io_metadata_initialise(cs, &options->iodata.output, &element,
+				   &ns->output);
+    if (ifail != 0) {
+      pe_warn(pe, "Failed to initialise noise output metadata\n");
+      goto err;
+    }
+  }
+
+  /* Device allocations */
+
+  tdpGetDeviceCount(&ndevice);
+
+  if (ndevice == 0) {
+    ns->target = ns;
+  }
+  else {
+    unsigned int * tmp = NULL;
+    tdpAssert( tdpMalloc((void **) &ns->target, sizeof(noise_t)) );
+    tdpAssert( tdpMemset(ns->target, 0, sizeof(noise_t)) );
+    tdpAssert( tdpMemcpy(ns->target->rtable, ns->rtable, 8*sizeof(double),
+			 tdpMemcpyHostToDevice) );
+    tdpAssert( tdpMalloc((void **) &tmp, nstate*sizeof(unsigned int)) );
+    tdpAssert( tdpMemcpy(&ns->target->state, &tmp, sizeof(unsigned int *),
+			 tdpMemcpyHostToDevice) );
+  }
+
+  noise_initialise_state(ns);
+  noise_memcpy(ns, tdpMemcpyHostToDevice);
+
+  return 0;
+
+ err:
+  noise_finalise(ns);
+
+  return -1;
+}
+
+/*****************************************************************************
+ *
+ *  noise_finalise
+ *
+ *****************************************************************************/
+
+int noise_finalise(noise_t * ns) {
+
+  int ndevice = 0;
+
+  assert(ns);
+
+  tdpGetDeviceCount(&ndevice);
+
+  if (ndevice > 0) {
+    unsigned int * state = NULL;
+    tdpAssert( tdpMemcpy(&state, &ns->target->state, sizeof(unsigned int *),
+			 tdpMemcpyDeviceToHost) );
+    if (state) tdpAssert( tdpFree(state) );
+    tdpAssert( tdpFree(ns->target) );
+  }
+
+  /* Release only if initialised as has MPI_Comm_free() */
+  if (ns->output.cs) io_metadata_finalise(&ns->output);
+  if (ns->input.cs)  io_metadata_finalise(&ns->input);
+
+  if (ns->state) free(ns->state);
+
+  *ns = (noise_t) {};
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  noise_initialise_state
+ *
+ *  The default values are set as state0[]. The overall seed is introduced
+ *  as state0[0].
+ *
+ *****************************************************************************/
+
+static int noise_initialise_state(noise_t * ns) {
+
+  int nextra = -1;
+  int nlocal[3]  = {0};
+  int ntotal[3]  = {0};
+  int noffset[3] = {0};
+  unsigned int state0[NNOISE_STATE] = {13, 12953, 712357, 22383979};
+
+  assert(ns);
+  assert(ns->state);
+  assert(ns->options.seed > 0);
+
+  /* This is historical: state0[0] is the single user-supplied seed */
+
+  state0[0] = ns->options.seed;
+
+  cs_ntotal(ns->cs, ntotal);
+  cs_nlocal(ns->cs, nlocal);
+  cs_nlocal_offset(ns->cs, noffset);
+
+  nextra = ns->options.nextra;
+
+  #pragma omp parallel for collapse(3)
+  for (int ic = 1 - nextra; ic <= nlocal[X] + nextra; ic++) {
+    for (int jc = 1 - nextra; jc <= nlocal[Y] + nextra; jc++) {
+      for (int kc = 1 - nextra; kc <= nlocal[Z] + nextra; kc++) {
+
+	int ig = noffset[X] + ic;
+	int jg = noffset[Y] + jc;
+        int kg = noffset[Z] + kc;
+
+	unsigned int state_local[NNOISE_STATE] = {0};
+
+	if (ig < 1) ig += ntotal[X];
+	if (ig > ntotal[X]) ig -= ntotal[X];
+	if (jg < 1) jg += ntotal[Y];
+	if (jg > ntotal[Y]) jg -= ntotal[Y];
         if (kg < 1) kg += ntotal[Z];
         if (kg > ntotal[Z]) kg -= ntotal[Z];
 
@@ -194,48 +322,24 @@ __host__ int noise_init(noise_t * obj, int master_seed) {
 	state_local[2] = state0[2] + kg;
 	state_local[3] = state0[3];
 
-	/* At this point, state_local[0] looks the same for all
+	/* At this point, state_local[3] looks the same for all
 	 * jc, kc etc. So run through generator once to produce
 	 * unique seeds at each lattice point, which are the
 	 * ones we use. */
 
-	state[0] = noise_uniform(state_local);
-	state[1] = noise_uniform(state_local);
-	state[2] = noise_uniform(state_local);
-	state[3] = noise_uniform(state_local);
+	{
+	  int index = cs_index(ns->cs, ic, jc, kc);
+	  unsigned int state[NNOISE_STATE] = {0};
+	  state[0] = ns_uniform(state_local);
+	  state[1] = ns_uniform(state_local);
+	  state[2] = ns_uniform(state_local);
+	  state[3] = ns_uniform(state_local);
 
-	index = cs_index(obj->cs, ic, jc, kc);
-	noise_state_set(obj, index, state);
+	  noise_state_set(ns, index, state);
+	}
       }
     }
   }
-
-  tdpGetDeviceCount(&ndevice);
-
-  if (ndevice > 0) {
-    unsigned int * tmp = NULL;
-    tdpMalloc((void **) &tmp, nstat*sizeof(unsigned int));
-    tdpMemcpy(&obj->target->state, &tmp, sizeof(unsigned int *),
-	      tdpMemcpyHostToDevice);
-  }
-
-  noise_memcpy(obj, tdpMemcpyHostToDevice);
-
-  return 0;
-}
-
-/*****************************************************************************
- *
- *  noise_target
- *
- *****************************************************************************/
-
-__host__ int noise_target(noise_t * obj, noise_t ** target) {
-
-  assert(obj);
-  assert(target);
-
-  *target = obj->target;
 
   return 0;
 }
@@ -246,77 +350,38 @@ __host__ int noise_target(noise_t * obj, noise_t ** target) {
  *
  *****************************************************************************/
 
-__host__ int noise_memcpy(noise_t * obj, tdpMemcpyKind flag) {
+int noise_memcpy(noise_t * ns, tdpMemcpyKind flag) {
 
-  int ndevice;
+  int ndevice = 0;
 
-  assert(obj);
+  assert(ns);
 
   tdpGetDeviceCount(&ndevice);
 
   if (ndevice == 0) {
-    assert(obj->target == obj);
+    assert(ns->target == ns);
   }
   else {
-    int nstat;
+    int nstat = NNOISE_STATE*ns->nsites;
     unsigned int * tmp = NULL;
 
-    nstat = NNOISE_STATE*obj->nsites;
-    tdpMemcpy(&tmp, &obj->target->state, sizeof(unsigned int *),
-	      tdpMemcpyDeviceToHost);
+    tdpAssert( tdpMemcpy(&tmp, &ns->target->state, sizeof(unsigned int *),
+			 tdpMemcpyDeviceToHost) );
 
     switch (flag) {
     case tdpMemcpyHostToDevice:
-      tdpMemcpy(&obj->target->nsites, &obj->nsites, sizeof(int), flag);
-      tdpMemcpy(&obj->target->on, &obj->on, NOISE_END*sizeof(int), flag);
-      tdpMemcpy(tmp, obj->state, nstat*sizeof(unsigned int), flag);
+      tdpAssert( tdpMemcpy(&ns->target->nsites, &ns->nsites, sizeof(int),
+			   flag) );
+      tdpAssert( tdpMemcpy(tmp, ns->state, nstat*sizeof(unsigned int), flag) );
       break;
     case tdpMemcpyDeviceToHost:
-      tdpMemcpy(obj->state, tmp, nstat*sizeof(unsigned int), flag);
+      tdpAssert( tdpMemcpy(ns->state, tmp, nstat*sizeof(unsigned int), flag) );
       break;
     default:
-      pe_fatal(obj->pe, "Bad flag in noise_memcpy\n");
+      pe_fatal(ns->pe, "Bad flag in noise_memcpy\n");
       break;
     }
   }
-
-  return 0;
-}
-
-/*****************************************************************************
- *
- *  noise_init_io_info
- *
- *  Note only binary I/O at the moment.
- *
- *****************************************************************************/
-
-__host__ int noise_init_io_info(noise_t * obj, int grid[3], int form_in,
-				int form_out) {
-
-  const char * name = "Lattice noise RNG state";
-  const char * stubname = "noise";
-  io_info_args_t args = io_info_args_default();
-
-  assert(obj);
-
-  args.grid[X] = grid[X];
-  args.grid[Y] = grid[Y];
-  args.grid[Z] = grid[Z];
-
-  io_info_create(obj->pe, obj->cs, &args, &obj->info);
-  if (obj->info == NULL) pe_fatal(obj->pe, "io_info_create(noise) failed\n");
-
-  io_info_set_name(obj->info, name);
-  io_info_write_set(obj->info, IO_FORMAT_BINARY, noise_write);
-  io_info_write_set(obj->info, IO_FORMAT_ASCII, noise_write);
-  io_info_read_set(obj->info, IO_FORMAT_BINARY, noise_read);
-  io_info_read_set(obj->info, IO_FORMAT_ASCII, noise_read);
-  io_info_set_bytesize(obj->info, IO_FORMAT_BINARY,
-		       NNOISE_STATE*sizeof(unsigned int));
-
-  io_info_format_set(obj->info, form_in, form_out);
-  io_info_metadata_filestub_set(obj->info, stubname);
 
   return 0;
 }
@@ -327,16 +392,14 @@ __host__ int noise_init_io_info(noise_t * obj, int grid[3], int form_in,
  *
  *****************************************************************************/
 
-__host__ __device__ int noise_state_set(noise_t * obj, int index,
-					unsigned int newstate[NNOISE_STATE]) {
-  int ia;
+int noise_state_set(noise_t * ns, int index, const unsigned int newstate[4]) {
 
-  assert(obj);
-  assert(index >= 0);
-  assert(index < obj->nsites);
+  assert(ns);
+  assert(0 <= index && index < ns->nsites);
+  assert(NNOISE_STATE == 4);
 
-  for (ia = 0; ia < NNOISE_STATE; ia++) {
-    obj->state[addr_rank1(obj->nsites,NNOISE_STATE,index,ia)] = newstate[ia];
+  for (int ia = 0; ia < NNOISE_STATE; ia++) {
+    ns->state[addr_rank1(ns->nsites, NNOISE_STATE, index, ia)] = newstate[ia];
   }
 
   return 0;
@@ -350,74 +413,14 @@ __host__ __device__ int noise_state_set(noise_t * obj, int index,
  *
  *****************************************************************************/
 
-__host__ __device__ int noise_state(noise_t * obj, int index,
-				    unsigned int state[NNOISE_STATE]) {
-  int ia;
+int noise_state(const noise_t * ns, int index, unsigned int state[4]) {
 
-  assert(obj);
-  assert(index >= 0);
-  assert(index < obj->nsites);
+  assert(ns);
+  assert(0 <= index && index < ns->nsites);
+  assert(NNOISE_STATE == 4);
 
-  for (ia = 0; ia < NNOISE_STATE; ia++) {
-    state[ia] = obj->state[addr_rank1(obj->nsites, NNOISE_STATE, index, ia)];
-  }
-
-  return 0;
-}
-
-/*****************************************************************************
- *
- *  noise_reap
- *
- *  Return NNOISE_MAX numbers via noise_reap_n().
- *
- *****************************************************************************/
-
-__host__ __device__
-int noise_reap(noise_t * obj, int index, double * reap) {
-
-  assert(obj);
-  assert(index >= 0);
-  assert(index < obj->nsites);
-
-  noise_reap_n(obj, index, NNOISE_MAX, reap);
-
-  return 0;
-}
-
-/*****************************************************************************
- *
- *  noise_reap_n
- *
- *  Return nmax discrete random numbers for site index.
- *  These have mean zero and variance unity.
- *
- *****************************************************************************/
-
-__host__ __device__
-int noise_reap_n(noise_t * obj, int index, int nmax, double * reap) {
-
-  unsigned int iuniform;
-  unsigned int state[NNOISE_STATE];
-  int ia;
-
-  assert(obj);
-  assert(index >= 0);
-  assert(index < obj->nsites);
-  assert(nmax <= NNOISE_MAX);
-
-  noise_state(obj, index, state);
-  iuniform = noise_uniform(state);
-  noise_state_set(obj, index, state);
-
-  /* Remove the leading two bits, and index the table using each of the
-   * remaining three bits in turn. */
-
-  iuniform >>= 2;
-
-  for (ia = 0; ia < nmax; ia++) {
-    reap[ia] = obj->rtable[iuniform & 7];
-    iuniform >>= 3;
+  for (int ia = 0; ia < NNOISE_STATE; ia++) {
+    state[ia] = ns->state[addr_rank1(ns->nsites, NNOISE_STATE, index, ia)];
   }
 
   return 0;
@@ -427,11 +430,10 @@ int noise_reap_n(noise_t * obj, int index, int nmax, double * reap) {
  *
  *  noise_uniform_double_reap
  *
- *  Return a single double a full precission.
+ *  Return a single double a full precision.
  *
  *****************************************************************************/
 
-__host__ __device__
 int noise_uniform_double_reap(noise_t * obj, int index, double * reap) {
 
   unsigned int iuniform;
@@ -442,7 +444,7 @@ int noise_uniform_double_reap(noise_t * obj, int index, double * reap) {
   assert(index < obj->nsites);
 
   noise_state(obj, index, state);
-  iuniform = noise_uniform(state);
+  iuniform = ns_uniform(state);
   noise_state_set(obj, index, state);
 
   *reap = (1.0/UINT_MAX)*iuniform;
@@ -452,118 +454,231 @@ int noise_uniform_double_reap(noise_t * obj, int index, double * reap) {
 
 /*****************************************************************************
  *
- *  noise_uniform
- *
- *  Return a uniformly distributed integer following Marsaglia 1999.
- *  The range is 0 - 2^32 - 1.
- *
- *  This implementation is a direct rip-off of (ahem, `based upon') the
- *  implementation of L'Ecuyer and Simard found in the
- *  testu01 package (v1.2.2)
- *  http://www.iro.umontreal.ca/~simardr/testu01/tu01.html
+ *  noise_read_buf
  *
  *****************************************************************************/
 
-__host__ __device__
-unsigned int noise_uniform(unsigned int state[NNOISE_STATE]) {
+int noise_read_buf(noise_t * ns, int index, const char * buf) {
 
-  unsigned int b;
+  assert(ns);
+  assert(buf);
 
-  assert(NNOISE_STATE == 4);
+  for (int is = 0; is < NNOISE_STATE; is++) {
+    size_t ioff = is*sizeof(unsigned int);
+    int iaddr = addr_rank1(ns->nsites, NNOISE_STATE, index, is);
+    memcpy(ns->state + iaddr, buf + ioff, sizeof(unsigned int));
+  }
 
-  state[0] = 69069*state[0] + 1234567;
-  b = state[1] ^ (state[1] << 17);
-  b ^= (b >> 13);
-  state[1] = b ^ (b << 5);
-  state[2] = 36969*(state[2] & 0xffff) + (state[2] >> 16);
-  state[3] = 18000*(state[3] & 0xffff) + (state[3] >> 16);
-  b = (state[2] << 16) + state[3];
+  return 0;
+}
 
-  return (state[1] + (state[0] ^ b));
+
+/*****************************************************************************
+ *
+ *  noise_read_buf_ascii
+ *
+ *****************************************************************************/
+
+int noise_read_buf_ascii(noise_t * ns, int index, const char * buf) {
+
+  const int nchar = nchar_per_ascii_int32_;
+  int ifail = 0;
+
+  for (int is = 0; is < NNOISE_STATE; is++) {
+    char tmp[BUFSIZ] = {0};
+    int iaddr = addr_rank1(ns->nsites, NNOISE_STATE, index, is);
+    memcpy(tmp, buf + is*nchar*sizeof(char), nchar*sizeof(char));
+    if (1 != sscanf(tmp, "%10u", ns->state + iaddr)) ifail -= 1;
+  }
+
+  return ifail;
 }
 
 /*****************************************************************************
  *
- *  noise_write
- *
- *  Implements io_rw_cb_ft for write.
+ *  noise_write_buf
  *
  *****************************************************************************/
 
-static int noise_write(FILE * fp, int index, void * self) {
+int noise_write_buf(const noise_t * ns, int index, char * buf) {
 
-  noise_t * obj = (noise_t *) self;
-  int n;
-  unsigned int state[NNOISE_STATE];
+  const size_t nbyte = sizeof(unsigned int);
 
-  assert(fp);
-  assert(obj);
+  assert(ns);
+  assert(buf);
 
-  noise_state(obj, index, state);
-  n = fwrite(state, sizeof(unsigned int), NNOISE_STATE, fp);
-  if (n != NNOISE_STATE) pe_fatal(obj->pe, "fwrite(noise) index %d\n", index);
+  for (int is = 0; is < NNOISE_STATE; is++) {
+    int iaddr = addr_rank1(ns->nsites, NNOISE_STATE, index, is);
+    memcpy(buf + is*nbyte, ns->state + iaddr, nbyte);
+  }
 
   return 0;
 }
 
 /*****************************************************************************
  *
- *  noise_read
- *
- *  Implements io_rw_cb_t for read.
+ *  noise_write_buf_ascii
  *
  *****************************************************************************/
 
-static int noise_read(FILE * fp, int index, void * self) {
+int noise_write_buf_ascii(const noise_t * ns, int index, char * buf) {
 
-  noise_t * obj = (noise_t *) self;
-  int n;
-  unsigned int state[NNOISE_STATE];
+  int ifail = 0;
+  const int nchar = nchar_per_ascii_int32_;
 
-  assert(obj);
-  assert(fp);
+  assert(ns);
+  assert(buf);
 
-  n = fread(state, sizeof(unsigned int), NNOISE_STATE, fp);
-  if (n != NNOISE_STATE) pe_fatal(obj->pe, "fread(noise) index %d\n", index);
-  noise_state_set(obj, index, state);
+  for (int is = 0; is < NNOISE_STATE; is++) {
+    char tmp[BUFSIZ] = {0};
+    int iaddr = addr_rank1(ns->nsites, NNOISE_STATE, index, is);
+    int nr = snprintf(tmp, nchar + 1, " %10u", ns->state[iaddr]);
+    if (nr != nchar) ifail = -1;
+    memcpy(buf + is*nchar*sizeof(char), tmp, nchar*sizeof(char));
+  }
+
+  /* New line */
+  {
+    char tmp[BUFSIZ] = {0};
+    int nr = snprintf(tmp, 2, "\n");
+    if (nr != 1) ifail = -2;
+    memcpy(buf + NNOISE_STATE*nchar*sizeof(char), tmp, sizeof(char));
+  }
+
+  return ifail;
+}
+
+/*****************************************************************************
+ *
+ *  noise_io_aggr_pack
+ *
+ *****************************************************************************/
+
+int noise_io_aggr_pack(const noise_t * ns, io_aggregator_t * aggr) {
+
+  assert(ns);
+  assert(aggr && aggr->buf);
+
+  #pragma omp parallel
+  {
+    int iasc = (ns->options.iodata.output.iorformat == IO_RECORD_ASCII);
+    int ibin = (ns->options.iodata.output.iorformat == IO_RECORD_BINARY);
+    assert(iasc ^ ibin);
+
+    #pragma omp parallel for
+    for (int ib = 0; ib < cs_limits_size(aggr->lim); ib++) {
+      int ic = cs_limits_ic(aggr->lim, ib);
+      int jc = cs_limits_jc(aggr->lim, ib);
+      int kc = cs_limits_kc(aggr->lim, ib);
+
+      /* Write state for (ic, jc, kc) */
+      int index = cs_index(ns->cs, ic, jc, kc);
+      size_t offset = ib*aggr->szelement;
+      if (iasc) noise_write_buf_ascii(ns, index, aggr->buf + offset);
+      if (ibin) noise_write_buf(ns, index, aggr->buf + offset);
+    }
+  }
 
   return 0;
 }
 
 /*****************************************************************************
  *
- *  noise_present
- *
- *  Returns 0 or 1 (off / on) for given noise sector.
+ *  noise_io_aggr_unpack
  *
  *****************************************************************************/
 
-__host__ __device__
-int noise_present(noise_t * noise, noise_enum_t type, int * present) {
+int noise_io_aggr_unpack(noise_t * ns, const io_aggregator_t * aggr) {
 
-  assert(noise);
-  assert(type < NOISE_END);
-  assert(present);
+  assert(ns);
+  assert(aggr && aggr->buf);
 
-  *present = noise->on[type];
+  #pragma omp parallel
+  {
+    int iasc = (ns->options.iodata.input.iorformat == IO_RECORD_ASCII);
+    int ibin = (ns->options.iodata.input.iorformat == IO_RECORD_BINARY);
+    assert(iasc ^ ibin);
+
+    #pragma omp parallel for
+    for (int ib = 0; ib < cs_limits_size(aggr->lim); ib++) {
+      int ic = cs_limits_ic(aggr->lim, ib);
+      int jc = cs_limits_jc(aggr->lim, ib);
+      int kc = cs_limits_kc(aggr->lim, ib);
+
+      /* Read state for (ic, jc, kc) */
+      int index = cs_index(ns->cs, ic, jc, kc);
+      size_t offset = ib*aggr->szelement;
+      if (iasc) noise_read_buf_ascii(ns, index, aggr->buf + offset);
+      if (ibin) noise_read_buf(ns, index, aggr->buf + offset);
+    }
+  }
 
   return 0;
 }
 
 /*****************************************************************************
  *
- *  noise_present_set
- *
- *  Set status for given noise sector.
+ *  noise_io_write
  *
  *****************************************************************************/
 
-int noise_present_set(noise_t * noise, noise_enum_t type, int present) {
+int noise_io_write(noise_t * ns, int timestep, io_event_t * event) {
 
-  assert(noise);
-  assert(type < NOISE_END);
+  int ifail = 0;
 
-  noise->on[type] = present;
+  assert(ns);
 
-  return 0;
+  {
+    const io_metadata_t * meta = &ns->output;
+    io_impl_t * io = NULL;
+    char filename[BUFSIZ] = {0};
+
+    io_subfile_name(&meta->subfile, ns->options.filestub, timestep, filename,
+		    BUFSIZ);
+    ifail = io_impl_create(meta, &io);
+
+    if (ifail == 0) {
+      io_event_record(event, IO_EVENT_AGGR);
+      noise_io_aggr_pack(ns, io->aggr);
+
+      io_event_record(event, IO_EVENT_WRITE);
+      io->impl->write(io, filename);
+      io->impl->free(&io);
+
+      if (meta->options.report) {
+	pe_info(ns->pe, "Wrote noise state to file: %s\n", filename);
+      }
+      io_event_report(event, meta, ns->options.filestub);
+    }
+  }
+
+  return ifail;
+}
+
+/*****************************************************************************
+ *
+ *  noise_io_read
+ *
+ *****************************************************************************/
+
+int noise_io_read(noise_t * ns, int timestep, io_event_t * event) {
+
+  int ifail = 0;
+  io_impl_t * io = NULL;
+  char filename[BUFSIZ] ={0};
+  const io_metadata_t * meta = &ns->output;
+
+  io_subfile_name(&meta->subfile, ns->options.filestub, timestep, filename,
+		  BUFSIZ);
+  ifail = io_impl_create(meta, &io);
+
+  if (ifail == 0) {
+    io->impl->read(io, filename);
+    io_event_record(event, IO_EVENT_AGGR);
+    noise_io_aggr_unpack(ns, io->aggr);
+    io->impl->free(&io);
+    if (meta->options.report) pe_info(ns->pe, "Read %s\n", filename);
+  }
+
+  return ifail;
 }

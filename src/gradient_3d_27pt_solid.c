@@ -13,7 +13,7 @@
  *
  *  Note that fluid free energy and surface free energy parameters
  *  are required for wetting. Fluid parameters are via free_energy.h
- *  and surface paramter via site_map.h.
+ *  and surface parameter via site_map.h.
  *
  *  Explicitly, Desplat et al. assume
  *
@@ -88,7 +88,7 @@ __host__ int grad_3d_27pt_solid_map_set(map_t * map) {
   /* We expect at most two wetting parameters; if present
    * first should be C, second H. Default to zero. */
 
-  map_ndata(map, &ndata);
+  ndata = map->ndata;
 
   if (ndata == 0) {
     /* Assume we are uniform from free energy */
@@ -169,7 +169,7 @@ __host__ int grad_3d_27pt_solid_d2(field_grad_t * fgrad) {
  *  grad_3d_27pt_solid_kernel
  *
  *  kappa is the interfacial energy penalty in the symmetric picture.
- *  rkappa is (1.0/kappa). 
+ *  rkappa is (1.0/kappa).
  *
  ****************************************************************************/
 
@@ -235,7 +235,7 @@ __global__ void grad_3d_27pt_solid_kernel(kernel_ctxt_t * ktx,
 	  count[ia] = 0.0;
 	  gradn[ia] = 0.0;
 	}
-	  
+
 	for (p = 1; p < NGRAD_; p++) {
 
 	  if (isite[p] == -1) continue;
@@ -286,7 +286,7 @@ __global__ void grad_3d_27pt_solid_kernel(kernel_ctxt_t * ktx,
 	    gradt[p] = -(c*phi_b + h)*solid.rkappa;
 	  }
 	}
- 
+
 	/* Accumulate the final gradients */
 
 	dphi = 0.0;

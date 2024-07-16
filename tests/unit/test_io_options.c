@@ -8,7 +8,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2020-2022 The University of Edinburgh
+ *  (c) 2020-2024 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -78,17 +78,9 @@ __host__ int test_io_options_suite(void) {
 
 __host__ int test_io_options_mode_valid(void) {
 
-  io_mode_enum_t mode1 = IO_MODE_SINGLE;
-  io_mode_enum_t mode2 = IO_MODE_MULTIPLE;
   io_mode_enum_t mode3 = IO_MODE_MPIIO;
   io_mode_enum_t mode9 = IO_MODE_INVALID;
   int isvalid = 0;
-
-  isvalid = io_options_mode_valid(mode1);
-  assert(isvalid);
-
-  isvalid = io_options_mode_valid(mode2);
-  assert(isvalid);
 
   isvalid = io_options_mode_valid(mode3);
   assert(isvalid == 1);
@@ -101,7 +93,7 @@ __host__ int test_io_options_mode_valid(void) {
    * "io_options_t io = {IO_MODE_INVALID};" providing ... */
 
   assert(IO_MODE_INVALID == 0);
-  
+
   return isvalid;
 }
 
@@ -142,32 +134,6 @@ __host__ int test_io_options_metadata_version_valid(void) {
 
   io_options_t opts = io_options_default();
   int isvalid = 0;
-
-  /* Wrong */
-  opts.mode             = IO_MODE_SINGLE;
-  opts.metadata_version = IO_METADATA_MULTI_V1;
-
-  isvalid = io_options_metadata_version_valid(&opts);
-  assert(isvalid == 0);
-
-  /* Wrong */
-  opts.mode             = IO_MODE_MULTIPLE;
-  opts.metadata_version = IO_METADATA_SINGLE_V1;
-
-  isvalid = io_options_metadata_version_valid(&opts);
-  assert(isvalid == 0);
-
-  /* Right */
-  opts.mode             = IO_MODE_SINGLE;
-  opts.metadata_version = IO_METADATA_SINGLE_V1;
-
-  assert(io_options_metadata_version_valid(&opts));
-
-  /* Right */
-  opts.mode             = IO_MODE_MULTIPLE;
-  opts.metadata_version = IO_METADATA_MULTI_V1;
-
-  assert(io_options_metadata_version_valid(&opts));
 
   /* Right */
   opts.mode             = IO_MODE_MPIIO;
@@ -216,36 +182,6 @@ __host__ int test_io_options_default(void) {
 __host__ int test_io_options_with_mode(void) {
 
   int ifail = 0;
-
-  {
-    /* IO_MODE_SINGLE */
-    io_options_t options = io_options_with_mode(IO_MODE_SINGLE);
-    assert(options.mode              == IO_MODE_SINGLE);
-    assert(options.iorformat         == IO_RECORD_BINARY);
-    assert(options.metadata_version  == IO_METADATA_SINGLE_V1);
-    assert(options.report            == 0);
-    assert(options.asynchronous      == 0);
-    assert(options.compression_levl  == 0);
-    assert(options.iogrid[0]         == 1);
-    assert(options.iogrid[1]         == 1);
-    assert(options.iogrid[2]         == 1);
-    ifail = options.report;
-  }
-
-  {
-    /* IO_MODE_MULTIPLE */
-    io_options_t options = io_options_with_mode(IO_MODE_MULTIPLE);
-    assert(options.mode              == IO_MODE_MULTIPLE);
-    assert(options.iorformat         == IO_RECORD_BINARY);
-    assert(options.metadata_version  == IO_METADATA_MULTI_V1);
-    assert(options.report            == 0);
-    assert(options.asynchronous      == 0);
-    assert(options.compression_levl  == 0);
-    assert(options.iogrid[0]         == 1);
-    assert(options.iogrid[1]         == 1);
-    assert(options.iogrid[2]         == 1);
-    ifail = options.report;
-  }
 
   {
     /* IO_MODE_MPIIO */
@@ -330,26 +266,6 @@ __host__ int test_io_mode_to_string(void) {
   int ifail = 0;
 
   /* Test each case in turn */
-  {
-    const char * str = NULL;
-    str = io_mode_to_string(IO_MODE_SINGLE);
-    ifail = strcmp(str, "single");
-    assert(ifail == 0);
-  }
-
-  {
-    const char * str = NULL;
-    str = io_mode_to_string(IO_MODE_MULTIPLE);
-    ifail = strcmp(str, "multiple");
-    assert(ifail == 0);
-  }
-
-  {
-    const char * str = NULL;
-    str = io_mode_to_string(IO_MODE_ANSI);
-    ifail = strcmp(str, "ansi");
-    assert(ifail == 0);
-  }
 
   {
     const char * str = NULL;
@@ -370,24 +286,6 @@ __host__ int test_io_mode_to_string(void) {
 __host__ int test_io_mode_from_string(void) {
 
   int ifail = 0;
-
-  {
-    io_mode_enum_t mode = io_mode_from_string("SINGLE");
-    if (mode != IO_MODE_SINGLE) ifail = -1;
-    assert(ifail == 0);
-  }
-
-  {
-    io_mode_enum_t mode = io_mode_from_string("MULTIPLE");
-    if (mode != IO_MODE_MULTIPLE) ifail = -1;
-    assert(ifail == 0);
-  }
-
-  {
-    io_mode_enum_t mode = io_mode_from_string("ANSI");
-    if (mode != IO_MODE_ANSI) ifail = -1;
-    assert(ifail == 0);
-  }
 
   {
     io_mode_enum_t mode = io_mode_from_string("MPIIO");

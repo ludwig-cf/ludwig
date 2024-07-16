@@ -30,8 +30,8 @@ fluid_rho0     0.864
 viscosity      0.024192
 viscosity_bulk 0.024192
 
-isothermal_fluctuations on
-temperature 0.00012
+lb_fluctuations  yes
+temperature      0.00012
 
 ##############################################################################
 #

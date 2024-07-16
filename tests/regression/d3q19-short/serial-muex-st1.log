@@ -76,11 +76,6 @@ Hydrodynamics
 -------------
 Hydrodynamics: on
 
-Order parameter I/O
--------------------
-Order parameter I/O format:   
-I/O decomposition:            1 1 1
-
 Advection scheme order: 1
 Initialising droplet radius:      2.0000000e+00
 Initialising droplet amplitude:   1.0000000e+00

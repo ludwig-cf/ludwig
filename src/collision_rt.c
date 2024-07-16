@@ -5,7 +5,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2010-2018 The University of Edinburgh
+ *  (c) 2010-2024 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -33,10 +33,9 @@
  *
  ****************************************************************************/
 
-int collision_run_time(pe_t * pe, rt_t * rt, lb_t * lb, noise_t * noise) {
+int collision_run_time(pe_t * pe, rt_t * rt, lb_t * lb) {
 
   int p;
-  int noise_on = 0;
   int nghost;
   char relax[10];
   char tmp[BUFSIZ];
@@ -51,15 +50,15 @@ int collision_run_time(pe_t * pe, rt_t * rt, lb_t * lb, noise_t * noise) {
   p = rt_string_parameter(rt, "isothermal_fluctuations", tmp, BUFSIZ);
 
   if (p == 1 && strcmp(tmp, "on") == 0) {
-    noise_on = 1;
-    noise_present_set(noise, NOISE_RHO, noise_on);
+    lb->param->noise = 1;
+    pe_exit(pe, "Please use the key lb_fluctuations instead of "
+	    "isothermal_fluctations in the input\n");
   }
 
   p = rt_switch(rt, "lb_fluctuations");
 
   if (p == 1) {
-    noise_on = 1;
-    noise_present_set(noise, NOISE_RHO, noise_on);
+    lb->param->noise = 1;
   }
 
   /* Relaxation time scheme (default M10) */
@@ -110,7 +109,8 @@ int collision_run_time(pe_t * pe, rt_t * rt, lb_t * lb, noise_t * noise) {
   pe_info(pe, "Relaxation time scheme:   %s\n", relax);
   pe_info(pe, "Hydrodynamic modes:       on\n");
   pe_info(pe, "Ghost modes:              %s\n", (nghost == 1) ? "on" : "off");
-  pe_info(pe, "Isothermal fluctuations:  %s\n", (noise_on == 1) ? "on" : "off");
+  pe_info(pe, "Isothermal fluctuations:  %s\n",
+	  (lb->param->noise == 1) ? "on" : "off");
   pe_info(pe, "Shear relaxation time:   %12.5e\n", tau[LB_TAU_SHEAR]);
   pe_info(pe, "Bulk relaxation time:    %12.5e\n", tau[LB_TAU_BULK]);
   pe_info(pe, "Ghost relaxation time:   %12.5e\n", tau[NVEL-1]);

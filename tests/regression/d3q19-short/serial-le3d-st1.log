@@ -69,16 +69,11 @@ Isothermal fluctuations:  off
 Shear relaxation time:    8.00000e-01
 Bulk relaxation time:     8.00000e-01
 Ghost relaxation time:    1.00000e+00
-[User   ] Random number seed: -7361237
+[User   ] Random number seed: 13
 
 Hydrodynamics
 -------------
 Hydrodynamics: on
-
-Order parameter I/O
--------------------
-Order parameter I/O format:   
-I/O decomposition:            1 1 1
 
 Advection scheme order: 1
 Initialising phi for spinodal

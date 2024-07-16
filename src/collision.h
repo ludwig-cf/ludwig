@@ -5,7 +5,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2010-2022 The University of Edinburgh
+ *  (c) 2010-2024 The University of Edinburgh
  *
  *  Contributing authors:
  *    Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -24,14 +24,14 @@
 #include "free_energy.h"
 #include "visc.h"
 
-__host__ int lb_collide(lb_t * lb, hydro_t * hydro, map_t * map,
+int lb_collide(lb_t * lb, hydro_t * hydro, map_t * map,
 			noise_t * noise, fe_t * fe, visc_t * visc);
-__host__ int lb_collision_stats_kt(lb_t * lb, noise_t * noise, map_t * map);
-__host__ int lb_collision_relaxation_set(lb_t * lb, lb_relaxation_enum_t nrelax);
+int lb_collision_stats_kt(lb_t * lb, map_t * map);
+int lb_collision_relaxation_set(lb_t * lb, lb_relaxation_enum_t nrelax);
 
-__host__ int lb_collision_ghost_modes_on(lb_t * lb);
-__host__ int lb_collision_ghost_modes_off(lb_t * lb);
-__host__ int lb_collision_relaxation_times(lb_t * lb, double * tau);
-__host__ int lb_collision_relaxation_times_set(lb_t * lb);
+int lb_collision_ghost_modes_on(lb_t * lb);
+int lb_collision_ghost_modes_off(lb_t * lb);
+int lb_collision_relaxation_times(lb_t * lb, double * tau);
+int lb_collision_relaxation_times_set(lb_t * lb);
 
 #endif

@@ -73,11 +73,6 @@ Hydrodynamics
 -------------
 Hydrodynamics: on
 
-Order parameter I/O
--------------------
-Order parameter I/O format:   
-I/O decomposition:            1 1 1
-
 Advection scheme order: 2
 Initialising phi in patches
 Gradient calculation: 3d_27pt_fluid

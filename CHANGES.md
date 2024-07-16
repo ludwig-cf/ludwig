@@ -1,6 +1,19 @@
 
 ### Changes
 
+version 0.22.0
+
+- Removal of original "ansi" I/O (Issue 284).
+  The "ansi" parallel i/o has been removed in favour of mpi/io
+  for lattice quantities. This change should be transparent in most
+  cases. Old "ansi" parallel i/o restart files will no longer work
+  if the there was more than one output file per step.
+
+- Please use "lb_fluctuations" instead of "isothermal_fluctuations"
+  in the input if you need fluctuations in Navier-Stokes.
+
+- Various code imporvements.
+
 
 version 0.21.0
 

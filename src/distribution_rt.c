@@ -8,7 +8,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2010-2022 The University of Edinburgh
+ *  (c) 2010-2024 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -77,7 +77,7 @@ int lb_ndist_rt(rt_t * rt) {
  *  Miscellaneous input keys
  *  I/O
  *
- *  If no options at all are specfied in the input, io_options_t information
+ *  If no options at all are specified in the input, io_options_t information
  *  defaults to those values in io_options.h.
  *
  *  Obtain io_options_t information for distributions "lb_io" from input
@@ -124,7 +124,7 @@ int lb_run_time(pe_t * pe, cs_t * cs, rt_t * rt, lb_t ** lb) {
  *  Input key                         default
  *  -----------------------------------------
  *  "distribution_io_grid"            {1,1,1}
- *  "distribution_io_format_input"    "binary" 
+ *  "distribution_io_format_input"    "binary"
  *
  *  "rho_io_wanted"                   false
  *  "rho_io_grid"                     {1,1,1}
@@ -138,12 +138,7 @@ int lb_run_time_prev(pe_t * pe, cs_t * cs, rt_t * rt, lb_t ** lb) {
   int io_grid[3] = {1, 1, 1};
   char string[FILENAME_MAX] = "";
   char memory = ' ';
-  int lb_form_in = IO_FORMAT_DEFAULT;
-  int lb_form_out = IO_FORMAT_DEFAULT;
 
-  io_info_t * io_info = NULL;
-
-  io_mode_enum_t lb_input_opt_mode = io_mode_default();
   lb_data_options_t options = lb_data_options_default();
 
   assert(pe);
@@ -207,7 +202,7 @@ int lb_run_time_prev(pe_t * pe, cs_t * cs, rt_t * rt, lb_t ** lb) {
   rt_string_parameter(rt,"distribution_io_format_input", string,
 		      FILENAME_MAX);
 
-  /* Append R to the record if the model is the reverse implementation */ 
+  /* Append R to the record if the model is the reverse implementation */
 
   /* TODO: r -> "AOS" or "SOA" or "AOSOA" */
   if (DATA_MODEL == DATA_MODEL_SOA) memory = 'R';
@@ -220,7 +215,7 @@ int lb_run_time_prev(pe_t * pe, cs_t * cs, rt_t * rt, lb_t ** lb) {
   pe_info(pe, "SIMD vector len:  %d\n", NSIMDVL);
   pe_info(pe, "Number of sets:   %d\n", ndist);
 
-  if (options.halo == LB_HALO_TARGET) { 
+  if (options.halo == LB_HALO_TARGET) {
     pe_info(pe, "Halo type:        %s\n", "lb_halo_target (full halo)");
   }
   if (options.halo == LB_HALO_OPENMP_FULL) {
@@ -236,13 +231,10 @@ int lb_run_time_prev(pe_t * pe, cs_t * cs, rt_t * rt, lb_t ** lb) {
     pe_info(pe, "First touch:      %s\n", "yes");
   }
 
-  if (strcmp("BINARY_SERIAL", string) == 0) {
-    pe_info(pe, "Input format:     binary single serial file\n");
-    lb_input_opt_mode = IO_MODE_SINGLE;
-  }
-  else if (strcmp(string, "ASCII") == 0) {
-    lb_form_in = IO_FORMAT_ASCII;
-    lb_form_out = IO_FORMAT_ASCII;
+  /* distribution_io_format */
+  /* i/o grid */
+
+  if (strcmp(string, "ASCII") == 0) {
     pe_info(pe, "Input format:     ASCII\n");
     pe_info(pe, "Output format:    ASCII\n");
   }
@@ -256,21 +248,6 @@ int lb_run_time_prev(pe_t * pe, cs_t * cs, rt_t * rt, lb_t ** lb) {
   /* Initialise */
 
   lb_data_create(pe, cs, &options, lb);
-
-  /* distribution i/o */
-  {
-    io_info_args_t tmp = io_info_args_default();
-    tmp.grid[X] = io_grid[X];
-    tmp.grid[Y] = io_grid[Y];
-    tmp.grid[Z] = io_grid[Z];
-    io_info_create(pe, cs, &tmp, &io_info);
-  }
-
-  io_info_metadata_filestub_set(io_info, "dist");
-  if (lb_input_opt_mode == IO_MODE_SINGLE) {
-    io_info_set_processor_independent(io_info);
-  }
-  lb_io_info_set(*lb, io_info, lb_form_in, lb_form_out);
 
   return 0;
 }
@@ -342,7 +319,7 @@ int lb_rt_initial_conditions(pe_t * pe, rt_t * rt, lb_t * lb,
     lb_init_uniform(lb, rho0, u0);
 
     pe_info(pe, "\n");
-    pe_info(pe, "Initial distribution: 3d uniform desnity/velocity\n");
+    pe_info(pe, "Initial distribution: 3d uniform density/velocity\n");
     pe_info(pe, "Density:              %14.7e\n", rho0);
     pe_info(pe, "Velocity:             %14.7e %14.7e %14.7e\n",
 	    u0[X], u0[Y], u0[Z]);
@@ -386,7 +363,7 @@ int lb_rt_initial_conditions(pe_t * pe, rt_t * rt, lb_t * lb,
  *
  *   The (x + 1/4) is just to move the area of interest into the
  *   middle of the system.
- *   
+ *
  *   For example, a 'thin' shear layer might have kappa = 80 and delta = 0.05
  *   with Re = rho U L / eta = 10^4.
  *

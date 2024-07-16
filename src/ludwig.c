@@ -7,7 +7,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2011-2023 The University of Edinburgh
+ *  (c) 2011-2024 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -48,7 +48,6 @@
 
 #include "hydro_rt.h"
 
-#include "io_harness.h"
 #include "io_info_args_rt.h"
 
 #include "phi_stats.h"
@@ -143,8 +142,7 @@ struct ludwig_s {
   psi_t * psi;              /* Electrokinetics */
   map_t * map;              /* Site map for fluid/solid status etc. */
   wall_t * wall;            /* Side walls / Porous media */
-  noise_t * noise_rho;      /* Lattice fluctuation generator (rho) */
-  noise_t * noise_phi;      /* Binary fluid noise generation (fluxes) */
+  noise_t * noise;          /* Generator for fluctuations */
 
   psi_solver_t * poisson;      /* Poisson solver */
 
@@ -217,7 +215,7 @@ static int ludwig_rt(ludwig_t * ludwig) {
   TIMER_start(TIMER_TOTAL);
 
   /* Prefer maximum L1 cache available on device */
-  (void) tdpDeviceSetCacheConfig(tdpFuncCachePreferL1);
+  tdpAssert( tdpDeviceSetCacheConfig(tdpFuncCachePreferL1) );
 
   /* Initialise free-energy related objects, and the coordinate
    * system (the halo extent depends on choice of free energy). */
@@ -237,10 +235,8 @@ static int ludwig_rt(ludwig_t * ludwig) {
   physics_info(pe, ludwig->phys);
 
   lb_run_time(pe, cs, rt, &ludwig->lb);
-  collision_run_time(pe, rt, ludwig->lb, ludwig->noise_rho);
+  collision_run_time(pe, rt, ludwig->lb);
   map_init_rt(pe, cs, rt, &ludwig->map);
-
-  noise_init(ludwig->noise_rho, 0);
 
   ran_init_rt(pe, rt);
   hydro_rt(pe, rt, cs, ludwig->le, &ludwig->hydro);
@@ -249,27 +245,8 @@ static int ludwig_rt(ludwig_t * ludwig) {
   lb_bc_open_rt(pe, rt, cs, ludwig->lb, &ludwig->inflow, &ludwig->outflow);
   phi_bc_open_rt(pe, rt, cs, &ludwig->phi_inflow, &ludwig->phi_outflow);
 
-  {
-  /* Old i/o options scheduled for removal */
-  /* Only default options are now possible. */
-  int form = IO_FORMAT_DEFAULT;
-  int io_grid[3] = {1, 1, 1};
-
-  if (ludwig->phi) field_init_io_info(ludwig->phi, io_grid, form, form);
-  if (ludwig->p) field_init_io_info(ludwig->p, io_grid, form, form);
-  if (ludwig->q) field_init_io_info(ludwig->q, io_grid, form, form);
-
   if (ludwig->phi || ludwig->p || ludwig->q) {
-    const char * value = ""; /* BLANK appeared in old output */
-    pe_info(pe, "\n");
-    pe_info(pe, "Order parameter I/O\n");
-    pe_info(pe, "-------------------\n");
-
-    pe_info(pe, "Order parameter I/O format:   %s\n", value);
-    pe_info(pe, "I/O decomposition:            %d %d %d\n",
-	    io_grid[X], io_grid[Y], io_grid[Z]);
     advection_init_rt(pe, rt);
-  }
   }
 
   /* Can we move this down to t = 0 initialisation? */
@@ -307,6 +284,12 @@ static int ludwig_rt(ludwig_t * ludwig) {
      * method of quaternions (ellipsoid_didt = 0) is exact */
     int ellipsoid_didt = rt_switch(rt, "bbl_ellipsoid_update_fd");
     bbl_didt_method_set(ludwig->bbl, ellipsoid_didt);
+  }
+
+  /* If any noise required ... */
+  if (ludwig->lb->param->noise || (ludwig->pch && ludwig->pch->info.noise)) {
+    noise_options_t opts = noise_options_default();
+    noise_create(pe, cs, &opts, &ludwig->noise);
   }
 
   /* NOW INITIAL CONDITIONS */
@@ -765,7 +748,7 @@ void ludwig_run(const char * inputfile) {
       if (ludwig->pch) {
 	phi_cahn_hilliard(ludwig->pch, ludwig->fe, ludwig->phi,
 			  ludwig->hydro,
-			  ludwig->map, ludwig->noise_phi);
+			  ludwig->map, ludwig->noise);
       }
 
       if (ludwig->p) {
@@ -781,14 +764,13 @@ void ludwig_run(const char * inputfile) {
 
 	beris_edw_update(ludwig->be, ludwig->fe, ludwig->q, ludwig->q_grad,
 			 ludwig->hydro,
-			 ludwig->collinfo, ludwig->map, ludwig->noise_rho);
+			 ludwig->collinfo, ludwig->map, ludwig->noise);
       }
 
       TIMER_stop(TIMER_ORDER_PARAMETER_UPDATE);
     }
 
     if (ludwig->hydro) {
-      int noise_flag = ludwig->noise_rho->on[NOISE_RHO];
 
       /* Zero velocity field here, as velocity at collision is used
        * at next time step for FD above. Strictly, we only need to
@@ -806,7 +788,7 @@ void ludwig_run(const char * inputfile) {
 
       TIMER_start(TIMER_COLLIDE);
 
-      lb_collide(ludwig->lb, ludwig->hydro, ludwig->map, ludwig->noise_rho,
+      lb_collide(ludwig->lb, ludwig->hydro, ludwig->map, ludwig->noise,
 		 ludwig->fe, ludwig->visc);
 
       TIMER_stop(TIMER_COLLIDE);
@@ -843,7 +825,7 @@ void ludwig_run(const char * inputfile) {
       TIMER_start(TIMER_BBL);
       wall_set_wall_distributions(ludwig->wall);
 
-      subgrid_update(ludwig->collinfo, ludwig->hydro, noise_flag);
+      subgrid_update(ludwig->collinfo, ludwig->hydro, ludwig->lb->param->noise);
       bounce_back_on_links(ludwig->bbl, ludwig->lb, ludwig->wall,
 			   ludwig->collinfo);
       wall_bbl(ludwig->wall);
@@ -963,7 +945,7 @@ void ludwig_run(const char * inputfile) {
 	stats_velocity_minmax(&statvel, ludwig->hydro, ludwig->map);
       }
 
-      lb_collision_stats_kt(ludwig->lb, ludwig->noise_rho, ludwig->map);
+      lb_collision_stats_kt(ludwig->lb, ludwig->map);
 
       pe_info(ludwig->pe, "\nCompleted cycle %d\n", step);
     }
@@ -1008,10 +990,14 @@ void ludwig_run(const char * inputfile) {
   if (ludwig->cio)      colloid_io_free(ludwig->cio);
 
   if (ludwig->wall)      wall_free(ludwig->wall);
+#ifdef OLD_SHIT
   if (ludwig->noise_phi) noise_free(ludwig->noise_phi);
   if (ludwig->noise_rho) noise_free(ludwig->noise_rho);
+#else
+  if (ludwig->noise)     noise_free(&ludwig->noise);
+#endif
   if (ludwig->be)        beris_edw_free(ludwig->be);
-  if (ludwig->map)       map_free(ludwig->map);
+  if (ludwig->map)       map_free(&ludwig->map);
   if (ludwig->pch)       phi_ch_free(ludwig->pch);
   if (ludwig->pth)       pth_free(ludwig->pth);
   if (ludwig->hydro)     hydro_free(ludwig->hydro);
@@ -1125,7 +1111,6 @@ int free_energy_init_rt(ludwig_t * ludwig) {
   int nk;
   int ngrad;
   int nhalo;
-  int noise_on = 0;
   double value;
   char description[BUFSIZ];
 
@@ -1144,8 +1129,6 @@ int free_energy_init_rt(ludwig_t * ludwig) {
   pe = ludwig->pe;
   rt = ludwig->rt;
   cs_create(pe,&cs);
-
-  noise_create(pe, cs, &ludwig->noise_rho);
 
   lees_edw_init_rt(rt, info);
 
@@ -1179,6 +1162,7 @@ int free_energy_init_rt(ludwig_t * ludwig) {
 
     if (strcmp(description, "symmetric_noise") == 0) {
       nhalo = 3;
+      ch_options.noise = 1;
     }
 
     cs_nhalo_set(cs, nhalo);
@@ -1213,16 +1197,8 @@ int free_energy_init_rt(ludwig_t * ludwig) {
 
     /* Order parameter noise */
 
-    rt_int_parameter(rt, "fd_phi_fluctuations", &noise_on);
-    pe_info(pe, "Order parameter noise = %3s\n",
-	    (noise_on == 0) ? "off" : " on");
+    pe_info(pe, "Order parameter noise = %3s\n", (ch_options.noise == 0) ? "off" : " on");
 
-    if (noise_on) {
-      noise_create(pe, cs, &ludwig->noise_phi);
-      noise_init(ludwig->noise_phi, 0);
-      noise_present_set(ludwig->noise_phi, NOISE_PHI, noise_on);
-      if (nhalo != 3) pe_fatal(pe, "Fluctuations: use symmetric_noise\n");
-    }
 
     /* Force */
 
@@ -1573,12 +1549,6 @@ int free_energy_init_rt(ludwig_t * ludwig) {
 
       pth_create(pe, cs, method, &ludwig->pth);
     }
-
-    /* Order parameter fluctuations */
-    p = 0;
-    rt_int_parameter(rt, "lc_noise", &p);
-    noise_present_set(ludwig->noise_rho, NOISE_QAB, p);
-    pe_info(pe, "LC fluctuations:           =  %s\n", (p == 0) ? "off" : "on");
 
     /* Assign anchoring information (both gradient possibilities) */
     grad_lc_anch_create(pe, cs, NULL, NULL, NULL, fe, NULL);

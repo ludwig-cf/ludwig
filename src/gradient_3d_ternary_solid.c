@@ -15,7 +15,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2019-2021 The University of Edinburgh
+ *  (c) 2019-2024 The University of Edinburgh
  *
  *  Contributing authors:
  *  Shan Chen (shan.chen@epfl.ch)
@@ -72,14 +72,13 @@ __global__ void grad_ternary_solid_kernel(kernel_ctxt_t * ktx,
 
 __host__ int grad_3d_ternary_solid_map_set(map_t * map) {
 
-  int ndata;
+  int ndata = 0;
   assert(map);
 
+  ndata = map->ndata;
   static_solid.map = map;
 
   /* We expect exactly two wetting parameters h_1, h_2 */
-
-  map_ndata(map, &ndata);
 
   if (ndata == 0) {
     /* Assume uniform wetting */
@@ -151,7 +150,7 @@ __host__ int grad_3d_ternary_solid_d2(field_grad_t * fgrad) {
   tdpLaunchKernel(grad_ternary_solid_kernel, nblk, ntpb, 0, 0,
 		  ctxt->target, fgrad->target, fgrad->field->nf,
 		  static_solid.map->target, static_solid);
-    
+
   tdpDeviceSynchronize();
 
   kernel_ctxt_free(ctxt);
@@ -164,7 +163,7 @@ __host__ int grad_3d_ternary_solid_d2(field_grad_t * fgrad) {
  *  grad_ternary_solid_kernel
  *
  *  kappa is the interfacial energy penalty in the symmetric picture.
- *  rkappa is (1.0/kappa). 
+ *  rkappa is (1.0/kappa).
  *
  ****************************************************************************/
 
@@ -229,7 +228,7 @@ __global__ void grad_ternary_solid_kernel(kernel_ctxt_t * ktx,
 	  count[ia] = 0.0;
 	  gradn[ia] = 0.0;
 	}
-	  
+
 	for (p = 1; p < NGRAD_; p++) {
 
 	  if (isite[p] == -1) continue;

@@ -8,7 +8,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2020-2022 The University of Edinburgh
+ *  (c) 2020-2024 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -24,18 +24,10 @@
 /*
  *  I/O Modes:
  *
- *  IO_MODE_SINGLE:    single file with decomposition independent ordering;
- *                     data written as if in serial.
- *  IO_MODE_MULTIPLE:  one or more files with decomposition dependent order;
- *                     output must be post-processed to recover serial order.
- *
- *  IO_MODE_ANSI       ANSI implementation     currently means IO_MODE_SINGLE
  *  IO_MODE_MPIO       MPIO-IO implementation
  */
 
-enum io_mode_enum {IO_MODE_INVALID, IO_MODE_SINGLE, IO_MODE_MULTIPLE,
-		   IO_MODE_ANSI,
-		   IO_MODE_MPIIO};
+enum io_mode_enum {IO_MODE_INVALID, IO_MODE_MPIIO};
 
 /* Record formats: */
 
@@ -57,7 +49,7 @@ typedef enum io_record_format_enum    io_record_format_enum_t;
 typedef enum io_metadata_version_enum io_metadata_version_enum_t;
 
 struct io_options_s {
-  io_mode_enum_t             mode;             /* Single file, multiple file */
+  io_mode_enum_t             mode;             /* MPI/IO */
   io_record_format_enum_t    iorformat;        /* Record format ascii/binary */
   io_metadata_version_enum_t metadata_version; /* Metadata version no. */
   int                        report;           /* Switch reporting on/off */

@@ -8,7 +8,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group
  *  and Edinburgh Parallel Computing Centre
  *
- *  (c) 2010-2023 The University of Edinburgh
+ *  (c) 2010-2024 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -497,8 +497,7 @@ int field_phi_init_spinodal(field_t * phi, int seed, double phi0, double amp) {
   cs = phi->cs;
   cs_nlocal(cs, nlocal);
 
-  noise_create(phi->pe, cs, &rng);
-  noise_init(rng, seed);
+  noise_create_seed(phi->pe, cs, seed, &rng);
 
   for (ic = 1; ic <= nlocal[X]; ic++) {
     for (jc = 1; jc <= nlocal[Y]; jc++) {
@@ -513,7 +512,7 @@ int field_phi_init_spinodal(field_t * phi, int seed, double phi0, double amp) {
     }
   }
 
-  noise_free(rng);
+  noise_free(&rng);
 
   return 0;
 }
@@ -552,8 +551,7 @@ int field_phi_init_spinodal_patches(field_t * phi, int seed, int patch,
 
   cs_nlocal(phi->cs, nlocal);
 
-  noise_create(phi->pe, phi->cs, &rng);
-  noise_init(rng, seed);
+  noise_create_seed(phi->pe, phi->cs, seed, &rng);
 
   for (ic = 1; ic <= nlocal[X]; ic += patch) {
     for (jc = 1; jc <= nlocal[Y]; jc += patch) {
@@ -585,7 +583,7 @@ int field_phi_init_spinodal_patches(field_t * phi, int seed, int patch,
     }
   }
 
-  noise_free(rng);
+  noise_free(&rng);
 
   return 0;
 }

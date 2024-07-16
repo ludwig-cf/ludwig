@@ -7,7 +7,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2013-2016 The University of Edinburgh
+ *  (c) 2013-2024 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -17,16 +17,26 @@
 #include <assert.h>
 #include <float.h>
 #include <math.h>
-#include <stdlib.h>
+#include <string.h>
 
-#include "pe.h"
-#include "coords.h"
 #include "noise.h"
-#include "tests.h"
 
-static int do_test_noise1(pe_t * pe);
-static int do_test_noise2(pe_t * pe);
-static int do_test_noise3(pe_t * pe);
+int test_noise_create(pe_t * pe, cs_t * cs);
+int test_noise_initialise(pe_t * pe, cs_t * cs);
+int test_noise_reap_n(pe_t * ps, cs_t * cs);
+
+int test_noise_read_buf(pe_t * pe, cs_t * cs);
+int test_noise_read_buf_ascii(pe_t * pe, cs_t * cs);
+int test_noise_write_buf(pe_t * pe, cs_t * cs);
+int test_noise_write_buf_ascii(pe_t * pe, cs_t * cs);
+int test_noise_io_aggr_pack(pe_t * pe, cs_t * cs);
+int test_noise_io_aggr_unpack(pe_t * pe, cs_t * cs);
+int test_noise_io_write(pe_t * pe, cs_t * cs);
+int test_noise_io_read(pe_t * pe, cs_t * cs);
+
+int test_ns_uniform(void);
+int test_ns_statistical_test(pe_t * pe);
+int test_ns_statistical_testx(pe_t * pe);
 
 /*****************************************************************************
  *
@@ -40,11 +50,38 @@ int test_noise_suite(void) {
 
   pe_create(MPI_COMM_WORLD, PE_QUIET, &pe);
 
-  do_test_noise1(pe);
-  do_test_noise2(pe);
-  do_test_noise3(pe);
+  /* Class method */
+  test_ns_uniform();
 
-  pe_info(pe, "PASS     ./unit/test_noise\n");
+  {
+    int ntotal[] = {8, 8, 8};
+    cs_t * cs = NULL;
+    cs_create(pe, &cs);
+    cs_ntotal_set(cs, ntotal);
+    cs_init(cs);
+
+    test_noise_create(pe, cs);
+    test_noise_initialise(pe, cs);
+    test_noise_reap_n(pe, cs);
+
+    test_noise_read_buf(pe, cs);
+    test_noise_read_buf_ascii(pe, cs);
+    test_noise_write_buf(pe, cs);
+    test_noise_write_buf_ascii(pe, cs);
+    test_noise_io_aggr_pack(pe, cs);
+    test_noise_io_aggr_unpack(pe, cs);
+    test_noise_io_write(pe, cs);
+    test_noise_io_read(pe, cs);
+
+    cs_free(cs);
+  }
+
+  /* Statistical tests */
+
+  test_ns_statistical_test(pe);
+  test_ns_statistical_testx(pe);
+
+  pe_info(pe, "%-9s %s\n", "PASS", __FILE__);
   pe_free(pe);
 
   return 0;
@@ -52,122 +89,501 @@ int test_noise_suite(void) {
 
 /*****************************************************************************
  *
- *  do_test_noise1
- *
- *  This is a unit test which checks the interface is working and
- *  the discrete values are correct.
+ *  test_ns_uniform
  *
  *****************************************************************************/
 
-static int do_test_noise1(pe_t * pe) {
+int test_ns_uniform(void) {
 
+  int ifail = 0;
+
+  /* state = zero */
+  {
+    unsigned int s[4] = {0, 0, 0, 0};
+    unsigned int b = ns_uniform(s);
+
+    assert(s[0] == 1234567);
+    assert(s[1] == 0);
+    assert(s[2] == 0);
+    assert(s[3] == 0);
+    if (b != s[0]) ifail = -1;
+    assert(ifail == 0);
+  }
+
+  /* state non-zero */
+  {
+    unsigned int s[4] = {123, 456, 78, 9};
+    unsigned int b = ns_uniform(s);
+
+    assert(s[0] ==    9730054);
+    assert(s[1] == 1905505352);
+    assert(s[2] ==    2883582);
+    assert(s[3] ==     162000);
+    if (b != 1915204894) ifail = -1;
+    assert(ifail == 0);
+  }
+
+  return ifail;
+}
+
+/*****************************************************************************
+ *
+ *  test_noise_reap_n
+ *
+ *****************************************************************************/
+
+int test_noise_reap_n(pe_t * pe, cs_t * cs) {
+
+  noise_options_t opts = noise_options_default();
   noise_t * noise = NULL;
-  cs_t * cs = NULL;
 
-  double a1, a2;
-  double r[NNOISE_MAX];
-  unsigned int state_ref[NNOISE_STATE] = {123, 456, 78, 9};
-  unsigned int state[NNOISE_STATE] = {0, 0, 0, 0};
+  noise_create(pe, cs, &opts, &noise);
 
-  assert(pe);
-  test_assert(NNOISE_MAX == 10);
-  test_assert(NNOISE_STATE == 4);
+  /* We expect the default initialisation ... */
+  assert(noise->options.seed == 13);
 
-  a1 = sqrt(2.0 + sqrt(2.0));
-  a2 = sqrt(2.0 - sqrt(2.0));
+  /* known case at (1, 1, 1) */
+  {
+    int index = cs_index(cs, 1, 1, 1);
 
-  cs_create(pe, &cs);
-  cs_init(cs);
+    double a1 = sqrt(2.0 + sqrt(2.0));
+    double a2 = sqrt(2.0 - sqrt(2.0));
+    double r[NNOISE_MAX] = {0};
 
-  noise_create(pe, cs, &noise);
-  assert(noise);
-  noise_init(noise, 0);
+    noise_reap_n(noise, index, 10, r);
 
-  /* The initial state[] is zero, one iteration should
-   * move us to... */ 
+    /* Rank zero in Cartesian communicator owns (1, 1, 1) */
+    MPI_Bcast(r, 10, MPI_DOUBLE, 0, cs->commcart);
 
-  noise_uniform(state);
+    assert(fabs(r[0] - 0.0) < DBL_EPSILON);
+    assert(fabs(r[1] - 0.0) < DBL_EPSILON);
+    assert(fabs(r[2] - +a1) < DBL_EPSILON);
+    assert(fabs(r[3] - -a2) < DBL_EPSILON);
+    assert(fabs(r[4] - 0.0) < DBL_EPSILON);
+    assert(fabs(r[5] - -a1) < DBL_EPSILON);
+    assert(fabs(r[6] - -a1) < DBL_EPSILON);
+    assert(fabs(r[7] - -a1) < DBL_EPSILON);
+    assert(fabs(r[8] - 0.0) < DBL_EPSILON);
+    assert(fabs(r[9] - -a2) < DBL_EPSILON);
+  }
 
-  test_assert(state[0] == 1234567);
-  test_assert(state[1] == 0);
-  test_assert(state[2] == 0);
-  test_assert(state[3] == 0);
-
-  /* Set some state and make sure reap vector is correct */
-
-  noise_state_set(noise, 0, state_ref);
-  noise_state(noise, 0, state);
-
-  test_assert(state[0] == state_ref[0]);
-  test_assert(state[1] == state_ref[1]);
-  test_assert(state[2] == state_ref[2]);
-  test_assert(state[3] == state_ref[3]);
-
-  noise_reap(noise, 0, r);
-
-  test_assert(fabs(r[0] - +a1) < DBL_EPSILON);
-  test_assert(fabs(r[1] - -a1) < DBL_EPSILON);
-  test_assert(fabs(r[2] - 0.0) < DBL_EPSILON);
-  test_assert(fabs(r[3] - +a2) < DBL_EPSILON);
-  test_assert(fabs(r[4] - +a2) < DBL_EPSILON);
-  test_assert(fabs(r[5] - 0.0) < DBL_EPSILON);
-  test_assert(fabs(r[6] - 0.0) < DBL_EPSILON);
-  test_assert(fabs(r[7] - 0.0) < DBL_EPSILON);
-  test_assert(fabs(r[8] - 0.0) < DBL_EPSILON);
-  test_assert(fabs(r[9] - 0.0) < DBL_EPSILON);
-
-  noise_free(noise);
-  cs_free(cs);
+  noise_free(&noise);
 
   return 0;
+}
+
+/*****************************************************************************
+ *
+ *  test_noise_create
+ *
+ *****************************************************************************/
+
+int test_noise_create(pe_t * pe, cs_t * cs) {
+
+  int ifail = 0;
+
+  /* Most tests are deferred to test_noise_initialise() */
+  {
+    noise_options_t opts = noise_options_default();
+    noise_t * ns = NULL;
+
+    ifail = noise_create(pe, cs, &opts, &ns);
+    assert(ifail == 0);
+    assert(ns->pe == pe);
+    assert(ns->cs == cs);
+    assert(ns->state);
+
+    ifail = noise_free(&ns);
+    assert(ifail == 0);
+    assert(ns == NULL);
+  }
+
+  return ifail;
+}
+
+/*****************************************************************************
+ *
+ *  test_noise_initialise
+ *
+ *****************************************************************************/
+
+int test_noise_initialise(pe_t * pe, cs_t * cs) {
+
+  int ifail = 0;
+
+  assert(pe);
+  assert(cs);
+  assert(NNOISE_MAX   == 10);
+  assert(NNOISE_STATE == 4);
+
+  const double a1 = sqrt(2.0 + sqrt(2.0));
+  const double a2 = sqrt(2.0 - sqrt(2.0));
+
+  /* Default */
+  {
+    noise_options_t opts = noise_options_default();
+    noise_t ns = {};
+
+    ifail = noise_initialise(pe, cs, &opts, &ns);
+    assert(ifail == 0);
+    assert(ns.pe == pe);
+    assert(ns.cs == cs);
+    assert(ns.options.seed == 13);
+    assert(ns.nsites == cs->param->nsites);
+    assert(ns.state);
+    /* the table ... */
+    assert(fabs(ns.rtable[0] - -a1) < DBL_EPSILON);
+    assert(fabs(ns.rtable[1] - -a2) < DBL_EPSILON);
+    assert(fabs(ns.rtable[2] - 0.0) < DBL_EPSILON);
+    assert(fabs(ns.rtable[3] - 0.0) < DBL_EPSILON);
+    assert(fabs(ns.rtable[4] - 0.0) < DBL_EPSILON);
+    assert(fabs(ns.rtable[5] - 0.0) < DBL_EPSILON);
+    assert(fabs(ns.rtable[6] - +a2) < DBL_EPSILON);
+    assert(fabs(ns.rtable[7] - +a1) < DBL_EPSILON);
+
+    /* State initial values (parallel) */
+
+    ifail = noise_finalise(&ns);
+    assert(ifail == 0);
+    assert(ns.state == NULL);
+  }
+
+  return ifail;
+}
+
+/*****************************************************************************
+ *
+ *  test_noise_read_buf
+ *
+ *****************************************************************************/
+
+int test_noise_read_buf(pe_t * pe, cs_t * cs) {
+
+  int ifail = 0;
+
+  /* Check read against resulting state. Some values are ... */
+  {
+    unsigned int iv[4] = {1234567890, 2345678901, 13, 3456789012};
+    noise_options_t opts = noise_options_default();
+    noise_t ns = {};
+    int index = cs_index(cs, 1, 1, 1);
+    char buf[BUFSIZ] = {0};
+
+    memcpy(buf, iv, 4*sizeof(unsigned int));
+
+    noise_initialise(pe, cs, &opts, &ns);
+    ifail = noise_read_buf(&ns, index, buf);
+    assert(ifail == 0);
+    for (int is = 0; is < 4; is++) {
+      int iaddr = addr_rank1(ns.nsites, 4, index, is);
+      if (iv[is] != ns.state[iaddr]) ifail -= 1;
+      assert(ifail == 0);
+    }
+    noise_finalise(&ns);
+  }
+
+
+  return ifail;
 }
 
 
 /*****************************************************************************
  *
- *  do_test_noise2
- *
- *  Test the parallel initialisation. Check some statistics in the
- *  spatial average.
+ *  test_noise_read_buf_ascii
  *
  *****************************************************************************/
 
-static int do_test_noise2(pe_t * pe) {
+int test_noise_read_buf_ascii(pe_t * pe, cs_t * cs) {
 
-  int nlocal[3];
-  int ic, jc, kc, index;
-  int ir;
+  const int nchar = NOISE_RECORD_LENGTH_ASCII;
+  int ifail = 0;
 
-  cs_t * cs = NULL;
-  noise_t * noise = NULL;
+  /* Check read against resulting state */
+  {
+    unsigned int iv[4] = {1234567890, 2345678901, 13, 3456789012};
+    noise_options_t opts = noise_options_default();
+    noise_t ns = {};
+    int index = cs_index(cs, 1, 1, 1);
+    char buf[BUFSIZ] = {0};
 
-  double ltot[3];
-  double r[NNOISE_MAX];
-  double rstat[2], rstat_local[2] = {0.0, 0.0};
-  MPI_Comm comm;
+    snprintf(buf, 2 + 4*nchar, " %10u %10u %10u %10u\n",
+	     iv[0], iv[1], iv[2], iv[3]);
+
+    noise_initialise(pe, cs, &opts, &ns);
+    ifail = noise_read_buf_ascii(&ns, index, buf);
+    assert(ifail == 0);
+    for (int is = 0; is < 4; is++) {
+      int iaddr = addr_rank1(ns.nsites, 4, index, is);
+      if (iv[is] != ns.state[iaddr]) ifail -= 1;
+      assert(ifail == 0);
+    }
+    noise_finalise(&ns);
+  }
+
+  return ifail;
+}
+
+
+/*****************************************************************************
+ *
+ *  test_noise_write_buf
+ *
+ *****************************************************************************/
+
+int test_noise_write_buf(pe_t * pe, cs_t * cs) {
+
+  int ifail = 0;
+
+  /* Check output against the state */
+  {
+    char buf[BUFSIZ] = {0};
+    unsigned int iv[4] = {0};
+    int index = cs_index(cs, 1, 1, 1);
+    noise_options_t opts = noise_options_default();
+    noise_t ns = {};
+
+    noise_initialise(pe, cs, &opts, &ns);
+
+    ifail = noise_write_buf(&ns, index, buf);
+    assert(ifail == 0);
+    memcpy(iv, buf, 4*sizeof(unsigned int));
+
+    for (int is = 0; is < 4; is++) {
+      if (iv[is] != ns.state[addr_rank1(ns.nsites,4,index,is)]) ifail -= 1;
+      assert(ifail == 0);
+    }
+    noise_finalise(&ns);
+  }
+
+  return ifail;
+}
+
+/*****************************************************************************
+ *
+ *  test_noise_write_buf_ascii
+ *
+ *****************************************************************************/
+
+int test_noise_write_buf_ascii(pe_t * pe, cs_t * cs) {
+
+  const int nchar = NOISE_RECORD_LENGTH_ASCII;
+  int ifail = 0;
+
+  /* Check output against the state */
+  {
+    char buf[BUFSIZ] = {0};
+    int index = cs_index(cs, 1, 1, 1);
+    noise_options_t opts = noise_options_default();
+    noise_t ns = {};
+
+    noise_initialise(pe, cs, &opts, &ns);
+    ifail = noise_write_buf_ascii(&ns, index, buf);
+    assert(ifail == 0);
+    for (int is = 0; is < 4; is++) {
+      unsigned long ival = strtoul(buf + is*nchar, NULL, 10);
+      if (ival != ns.state[addr_rank1(ns.nsites,4,index,is)]) ifail -= 1;
+      assert(ifail == 0);
+    }
+    noise_finalise(&ns);
+  }
+
+  return ifail;
+}
+
+/*****************************************************************************
+ *
+ *  test_noise_io_aggr_pack
+ *
+ *****************************************************************************/
+
+int test_noise_io_aggr_pack(pe_t * pe, cs_t * cs) {
+
+  int ifail = 0;
+  noise_options_t opts = noise_options_default();
+  noise_t * ns = NULL;
 
   assert(pe);
+  assert(cs);
+
+  ifail = noise_create(pe, cs, &opts, &ns);
+  assert(ifail == 0);
+
+  /* Default option binary */
+  {
+    io_metadata_t * meta = &ns->output;
+    io_aggregator_t aggr = {};
+
+    io_aggregator_initialise(meta->element, meta->limits, &aggr);
+
+    ifail = noise_io_aggr_pack(ns, &aggr);
+    assert(ifail == 0);
+
+    io_aggregator_finalise(&aggr);
+  }
+
+  noise_free(&ns);
+
+  return ifail;
+}
+
+/*****************************************************************************
+ *
+ *  test_noise_io_aggr_unpack
+ *
+ *****************************************************************************/
+
+int test_noise_io_aggr_unpack(pe_t * pe, cs_t * cs) {
+
+  int ifail = 0;
+  noise_options_t opts = noise_options_default();
+  noise_t * ns = NULL;
+
+  assert(pe);
+  assert(cs);
+
+  ifail = noise_create(pe, cs, &opts, &ns);
+  assert(ifail == 0);
+
+  /* Default option binary */
+  {
+    io_metadata_t * meta = &ns->output;
+    io_aggregator_t aggr = {};
+
+    io_aggregator_initialise(meta->element, meta->limits, &aggr);
+
+    ifail = noise_io_aggr_pack(ns, &aggr);
+    assert(ifail == 0);
+    ifail = noise_io_aggr_unpack(ns, &aggr);
+    assert(ifail == 0);
+
+    io_aggregator_finalise(&aggr);
+  }
+
+  noise_free(&ns);
+
+  return ifail;
+}
+
+/*****************************************************************************
+ *
+ *  test_noise_io_write
+ *
+ *****************************************************************************/
+
+int test_noise_io_write(pe_t * pe, cs_t * cs) {
+
+  int ifail = 0;
+
+  /* ASCII write (time step is = 0) */
+  {
+    noise_options_t opts = noise_options_default();
+    io_event_t ioevent = {0};
+    noise_t * ns = NULL;
+
+    opts.iodata.output.iorformat = IO_RECORD_ASCII;
+
+    ifail = noise_create(pe, cs, &opts, &ns);
+    ifail = noise_io_write(ns, 0, &ioevent);
+    assert(ifail == 0);
+    ifail = noise_free(&ns);
+  }
+
+  /* Binary write (time step is = 1) */
+  {
+    noise_options_t opts = noise_options_default();
+    io_event_t ioevent = {0};
+    noise_t * ns = NULL;
+
+    ifail = noise_create(pe, cs, &opts, &ns);
+    ifail = noise_io_write(ns, 1, &ioevent);
+    assert(ifail == 0);
+    ifail = noise_free(&ns);
+  }
+
+  return ifail;
+}
+
+/*****************************************************************************
+ *
+ *  test_noise_io_read
+ *
+ *  This reads the files from test_noise_io_write() above.
+ *
+ *****************************************************************************/
+
+int test_noise_io_read(pe_t * pe, cs_t * cs) {
+
+  int ifail = 0;
+
+  /* ASCII read (time step is = 0) */
+  {
+    noise_options_t opts = noise_options_default();
+    io_event_t ioevent = {0};
+    noise_t * ns = NULL;
+
+    opts.iodata.output.iorformat = IO_RECORD_ASCII;
+
+    ifail = noise_create(pe, cs, &opts, &ns);
+    ifail = noise_io_read(ns, 0, &ioevent);
+    assert(ifail == 0);
+    ifail = noise_free(&ns);
+  }
+
+  /* Binary read (time step is = 1) */
+  {
+    noise_options_t opts = noise_options_default();
+    io_event_t ioevent = {0};
+    noise_t * ns = NULL;
+
+    ifail = noise_create(pe, cs, &opts, &ns);
+    ifail = noise_io_read(ns, 1, &ioevent);
+    assert(ifail == 0);
+    ifail = noise_free(&ns);
+  }
+
+  return ifail;
+}
+/*****************************************************************************
+ *
+ *  test_ns_statistical_test
+ *
+ *  Check mean and variance computed as sum over the whole system.
+ *
+ *****************************************************************************/
+
+int test_ns_statistical_test(pe_t * pe) {
+
+  cs_t * cs = NULL;
+  noise_t * ns = NULL;
+  noise_options_t opts = noise_options_default();
+
+  int ntotal[3] = {64, 64, 64};
+  int nlocal[3] = {0};
+
+  double rstat[2] = {0};
+  MPI_Comm comm = MPI_COMM_NULL;
 
   cs_create(pe, &cs);
+  cs_ntotal_set(cs, ntotal);
   cs_init(cs);
 
-  cs_ltot(cs, ltot);
   cs_nlocal(cs, nlocal);
   cs_cart_comm(cs, &comm);
 
-  noise_create(pe, cs, &noise);
-  noise_init(noise, 0);
+  noise_create(pe, cs, &opts, &ns); /* seed defualt */
 
-  for (ic = 1; ic <= nlocal[X]; ic++) {
-    for (jc = 1; jc <= nlocal[Y]; jc++) {
-      for (kc = 1; kc <= nlocal[Z]; kc++) {
+  for (int ic = 1; ic <= nlocal[X]; ic++) {
+    for (int jc = 1; jc <= nlocal[Y]; jc++) {
+      for (int kc = 1; kc <= nlocal[Z]; kc++) {
 
-	index = cs_index(cs, ic, jc, kc);
-	noise_reap(noise, index, r);
+	double r[NNOISE_MAX] = {0};
+	int index = cs_index(cs, ic, jc, kc);
 
-	for (ir = 0; ir < NNOISE_MAX; ir++) {
-	  rstat_local[0] += r[ir];
-	  rstat_local[1] += r[ir]*r[ir];
+	noise_reap_n(ns, index, 10, r);
+
+	for (int ir = 0; ir < NNOISE_MAX; ir++) {
+	  rstat[0] += r[ir];
+	  rstat[1] += r[ir]*r[ir];
 	}
       }
     }
@@ -175,16 +591,23 @@ static int do_test_noise2(pe_t * pe) {
 
   /* Mean and variance */
 
-  MPI_Allreduce(rstat_local, rstat, 2, MPI_DOUBLE, MPI_SUM, comm);
+  {
+    double rstat_local[2] = {rstat[0], rstat[1]};
+    MPI_Allreduce(rstat_local, rstat, 2, MPI_DOUBLE, MPI_SUM, comm);
+  }
 
-  rstat[0] = rstat[0]/(ltot[X]*ltot[Y]*ltot[Z]);
-  rstat[1] = rstat[1]/(NNOISE_MAX*ltot[X]*ltot[Y]*ltot[Z]) - rstat[0]*rstat[0];
+  {
+    double vol = 1.0*ntotal[X]*ntotal[Y]*ntotal[Z];
+    rstat[0] = rstat[0]/vol;
+    rstat[1] = rstat[1]/(NNOISE_MAX*vol) - rstat[0]*rstat[0];
+  }
 
   /* These are the results for the default seeds, system size */
-  test_assert(fabs(rstat[0] - 4.10105573e-03) < FLT_EPSILON);
-  test_assert(fabs(rstat[1] - 1.00177840)     < FLT_EPSILON);
 
-  noise_free(noise);
+  assert(fabs(rstat[0] - 4.10105573e-03) < FLT_EPSILON);
+  assert(fabs(rstat[1] - 1.00177840)     < FLT_EPSILON);
+
+  noise_free(&ns);
   cs_free(cs);
 
   return 0;
@@ -192,7 +615,7 @@ static int do_test_noise2(pe_t * pe) {
 
 /*****************************************************************************
  *
- *  do_test_noise3
+ *  test_ns_statistical_testx
  *
  *  This checks up to 6th moment, which should see the following:
  *
@@ -210,22 +633,14 @@ static int do_test_noise2(pe_t * pe) {
  *
  *****************************************************************************/
 
-static int do_test_noise3(pe_t * pe) {
+int test_ns_statistical_testx(pe_t * pe) {
 
-  int ic, jc, kc, index;
   int ntotal[3] = {4, 4, 4};
-  int nlocal[3];
-  int n, nt, nsites;
+  int nlocal[3] = {0};
 
-  double * moment6;
-  double   rnorm;
-  double m1, m2, m3, m4, m5, m6;
-
-  double r[NNOISE_MAX];
   cs_t * cs = NULL;
-  noise_t * noise = NULL;
-
-  assert(pe);
+  noise_t * ns = NULL;
+  noise_options_t opts = noise_options_default();
 
   /* Extent of the test */
   const int ntimes = 1000000;
@@ -234,73 +649,59 @@ static int do_test_noise3(pe_t * pe) {
   cs_create(pe, &cs);
   cs_ntotal_set(cs, ntotal);
   cs_init(cs);
+
   cs_nlocal(cs, nlocal);
-  cs_nsites(cs, &nsites);
 
-  noise_create(pe, cs, &noise);
-  noise_init(noise, 0);
+  noise_create(pe, cs, &opts, &ns);
 
-  moment6 = (double *) calloc(6*nsites, sizeof(double));
-  assert(moment6);
+  for (int ic = 1; ic <= nlocal[X]; ic++) {
+    for (int jc = 1; jc <= nlocal[Y]; jc++) {
+      for (int kc = 1; kc <= nlocal[Z]; kc++) {
 
-  /* Loop */
+	double moment6[6] = {0};
+	int index = cs_index(cs, ic, jc, kc);
 
-  for (nt = 0; nt < ntimes; nt++) {
+	for (int nt = 0; nt < ntimes; nt++) {
 
-    for (ic = 1; ic <= nlocal[X]; ic++) {
-      for (jc = 1; jc <= nlocal[Y]; jc++) {
-	for (kc = 1; kc <= nlocal[Z]; kc++) {
+	  double r[NNOISE_MAX] = {0};
+	  noise_reap_n(ns, index, 10, r);
 
-	  index = cs_index(cs, ic, jc, kc);
-	  noise_reap(noise, index, r);
-
-	  for (n = 0; n < NNOISE_MAX; n++) {
-	    moment6[0*nsites + index] += r[n];
-	    moment6[1*nsites + index] += r[n]*r[n];
-	    moment6[2*nsites + index] += r[n]*r[n]*r[n];
-	    moment6[3*nsites + index] += r[n]*r[n]*r[n]*r[n];
-	    moment6[4*nsites + index] += r[n]*r[n]*r[n]*r[n]*r[n];
-	    moment6[5*nsites + index] += r[n]*r[n]*r[n]*r[n]*r[n]*r[n];
+	  for (int n = 0; n < NNOISE_MAX; n++) {
+	    double r1 = r[n];
+	    double r2 = r1*r1;
+	    moment6[0] += r1;
+	    moment6[1] += r2;
+	    moment6[2] += r2*r1;
+	    moment6[3] += r2*r2;
+	    moment6[4] += r2*r2*r1;
+	    moment6[5] += r2*r2*r2;
 	  }
-
-	  /* Next site. */
+	  /* Next time step */
 	}
-      }
-    }
-    /* Next time step */
-  }
 
-  /* Stats. */
+	/* Check */
+	{
+	  double m1 = moment6[0]/(1.0*ntimes*NNOISE_MAX);
+	  double m2 = moment6[1]/(1.0*ntimes*NNOISE_MAX);
+	  double m3 = moment6[2]/(1.0*ntimes*NNOISE_MAX);
+	  double m4 = moment6[3]/(1.0*ntimes*NNOISE_MAX);
+	  double m5 = moment6[4]/(1.0*ntimes*NNOISE_MAX);
+	  double m6 = moment6[5]/(1.0*ntimes*NNOISE_MAX);
 
-  rnorm = 1.0/((double) ntimes*NNOISE_MAX);
+	  assert(fabs(m1 -  0.0) < tolerance);
+	  assert(fabs(m2 -  1.0) < tolerance);
+	  assert(fabs(m3 -  0.0) < tolerance);
+	  assert(fabs(m4 -  3.0) < tolerance);
+	  assert(fabs(m5 -  0.0) < tolerance);
+	  assert(fabs(m6 - 10.0) < tolerance);
+	}
 
-  for (ic = 1; ic <= nlocal[X]; ic++) {
-    for (jc = 1; jc <= nlocal[Y]; jc++) {
-      for (kc = 1; kc <= nlocal[Z]; kc++) {
-
-	index = cs_index(cs, ic, jc, kc);
-
-	/* Moments */
-	m1 = rnorm*moment6[0*nsites + index];
-	m2 = rnorm*moment6[1*nsites + index];
-	m3 = rnorm*moment6[2*nsites + index];
-	m4 = rnorm*moment6[3*nsites + index];
-	m5 = rnorm*moment6[4*nsites + index];
-	m6 = rnorm*moment6[5*nsites + index];
-
-	test_assert(fabs(m1 - 0.0)  < tolerance);
-	test_assert(fabs(m2 - 1.0)  < tolerance);
-	test_assert(fabs(m3 - 0.0)  < tolerance);
-	test_assert(fabs(m4 - 3.0)  < tolerance);
-	test_assert(fabs(m5 - 0.0)  < tolerance);
-	test_assert(fabs(m6 - 10.0) < tolerance);
-
+	/* Next site. */
       }
     }
   }
 
-  free(moment6);
-  noise_free(noise);
+  noise_free(&ns);
   cs_free(cs);
 
   return 0;

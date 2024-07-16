@@ -14,7 +14,7 @@
  *  Edinburgh Soft Matter and Statistcal Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2008-2023 The University of Edinburgh
+ *  (c) 2008-2024 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -167,7 +167,12 @@ int main(int argc, char ** argv) {
 
   /* Now we know ndata, allocate a map structure... */
 
-  map_create(pe, cs, ndata, &map);
+  {
+    /* Use format IO_RECORD_ASCII or IO_RECORD_BINARY */
+    map_options_t opts = map_options_ndata(ndata);
+    opts.iodata.output.iorformat = IO_RECORD_ASCII;
+    map_create(pe, cs, &opts, &map);
+  }
 
   /* Structures */
 
@@ -273,13 +278,13 @@ int main(int argc, char ** argv) {
   capillary_write_ascii_serial(pe, cs, map);
 
   /* Standard file output */
-  {
-    int io_grid[3] = {1, 1, 1};
-    map_init_io_info(map, io_grid, IO_FORMAT_BINARY, IO_FORMAT_ASCII);
-    io_write_data(map->info, "capillary", map);
-  }
+  /* Metadata file, and output (taken to be time step zero) */
 
-  map_free(map);
+  io_metadata_write(&map->output, "map", NULL, NULL);
+  map_io_write(map, 0);
+
+
+  map_free(&map);
   cs_free(cs);
   pe_free(pe);
 

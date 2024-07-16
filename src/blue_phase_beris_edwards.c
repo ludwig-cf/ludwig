@@ -318,7 +318,6 @@ __host__ int beris_edw_update_host(beris_edw_t * be, fe_t * fe, field_t * fq,
   int index, indexj, indexk;
   int nlocal[3];
   int status;
-  int noise_on = 0;
 
   double q[3][3];
   double w[3][3];
@@ -359,8 +358,7 @@ __host__ int beris_edw_update_host(beris_edw_t * be, fe_t * fe, field_t * fq,
   /* Get kBT, variance of noise and set basis of traceless,
    * symmetric matrices for contraction */
 
-  if (noise) noise_present(noise, NOISE_QAB, &noise_on);
-  if (noise_on) {
+  if (be->param->noise) {
     assert(0); /* check noise kt */
     beris_edw_tmatrix(tmatrix);
   }
@@ -409,7 +407,7 @@ __host__ int beris_edw_update_host(beris_edw_t * be, fe_t * fe, field_t * fq,
 
 	/* Fluctuating tensor order parameter */
 
-	if (noise_on) {
+	if (be->param->noise) {
 	  noise_reap_n(noise, index, NQAB, chi);
 	  for (id = 0; id < NQAB; id++) {
 	    chi[id] = var*chi[id];
@@ -498,7 +496,6 @@ __host__ int beris_edw_update_driver(beris_edw_t * be,
 				     hydro_t * hydro,
 				     map_t * map,
 				     noise_t * noise) {
-  int ison;
   int nlocal[3];
   dim3 nblk, ntpb;
   kernel_info_t limits;
@@ -522,10 +519,7 @@ __host__ int beris_edw_update_driver(beris_edw_t * be,
 
   beris_edw_param_commit(be);
   if (hydro) hydrotarget = hydro->target;
-
-  ison = 0;
-  if (noise) noise_present(noise, NOISE_QAB, &ison);
-  if (ison) noisetarget = noise;
+  if (noise) noisetarget = noise->target;
 
   TIMER_start(BP_BE_UPDATE_KERNEL);
 
@@ -742,7 +736,7 @@ void beris_edw_kernel_v(kernel_ctxt_t * ktx, beris_edw_t * be,
 
     /* Fluctuating tensor order parameter */
 
-    if (noise) {
+    if (be->param->noise) {
 
       for_simd_v(iv, NSIMDVL) {
 	
