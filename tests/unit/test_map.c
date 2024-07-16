@@ -638,7 +638,7 @@ int test_map_io_aggr_pack(pe_t * pe, cs_t * cs) {
 
     /* Read back the same values after clearing the originals */
     memset(map->status, 0, map->nsite*sizeof(char));
-    memset(map->data, 0, map->nsite*map->ndata*sizeof(double));
+    memset(map->data, 0, (size_t) map->nsite*map->ndata*sizeof(double));
 
     ifail = map_io_aggr_unpack(map, &buf);
     assert(ifail == 0);
