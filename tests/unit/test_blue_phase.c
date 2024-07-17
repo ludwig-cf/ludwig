@@ -8,7 +8,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2010-2021 The University of Edinburgh
+ *  (c) 2010-2024 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -334,10 +334,13 @@ int test_o8m_struct(pe_t * pe, cs_t * cs, lees_edw_t * le, fe_lc_t * fe,
   /* Now the free energy density. This requires that the gradients are
    * set. These values use the standard 27-point stencil in 3-d. */
 
-  field_halo_swap(fq, FIELD_HALO_HOST);
+  /* Gradient computation is on the device, so ... */
 
   field_memcpy(fq, tdpMemcpyHostToDevice);
+  field_halo(fq);
+
   field_grad_compute(fqgrad);
+
   field_grad_memcpy(fqgrad, tdpMemcpyDeviceToHost);
 
   ic = 1;
@@ -800,11 +803,13 @@ int test_o8m_struct(pe_t * pe, cs_t * cs, lees_edw_t * le, fe_lc_t * fe,
 
   /* Note the electric field remains switched on so... */
 
-  field_halo(fq);
   field_grad_set(fqgrad, grad_3d_7pt_fluid_d2, NULL);
 
   field_memcpy(fq, tdpMemcpyHostToDevice);
+  field_halo(fq);
+
   field_grad_compute(fqgrad);
+
   field_grad_memcpy(fqgrad, tdpMemcpyDeviceToHost);
 
   ic = 1;
