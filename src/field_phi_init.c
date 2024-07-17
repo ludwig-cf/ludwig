@@ -99,7 +99,7 @@ int field_phi_init_uniform(field_t * phi, double phi0) {
   cs_nlocal(phi->cs, nlocal);
 
   for (ic = 1; ic <= nlocal[X]; ic++) {
-    for (jc = 1; jc <= nlocal[Y]; jc++) { 
+    for (jc = 1; jc <= nlocal[Y]; jc++) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 
 	index = cs_index(phi->cs, ic, jc, kc);
@@ -119,7 +119,7 @@ int field_phi_init_uniform(field_t * phi, double phi0) {
  *  Initialise two blocks with interfaces at z = Lz/4 and z = 3Lz/4.
  *
  *****************************************************************************/
-			
+
 int field_phi_init_block(field_t * phi, double xi) {
 
   int nlocal[3];
@@ -140,7 +140,7 @@ int field_phi_init_block(field_t * phi, double xi) {
   z2 = 0.75*ltot[Z];
 
   for (ic = 1; ic <= nlocal[X]; ic++) {
-    for (jc = 1; jc <= nlocal[Y]; jc++) { 
+    for (jc = 1; jc <= nlocal[Y]; jc++) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 
 	index = cs_index(phi->cs, ic, jc, kc);
@@ -186,7 +186,7 @@ int field_phi_init_block_X(field_t * phi, double xi, double xwidth) {
   x2 = 0.5*(len[X] + xwidth);
 
   for (ic = 1; ic <= nlocal[X]; ic++) {
-    for (jc = 1; jc <= nlocal[Y]; jc++) { 
+    for (jc = 1; jc <= nlocal[Y]; jc++) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 
 	index = cs_index(phi->cs, ic, jc, kc);
@@ -234,7 +234,7 @@ int field_phi_init_block_Y(field_t * phi, double xi, double ywidth) {
   y2 = 0.5*(len[Y] + ywidth);
 
   for (ic = 1; ic <= nlocal[X]; ic++) {
-    for (jc = 1; jc <= nlocal[Y]; jc++) { 
+    for (jc = 1; jc <= nlocal[Y]; jc++) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 
 	index = cs_index(phi->cs, ic, jc, kc);
@@ -282,7 +282,7 @@ int field_phi_init_block_Z(field_t * phi, double xi, double zwidth) {
   z2 = 0.5*(len[Z] + zwidth);
 
   for (ic = 1; ic <= nlocal[X]; ic++) {
-    for (jc = 1; jc <= nlocal[Y]; jc++) { 
+    for (jc = 1; jc <= nlocal[Y]; jc++) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 
 	index = cs_index(phi->cs, ic, jc, kc);
@@ -329,7 +329,7 @@ int field_phi_init_layer_X(field_t * phi, double xi, double layer_size) {
   x1 = layer_size*len[X];
 
   for (ic = 1; ic <= nlocal[X]; ic++) {
-    for (jc = 1; jc <= nlocal[Y]; jc++) { 
+    for (jc = 1; jc <= nlocal[Y]; jc++) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 
 	index = cs_index(phi->cs, ic, jc, kc);
@@ -370,7 +370,7 @@ int field_phi_init_layer_Y(field_t * phi, double xi, double layer_size) {
   y1 = layer_size*len[Y];
 
   for (ic = 1; ic <= nlocal[X]; ic++) {
-    for (jc = 1; jc <= nlocal[Y]; jc++) { 
+    for (jc = 1; jc <= nlocal[Y]; jc++) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 
 	index = cs_index(phi->cs, ic, jc, kc);
@@ -411,7 +411,7 @@ int field_phi_init_layer_Z(field_t * phi, double xi, double layer_size) {
   z1 = layer_size*len[Z];
 
   for (ic = 1; ic <= nlocal[X]; ic++) {
-    for (jc = 1; jc <= nlocal[Y]; jc++) { 
+    for (jc = 1; jc <= nlocal[Y]; jc++) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 
 	index = cs_index(phi->cs, ic, jc, kc);
@@ -455,7 +455,7 @@ int field_phi_init_bath(field_t * phi) {
   xi0 = 1.13;
 
   for (ic = 1; ic <= nlocal[X]; ic++) {
-    for (jc = 1; jc <= nlocal[Y]; jc++) { 
+    for (jc = 1; jc <= nlocal[Y]; jc++) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 
 	index = cs_index(phi->cs, ic, jc, kc);
@@ -613,7 +613,7 @@ int field_phi_init_emulsion(field_t * phi, double xi, double radius,
   int PosY[N_drops];
   int PosZ[N_drops];
   int PosY0, PosZ0;
-  double Rclosest; 
+  double Rclosest;
 
   double r;
   int ny, nz;  /* number of drops on each dimension */

@@ -3,10 +3,10 @@
  *  capillary.c
  *
  *  This utility produces an output file suitable for initialising
- *  a capillary structure in Ludwig. 
+ *  a capillary structure in Ludwig.
  *
  *  Some examples of uniform, and less uniform capillary initialisations.
- *  Options are selected at compile time (below) at the momoent.
+ *  Options are selected at compile time (below) at the moment.
  *
  *  The output should be capillary.dat      [for human consumption]
  *                       capillary.001-001  [for initial input to run]
@@ -39,7 +39,7 @@ const int xmax = 20;
 const int ymax = 20;
 const int zmax = 20;
 
-const int crystalline_cell_size = 10; /* Must devide all lengths */
+const int crystalline_cell_size = 10; /* Must divide all lengths */
 
 /* CROSS SECTION */
 /* You can choose a square or circular cross section */
@@ -55,7 +55,7 @@ int obstacle_number = 1; /* number of obstacles per wall */
 int obstacle_length = 6; /* along the wall direction */
 int obstacle_height = 8; /* perpendicular from wall */
 int obstacle_depth  = 6; /* perpendicular to length and height */
-			 /* NOTE: obstacle_depth == xmax/ymax/zmax 
+			 /* NOTE: obstacle_depth == xmax/ymax/zmax
 				  means obstacles don't have a z-boundary */
 
 /* OUTPUT */
@@ -569,8 +569,8 @@ int capillary_write_ascii_serial(pe_t * pe, cs_t * cs, map_t * map) {
 	map_data(map, index, data);
 
 	fprintf(fp, "%4d %4d %4d %3d", ic, jc, kc, status);
-	for (int nd = 0; nd < map->ndata; nd++) {
-	  fprintf(fp, " %22.15e", data[nd]);
+	for (int idata = 0; idata < map->ndata; idata++) {
+	  fprintf(fp, " %22.15e", data[idata]);
 	}
 	fprintf(fp, "\n");
       }

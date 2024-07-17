@@ -62,7 +62,7 @@ int collision_run_time(pe_t * pe, rt_t * rt, lb_t * lb) {
   }
 
   /* Relaxation time scheme (default M10) */
-  
+
   strcpy(relax, "M10");
   p = rt_string_parameter(rt, "lb_relaxation_scheme", tmp, BUFSIZ);
 

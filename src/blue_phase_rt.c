@@ -195,7 +195,7 @@ __host__ int blue_phase_init_rt(pe_t * pe, rt_t *rt,
 
   if (strcmp(method, "s7")  == 0) {
 
-    /* Check what is wanted for walls/colloids */ 
+    /* Check what is wanted for walls/colloids */
     blue_phase_rt_wall_anchoring(pe, rt, RT_FATAL, &fe_param.wall);
     blue_phase_rt_coll_anchoring(pe, rt, RT_FATAL, &fe_param.coll);
 
@@ -254,7 +254,7 @@ __host__ int blue_phase_init_rt(pe_t * pe, rt_t *rt,
     if (n == 1) {
       pe_info(pe, "Please replace lc_anchoring by lc_wall_anchoring and/or\n");
       pe_info(pe, "lc_coll_anchoring types\n");
-      pe_fatal(pe, "Please check input file and try agains.\n");
+      pe_fatal(pe, "Please check input file and try again.\n");
     }
 
     rt_string_parameter(rt, "lc_coll_anchoring", type, FILENAME_MAX);
@@ -320,7 +320,7 @@ __host__ int blue_phase_init_rt(pe_t * pe, rt_t *rt,
 
     if (strcmp(type, "normal") == 0) w2 = 0.0;
     if (strcmp(type, "fixed")  == 0) w2 = 0.0;
-      
+
     n =  rt_double_parameter(rt, "lc_anchoring_strength_colloid", &w1);
 
     if ( n == 1 ) {

@@ -41,7 +41,7 @@ int test_ns_statistical_testx(pe_t * pe);
 /*****************************************************************************
  *
  *  test_noise_suite
- * 
+ *
  *****************************************************************************/
 
 int test_noise_suite(void) {
@@ -579,7 +579,7 @@ int test_ns_statistical_test(pe_t * pe) {
   cs_nlocal(cs, nlocal);
   cs_cart_comm(cs, &comm);
 
-  noise_create(pe, cs, &opts, &ns); /* seed defualt */
+  noise_create(pe, cs, &opts, &ns); /* seed default */
 
   for (int ic = 1; ic <= nlocal[X]; ic++) {
     for (int jc = 1; jc <= nlocal[Y]; jc++) {

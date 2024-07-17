@@ -79,7 +79,7 @@ int noise_create(pe_t * pe, cs_t * cs, const noise_options_t * options,
  *  Convenience for seed-only argument
  *
  *  If the input seed is negative, it may get converted to
- *  an unsinged int which is positive. This may not be what
+ *  an unsigned int which is positive. This may not be what
  *  one expects. So check.
  *
  *****************************************************************************/
