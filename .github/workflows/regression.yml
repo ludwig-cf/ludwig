@@ -90,7 +90,7 @@ jobs:
       run: |
         make unit
         make -C tests d3q27
-        
+
   d2q9-mpi:
     name: d2q9 / mpi
     runs-on: ubuntu-latest
@@ -109,12 +109,12 @@ jobs:
     - run: make unit
     - name: Run regression tests
     - run: make -C tests d2q9
+  
+  d3q15-mpi:
+    name: d3q15 / mpi
+    runs-on: ubuntu-latest
 
-    d3q15-mpi:
-      name: d3q15 / mpi
-      runs-on: ubuntu-latest
-
-      steps:
+    steps:
     - name: Checkout repository
       uses: actions/checkout@v3
     - name: Set up MPI
