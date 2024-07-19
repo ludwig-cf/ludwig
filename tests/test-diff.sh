@@ -15,7 +15,7 @@
 #    - the run times
 #    - Version information
 #    - exact location of input file
-#    - compiler deatils
+#    - compiler details
 #    - allow "Model R" tests to pass by looking for "d3q19 R" etc
 #
 #  Options:
@@ -26,7 +26,7 @@
 #
 #  Contributing Authors:
 #  Kevin Stratford (kevin@epcc.ed.ac.uk)
-#  (c) 2013-2023 The University of Edinburgh
+#  (c) 2013-2024 The University of Edinburgh
 #
 ###############################################################################
 
@@ -77,7 +77,7 @@ fi
 #   - timer statistics identified via "call)" or "calls)"
 #   - blank lines
 #   - "Timer resolution"
-#   - exact location of the input file via "user parameters"  
+#   - exact location of the input file via "user parameters"
 
 sed '/call)/d' $1 > test-diff-tmp.ref
 sed -i~ '/calls)/d' test-diff-tmp.ref
@@ -126,6 +126,19 @@ sed -i~ '/SIMD\ vector/d' test-diff-tmp.log
 sed -i~ '/Start time/d' test-diff-tmp.log
 sed -i~ '/End time/d' test-diff-tmp.log
 
+# Allow different decompositions ...
+# The strategy is that we can ignore these simple quantities, as
+# they should be captured by the unit tests (famous last words...)
+sed -i~ '/Decomposition/d' test-diff-tmp.ref
+sed -i~ '/Decomposition/d' test-diff-tmp.log
+sed -i~ '/Local domain:/d' test-diff-tmp.ref
+sed -i~ '/Local domain:/d' test-diff-tmp.log
+sed -i~ '/Final cell list/d' test-diff-tmp.ref
+sed -i~ '/Final cell list/d' test-diff-tmp.log
+sed -i~ '/Final cell lengths/d' test-diff-tmp.ref
+sed -i~ '/Final cell lengths/d' test-diff-tmp.log
+
+
 # Here we use the floating point diff to measure "success"
 
 var=`$FPDIFF test-diff-tmp.ref test-diff-tmp.log | wc -l`
@@ -140,4 +153,3 @@ fi
 rm -rf test-diff-tmp.ref test-diff-tmp.log
 
 exit $var
-
