@@ -49,6 +49,7 @@ jobs:
       run: |
         make unit
         make -C tests d3q15
+        cat tests/regression/d3q15/*.new
 
   make-d3q19-short:
     runs-on: ubuntu-latest
