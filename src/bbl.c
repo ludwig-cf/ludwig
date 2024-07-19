@@ -1580,7 +1580,57 @@ int bbl_wall_lubr_correction_ellipsoid(bbl_t * bbl, wall_t * wall,
 
   /* Repeat for y-direction */
 
+  if (wall->param->isboundary[Y]) {
+    double ytan    = -1.0;     /* colloid centre to colloid tangent plane */
+    double nhat[3] = {0.0, 1.0, 0.0};                  /* +/- wall normal */
+    double hc      = wall->param->lubr_rc[Y];                  /* cut off */
+    double dh      = wall->param->lubr_dh[Y];    /* offset distance  wall */
+
+    double yc      = pc->s.r[Y];
+    double drag    = 0.0;
+
+    ytan = util_q4_distance_to_tangent_plane(pc->s.elabc, pc->s.quat, nhat);
+
+    /* Compute a correction at (potentially) each end. */
+    {
+      double hbot = yc - (lmin[Y] + dh) - ytan;    /* surface to bottom wall */
+      drag += wall_lubr_drag(bbl->eta, ah, hbot, hc);
+      if (hbot < 0.0) ifail = -1;
+    }
+    {
+      double htop = lmin[Y] + (ltot[Y] - dh) - yc - ytan;  /* surface to top */
+      drag += wall_lubr_drag(bbl->eta, ah, htop, hc);
+      if (htop < 0.0) ifail = +1;
+    }
+    wdrag[Y] = drag;
+  }
+
   /* Repeat for z-direction */
+
+  if (wall->param->isboundary[Z]) {
+    double ztan    = -1.0;     /* colloid centre to colloid tangent plane */
+    double nhat[3] = {0.0, 0.0, 1.0};                  /* +/- wall normal */
+    double hc      = wall->param->lubr_rc[Z];                  /* cut off */
+    double dh      = wall->param->lubr_dh[Z];    /* offset distance  wall */
+
+    double zc      = pc->s.r[Z];
+    double drag    = 0.0;
+
+    ztan = util_q4_distance_to_tangent_plane(pc->s.elabc, pc->s.quat, nhat);
+
+    /* Compute a correction at (potentially) each end. */
+    {
+      double hbot = zc - (lmin[Z] + dh) - ztan;    /* surface to bottom wall */
+      drag += wall_lubr_drag(bbl->eta, ah, hbot, hc);
+      if (hbot < 0.0) ifail = -1;
+    }
+    {
+      double htop = lmin[Z] + (ltot[Z] - dh) - zc - ztan;  /* surface to top */
+      drag += wall_lubr_drag(bbl->eta, ah, htop, hc);
+      if (htop < 0.0) ifail = +1;
+    }
+    wdrag[Z] = drag;
+  }
 
   return ifail;
 }
