@@ -3,7 +3,7 @@
 
 A lattice Boltzmann code for complex fluids
 
-![Build Status](https://github.com/ludwig-cf/ludwig/actions/workflows/regression.yml/badge.svg?branch=feature-305-lubrication)
+![Build Status](https://github.com/ludwig-cf/ludwig/actions/workflows/regression.yml/badge.svg)
 [![CII Best Practices](https://bestpractices.coreinfrastructure.org/projects/1998/badge)](https://bestpractices.coreinfrastructure.org/projects/1998)
 
 
