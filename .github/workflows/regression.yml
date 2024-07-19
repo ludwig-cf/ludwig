@@ -1,6 +1,6 @@
 # Regression tests (serial)
 
-name: "Regression"
+name: "build, test"
 
 on:
   pull_request:
