@@ -92,7 +92,7 @@ jobs:
         make -C tests d3q27
         
   d2q9-mpi:
-    name: d2q9/mpi
+    name: d2q9 / mpi
     runs-on: ubuntu-latest
 
     steps:
@@ -101,6 +101,6 @@ jobs:
     - name: Set up MPI
       uses: mpi4py/setup-mpi@v1
     - run: mpicc --version
-    - run: cp config/github-mpicc.ck config.mk
+    - run: cp config/github-mpicc.mk config.mk
     - run: make -j 2
     - run: make unit
