@@ -131,8 +131,8 @@ sed -i~ '/End time/d' test-diff-tmp.log
 # they should be captured by the unit tests (famous last words...)
 sed -i~ '/Decomposition/d' test-diff-tmp.ref
 sed -i~ '/Decomposition/d' test-diff-tmp.log
-sed -i~ '/Local domain:/d' test-diff-tmp.ref
-sed -i~ '/Local domain:/d' test-diff-tmp.log
+sed -i~ '/Local domain/d' test-diff-tmp.ref
+sed -i~ '/Local domain/d' test-diff-tmp.log
 sed -i~ '/Final cell list/d' test-diff-tmp.ref
 sed -i~ '/Final cell list/d' test-diff-tmp.log
 sed -i~ '/Final cell lengths/d' test-diff-tmp.ref
