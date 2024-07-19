@@ -1,6 +1,6 @@
 # Regression tests (serial)
 
-name: "Regression"
+name: "build, test"
 
 on:
   pull_request:
@@ -15,7 +15,7 @@ jobs:
 
     steps:
     - name: Checkout repository
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
 
     - name: Build
       run: |
@@ -35,7 +35,7 @@ jobs:
 
     steps:
     - name: Checkout repository
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
 
     - name: Build
       run: |
@@ -49,13 +49,14 @@ jobs:
       run: |
         make unit
         make -C tests d3q15
+        cat tests/regression/d3q15/*.new
 
   make-d3q19-short:
     runs-on: ubuntu-latest
 
     steps:
     - name: Checkout repository
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
 
     - name: Build
       run: |
@@ -75,7 +76,7 @@ jobs:
 
     steps:
     - name: Checkout repository
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
 
     - name: Build
       run: |
@@ -90,3 +91,39 @@ jobs:
       run: |
         make unit
         make -C tests d3q27
+
+  d2q9-mpi:
+    name: d2q9 / mpi
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+    - name: Set up MPI
+      uses: mpi4py/setup-mpi@v1
+    - run: mpicc --version
+    - run: cp config/github-mpicc.mk config.mk
+    - run: make -j 2
+    - run: export OMP_NUM_THREADS=2
+    - run: make unit
+    - run: export OMP_NUM_THREADS=1
+    - run: make -C tests d2q9
+  
+  d3q15-mpi:
+    name: d3q15 / mpi
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+    - name: Set up MPI
+      uses: mpi4py/setup-mpi@v1
+    - run: mpicc --version
+    - run: cp config/github-mpicc.mk config.mk
+    - run: sed -i "s/D2Q9/D3Q15/" config.mk
+    - run: make -j 2
+    - run: export OMP_NUM_THREADS=2
+    - run: make unit
+    - run: export OMP_NUM_THREADS=1
+    - run: make -C tests d3q15
+    - run: cat tests/regression/d3q15/*new

@@ -12,7 +12,7 @@
 #  Edinburgh Soft Matter and Statistical Physics Group and
 #  Edinburgh Parallel Computing Centre
 #
-#  (c) 2010-2023 The University of Edinburgh
+#  (c) 2010-2024 The University of Edinburgh
 #
 #  Contributing authors:
 #  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -20,11 +20,6 @@
 ###############################################################################
 
 include ../../Makefile.mk
-
-ifeq (${BUILD},parallel)
-MPIRUN_NTASK_UNIT ?= 1
-MPIRUN_NTASKS=$(MPIRUN_NTASK_UNIT)
-endif
 
 #------------------------------------------------------------------------------
 # Files
@@ -43,7 +38,7 @@ INCL = -I$(SRC) $(TARGET_INC_PATH) $(MPI_INC_PATH)
 BLIBS = $(MPI_LIB_PATH) $(MPI_LIB) $(TARGET_LIB_PATH) $(TARGET_LIB)
 LIBS = $(BLIBS) $(SRC)/libludwig.a -lm
 
-MPI_RUN = $(LAUNCH_MPIRUN_CMD) $(MPIRUN_NTASK_FLAG) $(MPIRUN_NTASKS)
+MPI_RUN = $(LAUNCH_MPIRUN_CMD) $(LAUNCH_MPIRUN_OPT)
 
 ifdef HAVE_PETSC
 INCL += $(PETSC_INCL)
