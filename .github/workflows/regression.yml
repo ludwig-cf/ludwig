@@ -125,3 +125,4 @@ jobs:
     - run: make unit
     - run: export OMP_NUM_THREADS=1
     - run: make -C tests d3q15
+    - run: cat tests/regression/d3q15/*new | grep Total
