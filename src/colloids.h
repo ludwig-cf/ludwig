@@ -7,7 +7,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2010-2023 The University of Edinburgh
+ *  (c) 2010-2024 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -184,7 +184,6 @@ __host__ int colloid_rb(colloids_info_t * info, colloid_t * pc, int index,
 __host__ int colloid_rb_ub(colloids_info_t * info, colloid_t * pc, int index,
 			   double rb[3], double ub[3]);
 
-__host__ int is_site_inside_colloid(colloid_t * pc, double rsep[3]);
 __host__ int colloids_type_check(colloids_info_t * info);
 __host__ int colloids_ellipsoid_abc_check(colloids_info_t * info);
 

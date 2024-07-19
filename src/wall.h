@@ -65,7 +65,7 @@ struct wall_s {
   pe_t * pe;             /* Parallel environment */
   cs_t * cs;             /* Reference to coordinate system */
   map_t * map;           /* Reference to map structure */
-  lb_t * lb;             /* Reference to LB information */ 
+  lb_t * lb;             /* Reference to LB information */
   wall_t * target;       /* Device memory */
 
   wall_param_t * param;  /* parameters */

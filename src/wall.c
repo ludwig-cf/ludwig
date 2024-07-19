@@ -20,11 +20,14 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <math.h>
 
 #include "kernel.h"
 #include "physics.h"
 #include "util.h"
 #include "wall.h"
+#include "util_ellipsoid.h"
+#include "util_vector.h"
 
 typedef enum wall_init_enum {WALL_INIT_COUNT_ONLY,
 			     WALL_INIT_ALLOCATE} wall_init_enum_t;
