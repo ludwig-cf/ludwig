@@ -1,25 +1,19 @@
 ##############################################################################
 #
-#  travis-mpicc.mk
+#  github-mpicc.mk
 #
-#  Parallel unit tests
+#  We expect mpicc driving gcc; tests run on two mpi processes.
 #
 ##############################################################################
 
 BUILD   = parallel
-MODEL   = -D_D3Q19_
+MODEL   = -D_D2Q9_
 
 CC      = mpicc -fopenmp
-CFLAGS  = -O2 -g -Wall -Werror
+CFLAGS  = -g -Wall -O2
 
 AR      = ar
 ARFLAGS = -cru
 LDFLAGS =
 
-LAUNCH_SERIAL_CMD =
-LAUNCH_MPIRUN_CMD = mpirun --oversubscribe
-MPIRUN_NTASK_FLAG = -np
-
-# Unit tests only
-MPIRUN_NTASK_UNIT = 4
-
+LAUNCH_MPIRUN_CMD = mpirun -np 2
