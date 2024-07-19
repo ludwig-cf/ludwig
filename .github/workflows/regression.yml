@@ -100,14 +100,11 @@ jobs:
       uses: actions/checkout@v3
     - name: Set up MPI
       uses: mpi4py/setup-mpi@v1
-    - name: Compile tests
     - run: mpicc --version
     - run: cp config/github-mpicc.mk config.mk
     - run: make -j 2
-    - name: Run unit tests
     - run: export OMP_NUM_THREADS=2
     - run: make unit
-    - name: Run regression tests
     - run: make -C tests d2q9
   
   d3q15-mpi:
@@ -119,11 +116,9 @@ jobs:
       uses: actions/checkout@v3
     - name: Set up MPI
       uses: mpi4py/setup-mpi@v1
-    - name: Compile tests
     - run: mpicc --version
     - run: cp config/github-mpicc.mk config.mk
     - run: sed -i "s/D2Q9/D3Q15/" config.mk
     - run: make -j 2
-    - name: Run unit tests
     - run: export OMP_NUM_THREADS=2
     - run: make unit
