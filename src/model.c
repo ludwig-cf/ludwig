@@ -47,6 +47,17 @@ int lb_halo_enqueue_send(const lb_t * lb, lb_halo_t * h, int irreq);
 
 static __constant__ lb_collide_param_t static_param;
 
+#ifdef HAVE_OPENMPI_
+/* This provides MPIX_CUDA_AWARE_SUPPORT .. */
+#include "mpi-ext.h"
+#endif
+
+#if defined (MPIX_CUDA_AWARE_SUPPORT) && MPIX_CUDA_AWARE_SUPPORT
+static const int have_gpu_aware_mpi_ = 1;
+#else
+static const int have_gpu_aware_mpi_ = 0;
+#endif
+
 /*****************************************************************************
  *
  *  lb_data_create
@@ -1021,6 +1032,63 @@ int lb_halo_enqueue_send(const lb_t * lb, lb_halo_t * h, int ireq) {
 
 /*****************************************************************************
  *
+ *  lb_halo_enqueue_send_kernel
+ *
+ *  Pack the send buffer. The ireq determines the direction of the
+ *  communication. Target version.
+ *
+ *****************************************************************************/
+
+__global__ void lb_halo_enqueue_send_kernel(const lb_t * lb, lb_halo_t * h, int ireq) {
+
+  assert(0 <= ireq && ireq < h->map.nvel);
+
+  if (h->count[ireq] > 0) {
+
+    int8_t mx = h->map.cv[ireq][X];
+    int8_t my = h->map.cv[ireq][Y];
+    int8_t mz = h->map.cv[ireq][Z];
+    int8_t mm = mx*mx + my*my + mz*mz;
+
+    int nx = 1 + h->slim[ireq].imax - h->slim[ireq].imin;
+    int ny = 1 + h->slim[ireq].jmax - h->slim[ireq].jmin;
+    int nz = 1 + h->slim[ireq].kmax - h->slim[ireq].kmin;
+
+    int strz = 1;
+    int stry = strz*nz;
+    int strx = stry*ny;
+
+    assert(mm == 1 || mm == 2 || mm == 3);
+
+	  int ih = 0;
+    for_simt_parallel (ih, nx*ny*nz, 1) {
+      int ic = h->slim[ireq].imin + ih/strx;
+      int jc = h->slim[ireq].jmin + (ih % strx)/stry;
+      int kc = h->slim[ireq].kmin + (ih % stry)/strz;
+      int ib = 0; /* Buffer index */
+
+      for (int n = 0; n < lb->ndist; n++) {
+	      for (int p = 0; p < lb->nvel; p++) {
+	        /* Recall, if full, we need p = 0 */
+	        int8_t px = lb->model.cv[p][X];
+	        int8_t py = lb->model.cv[p][Y];
+	        int8_t pz = lb->model.cv[p][Z];
+	        int dot = mx*px + my*py + mz*pz;
+	        if (h->full || dot == mm) {
+	          int index = cs_index(lb->cs, ic, jc, kc);
+	          int laddr = LB_ADDR(lb->nsite, lb->ndist, lb->nvel, index, n, p);
+	          h->send[ireq][ih*h->count[ireq] + ib] = lb->f[laddr];
+	          ib++;
+	        }
+	      }
+      }
+      assert(ib == h->count[ireq]);
+    }
+  }
+}
+
+/*****************************************************************************
+ *
  *  lb_halo_dequeue_recv
  *
  *  Unpack the recv buffer into place in the distributions.
@@ -1089,6 +1157,76 @@ int lb_halo_dequeue_recv(lb_t * lb, const lb_halo_t * h, int ireq) {
   }
 
   return 0;
+}
+
+/*****************************************************************************
+ *
+ *  lb_halo_dequeue_recv_kernel
+ *
+ *  Unpack the recv buffer into place in the distributions. Target version.
+ *
+ *****************************************************************************/
+
+__global__ void lb_halo_dequeue_recv_kernel(lb_t * lb, const lb_halo_t * h, int ireq) {
+
+  assert(lb);
+  assert(h);
+  assert(0 <= ireq && ireq < h->map.nvel);
+
+  if (h->count[ireq] > 0) {
+
+    /* The communication direction is reversed cf. the send... */
+    int8_t mx = h->map.cv[h->map.nvel-ireq][X];
+    int8_t my = h->map.cv[h->map.nvel-ireq][Y];
+    int8_t mz = h->map.cv[h->map.nvel-ireq][Z];
+    int8_t mm = mx*mx + my*my + mz*mz;
+
+    int nx = 1 + h->rlim[ireq].imax - h->rlim[ireq].imin;
+    int ny = 1 + h->rlim[ireq].jmax - h->rlim[ireq].jmin;
+    int nz = 1 + h->rlim[ireq].kmax - h->rlim[ireq].kmin;
+
+    int strz = 1;
+    int stry = strz*nz;
+    int strx = stry*ny;
+
+    double * recv = h->recv[ireq];
+
+    {
+      int i = 1 + mx;
+      int j = 1 + my;
+      int k = 1 + mz;
+      /* If Cartesian neighbour is self, just copy out of send buffer. */
+      if (h->nbrrank[i][j][k] == h->nbrrank[1][1][1]) recv = h->send[ireq]; 
+    }
+
+    assert(mm == 1 || mm == 2 || mm == 3);
+
+	  int ih = 0;
+    for_simt_parallel (ih, nx*ny*nz, 1) {
+      int ic = h->rlim[ireq].imin + ih/strx;
+      int jc = h->rlim[ireq].jmin + (ih % strx)/stry;
+      int kc = h->rlim[ireq].kmin + (ih % stry)/strz;
+      int ib = 0; /* Buffer index */
+
+      for (int n = 0; n < lb->ndist; n++) {
+	      for (int p = 0; p < lb->nvel; p++) {
+	        /* For reduced swap, we must have -cv[p] here... */
+	        int8_t px = lb->model.cv[lb->nvel-p][X];
+	        int8_t py = lb->model.cv[lb->nvel-p][Y];
+	        int8_t pz = lb->model.cv[lb->nvel-p][Z];
+	        int dot = mx*px + my*py + mz*pz;
+
+	        if (h->full || dot == mm) {
+	          int index = cs_index(lb->cs, ic, jc, kc);
+	          int laddr = LB_ADDR(lb->nsite, lb->ndist, lb->nvel, index, n, p);
+	          lb->f[laddr] = recv[ih*h->count[ireq] + ib];
+	          ib++;
+	        }
+	      }
+      }
+      assert(ib == h->count[ireq]);
+    }
+  }
 }
 
 /*****************************************************************************
@@ -1189,7 +1327,7 @@ int lb_halo_create(const lb_t * lb, lb_halo_t * h, lb_halo_enum_t scheme) {
 
   /* Message count (velocities) for each communication direction */
 
-  for (int p = 1; p < h->map.nvel; p++) {
+   for (int p = 1; p < h->map.nvel; p++) {
 
     int count = 0;
 
@@ -1237,6 +1375,35 @@ int lb_halo_create(const lb_t * lb, lb_halo_t * h, lb_halo_enum_t scheme) {
     h->request[ireq] = MPI_REQUEST_NULL;
   }
 
+
+  /* Device */
+
+  int ndevice;
+  tdpGetDeviceCount(&ndevice);
+  tdpStreamCreate(&h->stream);
+
+  if (ndevice == 0) {
+    h->target = h;
+  }
+  else {
+    tdpAssert( tdpMalloc((void **) &h->target, sizeof(lb_halo_t)) );
+    tdpAssert( tdpMemcpy(h->target, h, sizeof(lb_halo_t),
+			 tdpMemcpyHostToDevice) );
+
+    for (int p = 1; p < h->map.nvel; p++) {         
+      int scount = h->map.nvel*lb_halo_size(h->slim[p]);  // h->map.nvel*lb->ndist used for full halo exchange for now. work on implementing reduced halo exchange using something like h->count calculated above.
+      int rcount = h->map.nvel*lb_halo_size(h->rlim[p]);
+      tdpAssert( tdpMalloc((void**) &h->send_d[p], scount * sizeof(double)) );
+      tdpAssert( tdpMalloc((void**) &h->recv_d[p], rcount * sizeof(double)) );
+    }
+    /* Slightly tricksy. Could use send_d and recv_d on target copy ...*/
+    tdpAssert( tdpMemcpy(h->target->send, h->send_d, 27*sizeof(double *),     
+			 tdpMemcpyHostToDevice) );
+    tdpAssert( tdpMemcpy(h->target->recv, h->recv_d, 27*sizeof(double *),
+			 tdpMemcpyHostToDevice) );
+
+  }
+
   return 0;
 }
 
@@ -1271,10 +1438,12 @@ int lb_halo_post(const lb_t * lb, lb_halo_t * h) {
       int j = 1 + h->map.cv[h->map.nvel-ireq][Y];
       int k = 1 + h->map.cv[h->map.nvel-ireq][Z];
       int mcount = h->count[ireq]*lb_halo_size(h->rlim[ireq]);
+      double * buf = h->recv[ireq];
+      if (have_gpu_aware_mpi_) buf = h->recv_d[ireq];
 
       if (h->nbrrank[i][j][k] == h->nbrrank[1][1][1]) mcount = 0;
       
-      MPI_Irecv(h->recv[ireq], mcount, MPI_DOUBLE, h->nbrrank[i][j][k],
+      MPI_Irecv(buf, mcount, MPI_DOUBLE, h->nbrrank[i][j][k],
 		h->tagbase + ireq, h->comm, h->request + ireq);
     }
   }
@@ -1286,10 +1455,21 @@ int lb_halo_post(const lb_t * lb, lb_halo_t * h) {
 
   TIMER_start(TIMER_LB_HALO_PACK);
 
-  #pragma omp parallel
-  {
+  int ndevice;
+  tdpGetDeviceCount(&ndevice);
+  if (ndevice > 0) {
     for (int ireq = 0; ireq < h->map.nvel; ireq++) {
-      lb_halo_enqueue_send(lb, h, ireq);
+      int scount = h->count[ireq]*lb_halo_size(h->slim[ireq]);
+      dim3 nblk, ntpb;
+      kernel_launch_param(scount, &nblk, &ntpb);
+      lb_halo_enqueue_send_kernel<<<nblk, ntpb>>>(lb, h, ireq);
+    }
+  } else {
+    #pragma omp parallel
+    {
+      for (int ireq = 0; ireq < h->map.nvel; ireq++) {
+        lb_halo_enqueue_send(lb, h, ireq);
+      }
     }
   }
 
@@ -1306,11 +1486,13 @@ int lb_halo_post(const lb_t * lb, lb_halo_t * h) {
       int j = 1 + h->map.cv[ireq][Y];
       int k = 1 + h->map.cv[ireq][Z];
       int mcount = h->count[ireq]*lb_halo_size(h->slim[ireq]);
+      double * buf = h->send[ireq];
+      if (have_gpu_aware_mpi_) buf = h->send_d[ireq];
 
       /* Short circuit messages to self. */
       if (h->nbrrank[i][j][k] == h->nbrrank[1][1][1]) mcount = 0;
 
-      MPI_Isend(h->send[ireq], mcount, MPI_DOUBLE, h->nbrrank[i][j][k],
+      MPI_Isend(buf, mcount, MPI_DOUBLE, h->nbrrank[i][j][k],
 		h->tagbase + ireq, h->comm, h->request + 27 + ireq);
     }
   }
@@ -1339,10 +1521,21 @@ int lb_halo_wait(lb_t * lb, lb_halo_t * h) {
 
   TIMER_start(TIMER_LB_HALO_UNPACK);
 
-  #pragma omp parallel
-  {
+  int ndevice;
+  tdpGetDeviceCount(&ndevice);
+  if (ndevice > 0) {
     for (int ireq = 0; ireq < h->map.nvel; ireq++) {
-      lb_halo_dequeue_recv(lb, h, ireq);
+      int rcount = h->count[ireq]*lb_halo_size(h->slim[ireq]);
+      dim3 nblk, ntpb;
+      kernel_launch_param(rcount, &nblk, &ntpb);
+      lb_halo_dequeue_recv_kernel<<<nblk, ntpb>>>(lb, h, ireq);
+    }
+  } else {
+    #pragma omp parallel
+    {
+      for (int ireq = 0; ireq < h->map.nvel; ireq++) {
+        lb_halo_dequeue_recv(lb, h, ireq);
+      }
     }
   }
 

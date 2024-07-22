@@ -88,6 +88,10 @@ struct lb_halo_s {
   double * recv[27];              /* halo: recv buffer per direction */
   MPI_Request request[2*27];      /* halo: array of requests */
 
+  tdpStream_t stream;
+  lb_halo_t * target;
+  double * send_d[27];            /* halo: device send buffer per direction */
+  double * recv_d[27];            /* halo: device recv buffer per direction */
 };
 
 int lb_halo_create(const lb_t * lb, lb_halo_t * h, lb_halo_enum_t scheme);
