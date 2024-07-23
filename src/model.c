@@ -21,6 +21,7 @@
  *****************************************************************************/
 
 #include <assert.h>
+#include <limits.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -97,7 +98,12 @@ int lb_data_create(pe_t * pe, cs_t * cs, const lb_data_options_t * options,
       int nz = nlocal[Z] + 2*nhalo;
       obj->nsite = nx*ny*nz;
     }
-    {
+    if (obj->nsite < 1 || INT_MAX/obj->nvel < obj->nsite) {
+      /* Suggests local system size has overflowed int32_t ... */
+      /* ... or will overflow indexing */
+      pe_exit(pe, "Local system size overflows INT_MAX in distributions\n");
+    }
+    else {
       size_t sz = sizeof(double)*obj->nsite*obj->ndist*obj->nvel;
       assert(sz > 0); /* Should not overflow in size_t I hope! */
       obj->f      = (double *) mem_aligned_malloc(MEM_PAGESIZE, sz);
@@ -1310,7 +1316,7 @@ __host__ int lb_io_aggr_pack(const lb_t * lb, io_aggregator_t * aggr) {
 
       /* Write data (ic,jc,kc) */
       int index = cs_index(lb->cs, ic, jc, kc);
-      int offset = ib*aggr->szelement;
+      size_t offset = ib*aggr->szelement;
       if (iasc) lb_write_buf_ascii(lb, index, aggr->buf + offset);
       if (ibin) lb_write_buf(lb, index, aggr->buf + offset);
     }
