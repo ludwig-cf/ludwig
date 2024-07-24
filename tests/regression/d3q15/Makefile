@@ -8,12 +8,11 @@
 
 include ../../../Makefile.mk
 
-SER=${LAUNCH_SERIAL_CMD}
-PAR=${LAUNCH_MPI_CMD} ${LAUNCH_MPI_NP_SWITCH}
+PAR=${LAUNCH_MPIRUN_CMD}
 
 serial:
-	@echo "TEST --> regression tests serial"
+	@echo "TEST --> regression tests (d3q15)"
 	inputs='serial*inp'; \
-	for file in $$inputs; do ../../test.sh $$file "" ""; done
+	for file in $$inputs; do ../../test.sh $$file "" "$(PAR)"; done
 clean:
 	rm -f *new test-diff* input

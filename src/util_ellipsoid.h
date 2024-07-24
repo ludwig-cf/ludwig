@@ -27,6 +27,7 @@ int  util_q4_is_inside_ellipsoid(const double q[4], const double elabc[3],
 				 const double r[3]);
 void util_q4_inertia_tensor(const double q[4], const double moment[3],
 			    double mI[3][3]);
+
 int util_ellipsoid_euler_from_vectors(const double a0[3], const double b0[3],
 				      double euler[3]);
 int util_ellipsoid_prolate_settling_velocity(double a, double b, double eta,
@@ -37,6 +38,11 @@ int util_discrete_volume_ellipsoid(const double abc[3], const double r0[3],
 void matrix_product(const double a[3][3], const double b[3][3],
 		    double result[3][3]);
 void matrix_transpose(const double a[3][3], double result[3][3]);
+
+void util_q4_to_r(const double q[4], double r[3][3]);
+double util_q4_distance_to_tangent_plane(const double abc[3],
+					 const double q[4],
+					 const double nhat[3]);
 
 /*****************************************************************************
  *
