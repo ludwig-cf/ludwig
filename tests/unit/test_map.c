@@ -750,6 +750,17 @@ int test_map_io_read(pe_t * pe, cs_t * cs) {
     map_free(&map);
   }
 
+  /* non-existant file returns an error */
+  {
+    map_options_t opts = map_options_default();
+    map_t * map = NULL;
+
+    map_create(pe, cs, &opts, &map);
+    ifail = map_io_read(map, 999);
+    assert(ifail != MPI_SUCCESS);
+    map_free(&map);
+  }
+
   return ifail;
 }
 
