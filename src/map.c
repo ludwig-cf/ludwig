@@ -632,7 +632,7 @@ int map_io_read(map_t * map, int timestep) {
     ifail = io_impl_create(meta, &io);
 
     if (ifail == 0) {
-      io->impl->read(io, filename);
+      ifail = io->impl->read(io, filename);
       map_io_aggr_unpack(map, io->aggr);
       io->impl->free(&io);
     }
@@ -664,7 +664,7 @@ int map_io_write(map_t * map, int timestep) {
 
     if (ifail == 0) {
       map_io_aggr_pack(map, io->aggr);
-      io->impl->write(io, filename);
+      ifail = io->impl->write(io, filename);
       io->impl->free(&io);
     }
   }

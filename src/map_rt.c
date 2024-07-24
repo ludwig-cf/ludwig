@@ -115,17 +115,12 @@ int map_init_porous_media_from_file(pe_t * pe, cs_t * cs, rt_t * rt,
 
   if (have_data) {
 
+    /* Default ndata = 0 */
     if (strcmp(status, "status_only") == 0) ndata = 0;
     if (strcmp(status, "status_with_h") == 0) ndata = 1;
     if (strcmp(status, "status_with_sigma") == 0) ndata = 1;
     if (strcmp(status, "status_with_c_h") == 0) ndata = 2;
 
-    if (strcmp(status, "status_with_h") == 0) {
-      /* This is not to be used as it not implemented correctly. */
-      pe_info(pe, "porous_media_type    status_with_h\n");
-      pe_info(pe, "Please use status_with_c_h (and set C = 0) instead\n");
-      pe_fatal(pe, "Will not continue.\n");
-    }
   }
 
   /* Initialise the map structure */
