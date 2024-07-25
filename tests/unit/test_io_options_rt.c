@@ -8,7 +8,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2020-2022 The University of Edinburgh
+ *  (c) 2020-2024 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -64,18 +64,18 @@ __host__ int test_io_options_rt_mode(pe_t * pe) {
   assert(pe);
 
   rt_create(pe, &rt);
-  rt_add_key_value(rt, "example_input_io_mode", "SINGLE");
-  rt_add_key_value(rt, "example_output_io_mode", "MULTIPLE");
+  rt_add_key_value(rt, "example_input_io_mode", "MPIIO");
+  rt_add_key_value(rt, "example_output_io_mode", "MPIIO");
 
   io_options_rt_mode(rt, RT_NONE, "example_input_io_mode", &mode);
-  assert(mode == IO_MODE_SINGLE);
+  assert(mode == IO_MODE_MPIIO);
 
   io_options_rt_mode(rt, RT_NONE, "example_output_io_mode", &mode);
-  assert(mode == IO_MODE_MULTIPLE);
+  assert(mode == IO_MODE_MPIIO);
 
-  rt_add_key_value(rt, "vel_io_mode", "ansi");
+  rt_add_key_value(rt, "vel_io_mode", "mpiio");
   io_options_rt_mode(rt, RT_NONE, "vel_io_mode", &mode);
-  assert(mode == IO_MODE_ANSI);
+  assert(mode == IO_MODE_MPIIO);
 
   rt_free(rt);
 
@@ -213,38 +213,11 @@ __host__ int test_io_options_rt(pe_t * pe) {
 
   rt_create(pe, &rt);
 
-  rt_add_key_value(rt, "default_io_mode",   "multiple");
-  rt_add_key_value(rt, "default_io_format", "ascii");
-  rt_add_key_value(rt, "default_io_report", "yes");
-
-  {
-    io_options_t opts = io_options_with_mode(IO_MODE_SINGLE);
-    io_options_rt(rt, RT_FATAL, "default", &opts);
-
-    assert(opts.mode             == IO_MODE_MULTIPLE);
-    assert(opts.iorformat        == IO_RECORD_ASCII);
-    assert(opts.metadata_version == IO_METADATA_MULTI_V1);
-    assert(opts.report           == 1);
-    assert(opts.asynchronous     == 0);
-  }
-
-  /* "single" */
-  rt_add_key_value(rt, "rho_io_mode", "single");
-
-  {
-    io_options_t opts = io_options_with_mode(IO_MODE_MPIIO);
-    io_options_rt(rt, RT_FATAL, "rho", &opts);
-    assert(opts.mode             == IO_MODE_SINGLE);
-    assert(opts.iorformat        == IO_RECORD_BINARY);
-    assert(opts.metadata_version == IO_METADATA_SINGLE_V1);
-    assert(opts.report           == 0);
-  }
-
   /* "mpiio" */
   rt_add_key_value(rt, "vel_io_mode", "mpiio");
 
   {
-    io_options_t opts = io_options_with_mode(IO_MODE_SINGLE);
+    io_options_t opts = io_options_with_mode(IO_MODE_MPIIO);
     io_options_rt(rt, RT_FATAL, "vel", &opts);
     assert(opts.mode             == IO_MODE_MPIIO);
     assert(opts.iorformat        == IO_RECORD_BINARY);
@@ -256,4 +229,3 @@ __host__ int test_io_options_rt(pe_t * pe) {
 
   return 0;
 }
-

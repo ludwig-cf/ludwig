@@ -43,7 +43,7 @@ Liquid crystal activity                  No
 
 Using Beris-Edwards solver:
 Rotational diffusion const =  1.0000000e-01
-LC fluctuations:           =  off
+LC fluctuations            =  off
 
 System properties
 ----------------
@@ -80,11 +80,6 @@ Ghost relaxation time:    1.00000e+00
 Hydrodynamics
 -------------
 Hydrodynamics: on
-
-Order parameter I/O
--------------------
-Order parameter I/O format:   
-I/O decomposition:            1 1 1
 
 Advection scheme order:  1 (default)
 Gradient calculation: 3d_7pt_fluid

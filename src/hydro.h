@@ -7,7 +7,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2012-2022 The University of Edinburgh
+ *  (c) 2012-2024 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -21,7 +21,6 @@
 #include "coords.h"
 #include "field.h"
 #include "leesedwards.h"
-#include "io_harness.h"
 #include "hydro_options.h"
 
 typedef struct hydro_s hydro_t;
@@ -43,18 +42,14 @@ struct hydro_s {
   pe_t * pe;               /* Parallel environment */
   cs_t * cs;               /* Coordinate system */
   lees_edw_t * le;         /* Lees Edwards */
-  io_info_t * info;        /* I/O handler. Scheduled to be removed. */
 
-  hydro_t * target;        /* structure on target */ 
+  hydro_t * target;        /* structure on target */
 };
 
-__host__ int hydro_create(pe_t * pe, cs_t * cs, lees_edw_t * le, 
+__host__ int hydro_create(pe_t * pe, cs_t * cs, lees_edw_t * le,
 			  const hydro_options_t * opts, hydro_t ** pobj);
 __host__ int hydro_free(hydro_t * obj);
-__host__ int hydro_init_io_info(hydro_t * obj, int grid[3], int form_in,
-				int form_out);
 __host__ int hydro_memcpy(hydro_t * ibj, tdpMemcpyKind flag);
-__host__ int hydro_io_info(hydro_t * obj, io_info_t ** info);
 __host__ int hydro_u_halo(hydro_t * obj);
 __host__ int hydro_halo_swap(hydro_t * obj, field_halo_enum_t flag);
 __host__ int hydro_u_gradient_tensor(hydro_t * obj, int ic, int jc, int kc,

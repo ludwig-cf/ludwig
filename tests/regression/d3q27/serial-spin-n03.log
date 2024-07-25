@@ -1,19 +1,19 @@
 Welcome to: Ludwig v0.21.0 (Serial version running on 1 process)
-Git commit: 4367aaec6f44b221cfd6496a16191aea625f54b9
+Git commit: 23fdfc309efd486869aebb26086f6eaee426e1bf
 
-Start time: Tue Apr 30 11:25:56 2024
+Start time: Wed Jul 17 10:14:26 2024
 
 Compiler:
-  name:           Gnu 13.2.0
-  version-string: 13.2.0
-  options:        -O -g -Wall
+  name:           Gnu 14.1.0
+  version-string: 14.1.0
+  options:        -O2 -g -Wall
 
 Note assertions via standard C assert() are on.
 
 Target thread model: OpenMP.
-OpenMP threads: 1; maximum number of threads: 11.
+OpenMP threads: 8; maximum number of threads: 11.
 
-Read 20 user parameters from input
+Read 19 user parameters from input
 
 System details
 --------------
@@ -39,7 +39,7 @@ Interfacial width     =  1.13137e+00
 
 Using Cahn-Hilliard finite difference solver.
 Mobility M            =  1.25000e+00
-Order parameter noise = off
+Order parameter noise =  on
 Force calculation:      stress_divergence
 
 System properties
@@ -47,7 +47,7 @@ System properties
 Mean fluid density:           1.00000e+00
 Shear viscosity               6.25000e-03
 Bulk viscosity                6.25000e-03
-Temperature                   0.00000e+00
+Temperature                   1.00000e-06
 External body force density   0.00000e+00  0.00000e+00  0.00000e+00
 External E-field amplitude    0.00000e+00  0.00000e+00  0.00000e+00
 External E-field frequency    0.00000e+00
@@ -55,7 +55,7 @@ External magnetic field       0.00000e+00  0.00000e+00  0.00000e+00
 
 Lattice Boltzmann distributions
 -------------------------------
-Model:            d3q19  
+Model:            d3q27  
 SIMD vector len:  1
 Number of sets:   1
 Halo type:        lb_halo_target (full halo)
@@ -78,18 +78,13 @@ Hydrodynamics
 -------------
 Hydrodynamics: on
 
-Order parameter I/O
--------------------
-Order parameter I/O format:   
-I/O decomposition:            1 1 1
-
 Advection scheme order: 2
 Initialising phi for spinodal
 Gradient calculation: 3d_7pt_fluid
 Initial conditions.
 
 Scalars - total mean variance min max
-[rho]        4096.00  1.00000000000  2.2204460e-16  1.00000000000  1.00000000000
+[rho]        4096.00  1.00000000000  1.1102230e-16  1.00000000000  1.00000000000
 [phi] -2.2941536e+00 -5.6009608e-04 8.3652803e-04 -4.9986867e-02 4.9997941e-02
 
 Free energy density - timestep total fluid
@@ -102,19 +97,19 @@ Momentum - x y z
 Starting time step loop.
 
 Scalars - total mean variance min max
-[rho]        4096.00  1.00000000000  6.7551964e-11  0.99997188903  1.00002775664
-[phi] -2.2941536e+00 -5.6009608e-04 1.7010997e-04 -4.2252688e-02 3.9099621e-02
+[rho]        4096.00  1.00000000000  1.5780643e-10  0.99995477853  1.00004695629
+[phi] -2.2941536e+00 -5.6009608e-04 4.8642769e-04 -5.0895338e-02 5.9390115e-02
 
 Free energy density - timestep total fluid
-[fed]             10 -3.1541409019e-08 -3.1541409019e-08
+[fed]             10 -1.4283129743e-07 -1.4283129743e-07
 
 Momentum - x y z
-[total   ]  5.3634180e-14 -2.8865799e-15 -1.4536983e-15
-[fluid   ]  5.3634180e-14 -2.8865799e-15 -1.4536983e-15
+[total   ] -6.1388394e-14  1.3149204e-15  1.4094628e-15
+[fluid   ] -6.1388394e-14  1.3149204e-15  1.4094628e-15
 
 Velocity - x y z
-[minimum ] -1.5349217e-05 -1.7270731e-05 -1.8791915e-05
-[maximum ]  1.7342312e-05  1.6978872e-05  1.5340738e-05
+[minimum ] -3.3895446e-05 -3.8166839e-05 -3.7237684e-05
+[maximum ]  3.2864759e-05  3.9943851e-05  3.1744723e-05
 
 Completed cycle 10
 
@@ -122,27 +117,27 @@ Timer resolution: 1e-06 second
 
 Timer statistics
              Section:       tmin       tmax      total
-               Total:      0.057      0.057      0.057   0.057128 (1 call)
-      Time step loop:      0.005      0.006      0.054   0.005408 (10 calls)
-         Propagation:      0.001      0.001      0.006   0.000613 (10 calls)
-    Propagtn (krnl) :      0.001      0.001      0.006   0.000613 (10 calls)
-           Collision:      0.002      0.002      0.016   0.001630 (10 calls)
-   Collision (krnl) :      0.002      0.002      0.016   0.001629 (10 calls)
-       Lattice halos:      0.000      0.000      0.002   0.000248 (10 calls)
-       phi gradients:      0.000      0.000      0.004   0.000400 (10 calls)
-    phi grad (krnl) :      0.000      0.000      0.003   0.000266 (11 calls)
-           phi halos:      0.000      0.000      0.001   0.000132 (10 calls)
+               Total:      0.052      0.052      0.052   0.051628 (1 call)
+      Time step loop:      0.004      0.006      0.043   0.004324 (10 calls)
+         Propagation:      0.000      0.000      0.003   0.000328 (10 calls)
+    Propagtn (krnl) :      0.000      0.000      0.003   0.000327 (10 calls)
+           Collision:      0.001      0.002      0.015   0.001537 (10 calls)
+   Collision (krnl) :      0.001      0.002      0.015   0.001534 (10 calls)
+       Lattice halos:      0.000      0.001      0.005   0.000487 (10 calls)
+       phi gradients:      0.000      0.000      0.003   0.000272 (10 calls)
+    phi grad (krnl) :      0.000      0.000      0.002   0.000153 (11 calls)
+           phi halos:      0.000      0.000      0.001   0.000123 (10 calls)
             -> irecv:      0.000      0.000      0.000   0.000000 (21 calls)
-             -> pack:      0.000      0.000      0.002   0.000077 (21 calls)
+             -> pack:      0.000      0.000      0.001   0.000068 (21 calls)
             -> isend:      0.000      0.000      0.000   0.000000 (21 calls)
           -> waitall:      0.000      0.000      0.000   0.000000 (21 calls)
-           -> unpack:      0.000      0.000      0.002   0.000075 (21 calls)
-                 BBL:      0.000      0.000      0.000   0.000000 (10 calls)
-   Force calculation:      0.001      0.001      0.014   0.001405 (10 calls)
-   Phi force (krnl) :      0.001      0.001      0.011   0.001113 (10 calls)
-          phi update:      0.001      0.001      0.009   0.000878 (10 calls)
-     Advectn (krnl) :      0.000      0.000      0.004   0.000432 (10 calls)
- Advectn BCS (krnl) :      0.000      0.000      0.000   0.000044 (10 calls)
-Diagnostics / output:      0.000      0.001      0.001   0.000121 (10 calls)
-End time: Tue Apr 30 11:25:56 2024
+           -> unpack:      0.000      0.000      0.001   0.000063 (21 calls)
+                 BBL:      0.000      0.000      0.000   0.000001 (10 calls)
+   Force calculation:      0.000      0.001      0.005   0.000548 (10 calls)
+   Phi force (krnl) :      0.000      0.000      0.004   0.000381 (10 calls)
+          phi update:      0.001      0.001      0.009   0.000886 (10 calls)
+     Advectn (krnl) :      0.000      0.000      0.002   0.000195 (10 calls)
+ Advectn BCS (krnl) :      0.000      0.000      0.001   0.000067 (10 calls)
+Diagnostics / output:      0.000      0.001      0.001   0.000125 (10 calls)
+End time: Wed Jul 17 10:14:26 2024
 Ludwig finished normally.

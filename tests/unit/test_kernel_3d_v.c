@@ -6,7 +6,7 @@
  *
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2024 The Universiy of Edinburgh
+ *  (c) 2024 The University of Edinburgh
  *
  *****************************************************************************/
 
@@ -92,6 +92,8 @@ int test_kernel_3d_v(pe_t * pe) {
     assert(k3v.lim.jmax    == lim.jmax);
     assert(k3v.lim.kmin    == lim.kmin);
     assert(k3v.lim.kmax    == lim.kmax);
+
+    if (k3v.nhalo != nhalo) ifail = -1;
   }
 
   /* Vector length 2; only kindex0 is relevant */
@@ -102,6 +104,8 @@ int test_kernel_3d_v(pe_t * pe) {
 
     assert(k3v.kindex0 <= cs_index(cs, 1, 1-nhalo, 1-nhalo));
     assert(k3v.kindex0 % nsimdvl == 0);
+
+    if (k3v.kindex0 % nsimdvl != 0) ifail = -1;
   }
 
   /* Vector length 4; ditto ... */
@@ -112,6 +116,8 @@ int test_kernel_3d_v(pe_t * pe) {
 
     assert(k3v.kindex0 <= cs_index(cs, 1, 1-nhalo, 1-nhalo));
     assert(k3v.kindex0 % nsimdvl == 0);
+
+    if (k3v.kindex0 % nsimdvl != 0) ifail = -1;
   }
 
   /* Compile time vector length */
@@ -121,6 +127,8 @@ int test_kernel_3d_v(pe_t * pe) {
 
     assert(k3v.kindex0 <= cs_index(cs, 1, 1-nhalo, 1-nhalo));
     assert(k3v.kindex0 % NSIMDVL == 0);
+
+    if (k3v.kindex0 % NSIMDVL != 0) ifail = -1;
   }
 
   cs_free(cs);
@@ -280,7 +288,9 @@ __global__ void test_kernel_3d_v_coords_kernel(kernel_3d_v_t k3v, cs_t * cs) {
       int ic = icv[iv];
       int jc = jcv[iv];
       int kc = kcv[iv];
-      assert((k3v.kindex0 + kindex + iv) == cs_index(cs, ic, jc, kc));
+      int index = cs_index(cs, ic, jc, kc);
+      assert((k3v.kindex0 + kindex + iv) == index);
+      if ((k3v.kindex0 + kindex + iv)    != index) printf("Fail\n");
     }
   }
 
@@ -319,6 +329,7 @@ __global__ void test_kernel_3d_v_mask_kernel(kernel_3d_v_t k3v) {
 	int iny = (k3v.lim.jmin <= jc && jc <= k3v.lim.jmax);
 	int inz = (k3v.lim.kmin <= kc && kc <= k3v.lim.kmax);
 	assert(inx && iny && inz);
+	if ((inx && iny && inz) == 0) printf("Fail within mask\n");
       }
       else {
 	/* we should be outside ... */
@@ -327,6 +338,8 @@ __global__ void test_kernel_3d_v_mask_kernel(kernel_3d_v_t k3v) {
 	int outz = (k3v.lim.kmin > kc || kc > k3v.lim.kmax);
 	assert(outx == 0);
 	assert(outy || outz);
+	if (outx != 0) printf("Fail outx\n");
+	if ((outy || outz) == 0) printf("Fail without mask\n");
       }
     }
   }
@@ -359,7 +372,9 @@ __global__ void test_kernel_3d_v_cs_index_kernel(kernel_3d_v_t k3v, cs_t *cs) {
       int ic = icv[iv];
       int jc = jcv[iv];
       int kc = kcv[iv];
-      assert(indexv[iv] == cs_index(cs, ic, jc, kc));
+      int index = cs_index(cs, ic, jc, kc);
+      assert(indexv[iv] == index);
+      if (indexv[iv] != index) printf("Fail %2d %2d %2d\n", ic, jc, kc);
     }
   }
 

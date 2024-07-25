@@ -26,8 +26,8 @@ free_energy none
 viscosity 0.1
 viscosity_bulk 0.1
 
-isothermal_fluctuations on
-temperature 0.00002133333
+lb_fluctuations   yes
+temperature       0.00002133333
 
 ###############################################################################
 #

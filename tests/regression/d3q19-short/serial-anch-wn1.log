@@ -48,7 +48,7 @@ Wall anchoring w1:            2.0000000e-04
 
 Using Beris-Edwards solver:
 Rotational diffusion const =  2.5000000e+00
-LC fluctuations:           =  off
+LC fluctuations            =  off
 
 System properties
 ----------------
@@ -85,11 +85,6 @@ Ghost relaxation time:    1.00000e+00
 Hydrodynamics
 -------------
 Hydrodynamics: off
-
-Order parameter I/O
--------------------
-Order parameter I/O format:   
-I/O decomposition:            1 1 1
 
 Advection scheme order: 1
 

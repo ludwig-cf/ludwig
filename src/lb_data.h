@@ -7,7 +7,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2014-2022 The University of Edinburgh
+ *  (c) 2014-2024 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -26,7 +26,6 @@
 
 #include "io_impl.h"
 #include "io_event.h"
-#include "io_harness.h"  /* Scheduled for removal. Use io_impl.h */
 #include "halo_swap.h"
 
 /* Residual compile-time switches scheduled for removal */
@@ -53,6 +52,7 @@ typedef struct lb_data_s lb_t;
 struct lb_collide_param_s {
   int8_t isghost;                      /* switch for ghost modes */
   int8_t cv[27][3];
+  int8_t noise;                        /* switch */
   int nsite;
   int ndist;
   int nvel;
@@ -112,9 +112,6 @@ struct lb_data_s {
   lb_model_t model;      /* Current LB model information */
   halo_swap_t * halo;    /* halo swap driver */
 
-  /* io_info_t scheduled to be replaced. Use metadata types instead */
-  io_info_t * io_info;   /* Distributions */
-
   io_element_t ascii;    /* Per site ASCII information. */
   io_element_t binary;   /* Per site binary information. */
   io_metadata_t input;   /* Metadata for io implementation (input) */
@@ -162,8 +159,6 @@ __host__ int lb_memcpy(lb_t * lb, tdpMemcpyKind flag);
 __host__ int lb_collide_param_commit(lb_t * lb);
 __host__ int lb_halo(lb_t * lb);
 __host__ int lb_halo_swap(lb_t * lb, lb_halo_enum_t flag);
-__host__ int lb_io_info(lb_t * lb, io_info_t ** io_info);
-__host__ int lb_io_info_set(lb_t * lb, io_info_t * io_info, int fin, int fout);
 
 __host__ __device__ int lb_ndist(lb_t * lb, int * ndist);
 __host__ __device__ int lb_f(lb_t * lb, int index, int p, int n, double * f);

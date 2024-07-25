@@ -97,15 +97,13 @@ int build_update_map(cs_t * cs, colloids_info_t * cinfo, map_t * map) {
   double   cosine, mod;
 
   /* To set the wetting data in the map, we assume C, H zero at moment */
-  int ndata;
   double wet[2];
 
   assert(cs);
   assert(cinfo);
   assert(map);
 
-  map_ndata(map, &ndata);
-  assert(ndata <= 2);
+  assert(map->ndata <= 2);
 
   cs_nlocal(cs, nlocal);
   cs_nlocal_offset(cs, noffset);

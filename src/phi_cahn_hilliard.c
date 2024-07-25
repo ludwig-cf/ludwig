@@ -214,13 +214,10 @@ int phi_cahn_hilliard(phi_ch_t * pch, fe_t * fe, field_t * phi,
 		      hydro_t * hydro, map_t * map,
 		      noise_t * noise) {
   int nf;
-  int noise_phi = 0;
 
   assert(pch);
   assert(fe);
   assert(phi);
-
-  if (noise) noise_present(noise, NOISE_PHI, &noise_phi);
 
   field_nf(phi, &nf);
   assert(nf == 1);
@@ -238,7 +235,7 @@ int phi_cahn_hilliard(phi_ch_t * pch, fe_t * fe, field_t * phi,
     advflux_zero(pch->flux);
   }
 
-  if (noise_phi == 0) {
+  if (pch->info.noise == 0) {
     phi_ch_flux_mu1(pch, fe);
   }
   else {
@@ -276,13 +273,12 @@ int phi_cahn_hilliard(phi_ch_t * pch, fe_t * fe, field_t * phi,
 
   phi_ch_le_fix_fluxes(pch, nf);
 
-  /* TODO REPLACE 1/2 WITH MEANINGFUL SYMBOLS */
-  if (pch->info.conserve == 1) {
+  if (pch->info.conserve == PHI_CONSERVE_COMPENSATED_SUM) {
     phi_ch_update_conserve(pch, phi);
   }
   else {
     phi_ch_update_forward_step(pch, phi);
-    if (pch->info.conserve == 2) {
+    if (pch->info.conserve == PHI_CONSERVE_GLOBAL_SUBTRACT) {
       phi_ch_subtract_sum_phi_after_forward_step(pch, phi, map);
     }
   }

@@ -80,11 +80,6 @@ Viscosity (eta -ve phase):    6.2500000e-03
 Viscosity (eta +ve phase):    6.2500000e-01
 Composition limit (phistar):  1.0000000e+00
 
-Order parameter I/O
--------------------
-Order parameter I/O format:   
-I/O decomposition:            1 1 1
-
 Advection scheme order: 2
 Initialising droplet radius:      1.6000000e+01
 Initialising droplet amplitude:   1.0000000e+00
