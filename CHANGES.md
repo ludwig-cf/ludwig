@@ -8,11 +8,23 @@ version 0.22.0
   for lattice quantities. This change should be transparent in most
   cases. Old "ansi" parallel i/o restart files will no longer work
   if the there was more than one output file per step.
+  See e.g., https://ludwig.epcc.ed.ac.uk/outputs/fluid.html
+
+- In a related change, there is a slight change in the way porous
+  media files are read at start time. See, e.g.,
+  https://ludwig.epcc.ed.ac.uk/inputs/porous.html
 
 - Please use "lb_fluctuations" instead of "isothermal_fluctuations"
   in the input if you need fluctuations in Navier-Stokes.
 
-- Various code imporvements.
+- A lubrication correction between ellipsoids and plane walls has
+  been added. See https://ludwig.epcc.ed.ac.uk/inputs/walls.html
+
+- There has been a change to the config.mk file which involves the way
+  the tests are run: only the `"LAUNCH_MPIRUN_CMD` variable is now used.
+  See https://ludwig.epcc.ed.ac.uk/building/index.html
+
+- Various minor code improvements, and improvements in testing.
 
 
 version 0.21.0

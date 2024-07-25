@@ -1,6 +1,6 @@
 /*****************************************************************************
  *
- *  model.c
+ *  lb_data.c
  *
  *  This encapsulates data/operations related to distributions.
  *  However, the implementation of the distribution is exposed
@@ -26,8 +26,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "pe.h"
-#include "coords.h"
 #include "lb_data.h"
 
 #include "timer.h"
