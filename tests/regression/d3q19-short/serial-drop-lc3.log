@@ -59,6 +59,7 @@ Liquid crystal activity                  No
 
 Using Beris-Edwards solver:
 Rotational diffusion const =  5.0000000e-01
+LC fluctuations            =  off
 
 Liquid crystal droplet coupling parameters
 Isotropic/LC control gamma0 =  2.58600e+00
@@ -103,11 +104,6 @@ Ghost relaxation time:    1.00000e+00
 Hydrodynamics
 -------------
 Hydrodynamics: on
-
-Order parameter I/O
--------------------
-Order parameter I/O format:   
-I/O decomposition:            1 1 1
 
 Advection scheme order: 3
 Initialising phi in patches

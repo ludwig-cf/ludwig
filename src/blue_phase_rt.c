@@ -9,7 +9,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2009-2023 The University of Edinburgh
+ *  (c) 2009-2024 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -195,7 +195,7 @@ __host__ int blue_phase_init_rt(pe_t * pe, rt_t *rt,
 
   if (strcmp(method, "s7")  == 0) {
 
-    /* Check what is wanted for walls/colloids */ 
+    /* Check what is wanted for walls/colloids */
     blue_phase_rt_wall_anchoring(pe, rt, RT_FATAL, &fe_param.wall);
     blue_phase_rt_coll_anchoring(pe, rt, RT_FATAL, &fe_param.coll);
 
@@ -254,7 +254,7 @@ __host__ int blue_phase_init_rt(pe_t * pe, rt_t *rt,
     if (n == 1) {
       pe_info(pe, "Please replace lc_anchoring by lc_wall_anchoring and/or\n");
       pe_info(pe, "lc_coll_anchoring types\n");
-      pe_fatal(pe, "Please check input file and try agains.\n");
+      pe_fatal(pe, "Please check input file and try again.\n");
     }
 
     rt_string_parameter(rt, "lc_coll_anchoring", type, FILENAME_MAX);
@@ -320,7 +320,7 @@ __host__ int blue_phase_init_rt(pe_t * pe, rt_t *rt,
 
     if (strcmp(type, "normal") == 0) w2 = 0.0;
     if (strcmp(type, "fixed")  == 0) w2 = 0.0;
-      
+
     n =  rt_double_parameter(rt, "lc_anchoring_strength_colloid", &w1);
 
     if ( n == 1 ) {
@@ -384,6 +384,10 @@ __host__ int blue_phase_init_rt(pe_t * pe, rt_t *rt,
   pe_info(pe, "\n");
   pe_info(pe, "Using Beris-Edwards solver:\n");
 
+  /* Order parameter fluctuations */
+
+  rt_int_parameter(rt, "lc_noise", &be_param.noise);
+
   n = rt_double_parameter(rt, "lc_Gamma", &gamma);
 
   if (n == 0) {
@@ -394,6 +398,8 @@ __host__ int blue_phase_init_rt(pe_t * pe, rt_t *rt,
     be_param.xi = fe_param.xi;
     beris_edw_param_set(be, &be_param);
     pe_info(pe, "Rotational diffusion const = %14.7e\n", gamma);
+    pe_info(pe, "LC fluctuations            =  %s\n",
+	    (be_param.noise == 0) ? "off" : "on");
   }
 
   return 0;

@@ -26,8 +26,8 @@ periodicity 0_0_0
 
 viscosity 0.1
 
-isothermal_fluctuations on
-temperature 0.0000001
+lb_fluctuations   yes
+temperature       0.0000001
 
 ##############################################################################
 #

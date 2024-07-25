@@ -88,7 +88,7 @@ __host__ int grad_3d_27pt_solid_map_set(map_t * map) {
   /* We expect at most two wetting parameters; if present
    * first should be C, second H. Default to zero. */
 
-  map_ndata(map, &ndata);
+  ndata = map->ndata;
 
   if (ndata == 0) {
     /* Assume we are uniform from free energy */

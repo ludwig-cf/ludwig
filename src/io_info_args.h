@@ -2,13 +2,14 @@
  *
  *  io_info_args.h
  *
- *  This is onlu a small container.
+ *  This is a container to aggregate one lot of options for input, and
+ *  one for output, and a small number of other quantities.
  *
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2020 The University of Edinburgh
+ *  (c) 2020-2024 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -18,7 +19,6 @@
 #ifndef LUDWIG_IO_INFO_ARGS_H
 #define LUDWIG_IO_INFO_ARGS_H
 
-#include "pe.h"
 #include "io_options_rt.h"
 
 /* Specifies whether input or output is expected for given io type */
@@ -30,8 +30,6 @@ enum io_info_rw_enum {IO_INFO_NONE,
 
 typedef enum   io_info_rw_enum io_info_rw_enum_t;
 typedef struct io_info_args_s io_info_args_t;
-
-/* Container for run time arguments to allow io_info_t creation. */
 
 struct io_info_args_s {
   io_options_t input;            /* Input mode, format, ... */

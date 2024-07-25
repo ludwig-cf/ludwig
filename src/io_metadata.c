@@ -2,7 +2,7 @@
  *
  *  io_metadata.c
  *
- *  Lattice quantity i/o metadata. 
+ *  Lattice quantity i/o metadata.
  *
  *  Aggregate information on i/o, that is the run time options, the data
  *  element type, and the lattice structure, and provide a communicator.
@@ -11,7 +11,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2022-2023 The University of Edinburgh
+ *  (c) 2022-2024 The University of Edinburgh
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *
@@ -141,7 +141,7 @@ int io_metadata_finalise(io_metadata_t * meta) {
 
   assert(meta);
 
-  MPI_Comm_free(&meta->comm);
+  if (meta->comm) MPI_Comm_free(&meta->comm);
   *meta = (io_metadata_t) {0};
   meta->comm = MPI_COMM_NULL;
 
@@ -212,7 +212,7 @@ int io_metadata_from_json(cs_t * cs, const cJSON * json, io_metadata_t * m) {
 
   assert(cs);
   assert(json);
-  assert(cs->leopts.nplanes == 0); /* No exsiting information */
+  assert(cs->leopts.nplanes == 0); /* No existing information */
 
   if (m == NULL) {
     ifail = -1;
@@ -291,7 +291,7 @@ int io_metadata_write(const io_metadata_t * metadata,
  *
  *  This is ok for iogrid = {1,1,1}. Otherwise, the subfile_t
  *  component must be generated in a different way. This reflects a
- *  possible difference in the pe_t between writting and reading.
+ *  possible difference in the pe_t between writing and reading.
  *
  *  A new cs_t * is returned as part of the new io_metadata_t structure.
  *

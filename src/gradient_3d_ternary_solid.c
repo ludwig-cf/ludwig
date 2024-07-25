@@ -72,14 +72,13 @@ __global__ void grad_ternary_solid_kernel(kernel_3d_t k3d,
 
 __host__ int grad_3d_ternary_solid_map_set(map_t * map) {
 
-  int ndata;
+  int ndata = 0;
   assert(map);
 
+  ndata = map->ndata;
   static_solid.map = map;
 
   /* We expect exactly two wetting parameters h_1, h_2 */
-
-  map_ndata(map, &ndata);
 
   if (ndata == 0) {
     /* Assume uniform wetting */
@@ -151,9 +150,10 @@ __host__ int grad_3d_ternary_solid_d2(field_grad_t * fgrad) {
     kernel_3d_launch_param(k3d.kiterations, &nblk, &ntpb);
 
     tdpLaunchKernel(grad_ternary_solid_kernel, nblk, ntpb, 0, 0,
-		    k3d, fgrad->target, static_solid.map->target, static_solid);
+		    k3d, fgrad->target, static_solid.map->target,
+		    static_solid);
 
-    tdpDeviceSynchronize();
+    tdpAssert( tdpDeviceSynchronize() );
   }
 
   return 0;

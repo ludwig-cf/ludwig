@@ -5,7 +5,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2022-2023 The University of Edinburgh
+ *  (c) 2022-2024 The University of Edinburgh
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *
@@ -30,7 +30,7 @@ struct io_metadata_s {
   cs_limits_t limits;                /* Always local size with no halo */
   MPI_Comm parent;                   /* Cartesian communicator */
   MPI_Comm comm;                     /* Cartesian sub-communicator */
-  int iswriten;                      /* updated to true if file is writen */
+  int iswriten;                      /* updated to true if file is written */
 
   io_options_t options;
   io_element_t element;

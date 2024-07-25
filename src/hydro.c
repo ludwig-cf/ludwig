@@ -24,10 +24,6 @@
 #include "util.h"
 
 static int hydro_lees_edwards_parallel(hydro_t * obj);
-static int hydro_u_write(FILE * fp, int index, void * self);
-static int hydro_u_write_ascii(FILE * fp, int index, void * self);
-static int hydro_u_read(FILE * fp, int index, void * self);
-static int hydro_u_read_ascii(FILE * fp, int index, void * self);
 
 static __global__
 void hydro_field_set(hydro_t * hydro, double * field, double, double, double);
@@ -133,7 +129,6 @@ __host__ int hydro_free(hydro_t * obj) {
   tdpGetDeviceCount(&ndevice);
 
   if (ndevice > 0) tdpAssert(tdpFree(obj->target));
-  if (obj->info) io_info_free(obj->info);
 
   field_free(obj->eta);
   field_free(obj->force);
@@ -209,63 +204,6 @@ __host__ int hydro_halo_swap(hydro_t * obj, field_halo_enum_t flag) {
   assert(obj);
 
   field_halo_swap(obj->u, flag);
-
-  return 0;
-}
-
-/*****************************************************************************
- *
- *  hydro_init_io_info
- *
- *  There is no read for the velocity; this should come from the
- *  distribution.
- *
- *****************************************************************************/
-
-__host__ int hydro_init_io_info(hydro_t * obj, int grid[3], int form_in,
-				int form_out) {
-
-  io_info_args_t args = io_info_args_default();
-
-  assert(obj);
-  assert(grid);
-  assert(obj->info == NULL);
-
-  args.grid[X] = grid[X];
-  args.grid[Y] = grid[Y];
-  args.grid[Z] = grid[Z];
-
-  io_info_create(obj->pe, obj->cs, &args, &obj->info);
-  if (obj->info == NULL) pe_fatal(obj->pe, "io_info_create(hydro) failed\n");
-
-  io_info_set_name(obj->info, "Velocity field");
-  io_info_write_set(obj->info, IO_FORMAT_BINARY, hydro_u_write);
-  io_info_write_set(obj->info, IO_FORMAT_ASCII, hydro_u_write_ascii);
-  io_info_read_set(obj->info, IO_FORMAT_BINARY, hydro_u_read);
-  io_info_read_set(obj->info, IO_FORMAT_ASCII, hydro_u_read_ascii);
-
-  /* ASCII output size (see write_ascii) is 69 bytes */
-  io_info_set_bytesize(obj->info, IO_FORMAT_BINARY, NHDIM*sizeof(double));
-  io_info_set_bytesize(obj->info, IO_FORMAT_ASCII, 69);
-
-  io_info_format_set(obj->info, form_in, form_out);
-  io_info_metadata_filestub_set(obj->info, "vel");
-
-  return 0;
-}
-
-/*****************************************************************************
- *
- *  hydro_io_info
- *
- *****************************************************************************/
-
-__host__ int hydro_io_info(hydro_t * obj, io_info_t ** info) {
-
-  assert(obj);
-  assert(obj->info); /* Should have been initialised */
-
-  *info = obj->info;
 
   return 0;
 }
@@ -663,99 +601,6 @@ static int hydro_lees_edwards_parallel(hydro_t * obj) {
 
 /*****************************************************************************
  *
- *  hydro_u_write
- *
- *****************************************************************************/
-
-static int hydro_u_write(FILE * fp, int index, void * arg) {
-
-  int n;
-  double u[3];
-  hydro_t * obj = (hydro_t*) arg;
-
-  assert(fp);
-  assert(obj);
-
-  hydro_u(obj, index, u);
-  n = fwrite(u, sizeof(double), NHDIM, fp);
-  if (n != NHDIM) pe_fatal(obj->pe, "fwrite(hydro->u) failed\n");
-
-  return 0;
-}
-
-/*****************************************************************************
- *
- *  hydro_u_write_ascii
- *
- *****************************************************************************/
-
-static int hydro_u_write_ascii(FILE * fp, int index, void * arg) {
-
-  int n;
-  double u[3];
-  hydro_t * obj = (hydro_t *) arg;
-
-  assert(fp);
-  assert(obj);
-
-  hydro_u(obj, index, u);
-
-  n = fprintf(fp, "%22.15e %22.15e %22.15e\n", u[X], u[Y], u[Z]);
-
-  /* Expect total of 69 characters ... */
-  if (n != 69) pe_fatal(obj->pe, "fprintf(hydro->u) failed\n");
-
-  return 0;
-}
-
-/*****************************************************************************
- *
- *  hydro_u_read
- *
- *****************************************************************************/
-
-int hydro_u_read(FILE * fp, int index, void * self) {
-
-  int n;
-  double u[3];
-  hydro_t * obj = (hydro_t *) self;
-
-  assert(fp);
-  assert(obj);
-
-  n = fread(u, sizeof(double), NHDIM, fp);
-  if (n != NHDIM) pe_fatal(obj->pe, "fread(hydro->u) failed\n");
-
-  hydro_u_set(obj, index, u);
-
-  return 0;
-}
-
-/*****************************************************************************
- *
- *  hydro_u_read_ascii
- *
- *****************************************************************************/
-
-static int hydro_u_read_ascii(FILE * fp, int index, void * self) {
-
-  int n;
-  double u[3];
-  hydro_t * obj = (hydro_t *) self;
-
-  assert(fp);
-  assert(obj);
-
-  n = fscanf(fp, "%le %le %le", &u[X], &u[Y], &u[Z]);
-  if (n != NHDIM) pe_fatal(obj->pe, "fread(hydro->u) failed\n");
-
-  hydro_u_set(obj, index, u);
-
-  return 0;
-}
-
-/*****************************************************************************
- *
  *  hydro_u_gradient_tensor
  *
  *  Return the velocity gradient tensor w_ab = d_b u_a at
@@ -1095,27 +940,10 @@ __global__ void hydro_correct_kernel_v(kernel_3d_v_t k3v, hydro_t * hydro,
 
 int hydro_io_write(hydro_t * hydro, int timestep, io_event_t * event) {
 
-  /* For backwards compatibility, we currently allow old-style output */
-  /* Call to io_write_data() must be here, as only have hydro->info
-     for the old options (not u->info etc). This will go away with
-     a consistent impl. */
+  assert(hydro);
 
-  const io_metadata_t * rmeta = &hydro->rho->iometadata_out;
-  const io_metadata_t * umeta = &hydro->u->iometadata_out;
-
-  if (rmeta->options.mode == IO_MODE_MPIIO) {
-    field_io_write(hydro->rho, timestep, event);
-  }
-
-  if (umeta->options.mode == IO_MODE_MPIIO) {
-    field_io_write(hydro->u, timestep, event);
-  }
-  else {
-    /* Old style has "vel" only. */
-    char filename[BUFSIZ] = {0};
-    sprintf(filename, "%s-%8.8d", hydro->u->name, timestep);
-    io_write_data(hydro->info, filename, hydro);
-  }
+  field_io_write(hydro->rho, timestep, event);
+  field_io_write(hydro->u,   timestep, event);
 
   return 0;
 }
@@ -1130,22 +958,10 @@ int hydro_io_write(hydro_t * hydro, int timestep, io_event_t * event) {
 
 int hydro_io_read(hydro_t * hydro, int timestep, io_event_t * event) {
 
-  const io_metadata_t * rmeta = &hydro->rho->iometadata_in;
-  const io_metadata_t * umeta = &hydro->u->iometadata_in;
+  assert(hydro);
 
-  if (rmeta->options.mode == IO_MODE_MPIIO) {
-    field_io_read(hydro->rho, timestep, event);
-  }
-
-  if (umeta->options.mode == IO_MODE_MPIIO) {
-    field_io_read(hydro->u, timestep, event);
-  }
-  else {
-    /* Old style has "vel" only. */
-    char filename[BUFSIZ] = {0};
-    sprintf(filename, "%s-%8.8d", hydro->u->name, timestep);
-    io_read_data(hydro->info, filename, hydro);
-  }
+  field_io_read(hydro->rho, timestep, event);
+  field_io_read(hydro->u,   timestep, event);
 
   return 0;
 }

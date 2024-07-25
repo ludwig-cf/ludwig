@@ -72,11 +72,6 @@ Hydrodynamics
 -------------
 Hydrodynamics: on
 
-Order parameter I/O
--------------------
-Order parameter I/O format:   
-I/O decomposition:            1 1 1
-
 Advection scheme order: 3
 Gradient calculation: 3d_7pt_fluid
 Initialise standard aster

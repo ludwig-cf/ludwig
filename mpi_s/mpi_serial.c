@@ -17,7 +17,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2021-2022 The University of Edinburgh
+ *  (c) 2021-2024 The University of Edinburgh
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *
@@ -1400,7 +1400,7 @@ int MPI_File_open(MPI_Comm comm, const char * filename, int amode,
   if (fp == NULL) {
     printf("MPI_File_open: attempt to open %s mode %s failed\n", filename,
 	   fdmode);
-    exit(0);
+    return MPI_ERR_NO_SUCH_FILE;
   }
 
   *fh = mpi_file_handle_retain(mpi_info, fp);
@@ -1424,7 +1424,7 @@ int MPI_File_close(MPI_File * fh) {
 
   if (fp == NULL) {
     printf("MPI_File_close: invalid file handle\n");
-    exit(0);
+    return MPI_ERR_FILE;
   }
   else {
     fclose(fp);

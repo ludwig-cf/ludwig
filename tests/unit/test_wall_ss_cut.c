@@ -7,7 +7,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2022 The University of Edinburgh 
+ *  (c) 2022-2024 The University of Edinburgh
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *
  *****************************************************************************/
@@ -43,10 +43,11 @@ int test_wall_ss_cut_suite(void) {
     wall_t * wall = NULL;
 
     wall_param_t param = {.iswall = 1, .isboundary = {1,1,1}};
+    map_options_t mapopts = map_options_default();
     lb_data_options_t opts = lb_data_options_default();
 
     lb_data_create(pe, cs, &opts, &lb);
-    map_create(pe, cs, 1, &map);
+    map_create(pe, cs, &mapopts, &map);
     wall_create(pe, cs, map, lb, &wall);
     wall_commit(wall, &param);
 
@@ -55,14 +56,14 @@ int test_wall_ss_cut_suite(void) {
     test_wall_ss_cut_compute(pe, cs, wall);
 
     wall_free(wall);
-    map_free(map);
+    map_free(&map);
     lb_free(lb);
   }
 
   pe_info(pe, "PASS     ./unit/test_wall_ss_cut\n");
   cs_free(cs);
   pe_free(pe);
-  
+
   return 0;
 }
 
@@ -74,7 +75,7 @@ int test_wall_ss_cut_suite(void) {
 
 int test_wall_ss_cut_create(pe_t * pe, cs_t * cs, wall_t * wall) {
 
-  wall_ss_cut_t * wall_ss_cut = NULL; 
+  wall_ss_cut_t * wall_ss_cut = NULL;
   wall_ss_cut_options_t opts = {.epsilon = 0.1, .sigma = 0.2, .nu = 0.3,
                                 .hc = 0.4};
   assert(pe);
@@ -85,7 +86,7 @@ int test_wall_ss_cut_create(pe_t * pe, cs_t * cs, wall_t * wall) {
   assert(wall_ss_cut);
 
   wall_ss_cut_free(wall_ss_cut);
-  
+
   return 0;
 }
 
@@ -97,7 +98,7 @@ int test_wall_ss_cut_create(pe_t * pe, cs_t * cs, wall_t * wall) {
 
 int test_wall_ss_cut_single(pe_t * pe, cs_t * cs, wall_t * wall) {
 
-  wall_ss_cut_t * wall_ss_cut = NULL; 
+  wall_ss_cut_t * wall_ss_cut = NULL;
   wall_ss_cut_options_t opts = {.epsilon = 0.001,
                                 .sigma = 0.8,
 				.nu = 2.0,

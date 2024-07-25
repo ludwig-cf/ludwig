@@ -71,11 +71,6 @@ Hydrodynamics
 -------------
 Hydrodynamics: off
 
-Order parameter I/O
--------------------
-Order parameter I/O format:   
-I/O decomposition:            1 1 1
-
 Advection scheme order:  1 (default)
 Initialising phi as block of size 128.00 along the X axis
 Initialising psi to a uniform value psi0

@@ -89,6 +89,8 @@ int test_kernel_3d(pe_t * pe) {
     assert(k3d.lim.jmax    == lim.jmax);
     assert(k3d.lim.kmin    == lim.kmin);
     assert(k3d.lim.kmax    == lim.kmax);
+
+    if (k3d.nhalo != nhalo) ifail = -1;
   }
 
   /* kernel halo = (1, 1, 0) */
@@ -106,6 +108,8 @@ int test_kernel_3d(pe_t * pe) {
     assert(k3d.lim.jmax    == nlocal[Y] + 1);
     assert(k3d.lim.kmin    == 1);
     assert(k3d.lim.kmax    == nlocal[Z]);
+
+    if (k3d.nhalo != nhalo) ifail = -1;
   }
 
   /* kernel halo = (2, 2, 2) */
@@ -124,6 +128,8 @@ int test_kernel_3d(pe_t * pe) {
     assert(k3d.lim.jmax    == nlocal[Y] + 2);
     assert(k3d.lim.kmin    == -1);
     assert(k3d.lim.kmax    == nlocal[Z] + 2);
+
+    if (k3d.nhalo != nhalo) ifail = -1;
   }
 
   cs_free(cs);
@@ -295,6 +301,8 @@ __global__ void test_kernel_3d_ic_kernel(kernel_3d_t k3d) {
   for_simt_parallel(kindex, k3d.kiterations, 1) {
     int ic = kernel_3d_ic(&k3d, kindex);
     assert(k3d.lim.imin <= ic && ic <= k3d.lim.imax);
+    if (ic < k3d.lim.imin) printf("ic < imin (%2d %2d)\n", ic, k3d.lim.imin);
+    if (ic > k3d.lim.imax) printf("ic > imax (%2d %2d)\n", ic, k3d.lim.imax);
   }
 
   return;
@@ -313,6 +321,8 @@ __global__ void test_kernel_3d_jc_kernel(kernel_3d_t k3d) {
   for_simt_parallel(kindex, k3d.kiterations, 1) {
     int jc = kernel_3d_jc(&k3d, kindex);
     assert(k3d.lim.jmin <= jc && jc <= k3d.lim.jmax);
+    if (jc < k3d.lim.jmin) printf("jc < jmin (%2d %2d)\n", jc, k3d.lim.jmin);
+    if (jc > k3d.lim.jmax) printf("jc > jmax (%2d %2d)\n", jc, k3d.lim.jmax);
   }
 
   return;
@@ -331,6 +341,8 @@ __global__ void test_kernel_3d_kc_kernel(kernel_3d_t k3d) {
   for_simt_parallel(kindex, k3d.kiterations, 1) {
     int kc = kernel_3d_kc(&k3d, kindex);
     assert(k3d.lim.kmin <= kc && kc <= k3d.lim.kmax);
+    if (kc < k3d.lim.kmin) printf("kc < kmin (%2d %2d)\n", kc, k3d.lim.kmin);
+    if (kc > k3d.lim.kmax) printf("kc > kmax (%2d %2d)\n", kc, k3d.lim.kmax);
   }
 
   return;
@@ -354,6 +366,7 @@ __global__ void test_kernel_3d_cs_index_kernel(kernel_3d_t k3d, cs_t * cs) {
     {
       int index = cs_index(cs, ic, jc, kc);
       assert(index == i0);
+      if (index != i0) printf("Fail at %2d %2d %2d\n", ic, jc, kc);
     }
   }
 

@@ -8,7 +8,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2020-2022 The University of Edinburgh
+ *  (c) 2020-2024 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -24,9 +24,9 @@
 
 /* Defaults */
 
-#define IO_MODE_DEFAULT()             IO_MODE_SINGLE
+#define IO_MODE_DEFAULT()             IO_MODE_MPIIO
 #define IO_RECORD_FORMAT_DEFAULT()    IO_RECORD_BINARY
-#define IO_METADATA_VERSION_DEFAULT() IO_METADATA_SINGLE_V1
+#define IO_METADATA_VERSION_DEFAULT() IO_METADATA_V2
 #define IO_REPORT_DEFAULT()           0
 #define IO_ASYNCHRONOUS_DEFAULT()     0
 #define IO_COMPRESSION_LEVL_DEFAULT() 0
@@ -118,9 +118,6 @@ __host__ int io_options_mode_valid(io_mode_enum_t mode) {
 
   int valid = 0;
 
-  valid += (mode == IO_MODE_SINGLE);
-  valid += (mode == IO_MODE_MULTIPLE);
-  valid += (mode == IO_MODE_ANSI);
   valid += (mode == IO_MODE_MPIIO);
 
   return valid;
@@ -161,22 +158,8 @@ __host__ int io_options_metadata_version_valid(const io_options_t * options) {
 
   /* Should be consistent with mode */
 
-  switch (options->metadata_version) {
-
-  case IO_METADATA_SINGLE_V1:
-    valid = (options->mode == IO_MODE_SINGLE);
-    break;
-
-  case IO_METADATA_MULTI_V1:
-    valid = (options->mode == IO_MODE_MULTIPLE);
-    break;
-
-  case IO_METADATA_V2:
+  if (options->metadata_version == IO_METADATA_V2) {
     valid = (options->mode == IO_MODE_MPIIO);
-    break;
-
-  default:
-    ;
   }
 
   return valid;
@@ -194,33 +177,15 @@ __host__ io_options_t io_options_with_mode(io_mode_enum_t mode) {
 
   io_options_t options = io_options_default();
 
-  switch (mode) {
-  case IO_MODE_SINGLE:
-    options.mode             = IO_MODE_SINGLE;
-    options.iorformat        = IO_RECORD_BINARY;
-    options.metadata_version = IO_METADATA_SINGLE_V1;
-    /* otherwise defaults */
-    break;
-  case IO_MODE_MULTIPLE:
-    options.mode             = IO_MODE_MULTIPLE;
-    options.iorformat        = IO_RECORD_BINARY;
-    options.metadata_version = IO_METADATA_MULTI_V1;
-    /* otherwise defaults */
-    break;
-  case IO_MODE_ANSI:
-    options.mode             = IO_MODE_ANSI;
-    options.iorformat        = IO_RECORD_BINARY;
-    options.metadata_version = IO_METADATA_SINGLE_V1;
-    break;
-  case IO_MODE_MPIIO:
+  if (mode == IO_MODE_MPIIO) {
     options.mode             = IO_MODE_MPIIO;
     options.iorformat        = IO_RECORD_BINARY;
     options.metadata_version = IO_METADATA_V2;
     options.report           = 1;
     options.asynchronous     = 0;
     options.compression_levl = 0;
-    break;
-  default:
+  }
+  else {
     /* User error ... */
     options.mode             = IO_MODE_INVALID;
   }
@@ -277,22 +242,9 @@ __host__ const char * io_mode_to_string(io_mode_enum_t mode) {
 
   const char * str = NULL;
 
-  switch (mode) {
-  case IO_MODE_SINGLE:
-    str = "single";
-    break;
-  case IO_MODE_MULTIPLE:
-    str = "multiple";
-    break;
-  case IO_MODE_ANSI:
-    str = "ansi";
-    break;
-  case IO_MODE_MPIIO:
-    str = "mpiio";
-    break;
-  default:
-    str = "invalid";
-  }
+  str = "invalid";
+
+  if (mode == IO_MODE_MPIIO) str = "mpiio";
 
   return str;
 }
@@ -313,9 +265,6 @@ __host__ io_mode_enum_t io_mode_from_string(const char * str) {
   strncpy(value, str, BUFSIZ-1);
   util_str_tolower(value, strlen(value));
 
-  if (strcmp(value, "single")   == 0) mode = IO_MODE_SINGLE;
-  if (strcmp(value, "multiple") == 0) mode = IO_MODE_MULTIPLE;
-  if (strcmp(value, "ansi")     == 0) mode = IO_MODE_ANSI;
   if (strcmp(value, "mpiio")    == 0) mode = IO_MODE_MPIIO;
 
   return mode;

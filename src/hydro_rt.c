@@ -5,7 +5,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2018-2023 The University of Edinburgh
+ *  (c) 2018-2024 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -72,9 +72,6 @@ static int hydro_do_init(pe_t * pe, rt_t * rt, cs_t * cs, lees_edw_t * le,
   hydro_t * obj = NULL;
 
   char value[BUFSIZ] = "";
-  int io_grid[3] = {1, 1, 1};
-  int io_format_in  = IO_FORMAT_DEFAULT;
-  int io_format_out = IO_FORMAT_DEFAULT;
 
   assert(rt);
   assert(phydro);
@@ -92,7 +89,7 @@ static int hydro_do_init(pe_t * pe, rt_t * rt, cs_t * cs, lees_edw_t * le,
     }
     else if (strcmp(value, "hydro_u_halo_openmp") == 0) {
       haloscheme = FIELD_HALO_OPENMP;
-      pe_info(pe, "Hydro halo:    %s\n", "hydro_u_halo_openmp");    
+      pe_info(pe, "Hydro halo:    %s\n", "hydro_u_halo_openmp");
     }
     else if (strcmp(value, "hydro_u_halo_host") == 0) {
       haloscheme = FIELD_HALO_HOST;
@@ -120,17 +117,6 @@ static int hydro_do_init(pe_t * pe, rt_t * rt, cs_t * cs, lees_edw_t * le,
 
   hydro_create(pe, cs, le, &opts, &obj);
   assert(obj);
-
-  /* Old-style input (to be removed) */
-  rt_int_parameter_vector(rt, "default_io_grid", io_grid);
-  rt_string_parameter(rt, "vel_format", value, BUFSIZ);
-
-  if (strcmp(value, "ASCII") == 0) {
-    io_format_in = IO_FORMAT_ASCII;
-    io_format_out = IO_FORMAT_ASCII;
-  }
-
-  hydro_init_io_info(obj, io_grid, io_format_in, io_format_out);
 
   *phydro = obj;
 

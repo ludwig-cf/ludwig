@@ -6,7 +6,7 @@
  *  Edinburgh Parallel Computing Centre
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
- *  (c) 2010-2019 The University of Edinburgh
+ *  (c) 2010-2024 The University of Edinburgh
  *
  *****************************************************************************/
 
@@ -26,8 +26,15 @@
 typedef struct phi_ch_s phi_ch_t;
 typedef struct phi_ch_info_s phi_ch_info_t;
 
+typedef enum phi_sum_enum {
+  PHI_CONSERVE_DEFAULT            = 0,
+  PHI_CONSERVE_COMPENSATED_SUM    = 1,
+  PHI_CONSERVE_GLOBAL_SUBTRACT    = 2
+} phi_sum_enum_t;
+
 struct phi_ch_info_s {
   int conserve; /* 0 = normal; 1 = compensated sum */
+  int noise;    /* Order parameter noise switch */
 };
 
 struct phi_ch_s {

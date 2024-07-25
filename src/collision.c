@@ -174,6 +174,7 @@ __host__ int lb_collision_mrt(lb_t * lb, hydro_t * hydro, map_t * map,
 			      noise_t * noise, fe_t * fe, visc_t * visc) {
   int nlocal[3] = {0};
   fe_t * fetarget = NULL;
+  noise_t * noisetarget = NULL;
 
   assert(lb);
   assert(hydro);
@@ -192,12 +193,13 @@ __host__ int lb_collision_mrt(lb_t * lb, hydro_t * hydro, map_t * map,
 
     lb_collision_parameters_commit(lb, visc);
     if (fe) fe->func->target(fe, &fetarget);
+    if (noise) noisetarget = noise->target;
 
     TIMER_start(TIMER_COLLIDE_KERNEL);
 
     tdpLaunchKernel(lb_collision_mrt1, nblk, ntpb, 0, 0,
-		    k3v, lb->target, hydro->target, map->target, noise->target,
-		    fetarget);
+		    k3v, lb->target, hydro->target, map->target,
+		    noisetarget, fetarget);
 
     tdpAssert(tdpPeekAtLastError());
     tdpAssert(tdpDeviceSynchronize());
@@ -466,7 +468,7 @@ void lb_collision_mrt1_site(lb_t * lb, hydro_t * hydro, map_t * map,
     }
   }
 
-  if (noise->on[NOISE_RHO]) {
+  if (lb->param->noise) {
 
     double shat1[3][3];
     double ghat1[NVEL];
@@ -608,7 +610,6 @@ __host__ int lb_collision_binary(lb_t * lb, hydro_t * hydro, noise_t * noise,
   assert (NDIM == 3); /* NDIM = 2 warrants additional tests here. */
   assert(lb);
   assert(hydro);
-  assert(noise);
   assert(fe);
 
   cs_nlocal(lb->cs, nlocal);
@@ -627,7 +628,8 @@ __host__ int lb_collision_binary(lb_t * lb, hydro_t * hydro, noise_t * noise,
     TIMER_start(TIMER_COLLIDE_KERNEL);
 
     tdpLaunchKernel(lb_collision_mrt2, nblk, ntpb, 0, 0,
-		    k3v, lb->target, hydro->target, fe->target, noise->target);
+		    k3v, lb->target, hydro->target, fe->target,
+		    (noise) ? noise->target : NULL);
 
     tdpAssert(tdpPeekAtLastError());
     tdpAssert(tdpDeviceSynchronize());
@@ -867,7 +869,7 @@ __device__ void lb_collision_mrt2_site(lb_t * lb, hydro_t * hydro,
     }
   }
 
-  if (noise->on[NOISE_RHO]) {
+  if (lb->param->noise) {
 
     /* Not vectorised */
 
@@ -1021,12 +1023,9 @@ __device__ void lb_collision_mrt2_site(lb_t * lb, hydro_t * hydro,
  *
  *****************************************************************************/
 
- int lb_collision_stats_kt(lb_t * lb, noise_t * noise, map_t * map) {
+int lb_collision_stats_kt(lb_t * lb, map_t * map) {
 
-  int ic, jc, kc, index;
   int nlocal[3];
-  int n;
-  int status;
 
   double glocal[4];
   double gtotal[4];
@@ -1038,10 +1037,8 @@ __device__ void lb_collision_mrt2_site(lb_t * lb, hydro_t * hydro,
 
   assert(lb);
   assert(map);
-  assert(noise);
 
-  noise_present(noise, NOISE_RHO, &status);
-  if (status == 0) return 0;
+  if (lb->param->noise == 0) return 0;
 
   physics_ref(&phys);
   physics_kt(phys, &kt);
@@ -1053,11 +1050,12 @@ __device__ void lb_collision_mrt2_site(lb_t * lb, hydro_t * hydro,
   glocal[Z] = 0.0;
   glocal[3] = 0.0; /* volume of fluid */
 
-  for (ic = 1; ic <= nlocal[X]; ic++) {
-    for (jc = 1; jc <= nlocal[Y]; jc++) {
-      for (kc = 1; kc <= nlocal[Z]; kc++) {
+  for (int ic = 1; ic <= nlocal[X]; ic++) {
+    for (int jc = 1; jc <= nlocal[Y]; jc++) {
+      for (int kc = 1; kc <= nlocal[Z]; kc++) {
 
-	index = cs_index(lb->cs, ic, jc, kc);
+	int index = cs_index(lb->cs, ic, jc, kc);
+	int status = MAP_FLUID;
 	map_status(map, index, &status);
 	if (status != MAP_FLUID) continue;
 
@@ -1065,7 +1063,7 @@ __device__ void lb_collision_mrt2_site(lb_t * lb, hydro_t * hydro,
 	rrho = 1.0/rrho;
 	lb_1st_moment(lb, index, LB_RHO, gsite);
 
-	for (n = 0; n < 3; n++) {
+	for (int n = 0; n < 3; n++) {
 	  glocal[n] += gsite[n]*gsite[n]*rrho;
 	}
 
@@ -1082,7 +1080,7 @@ __device__ void lb_collision_mrt2_site(lb_t * lb, hydro_t * hydro,
   pe_mpi_comm(lb->pe, &comm);
   MPI_Reduce(glocal, gtotal, 4, MPI_DOUBLE, MPI_SUM, 0, comm);
 
-  for (n = 0; n < 3; n++) {
+  for (int n = 0; n < 3; n++) {
     gtotal[n] /= gtotal[3];
   }
 
@@ -1558,7 +1556,6 @@ __host__ __device__ int lb_nrelax_valid(lb_relaxation_enum_t nrelax) {
 __host__ int lb_collision_noise_var_set(lb_t * lb, noise_t * noise) {
 
   int p;
-  int noise_on = 0;
   double kt;
   double tau_s;
   double tau_b;
@@ -1567,11 +1564,8 @@ __host__ int lb_collision_noise_var_set(lb_t * lb, noise_t * noise) {
   physics_t * phys = NULL;
 
   assert(lb);
-  assert(noise);
 
-  noise_present(noise, NOISE_RHO, &noise_on);
-
-  if (noise_on) {
+  if (lb->param->noise) {
 
     physics_ref(&phys);
     physics_kt(phys, &kt);
