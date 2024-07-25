@@ -6,7 +6,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Groups and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2022 The University of Edinburgh
+ *  (c) 2022-2024 The University of Edinburgh
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *
@@ -117,7 +117,7 @@ int test_io_info_args_rt_input(pe_t * pe) {
     assert(args.input.report           == 0);
   }
 
-  rt_add_key_value(rt, "default_io_mode",   "multiple");
+  rt_add_key_value(rt, "default_io_mode",   "mpiio");
   rt_add_key_value(rt, "default_io_format", "ascii");
   rt_add_key_value(rt, "default_io_report", "yes");
 
@@ -126,26 +126,19 @@ int test_io_info_args_rt_input(pe_t * pe) {
     io_info_args_t args = io_info_args_default();
 
     io_info_args_rt_input(rt, RT_FATAL, "nostub", &args);
-    assert(args.input.mode              == IO_MODE_MULTIPLE);
+    assert(args.input.mode              == IO_MODE_MPIIO);
     assert(args.input.iorformat         == IO_RECORD_ASCII);
-    assert(args.input.metadata_version  == IO_METADATA_MULTI_V1);
+    assert(args.input.metadata_version  == IO_METADATA_V2);
     assert(args.input.report            == 1);
   }
 
-  /* Specific key stub: different from default keys */
-
-  rt_add_key_value(rt, "phi_input_io_mode",   "single");
-  rt_add_key_value(rt, "phi_input_io_format", "BINARY");
   rt_add_key_value(rt, "phi_input_io_report", "no");
 
   {
     io_info_args_t args = io_info_args_default();
 
     io_info_args_rt_input(rt, RT_FATAL, "phi", &args);
-    assert(args.input.mode             == IO_MODE_SINGLE);
-    assert(args.input.iorformat        == IO_RECORD_BINARY);
-    assert(args.input.metadata_version == IO_METADATA_SINGLE_V1);
-    assert(args.input.report           == 0);
+    assert(args.input.report == 0);
   }
 
   rt_free(rt);
@@ -180,7 +173,7 @@ int test_io_info_args_rt_output(pe_t * pe) {
   }
 
   /* Explicit default */
-  rt_add_key_value(rt, "default_io_mode",   "multiple");
+  rt_add_key_value(rt, "default_io_mode",   "mpiio");
   rt_add_key_value(rt, "default_io_format", "ascii");
   rt_add_key_value(rt, "default_io_report", "yes");
 
@@ -188,13 +181,13 @@ int test_io_info_args_rt_output(pe_t * pe) {
     io_info_args_t args = io_info_args_default();
 
     io_info_args_rt_output(rt, RT_FATAL, "q", &args);
-    assert(args.output.mode             == IO_MODE_MULTIPLE);
+    assert(args.output.mode             == IO_MODE_MPIIO);
     assert(args.output.iorformat        == IO_RECORD_ASCII);
     assert(args.output.report           == 1);
   }
 
   /* output stub */
-  rt_add_key_value(rt, "q_output_io_mode", "single");
+  rt_add_key_value(rt, "q_output_io_mode",   "mpiio");
   rt_add_key_value(rt, "q_output_io_format", "ascii");
   rt_add_key_value(rt, "q_output_io_report", "yes");
 
@@ -202,7 +195,7 @@ int test_io_info_args_rt_output(pe_t * pe) {
     io_info_args_t args = io_info_args_default();
 
     io_info_args_rt_output(rt, RT_FATAL, "q", &args);
-    assert(args.output.mode             == IO_MODE_SINGLE);
+    assert(args.output.mode             == IO_MODE_MPIIO);
     assert(args.output.iorformat        == IO_RECORD_ASCII);
     assert(args.output.report           == 1);
   }
@@ -237,7 +230,7 @@ int test_io_info_args_rt_iogrid(pe_t * pe) {
     assert(iogrid[2] == 4);
     ierr = 1 + ifail;
   }
-  
+
   /* Right */
   {
     int iogrid[3] = {0};

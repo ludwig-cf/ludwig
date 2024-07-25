@@ -39,7 +39,7 @@ Activity constant zeta2    =  0.0000000e+00
 
 Using Beris-Edwards solver:
 Rotational diffusion const =  3.3750000e-01
-LC fluctuations:           =  off
+LC fluctuations            =  off
 
 System properties
 ----------------
@@ -76,11 +76,6 @@ Ghost relaxation time:    1.00000e+00
 Hydrodynamics
 -------------
 Hydrodynamics: on
-
-Order parameter I/O
--------------------
-Order parameter I/O format:   
-I/O decomposition:            1 1 1
 
 Advection scheme order: 1
 Gradient calculation: 2d_5pt_fluid

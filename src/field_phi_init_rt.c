@@ -7,7 +7,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group
  *  and Edinburgh Parallel Computing Centre
  *
- *  (c) 2010-2023 The University of Edinburgh
+ *  (c) 2010-2024 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -18,7 +18,6 @@
 #include <math.h>
 #include <string.h>
 
-#include "io_harness.h"
 #include "field_phi_init_rt.h"
 
 #define  DEFAULT_SEED       13
@@ -43,10 +42,7 @@ int field_phi_init_rt(pe_t * pe, rt_t * rt, field_phi_info_t param,
 
   int p;
   char value[BUFSIZ];
-  char filestub[FILENAME_MAX];
   double radius;
-
-  io_info_t * iohandler = NULL;
 
   assert(pe);
   assert(rt);
@@ -168,23 +164,31 @@ int field_phi_init_rt(pe_t * pe, rt_t * rt, field_phi_info_t param,
     rt_double_parameter(rt, "phi_init_emulsion_d_centre", &d_centre);
     rt_double_parameter(rt, "phi_init_emulsion_amplitude", &phistar);
 
-    if (2.0*radius > d_centre + 5.0) pe_info(pe, "Overlapping droplets\n"); 
-    
-    pe_info(pe, "Intialising emulsion with %i droplets of radius %f\n", ndrops, radius);   
+    if (2.0*radius > d_centre + 5.0) pe_info(pe, "Overlapping droplets\n");
+
+    pe_info(pe, "Initialising emulsion with %i droplets of radius %f\n",
+	    ndrops, radius);
     pe_info(pe, "Centre to centre distance: %f\n",d_centre);
-    pe_info(pe, "Value of phi inside droplets: %0.2f\n",phistar); 
+    pe_info(pe, "Value of phi inside droplets: %0.2f\n",phistar);
 
     field_phi_init_emulsion(phi, param.xi0, radius, phistar, ndrops, d_centre);
   }
 
-  if (p != 0 && strcmp(value, "from_file") == 0) {
-    pe_info(pe, "Initial order parameter requested from file\n");
-    strcpy(filestub, "phi.init"); /* A default */
-    rt_string_parameter(rt, "phi_file_stub", filestub, FILENAME_MAX);
-    pe_info(pe, "Attempting to read phi from file: %s\n", filestub);
+  /* Default file name "phi-00000000.001-001" */
 
-    field_io_info(phi, &iohandler);
-    io_read_data(iohandler, filestub, phi);
+  if (p != 0 && strcmp(value, "from_file") == 0) {
+
+    int it = 0;
+    int ifail = 0;
+    io_event_t io_event = {0};
+
+    pe_info(pe, "Initial order parameter requested from file time %d\n", it);
+
+    ifail = field_io_read(phi, it, &io_event);
+
+    if (ifail != 0) {
+      pe_exit(pe, "Failed to read initial order parameter file\n");
+    }
   }
 
   return 0;

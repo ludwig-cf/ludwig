@@ -36,7 +36,7 @@
  *  Edinburgh Parallel Computing Centre
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
- *  (c) 2011-2019 The University of Edinburgh
+ *  (c) 2011-2024 The University of Edinburgh
  *
  *****************************************************************************/
 
@@ -72,7 +72,7 @@ __host__ int grad_2d_tomita_fluid_operator(lees_edw_t * le, field_grad_t * fg,
 __host__ int grad_2d_tomita_fluid_le(lees_edw_t * le, field_grad_t * fg,
 				     int nextra);
 
-__global__ void grad_cs_kernel(kernel_ctxt_t * ktx, field_grad_t * fgrad,
+__global__ void grad_cs_kernel(kernel_3d_t k3d, field_grad_t * fgrad,
 			       int xs, int ys);
 
 /*****************************************************************************
@@ -154,10 +154,7 @@ __host__ int grad_cs_compute(field_grad_t * fgrad, int nextra) {
 
   int nlocal[3];
   int xs, ys, zs;
-  dim3 nblk, ntpb;
   cs_t * cs;
-  kernel_info_t limits;
-  kernel_ctxt_t * ctxt = NULL;
 
   assert(fgrad);
   assert(fgrad->field);
@@ -167,24 +164,24 @@ __host__ int grad_cs_compute(field_grad_t * fgrad, int nextra) {
   cs_nlocal(cs, nlocal);
   cs_strides(cs, &xs, &ys, &zs);
 
-  limits.imin = 1 - nextra; limits.imax = nlocal[X] + nextra;
-  limits.jmin = 1 - nextra; limits.jmax = nlocal[Y] + nextra;
-  limits.kmin = 1;          limits.kmax = 1;
+  {
+    dim3 nblk = {};
+    dim3 ntpb = {};
+    cs_limits_t lim = {
+      .imin = 1 - nextra, .imax = nlocal[X] + nextra,
+      .jmin = 1 - nextra, .jmax = nlocal[Y] + nextra,
+      .kmin = 1,          .kmax = 1
+    };
+    kernel_3d_t k3d = kernel_3d(cs, lim);
 
-  kernel_ctxt_create(cs, 1, limits, &ctxt);
-  kernel_ctxt_launch_param(ctxt, &nblk, &ntpb);
+    kernel_3d_launch_param(k3d.kiterations, &nblk, &ntpb);
 
-  tdpLaunchKernel(grad_cs_kernel, nblk, ntpb, 0, 0, ctxt->target,
-		  fgrad->target, xs, ys);
+    tdpLaunchKernel(grad_cs_kernel, nblk, ntpb, 0, 0,
+		    k3d, fgrad->target, xs, ys);
 
-  /* tdpLaunchKernel(grad_cs_kernel,
-   *                 kernel_tdp_arg(ctxt),
-   *                 kernel_actual_arg(cs->const, fgrad->target, ...)); */
-
-  tdpAssert(tdpPeekAtLastError());
-  tdpAssert(tdpDeviceSynchronize());
-
-  kernel_ctxt_free(ctxt);
+    tdpAssert(tdpPeekAtLastError());
+    tdpAssert(tdpDeviceSynchronize());
+  }
 
   return 0;
 }
@@ -195,11 +192,10 @@ __host__ int grad_cs_compute(field_grad_t * fgrad, int nextra) {
  *
  *****************************************************************************/
 
-__global__ void grad_cs_kernel(kernel_ctxt_t * ktx, field_grad_t * fgrad,
+__global__ void grad_cs_kernel(kernel_3d_t k3d, field_grad_t * fgrad,
 			       int xs, int ys) {
 
-  int kindex;
-  int kiterations;
+  int kindex = 0;
 
   const double r1 = GRAD_WEIGHT_W1(GRAD_EPSILON);
   const double r2 = GRAD_WEIGHT_W2(GRAD_EPSILON);
@@ -207,27 +203,22 @@ __global__ void grad_cs_kernel(kernel_ctxt_t * ktx, field_grad_t * fgrad,
   const double w1 = DEL2_WEIGHT_W1(DEL2_EPSILON);
   const double w2 = DEL2_WEIGHT_W2(DEL2_EPSILON);
 
-  assert(ktx);
   assert(fgrad);
 
-  kiterations = kernel_iterations(ktx);
-
-  for_simt_parallel(kindex, kiterations, 1) {
-    int ic, jc, kc, index;
-    int n1;
+  for_simt_parallel(kindex, k3d.kiterations, 1) {
 
     field_t * __restrict__ f = fgrad->field;
 
-    ic = kernel_coords_ic(ktx, kindex);
-    jc = kernel_coords_jc(ktx, kindex);
-    kc = kernel_coords_kc(ktx, kindex);
-    assert(kc == 1);
-    index = kernel_coords_index(ktx, ic, jc, kc);
+    int ic = kernel_3d_ic(&k3d, kindex);
+    int jc = kernel_3d_jc(&k3d, kindex);
+    int kc = 1;
+    int index = kernel_3d_cs_index(&k3d, ic, jc, kc);
+
 
     /* for each order parameter */
-    for (n1 = 0; n1 < f->nf; n1++) {
+    for (int n1 = 0; n1 < f->nf; n1++) {
 
-      fgrad->grad[addr_rank2(f->nsites, f->nf, NVECTOR, index, n1, X)] = 
+      fgrad->grad[addr_rank2(f->nsites, f->nf, NVECTOR, index, n1, X)] =
 	+ r2*f->data[addr_rank1(f->nsites, f->nf, index + xs - ys, n1)]
 	- r2*f->data[addr_rank1(f->nsites, f->nf, index - xs - ys, n1)]
 	+ r1*f->data[addr_rank1(f->nsites, f->nf, index + xs     , n1)]
@@ -235,7 +226,7 @@ __global__ void grad_cs_kernel(kernel_ctxt_t * ktx, field_grad_t * fgrad,
 	+ r2*f->data[addr_rank1(f->nsites, f->nf, index + xs + ys, n1)]
 	- r2*f->data[addr_rank1(f->nsites, f->nf, index - xs + ys, n1)];
 
-      fgrad->grad[addr_rank2(f->nsites, f->nf, NVECTOR, index, n1, Y)] = 
+      fgrad->grad[addr_rank2(f->nsites, f->nf, NVECTOR, index, n1, Y)] =
 	+ r2*f->data[addr_rank1(f->nsites, f->nf, index - xs + ys, n1)]
 	- r2*f->data[addr_rank1(f->nsites, f->nf, index - xs - ys, n1)]
 	+ r1*f->data[addr_rank1(f->nsites, f->nf, index      + ys, n1)]
@@ -246,7 +237,7 @@ __global__ void grad_cs_kernel(kernel_ctxt_t * ktx, field_grad_t * fgrad,
       fgrad->grad[addr_rank2(f->nsites, f->nf, NVECTOR, index, n1, Z)] = 0.0;
 
       /* delsq */
-      fgrad->delsq[addr_rank1(f->nsites, f->nf, index, n1)] = 
+      fgrad->delsq[addr_rank1(f->nsites, f->nf, index, n1)] =
 	+ w1*f->data[addr_rank1(f->nsites, f->nf, index + xs,      n1)]
 	+ w1*f->data[addr_rank1(f->nsites, f->nf, index - xs,      n1)]
 	+ w1*f->data[addr_rank1(f->nsites, f->nf, index      + ys, n1)]

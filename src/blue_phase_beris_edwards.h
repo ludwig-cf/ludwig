@@ -8,7 +8,7 @@
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *
- *  (c) 2009-2020 The University of Edinburgh
+ *  (c) 2009-2024 The University of Edinburgh
  *
  *****************************************************************************/
 
@@ -30,6 +30,7 @@ typedef struct beris_edw_param_s beris_edw_param_t;
 struct beris_edw_param_s {
   double xi;     /* Effective aspect ratio (from relevant free energy) */
   double gamma;  /* Rotational diffusion constant */
+  int    noise;  /* Noise switch */
   double var;    /* Noise variance */
 
   double tmatrix[3][3][NQAB];  /* Constant noise tensor */

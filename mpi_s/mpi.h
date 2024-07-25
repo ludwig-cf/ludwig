@@ -9,7 +9,7 @@
  *
  *  From an idea appearing in LAMMPS.
  *
- *  (c) 2022 The University of Edinburgh
+ *  (c) 2022-2024 The University of Edinburgh
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *
@@ -53,9 +53,14 @@ typedef intmax_t MPI_Offset;
 
 /* Defined constants (see Annex A.2) */
 
-/* Return codes */
+/* Return codes (add as required) */
 
-enum return_codes {MPI_SUCCESS};
+enum return_codes {
+  MPI_SUCCESS = 0,               /* Success */
+  MPI_ERR_FILE,                  /* Bad file handle */
+  MPI_ERR_NO_SUCH_FILE,          /* File does not exist */
+  MPI_ERR_LASTCODE               /* Must be last */
+};
 
 /* Assorted constants */
 
@@ -151,6 +156,7 @@ enum mpi_order_enum {MPI_ORDER_C, MPI_ORDER_FORTRAN};
 #define MPI_MODE_APPEND          256
 
 #define MPI_MAX_DATAREP_STRING   128   /* E.g., "native" */
+
 
 /* Interface */
 

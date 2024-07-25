@@ -157,11 +157,12 @@ static int test_build_update_map_sph(pe_t * pe, cs_t * cs, double a0,
   int ifail = 0;
   int ncell[3] = {8, 8, 8};
 
+  map_options_t opts = map_options_default();
   map_t * map = NULL;
   colloid_t * pc = NULL;
   colloids_info_t * cinfo = NULL;
 
-  map_create(pe, cs, 0, &map);
+  map_create(pe, cs, &opts, &map);
 
   colloids_info_create(pe, cs, ncell, &cinfo);
   colloids_info_map_init(cinfo);
@@ -194,7 +195,7 @@ static int test_build_update_map_sph(pe_t * pe, cs_t * cs, double a0,
   }
 
   colloids_info_free(cinfo);
-  map_free(map);
+  map_free(&map);
 
   return ifail;
 }
@@ -212,11 +213,12 @@ static int test_build_update_map_ell(pe_t * pe, cs_t * cs, const double abc[3],
   int ifail = 0;
   int ncell[3] = {8, 8, 8};
 
+  map_options_t opts = map_options_default();
   map_t * map = NULL;
   colloid_t * pc = NULL;
   colloids_info_t * cinfo = NULL;
 
-  map_create(pe, cs, 0, &map);
+  map_create(pe, cs, &opts, &map);
 
   colloids_info_create(pe, cs, ncell, &cinfo);
   colloids_info_map_init(cinfo);
@@ -251,7 +253,7 @@ static int test_build_update_map_ell(pe_t * pe, cs_t * cs, const double abc[3],
   }
 
   colloids_info_free(cinfo);
-  map_free(map);
+  map_free(&map);
 
   return ifail;
 }
@@ -271,6 +273,7 @@ static int test_build_update_links_sph(pe_t * pe, cs_t * cs, double a0,
   int ifail = 0;
   int ncell[3] = {8, 8, 8};
 
+  map_options_t opts = map_options_default();
   map_t * map = NULL;
   lb_model_t lb = {0};
   colloids_info_t * cinfo = NULL;
@@ -278,7 +281,7 @@ static int test_build_update_links_sph(pe_t * pe, cs_t * cs, double a0,
   colloids_info_create(pe, cs, ncell, &cinfo);
   colloids_info_map_init(cinfo);
 
-  map_create(pe, cs, 0, &map);
+  map_create(pe, cs, &opts, &map);
   lb_model_create(nvel, &lb);
 
   {
@@ -308,7 +311,7 @@ static int test_build_update_links_sph(pe_t * pe, cs_t * cs, double a0,
     MPI_Comm comm = MPI_COMM_NULL;
     colloid_t * pc = NULL;
 
-    /* Remmeber to run through all halo images ... */
+    /* Remember to run through all halo images ... */
     colloids_info_all_head(cinfo, &pc);
     for (; pc; pc = pc->nextall) {
       colloid_link_t * link = pc->lnk;
@@ -322,7 +325,7 @@ static int test_build_update_links_sph(pe_t * pe, cs_t * cs, double a0,
   }
 
   lb_model_free(&lb);
-  map_free(map);
+  map_free(&map);
   colloids_info_free(cinfo);
 
   return ifail;

@@ -7,7 +7,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2012-2023 The University of Edinburgh
+ *  (c) 2012-2024 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -95,6 +95,9 @@ int test_psi_solver_sor_create(pe_t * pe) {
     psi_solver_sor_free(&sor);
     assert(sor == NULL);
   }
+
+  psi_free(&psi);
+  cs_free(cs);
 
   return ifail;
 }
@@ -191,6 +194,9 @@ int test_psi_solver_sor_var_epsilon_create(pe_t * pe) {
     psi_solver_sor_free(&sor);
     assert(sor == NULL);
   }
+
+  psi_free(&psi);
+  cs_free(cs);
 
   return ifail;
 }

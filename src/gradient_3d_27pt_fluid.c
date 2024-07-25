@@ -13,7 +13,7 @@
  *
  *  d_x phi = [phi(ic+1, j, k) - phi(ic-1, j, k)] / 2*9
  *  for all j = jc-1,jc,jc+1, and k = kc-1,kc,kc+1
- * 
+ *
  *  d_y phi = [phi(i ,jc+1,k ) - phi(i ,jc-1,k )] / 2*9
  *  for all i = ic-1,ic,ic+1 and k = kc-1,kc,kc+1
  *
@@ -36,7 +36,7 @@
  *  Edinburgh Parallel Computing Centre
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
- *  (c) 2010-2016 The University of Edinburgh
+ *  (c) 2010-2024 The University of Edinburgh
  *
  *****************************************************************************/
 
@@ -61,7 +61,7 @@ __host__ int grad_3d_27pt_fluid_le(lees_edw_t * le, field_grad_t * fg,
 __host__ int grad_3d_27pt_dab_le_correct(lees_edw_t * le, field_grad_t * df);
 __host__ int grad_3d_27pt_fluid_dab_compute(lees_edw_t * le, field_grad_t * df);
 
-__global__ void grad_3d_27pt_kernel(kernel_ctxt_t * ktx, int nf, int ys,
+__global__ void grad_3d_27pt_kernel(kernel_3d_t k3d, int nf, int ys,
 				    lees_edw_t * le,
 				    grad_enum_t type,
 				    field_t * f,
@@ -179,28 +179,31 @@ __host__ int grad_3d_27pt_fluid_operator(cs_t * cs, lees_edw_t * le,
 					 int nextra, grad_enum_t type) {
   int nlocal[3];
   int xs, ys, zs;
-  dim3 nblk, ntpb;
   lees_edw_t * letarget = NULL;
-  kernel_info_t limits;
-  kernel_ctxt_t * ctxt = NULL;
 
   lees_edw_nlocal(le, nlocal);
   lees_edw_strides(le, &xs, &ys, &zs);
   lees_edw_target(le, &letarget);
 
-  limits.imin = 1 - nextra; limits.imax = nlocal[X] + nextra;
-  limits.jmin = 1 - nextra; limits.jmax = nlocal[Y] + nextra;
-  limits.kmin = 1 - nextra; limits.kmax = nlocal[Z] + nextra;
+  {
+    dim3 nblk = {};
+    dim3 ntpb = {};
+    cs_limits_t lim = {
+      .imin = 1 - nextra, .imax = nlocal[X] + nextra,
+      .jmin = 1 - nextra, .jmax = nlocal[Y] + nextra,
+      .kmin = 1 - nextra, .kmax = nlocal[Z] + nextra
+    };
+    kernel_3d_t k3d = kernel_3d(cs, lim);
 
-  kernel_ctxt_create(cs, 1, limits, &ctxt);
-  kernel_ctxt_launch_param(ctxt, &nblk, &ntpb);
+    kernel_3d_launch_param(k3d.kiterations, &nblk, &ntpb);
 
-  tdpLaunchKernel(grad_3d_27pt_kernel, nblk, ntpb, 0, 0,
-		  ctxt->target, fg->field->nf, ys, letarget, type,
-		  fg->field->target, fg->target);
-  tdpDeviceSynchronize();
+    tdpLaunchKernel(grad_3d_27pt_kernel, nblk, ntpb, 0, 0,
+		    k3d, fg->field->nf, ys, letarget, type,
+		    fg->field->target, fg->target);
 
-  kernel_ctxt_free(ctxt);
+    tdpAssert( tdpPeekAtLastError() );
+    tdpAssert( tdpDeviceSynchronize() );
+  }
 
   return 0;
 }
@@ -213,27 +216,22 @@ __host__ int grad_3d_27pt_fluid_operator(cs_t * cs, lees_edw_t * le,
  *
  *****************************************************************************/
 
-__global__ void grad_3d_27pt_kernel(kernel_ctxt_t * ktx, int nf, int ys,
+__global__ void grad_3d_27pt_kernel(kernel_3d_t k3d, int nf, int ys,
 				    lees_edw_t * le,
 				    grad_enum_t type,
 				    field_t * f,
 				    field_grad_t * fgrad) {
 
-  int kindex;
-  int kiterations;
+  int kindex = 0;
   const double r9 = (1.0/9.0);
 
-  assert(ktx);
   assert(le);
   assert(type == GRAD_DEL2 || type == GRAD_DEL4);
   assert(f);
   assert(fgrad);
 
-  kiterations = kernel_iterations(ktx);
+  for_simt_parallel(kindex, k3d.kiterations, 1) {
 
-  for_simt_parallel(kindex, kiterations, 1) {
-
-    int n;
     int ic, jc, kc;
     int icm1, icp1;
     int index, indexm1, indexp1;
@@ -254,18 +252,18 @@ __global__ void grad_3d_27pt_kernel(kernel_ctxt_t * ktx, int nf, int ys,
       del2 = fgrad->delsq_delsq;
     }
 
-    ic = kernel_coords_ic(ktx, kindex);
-    jc = kernel_coords_jc(ktx, kindex);
-    kc = kernel_coords_kc(ktx, kindex);
+    ic = kernel_3d_ic(&k3d, kindex);
+    jc = kernel_3d_jc(&k3d, kindex);
+    kc = kernel_3d_kc(&k3d, kindex);
 
-    index = kernel_coords_index(ktx, ic, jc, kc);
+    index = kernel_3d_cs_index(&k3d, ic, jc, kc);
 
     icm1 = lees_edw_ic_to_buff(le, ic, -1);
     icp1 = lees_edw_ic_to_buff(le, ic, +1);
     indexm1 = lees_edw_index(le, icm1, jc, kc);
     indexp1 = lees_edw_index(le, icp1, jc, kc);
 
-    for (n = 0; n < nf; n++) {
+    for (int n = 0; n < nf; n++) {
       /* Stencil for dx */
       grad[addr_rank2(f->nsites, nf, 3, index, n, X)] = 0.5*r9*
 	(+ field[addr_rank1(f->nsites, nf, (indexp1-ys-1), n)]
@@ -1072,4 +1070,3 @@ __host__ int grad_3d_27pt_dab_le_correct(lees_edw_t * le, field_grad_t * df) {
 
   return 0;
 }
-

@@ -8,7 +8,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2010-2023 The University of Edinburgh
+ *  (c) 2010-2024 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -25,19 +25,19 @@
 #include "advection_s.h"
 #include "leslie_ericksen.h"
 
-__global__ static void leslie_update_kernel(kernel_ctxt_t * ktx,
+__global__ static void leslie_update_kernel(kernel_3d_t k3d,
 					    fe_polar_t * fe,
 					    field_t * fp,
 					    hydro_t * hydro,
 					    advflux_t * flux,
 					    leslie_param_t param);
 
-__global__ static void leslie_self_advection_kernel(kernel_ctxt_t * ktx,
+__global__ static void leslie_self_advection_kernel(kernel_3d_t k3d,
 						    field_t * p,
 						    hydro_t * hydro,
 						    double swim);
 
-__device__ static void leslie_u_gradient_tensor(kernel_ctxt_t * ktx,
+__device__ static void leslie_u_gradient_tensor(const kernel_3d_t * k3d,
 						hydro_t * hydro,
 						int ic, int jc, int kc,
 						double w[3][3]);
@@ -121,20 +121,19 @@ __host__ int leslie_ericksen_update(leslie_ericksen_t * obj, hydro_t * hydro) {
 
   {
     /* Update driver */
-    dim3 nblk, ntpb;
-    kernel_info_t limits = {1, nlocal[X], 1, nlocal[Y], 1, nlocal[Z]};
-    kernel_ctxt_t * ctxt = NULL;
+    dim3 nblk = {};
+    dim3 ntpb = {};
+    cs_limits_t lim = {1, nlocal[X], 1, nlocal[Y], 1, nlocal[Z]};
+    kernel_3d_t k3d = kernel_3d(obj->cs, lim);
 
-    kernel_ctxt_create(obj->cs, 1, limits, &ctxt);
-    kernel_ctxt_launch_param(ctxt, &nblk, &ntpb);
+    kernel_3d_launch_param(k3d.kiterations, &nblk, &ntpb);
 
     tdpLaunchKernel(leslie_update_kernel, nblk, ntpb, 0, 0,
-		    ctxt->target, obj->fe->target, obj->p->target,
+		    k3d, obj->fe->target, obj->p->target,
 		    hydro->target, flux->target, obj->param);
+
     tdpAssert(tdpPeekAtLastError());
     tdpAssert(tdpDeviceSynchronize());
-
-    kernel_ctxt_free(ctxt);
   }
 
   advflux_free(flux);
@@ -151,29 +150,25 @@ __host__ int leslie_ericksen_update(leslie_ericksen_t * obj, hydro_t * hydro) {
  *
  *****************************************************************************/
 
-__global__ static void leslie_update_kernel(kernel_ctxt_t * ktx,
+__global__ static void leslie_update_kernel(kernel_3d_t k3d,
 					    fe_polar_t * fe,
 					    field_t * fp,
 					    hydro_t * hydro,
 					    advflux_t * flux,
 					    leslie_param_t param) {
   int kindex = 0;
-  int kiterations = 0;
   const double dt = 1.0;
 
-  assert(ktx);
   assert(fe);
   assert(fp);
   assert(flux);
 
-  kiterations = kernel_iterations(ktx);
+  for_simt_parallel(kindex, k3d.kiterations, 1)  {
 
-  for_simt_parallel(kindex, kiterations, 1)  {
-
-    int ic    = kernel_coords_ic(ktx, kindex);
-    int jc    = kernel_coords_jc(ktx, kindex);
-    int kc    = kernel_coords_kc(ktx, kindex);
-    int index = kernel_coords_index(ktx, ic, jc, kc);
+    int ic    = kernel_3d_ic(&k3d, kindex);
+    int jc    = kernel_3d_jc(&k3d, kindex);
+    int kc    = kernel_3d_kc(&k3d, kindex);
+    int index = kernel_3d_cs_index(&k3d, ic, jc, kc);
 
     double p[3] = {0};
     double h[3] = {0};          /* molecular field (vector) */
@@ -183,7 +178,7 @@ __global__ static void leslie_update_kernel(kernel_ctxt_t * ktx,
 
     field_vector(fp, index, p);
     fe_polar_mol_field(fe, index, h);
-    if (hydro) leslie_u_gradient_tensor(ktx, hydro, ic, jc, kc, w);
+    if (hydro) leslie_u_gradient_tensor(&k3d, hydro, ic, jc, kc, w);
 
     /* Note that the convection for Leslie Ericksen is that
      * w_ab = d_a u_b, which is the transpose of what the
@@ -231,25 +226,21 @@ __global__ static void leslie_update_kernel(kernel_ctxt_t * ktx,
  *
  *****************************************************************************/
 
-__global__ static void leslie_self_advection_kernel(kernel_ctxt_t * ktx,
+__global__ static void leslie_self_advection_kernel(kernel_3d_t k3d,
 						    field_t * p,
 						    hydro_t * hydro,
 						    double swim) {
   int kindex = 0;
-  int kiterations = 0;
 
-  assert(ktx);
   assert(p);
   assert(hydro);
 
-  kiterations = kernel_iterations(ktx);
+  for_simt_parallel(kindex, k3d.kiterations, 1) {
 
-  for_simt_parallel(kindex, kiterations, 1) {
-
-    int ic    = kernel_coords_ic(ktx, kindex);
-    int jc    = kernel_coords_jc(ktx, kindex);
-    int kc    = kernel_coords_kc(ktx, kindex);
-    int index = kernel_coords_index(ktx, ic, jc, kc);
+    int ic    = kernel_3d_ic(&k3d, kindex);
+    int jc    = kernel_3d_jc(&k3d, kindex);
+    int kc    = kernel_3d_kc(&k3d, kindex);
+    int index = kernel_3d_cs_index(&k3d, ic, jc, kc);
     double p3[3] = {0};
     double u3[3] = {0};
 
@@ -292,20 +283,18 @@ __host__ int leslie_ericksen_self_advection(leslie_ericksen_t * obj,
 
   if (fabs(obj->param.swim) > 0.0) {
 
-    dim3 nblk, ntpb;
-    kernel_info_t limits = {1, nlocal[X], 1, nlocal[Y], 1, nlocal[Z]};
-    kernel_ctxt_t * ctxt = NULL;
+    dim3 nblk = {};
+    dim3 ntpb = {};
+    cs_limits_t lim = {1, nlocal[X], 1, nlocal[Y], 1, nlocal[Z]};
+    kernel_3d_t k3d = kernel_3d(obj->cs, lim);
 
-    kernel_ctxt_create(obj->cs, 1, limits, &ctxt);
-    kernel_ctxt_launch_param(ctxt, &nblk, &ntpb);
+    kernel_3d_launch_param(k3d.kiterations, &nblk, &ntpb);
 
     tdpLaunchKernel(leslie_self_advection_kernel, nblk, ntpb, 0, 0,
-		    ctxt->target, obj->p->target, hydro->target,
-		    obj->param.swim);
+		    k3d, obj->p->target, hydro->target, obj->param.swim);
+
     tdpAssert(tdpPeekAtLastError());
     tdpAssert(tdpDeviceSynchronize());
-
-    kernel_ctxt_free(ctxt);
   }
 
   return 0;
@@ -322,14 +311,14 @@ __host__ int leslie_ericksen_self_advection(leslie_ericksen_t * obj,
  *
  *****************************************************************************/
 
-__device__ static void leslie_u_gradient_tensor(kernel_ctxt_t * ktx,
+__device__ static void leslie_u_gradient_tensor(const kernel_3d_t * k3d,
 						hydro_t * hydro,
 						int ic, int jc, int kc,
 						double w[3][3]) {
   assert(hydro);
 
-  int m1 = kernel_coords_index(ktx, ic - 1, jc, kc);
-  int p1 = kernel_coords_index(ktx, ic + 1, jc, kc);
+  int m1 = kernel_3d_cs_index(k3d, ic - 1, jc, kc);
+  int p1 = kernel_3d_cs_index(k3d, ic + 1, jc, kc);
 
   w[X][X] = 0.5*(hydro->u->data[addr_rank1(hydro->nsite, NHDIM, p1, X)] -
 		 hydro->u->data[addr_rank1(hydro->nsite, NHDIM, m1, X)]);
@@ -338,8 +327,8 @@ __device__ static void leslie_u_gradient_tensor(kernel_ctxt_t * ktx,
   w[Z][X] = 0.5*(hydro->u->data[addr_rank1(hydro->nsite, NHDIM, p1, Z)] -
 		 hydro->u->data[addr_rank1(hydro->nsite, NHDIM, m1, Z)]);
 
-  m1 = kernel_coords_index(ktx, ic, jc - 1, kc);
-  p1 = kernel_coords_index(ktx, ic, jc + 1, kc);
+  m1 = kernel_3d_cs_index(k3d, ic, jc - 1, kc);
+  p1 = kernel_3d_cs_index(k3d, ic, jc + 1, kc);
 
   w[X][Y] = 0.5*(hydro->u->data[addr_rank1(hydro->nsite, NHDIM, p1, X)] -
 		 hydro->u->data[addr_rank1(hydro->nsite, NHDIM, m1, X)]);
@@ -348,8 +337,8 @@ __device__ static void leslie_u_gradient_tensor(kernel_ctxt_t * ktx,
   w[Z][Y] = 0.5*(hydro->u->data[addr_rank1(hydro->nsite, NHDIM, p1, Z)] -
 		 hydro->u->data[addr_rank1(hydro->nsite, NHDIM, m1, Z)]);
 
-  m1 = kernel_coords_index(ktx, ic, jc, kc - 1);
-  p1 = kernel_coords_index(ktx, ic, jc, kc + 1);
+  m1 = kernel_3d_cs_index(k3d, ic, jc, kc - 1);
+  p1 = kernel_3d_cs_index(k3d, ic, jc, kc + 1);
 
   w[X][Z] = 0.5*(hydro->u->data[addr_rank1(hydro->nsite, NHDIM, p1, X)] -
 		 hydro->u->data[addr_rank1(hydro->nsite, NHDIM, m1, X)]);

@@ -7,7 +7,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2010-2023 The University of Edinburgh
+ *  (c) 2010-2024 The University of Edinburgh
  *
  *  Contributing authors:
  *    Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -26,7 +26,6 @@
 #include "free_energy.h"
 #include "field.h"
 #include "field_grad.h"
-#include "io_harness.h"
 
 #include "lc_anchoring.h"
 
@@ -153,9 +152,9 @@ void fe_lc_str_anti_v(fe_lc_t * fe, int index, double s[3][3][NSIMDVL]);
 
 __host__ __device__
 void fe_lc_compute_h_v(fe_lc_t * fe,
-		       double q[3][3][NSIMDVL], 
+		       double q[3][3][NSIMDVL],
 		       double dq[3][3][3][NSIMDVL],
-		       double dsq[3][3][NSIMDVL], 
+		       double dsq[3][3][NSIMDVL],
 		       double h[3][3][NSIMDVL]);
 __host__ __device__
 void fe_lc_compute_stress_v(fe_lc_t * fe,
@@ -185,4 +184,3 @@ __host__ int fe_lc_scalar_ops(double q[3][3], double qs[NQAB]);
 
 
 #endif
- 

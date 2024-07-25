@@ -49,7 +49,6 @@ mobility 1.25
 
 fd_gradient_calculation 3d_27pt_solid
 fd_advection_scheme_order 1
-fd_phi_fluctuations 1
 
 ###############################################################################
 #

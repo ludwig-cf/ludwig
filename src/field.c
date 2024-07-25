@@ -33,18 +33,12 @@
 #include "pe.h"
 #include "coords.h"
 #include "leesedwards.h"
-#include "io_harness.h"
 
 #include "timer.h"
 #include "util.h"
 #include "field.h"
 
-static int field_write(FILE * fp, int index, void * self);
-static int field_write_ascii(FILE * fp, int index, void * self);
-static int field_read(FILE * fp, int index, void * self);
-static int field_read_ascii(FILE * fp, int index, void * self);
 static int field_data_touch(field_t * field);
-
 static int field_leesedwards_parallel(field_t * obj);
 
 __host__ int field_init(field_t * obj, int nhcomm, lees_edw_t * le);
@@ -184,7 +178,6 @@ __host__ int field_free(field_t * obj) {
   }
 
   if (obj->data) free(obj->data);
-  if (obj->info) io_info_free(obj->info);
 
   field_halo_free(&obj->h);
 
@@ -329,61 +322,6 @@ __host__ __device__ int field_nf(field_t * obj, int * nf) {
 
   return 0;
 }
-
-/*****************************************************************************
- *
- *  field_init_io_info
- *
- *****************************************************************************/
-
-__host__ int field_init_io_info(field_t * obj, int grid[3], int form_in,
-				int form_out) {
-
-  io_info_args_t args = io_info_args_default();
-
-  assert(obj);
-  assert(obj->info == NULL);
-
-  args.grid[X] = grid[X];
-  args.grid[Y] = grid[Y];
-  args.grid[Z] = grid[Z];
-
-  io_info_create(obj->pe, obj->cs, &args, &obj->info);
-  if (obj->info == NULL) pe_fatal(obj->pe, "io_info_create(field) failed\n");
-
-  io_info_set_name(obj->info, obj->name);
-  io_info_write_set(obj->info, IO_FORMAT_BINARY, field_write);
-  io_info_write_set(obj->info, IO_FORMAT_ASCII, field_write_ascii);
-  io_info_read_set(obj->info, IO_FORMAT_BINARY, field_read);
-  io_info_read_set(obj->info, IO_FORMAT_ASCII, field_read_ascii);
-
-  /* ASCII format size is 23 bytes per element plus a '\n' */
-  io_info_set_bytesize(obj->info, IO_FORMAT_BINARY, obj->nf*sizeof(double));
-  io_info_set_bytesize(obj->info, IO_FORMAT_ASCII, (obj->nf*23 + 1));
-
-  io_info_format_set(obj->info, form_in, form_out);
-  io_info_metadata_filestub_set(obj->info, obj->name);
-
-  return 0;
-}
-
-/*****************************************************************************
- *
- *  field_io_info
- *
- *****************************************************************************/
-
-__host__ int field_io_info(field_t * obj, io_info_t ** info) {
-
-  assert(obj);
-  assert(obj->info);
-  assert(info);
-
-  *info = obj->info;
-
-  return 0;
-}
-
 
 /*****************************************************************************
  *
@@ -969,86 +907,6 @@ int field_scalar_array_set(field_t * obj, int index, const double * array) {
 
 /*****************************************************************************
  *
- *  field_read
- *
- *****************************************************************************/
-
-static int field_read(FILE * fp, int index, void * self) {
-
-  int n;
-  double array[NQAB];              /* Largest field currently expected */
-  field_t * obj = (field_t*) self;
-
-  assert(fp);
-  assert(obj);
-  assert(obj->nf <= NQAB);
-
-  n = fread(array, sizeof(double), obj->nf, fp);
-  if (n != obj->nf) {
-    pe_fatal(obj->pe, "fread(field) failed at index %d", index);
-  }
-
-  field_scalar_array_set(obj, index, array);
-
-  return 0;
-}
-
-/*****************************************************************************
- *
- *  field_read_ascii
- *
- *****************************************************************************/
-
-static int field_read_ascii(FILE * fp, int index, void * self) {
-
-  int n, nread;
-  double array[NQAB];                /* Largest currently expected */
-  field_t * obj =  (field_t*) self;
-
-  assert(fp);
-  assert(obj);
-  assert(obj->nf <= NQAB);
-
-  for (n = 0; n < obj->nf; n++) {
-    nread = fscanf(fp, "%le", array + n);
-    if (nread != 1) {
-      pe_fatal(obj->pe, "fscanf(field) failed at index %d\n", index);
-    }
-  }
-
-  field_scalar_array_set(obj, index, array);
-
-  return 0;
-}
-
-/*****************************************************************************
- *
- *  field_write
- *
- *****************************************************************************/
-
-static int field_write(FILE * fp, int index, void * self) {
-
-  int n;
-  double array[NQAB];               /* Largest currently expected */
-  field_t * obj =  (field_t*) self;
-
-  assert(fp);
-  assert(obj);
-  assert(obj->nf <= NQAB);
-
-  field_scalar_array(obj, index, array);
-
-  n = fwrite(array, sizeof(double), obj->nf, fp);
-  if (n != obj->nf) {
-    pe_fatal(obj->pe, "fwrite(field) failed at index %d\n", index);
-  }
-
-  return 0;
-}
-
-/*****************************************************************************
- *
  *  field_write_buf
  *
  *  Per-lattice site binary write.
@@ -1226,40 +1084,6 @@ int field_io_aggr_unpack(field_t * field, const io_aggregator_t * aggr) {
       if (iasc) field_read_buf_ascii(field, index, aggr->buf + offset);
       if (ibin) field_read_buf(field, index, aggr->buf + offset);
     }
-  }
-
-  return 0;
-}
-
-
-/*****************************************************************************
- *
- *  field_write_ascii
- *
- *****************************************************************************/
-
-static int field_write_ascii(FILE * fp, int index, void * self) {
-
-  int n, nwrite;
-  double array[NQAB];               /* Largest currently expected */
-  field_t * obj =  (field_t*) self;
-
-  assert(fp);
-  assert(obj);
-  assert(obj->nf <= NQAB);
-
-  field_scalar_array(obj, index, array);
-
-  for (n = 0; n < obj->nf; n++) {
-    nwrite = fprintf(fp, "%22.15e ", array[n]);
-    if (nwrite != 23) {
-      pe_fatal(obj->pe, "fprintf(%s) failed at index %d\n", obj->name, index);
-    }
-  }
-
-  nwrite = fprintf(fp, "\n");
-  if (nwrite != 1) {
-    pe_fatal(obj->pe, "fprintf(%s) failed at index %d\n", obj->name, index);
   }
 
   return 0;
@@ -1822,33 +1646,23 @@ int field_halo_free(field_halo_t * h) {
 
 int field_io_write(field_t * field, int timestep, io_event_t * event) {
 
+  int ifail = 0;
+  io_impl_t * io = NULL;
+  char filename[BUFSIZ] = {0};
   const io_metadata_t * meta = &field->iometadata_out;
 
   /* Metadata */
   if (meta->iswriten == 0) {
-    int ifail = io_metadata_write(meta, field->name, event->extra_name,
-				  event->extra_json);
+    ifail = io_metadata_write(meta, field->name, event->extra_name,
+			      event->extra_json);
     if (ifail == 0) field->iometadata_out.iswriten = 1;
   }
 
-  /* old ANSI */
-  if (meta->options.mode != IO_MODE_MPIIO) {
-    char filename[BUFSIZ] = {0};
-    sprintf(filename, "%s-%8.8d", field->name, timestep);
-    io_write_data(field->info, filename, field);
-  }
+  io_subfile_name(&meta->subfile, field->name, timestep, filename, BUFSIZ);
+  ifail = io_impl_create(meta, &io);
+  assert(ifail == 0);
 
-  /* MPIIO only at the moment */
-
-  if (meta->options.mode == IO_MODE_MPIIO) {
-
-    io_impl_t * io = NULL;
-    char filename[BUFSIZ] = {0};
-
-    io_subfile_name(&meta->subfile, field->name, timestep, filename, BUFSIZ);
-    io_impl_create(meta, &io);  /* CAN FAIL in principle */
-    assert(io);
-
+  if (ifail == 0) {
     io_event_record(event, IO_EVENT_AGGR);
     field_memcpy(field, tdpMemcpyDeviceToHost);
     field_io_aggr_pack(field, io->aggr);
@@ -1864,7 +1678,7 @@ int field_io_write(field_t * field, int timestep, io_event_t * event) {
     io_event_report(event, meta, field->name);
   }
 
-  return 0;
+  return ifail;
 }
 
 /*****************************************************************************
@@ -1875,40 +1689,23 @@ int field_io_write(field_t * field, int timestep, io_event_t * event) {
 
 int field_io_read(field_t * field, int timestep, io_event_t * event) {
 
-  assert(field);
-  assert(event);
-
+  int ifail = 0;
+  io_impl_t * io = NULL;
+  char filename[BUFSIZ] = {0};
   const io_metadata_t * meta = &field->iometadata_in;
 
-  /* old ANSI */
-  if (field->opts.iodata.input.mode != IO_MODE_MPIIO) {
-    char filename[BUFSIZ] = {0};
-    sprintf(filename, "%s-%8.8d", field->name, timestep);
-    io_read_data(field->info, filename, field);
-  }
+  io_subfile_name(&meta->subfile, field->name, timestep, filename, BUFSIZ);
 
-  /* MPIIO only at the moment */
+  ifail = io_impl_create(meta, &io);
+  assert(ifail == 0);
 
-  if (meta->options.mode == IO_MODE_MPIIO) {
-
-    io_impl_t * io = NULL;
-    char filename[BUFSIZ] = {0};
-
-    io_subfile_name(&meta->subfile, field->name, timestep, filename, BUFSIZ);
-
-    io_impl_create(meta, &io);  /* CAN FAIL */
-    assert(io);
-
+  if (ifail == 0) {
     io->impl->read(io, filename);
-
     field_io_aggr_unpack(field, io->aggr);
-
-    /* REPORT HERE >>>>> */
-
     io->impl->free(&io);
   }
 
-  return 0;
+  return ifail;
 }
 
 /*****************************************************************************

@@ -5,7 +5,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2021-2022 The University of Edinburgh
+ *  (c) 2021-2024 The University of Edinburgh
  *
  *  Contributions:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -38,14 +38,14 @@ struct phi_stats_s {
 __host__ int cahn_stats_reduce(phi_ch_t * pch, field_t * obj, map_t * map,
 			       phi_stats_t * stats,  int root, MPI_Comm comm);
 
-__global__ void cahn_stats_kahan_sum_kernel(kernel_ctxt_t * ktx, field_t * phi,
+__global__ void cahn_stats_kahan_sum_kernel(kernel_3d_t k3d, field_t * phi,
 					    map_t * map, phi_stats_t * stats);
-__global__ void cahn_stats_klein_sum_kernel(kernel_ctxt_t * ktx, field_t * phi,
+__global__ void cahn_stats_klein_sum_kernel(kernel_3d_t k3d, field_t * phi,
 					    field_t * csum, map_t * map,
 					    phi_stats_t * stats);
-__global__ void cahn_stats_var_kernel(kernel_ctxt_t * ktx, field_t * phi,
+__global__ void cahn_stats_var_kernel(kernel_3d_t k3d, field_t * phi,
 				      map_t * map, phi_stats_t * stats);
-__global__ void cahn_stats_min_kernel(kernel_ctxt_t * ktx, field_t * phi,
+__global__ void cahn_stats_min_kernel(kernel_3d_t k3d, field_t * phi,
 				      map_t * map, phi_stats_t * stats);
 
 /*****************************************************************************
@@ -126,10 +126,7 @@ __host__ int cahn_stats_reduce(phi_ch_t * pch, field_t * phi,
   phi_stats_t local = {0};
   phi_stats_t * stats_d = NULL;
 
-  int nlocal[3];
-  dim3 nblk, ntpb;
-  kernel_info_t limits;
-  kernel_ctxt_t * ctxt = NULL;
+  int nlocal[3] = {0};
 
   assert(pch);
   assert(phi);
@@ -137,40 +134,43 @@ __host__ int cahn_stats_reduce(phi_ch_t * pch, field_t * phi,
   assert(stats);
 
   cs_nlocal(pch->cs, nlocal);
-  
-  limits.imin = 1; limits.imax = nlocal[X];
-  limits.jmin = 1; limits.jmax = nlocal[Y];
-  limits.kmin = 1; limits.kmax = nlocal[Z];
-
-  kernel_ctxt_create(pch->cs, 1, limits, &ctxt);
-  kernel_ctxt_launch_param(ctxt, &nblk, &ntpb);
 
   /* Initialise device values */
   tdpAssert(tdpMalloc((void **) &stats_d, sizeof(phi_stats_t)));
   tdpAssert(tdpMemcpy(stats_d, stats, sizeof(phi_stats_t),
 		      tdpMemcpyHostToDevice));
 
-  if (pch->info.conserve) {
-    tdpLaunchKernel(cahn_stats_klein_sum_kernel, nblk, ntpb, 0, 0,
-		    ctxt->target, phi->target, pch->csum->target, map->target,
-		    stats_d);
+  {
+    dim3 nblk = {};
+    dim3 ntpb = {};
+    cs_limits_t lim = {1, nlocal[X], 1, nlocal[Y], 1, nlocal[Z]};
+    kernel_3d_t k3d = kernel_3d(pch->cs, lim);
+
+    kernel_3d_launch_param(k3d.kiterations, &nblk, &ntpb);
+
+    if (pch->info.conserve) {
+      tdpLaunchKernel(cahn_stats_klein_sum_kernel, nblk, ntpb, 0, 0,
+		      k3d, phi->target, pch->csum->target, map->target,
+		      stats_d);
+      tdpAssert(tdpPeekAtLastError());
+    }
+    else {
+      tdpLaunchKernel(cahn_stats_kahan_sum_kernel, nblk, ntpb, 0, 0,
+		      k3d, phi->target, map->target, stats_d);
+      tdpAssert(tdpPeekAtLastError());
+    }
+
+    tdpLaunchKernel(cahn_stats_var_kernel, nblk, ntpb, 0, 0,
+		    k3d, phi->target, map->target, stats_d);
     tdpAssert(tdpPeekAtLastError());
-  }
-  else {
-    tdpLaunchKernel(cahn_stats_kahan_sum_kernel, nblk, ntpb, 0, 0,
-		    ctxt->target, phi->target, map->target, stats_d);
+
+    tdpLaunchKernel(cahn_stats_min_kernel, nblk, ntpb, 0, 0,
+		    k3d, phi->target, map->target, stats_d);
     tdpAssert(tdpPeekAtLastError());
+
+    tdpAssert(tdpDeviceSynchronize());
   }
 
-  tdpLaunchKernel(cahn_stats_var_kernel, nblk, ntpb, 0, 0,
-		  ctxt->target, phi->target, map->target, stats_d);
-  tdpAssert(tdpPeekAtLastError());
-
-  tdpLaunchKernel(cahn_stats_min_kernel, nblk, ntpb, 0, 0,
-		  ctxt->target, phi->target, map->target, stats_d);
-  tdpAssert(tdpPeekAtLastError());
-
-  tdpAssert(tdpDeviceSynchronize());
   tdpAssert(tdpMemcpy(&local, stats_d, sizeof(phi_stats_t),
 		      tdpMemcpyDeviceToHost));
 
@@ -209,7 +209,6 @@ __host__ int cahn_stats_reduce(phi_ch_t * pch, field_t * phi,
   MPI_Reduce(&local.max, &stats->max, 1, MPI_DOUBLE, MPI_MAX, root, comm);
   MPI_Reduce(&local.vol, &stats->vol, 1, MPI_DOUBLE, MPI_SUM, root, comm);
 
-  kernel_ctxt_free(ctxt);
   tdpFree(stats_d);
 
   return 0;
@@ -223,34 +222,26 @@ __host__ int cahn_stats_reduce(phi_ch_t * pch, field_t * phi,
  *
  *****************************************************************************/
 
-__global__ void cahn_stats_kahan_sum_kernel(kernel_ctxt_t * ktx, field_t * phi,
+__global__ void cahn_stats_kahan_sum_kernel(kernel_3d_t k3d, field_t * phi,
 					    map_t * map, phi_stats_t * stats) {
-  int kindex;
-  int tid;
-  int kiterations;
+  int kindex = 0;
+  int tid = threadIdx.x;
   __shared__ kahan_t phib[TARGET_MAX_THREADS_PER_BLOCK];
 
-  assert(ktx);
   assert(phi);
-
-  kiterations = kernel_iterations(ktx);
-
-  tid = threadIdx.x;
 
   phib[tid].sum = 0.0;
   phib[tid].cs  = 0.0;
 
-  for_simt_parallel(kindex, kiterations, 1) {
+  for_simt_parallel(kindex, k3d.kiterations, 1) {
 
-    int ic, jc, kc;
-    int index;
     int status = 0;
 
-    ic = kernel_coords_ic(ktx, kindex);
-    jc = kernel_coords_jc(ktx, kindex);
-    kc = kernel_coords_kc(ktx, kindex);
+    int ic = kernel_3d_ic(&k3d, kindex);
+    int jc = kernel_3d_jc(&k3d, kindex);
+    int kc = kernel_3d_kc(&k3d, kindex);
 
-    index = cs_index(phi->cs, ic, jc, kc);
+    int index = kernel_3d_cs_index(&k3d, ic, jc, kc);
     map_status(map, index, &status);
 
     if (status == MAP_FLUID) {
@@ -293,36 +284,28 @@ __global__ void cahn_stats_kahan_sum_kernel(kernel_ctxt_t * ktx, field_t * phi,
  *
  *****************************************************************************/
 
-__global__ void cahn_stats_klein_sum_kernel(kernel_ctxt_t * ktx, field_t * phi,
+__global__ void cahn_stats_klein_sum_kernel(kernel_3d_t k3d, field_t * phi,
 					    field_t * csum, map_t * map,
 					    phi_stats_t * stats) {
-  int kindex;
-  int tid;
-  __shared__ int kiterations;
+  int kindex = 0;
+  int tid = threadIdx.x;
   __shared__ klein_t phib[TARGET_MAX_THREADS_PER_BLOCK];
 
-  assert(ktx);
   assert(phi);
-
-  kiterations = kernel_iterations(ktx);
-
-  tid = threadIdx.x;
 
   phib[tid].sum = 0.0;
   phib[tid].cs  = 0.0;
   phib[tid].ccs = 0.0;
 
-  for_simt_parallel(kindex, kiterations, 1) {
+  for_simt_parallel(kindex, k3d.kiterations, 1) {
 
-    int ic, jc, kc;
-    int index;
     int status = 0;
-    
-    ic = kernel_coords_ic(ktx, kindex);
-    jc = kernel_coords_jc(ktx, kindex);
-    kc = kernel_coords_kc(ktx, kindex);
 
-    index = cs_index(phi->cs, ic, jc, kc);
+    int ic = kernel_3d_ic(&k3d, kindex);
+    int jc = kernel_3d_jc(&k3d, kindex);
+    int kc = kernel_3d_kc(&k3d, kindex);
+
+    int index = kernel_3d_cs_index(&k3d, ic, jc, kc);
     map_status(map, index, &status);
 
     if (status == MAP_FLUID) {
@@ -335,7 +318,7 @@ __global__ void cahn_stats_klein_sum_kernel(kernel_ctxt_t * ktx, field_t * phi,
   }
 
   __syncthreads();
-  
+
   if (tid == 0) {
     klein_t sum = klein_zero();
 
@@ -367,34 +350,27 @@ __global__ void cahn_stats_klein_sum_kernel(kernel_ctxt_t * ktx, field_t * phi,
  *
  *****************************************************************************/
 
-__global__ void cahn_stats_var_kernel(kernel_ctxt_t * ktx, field_t * phi,
+__global__ void cahn_stats_var_kernel(kernel_3d_t k3d, field_t * phi,
 				      map_t * map, phi_stats_t * stats) {
-  int kindex;
-  int tid;
-  __shared__ int kiterations;
+  int kindex = 0;
+  int tid = threadIdx.x;
   __shared__ double bvar[TARGET_MAX_THREADS_PER_BLOCK];
 
-  assert(ktx);
   assert(phi);
   assert(map);
   assert(stats);
 
-  kiterations = kernel_iterations(ktx);
-
-  tid = threadIdx.x;
   bvar[tid] = 0.0;
 
-  for_simt_parallel(kindex, kiterations, 1) {
+  for_simt_parallel(kindex, k3d.kiterations, 1) {
 
-    int ic, jc, kc;
-    int index;
     int status = 0;
 
-    ic = kernel_coords_ic(ktx, kindex);
-    jc = kernel_coords_jc(ktx, kindex);
-    kc = kernel_coords_kc(ktx, kindex);
+    int ic = kernel_3d_ic(&k3d, kindex);
+    int jc = kernel_3d_jc(&k3d, kindex);
+    int kc = kernel_3d_kc(&k3d, kindex);
 
-    index = cs_index(phi->cs, ic, jc, kc);
+    int index = kernel_3d_cs_index(&k3d, ic, jc, kc);
     map_status(map, index, &status);
 
     if (status == MAP_FLUID) {
@@ -428,37 +404,29 @@ __global__ void cahn_stats_var_kernel(kernel_ctxt_t * ktx, field_t * phi,
  *
  *****************************************************************************/
 
-__global__ void cahn_stats_min_kernel(kernel_ctxt_t * ktx, field_t * phi,
+__global__ void cahn_stats_min_kernel(kernel_3d_t k3d, field_t * phi,
 				      map_t * map, phi_stats_t * stats) {
-  int kindex;
-  int tid;
-  __shared__ int kiterations;
+  int kindex = 0;
+  int tid = threadIdx.x;
   __shared__ double bmin[TARGET_MAX_THREADS_PER_BLOCK];
   __shared__ double bmax[TARGET_MAX_THREADS_PER_BLOCK];
 
-  assert(ktx);
   assert(phi);
   assert(map);
   assert(stats);
 
-  kiterations = kernel_iterations(ktx);
-
-  tid = threadIdx.x;
-
   bmin[tid] = +FLT_MAX;
   bmax[tid] = -FLT_MAX;
 
-  for_simt_parallel(kindex, kiterations, 1) {
+  for_simt_parallel(kindex, k3d.kiterations, 1) {
 
-    int ic, jc, kc;
-    int index;
     int status = 0;
 
-    ic = kernel_coords_ic(ktx, kindex);
-    jc = kernel_coords_jc(ktx, kindex);
-    kc = kernel_coords_kc(ktx, kindex);
+    int ic = kernel_3d_ic(&k3d, kindex);
+    int jc = kernel_3d_jc(&k3d, kindex);
+    int kc = kernel_3d_kc(&k3d, kindex);
 
-    index = cs_index(phi->cs, ic, jc, kc);
+    int index = kernel_3d_cs_index(&k3d, ic, jc, kc);
     map_status(map, index, &status);
 
     if (status == MAP_FLUID) {

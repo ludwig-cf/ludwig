@@ -204,13 +204,15 @@ int test_colloids_update_forces_buoyancy(pe_t * pe) {
   int ifail = 0;
   int ncells[3] = {8, 8, 8};
   cs_t * cs = NULL;
+
+  map_options_t opts = map_options_default();
   map_t * map = NULL;
   colloid_t * pc = NULL;
   colloids_info_t * cinfo = NULL;
 
   cs_create(pe, &cs);
   cs_init(cs);
-  map_create(pe, cs, 9, &map);
+  map_create(pe, cs, &opts, &map);
   colloids_info_create(pe, cs, ncells, &cinfo);
 
   {
@@ -265,7 +267,7 @@ int test_colloids_update_forces_buoyancy(pe_t * pe) {
   }
 
   colloids_info_free(cinfo);
-  map_free(map);
+  map_free(&map);
   cs_free(cs);
 
   return ifail;

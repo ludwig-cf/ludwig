@@ -11,7 +11,7 @@
  *       Not to be confused with wall initialisations, which update
  *       the map status, but are separate (see wall_rt.c).
  *
- *  (c) 2021-2022 The University of Edinburgh
+ *  (c) 2021-2024 The University of Edinburgh
  *
  *  Contributing authors:
  *    Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -23,6 +23,7 @@
 #include <string.h>
 #include <math.h>
 
+#include "io_info_args_rt.h"
 #include "map_init.h"
 #include "map_rt.h"
 
@@ -37,19 +38,19 @@ enum map_initial_status {MAP_INIT_FLUID_ONLY,
 			 MAP_INIT_BODY_CENTRED_CUBIC,
 			 MAP_INIT_INVALID};
 
-typedef struct map_options_s map_options_t;
+typedef struct map_keys_s map_keys_t;
 
-struct map_options_s {
+struct map_keys_s {
   int ndata;
   int geometry;
   int acell;      /* cubic lattice constant; an integer */
 };
 
 __host__ int map_init_options(pe_t * pe, cs_t * cs,
-			      const map_options_t * options, map_t ** map);
+			      const map_keys_t * options, map_t ** map);
 __host__ int map_init_option_acell(pe_t * pe, cs_t * cs, rt_t * rt);
 __host__ int map_init_options_parse(pe_t * pe, cs_t * cs, rt_t * rt,
-				    map_options_t * options);
+				    map_keys_t * options);
 
 /*****************************************************************************
  *
@@ -79,7 +80,7 @@ int map_init_rt(pe_t * pe, cs_t * cs, rt_t * rt, map_t ** map) {
        * access to C, H, that is, ndata = 2 */
       /* Colloids plus porous media is a non-feature at this time. */
 
-      map_options_t options = {0};
+      map_keys_t options = {0};
       options.ndata = 2;
 
       map_init_options_parse(pe, cs, rt, &options);
@@ -94,8 +95,7 @@ int map_init_rt(pe_t * pe, cs_t * cs, rt_t * rt, map_t ** map) {
  *
  *  map_init_porous_media_from_file
  *
- *  The file must have stub "capillary", e.g., "capillary.001-001"
- *  for serial.
+ *  A file map-000000000.001-001 must be present.
  *
  *****************************************************************************/
 
@@ -104,14 +104,8 @@ int map_init_porous_media_from_file(pe_t * pe, cs_t * cs, rt_t * rt,
 
   int ndata = 0;
   int have_data = 0;
-  int form_in = IO_FORMAT_DEFAULT;
-  int form_out = IO_FORMAT_DEFAULT;
-  int grid[3] = {1, 1, 1};
 
-  char format[BUFSIZ] = "";
   char status[BUFSIZ] = "";
-
-  io_info_t * iohandler = NULL;
   map_t * map = NULL;
 
   assert(pe);
@@ -121,45 +115,47 @@ int map_init_porous_media_from_file(pe_t * pe, cs_t * cs, rt_t * rt,
 
   if (have_data) {
 
+    /* Default ndata = 0 */
     if (strcmp(status, "status_only") == 0) ndata = 0;
     if (strcmp(status, "status_with_h") == 0) ndata = 1;
     if (strcmp(status, "status_with_sigma") == 0) ndata = 1;
     if (strcmp(status, "status_with_c_h") == 0) ndata = 2;
 
-    if (strcmp(status, "status_with_h") == 0) {
-      /* This is not to be used as it not implemented correctly. */
-      pe_info(pe, "porous_media_type    status_with_h\n");
-      pe_info(pe, "Please use status_with_c_h (and set C = 0) instead\n");
-      pe_fatal(pe, "Will not continue.\n");
-    }
   }
 
-  rt_string_parameter(rt, "porous_media_format", format, BUFSIZ);
+  /* Initialise the map structure */
 
-  if (strcmp(format, "ASCII") == 0) form_in = IO_FORMAT_ASCII_SERIAL;
-  if (strcmp(format, "BINARY") == 0) form_in = IO_FORMAT_BINARY_SERIAL;
-  if (strcmp(format, "BINARY_SERIAL") == 0) form_in = IO_FORMAT_BINARY_SERIAL;
+  {
+    int ifail = 0;
+    map_options_t opts = map_options_ndata(ndata);
 
-  rt_int_parameter_vector(rt, "porous_media_io_grid", grid);
+    io_info_args_rt(rt, RT_FATAL, "porous_media", IO_INFO_READ_WRITE,
+		    &opts.iodata);
+
+    ifail = map_create(pe, cs, &opts, &map);
+    ifail = map_io_read(map, 0);
+
+    if (ifail != 0) {
+      pe_exit(pe, "Error reading map file for porous media input\n");
+    }
+
+    map_pm_set(map, 1);
+    map_halo(map);
+  }
+
+  /* Report */
 
   pe_info(pe, "\n");
   pe_info(pe, "Porous media\n");
   pe_info(pe, "------------\n");
-  pe_info(pe, "Porous media file stub:       %s\n", "capillary");
-  pe_info(pe, "Porous media file data items: %d\n", ndata);
-  pe_info(pe, "Porous media format (serial): %s\n", format);
+  pe_info(pe, "Porous media from file:       %s\n", "yes");
+  pe_info(pe, "Porous media file data items: %d\n", map->ndata);
+  pe_info(pe, "Porous media format:          %s\n",
+	  io_record_format_to_string(map->options.iodata.input.iorformat));
   pe_info(pe, "Porous media io grid:         %d %d %d\n",
-	  grid[X], grid[Y], grid[Z]);
-
-  map_create(pe, cs, ndata, &map);
-  map_init_io_info(map, grid, form_in, form_out);
-  map_io_info(map, &iohandler);
-
-  io_info_set_processor_independent(iohandler);
-  io_read_data(iohandler, "capillary", map);
-  map_pm_set(map, 1);
-
-  map_halo(map);
+	  map->options.iodata.input.iogrid[X],
+	  map->options.iodata.input.iogrid[Y],
+	  map->options.iodata.input.iogrid[Z]);
 
   *pmap = map;
 
@@ -173,16 +169,17 @@ int map_init_porous_media_from_file(pe_t * pe, cs_t * cs, rt_t * rt,
  *****************************************************************************/
 
 __host__ int map_init_options(pe_t * pe, cs_t * cs,
-			      const map_options_t * options, map_t ** pmap) {
-
-  map_t * map = NULL;
+			      const map_keys_t * options, map_t ** pmap) {
 
   assert(pe);
   assert(cs);
   assert(options);
   assert(pmap);
 
-  map_create(pe, cs, options->ndata, &map);
+  map_options_t opts = map_options_ndata(options->ndata);
+  map_t * map = NULL;
+
+  map_create(pe, cs, &opts, &map);
 
   switch (options->geometry) {
   case MAP_INIT_FLUID_ONLY:
@@ -231,7 +228,7 @@ __host__ int map_init_options(pe_t * pe, cs_t * cs,
  *****************************************************************************/
 
 __host__ int map_init_options_parse(pe_t * pe, cs_t * cs, rt_t * rt,
-				    map_options_t * options) {
+				    map_keys_t * options) {
 
   assert(pe);
   assert(cs);

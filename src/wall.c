@@ -9,7 +9,7 @@
  *  Edinburgh Soft Matter and Statistical Physics and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2011-2023 The University of Edinburgh
+ *  (c) 2011-2024 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -20,11 +20,14 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <math.h>
 
 #include "kernel.h"
 #include "physics.h"
 #include "util.h"
 #include "wall.h"
+#include "util_ellipsoid.h"
+#include "util_vector.h"
 
 typedef enum wall_init_enum {WALL_INIT_COUNT_ONLY,
 			     WALL_INIT_ALLOCATE} wall_init_enum_t;
@@ -150,10 +153,17 @@ __host__ int wall_free(wall_t * wall) {
 
   cs_free(wall->cs);
   free(wall->param);
+
+  /* slip quantities */
+  if (wall->linkk) free(wall->linkk);
+  if (wall->linkq) free(wall->linkq);
+  if (wall->links) free(wall->links);
+
   if (wall->linki) free(wall->linki);
   if (wall->linkj) free(wall->linkj);
   if (wall->linkp) free(wall->linkp);
   if (wall->linku) free(wall->linku);
+
   free(wall);
 
   return 0;

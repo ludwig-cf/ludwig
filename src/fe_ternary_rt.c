@@ -7,7 +7,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group
  *  and Edinburgh Parallel Computing Centre
  *
- *  (c) 2019-2022 The University of Edinburgh
+ *  (c) 2019-2024 The University of Edinburgh
  *
  *  Contributing authors:
  *  Shan Chen (shan.chen@epfl.ch)
@@ -47,7 +47,7 @@ __host__ int fe_ternary_param_rt(pe_t * pe, rt_t * rt,
   rt_double_parameter(rt, "ternary_kappa2", &p->kappa2);
   rt_double_parameter(rt, "ternary_kappa3", &p->kappa3);
   rt_double_parameter(rt, "ternary_alpha",  &p->alpha);
-    
+
   /* For the surfactant should have... */
 
   if (p->kappa1 < 0.0) pe_fatal(pe, "Please use ternary_kappa1 >= 0\n");
@@ -93,7 +93,7 @@ __host__ int fe_ternary_init_rt(pe_t * pe, rt_t * rt, fe_ternary_t * fe,
 				field_t * phi) {
   int p;
   char value[BUFSIZ];
-    
+
   assert(pe);
   assert(rt);
   assert(fe);
@@ -162,7 +162,7 @@ __host__ int fe_ternary_init_rt(pe_t * pe, rt_t * rt, fe_ternary_t * fe,
 
     fti_drop_t drop = {0};
 
-    /* No defaults */ 
+    /* No defaults */
     rt_key_required(rt, "ternary_2d_lens_centre", RT_FATAL);
     rt_key_required(rt, "ternary_2d_lens_radius", RT_FATAL);
 
@@ -192,17 +192,22 @@ __host__ int fe_ternary_init_rt(pe_t * pe, rt_t * rt, fe_ternary_t * fe,
   }
 
   /* File initialisations */
+  /* Default file is "phi-000000000.001-001" */
 
   if (p != 0 && strcmp(value, "from_file") == 0) {
 
-    io_info_t * iohandler = NULL;
-    char filestub[FILENAME_MAX] = "ternary.init";
+    int ifail = 0;
+    int it = 0;
+    io_event_t io_event = {};
 
-    rt_string_parameter(rt, "ternary_file_stub", filestub, FILENAME_MAX);
-    pe_info(pe, "Initial order parameter requested with file stub %s\n",
-	    filestub);
-    field_io_info(phi, &iohandler);
-    io_read_data(iohandler, filestub, phi);
+    rt_int_parameter(rt, "ternary_initialisation_t0", &it);
+
+    pe_info(pe, "Initial order parameter requested using timestep %d\n", it);
+    ifail = field_io_read(phi, it, &io_event);
+
+    if (ifail != 0) {
+      pe_exit(pe, "Failed reading initial ternary order parameter file\n");
+    }
   }
 
   return 0;

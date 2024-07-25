@@ -115,7 +115,6 @@ periodicity 1_1_1
 
 freq_statistics 2560
 freq_vel        5120
-vel_format      ASCII
 config_at_end   no
 
 ###############################################################################

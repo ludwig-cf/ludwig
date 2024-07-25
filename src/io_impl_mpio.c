@@ -13,7 +13,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2022 The University of Edinburgh
+ *  (c) 2022-2024 The University of Edinburgh
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *
@@ -28,7 +28,7 @@ static io_impl_vt_t vt_ = {
   (io_impl_free_ft)         io_impl_mpio_free,
   (io_impl_read_ft)         io_impl_mpio_read,
   (io_impl_write_ft)        io_impl_mpio_write,
-  (io_impl_write_begin_ft)  io_impl_mpio_write_begin, 
+  (io_impl_write_begin_ft)  io_impl_mpio_write_begin,
   (io_impl_write_end_ft)    io_impl_mpio_write_end
 };
 
@@ -178,6 +178,7 @@ static int io_impl_mpio_types_create(io_impl_mpio_t * io) {
 
 int io_impl_mpio_write(io_impl_mpio_t * io, const char * filename) {
 
+  int ifail = 0;
   assert(io);
   assert(filename);
 
@@ -188,20 +189,27 @@ int io_impl_mpio_write(io_impl_mpio_t * io, const char * filename) {
     int count = 1;
 
     /* We want the equivalent of fopen() with mode = "w", i.e., O_TRUNC  */
-    MPI_File_open(comm, filename,
-		  MPI_MODE_CREATE | MPI_MODE_DELETE_ON_CLOSE | MPI_MODE_WRONLY,
-		  info, &io->fh);
+    ifail = MPI_File_open(comm, filename,
+	    MPI_MODE_CREATE | MPI_MODE_DELETE_ON_CLOSE | MPI_MODE_WRONLY,
+			  info, &io->fh);
     MPI_File_close(&io->fh);
-    MPI_File_open(comm, filename, MPI_MODE_CREATE | MPI_MODE_WRONLY,
-		  info, &io->fh);
 
-    MPI_File_set_view(io->fh, disp, io->element, io->file, "native", info);
-    MPI_File_write_all(io->fh, io->super.aggr->buf, count, io->array,
-		       &io->status);
+    /* Now the actual file ... */
+    ifail = MPI_File_open(comm, filename, MPI_MODE_CREATE | MPI_MODE_WRONLY,
+		  info, &io->fh); if (ifail != MPI_SUCCESS) goto err;
+    ifail = MPI_File_set_view(io->fh, disp, io->element, io->file, "native",
+			      info); if (ifail != MPI_SUCCESS) goto err;
+    ifail = MPI_File_write_all(io->fh, io->super.aggr->buf, count, io->array,
+			       &io->status); if (ifail != MPI_SUCCESS) goto err;
     MPI_File_close(&io->fh);
   }
 
-  return 0;
+  return ifail;
+
+ err:
+
+  MPI_File_close(&io->fh);
+  return ifail;
 }
 
 /*****************************************************************************
@@ -212,6 +220,8 @@ int io_impl_mpio_write(io_impl_mpio_t * io, const char * filename) {
 
 int io_impl_mpio_read(io_impl_mpio_t * io, const char * filename) {
 
+  int ifail = 0;
+
   assert(io);
   assert(filename);
 
@@ -221,14 +231,22 @@ int io_impl_mpio_read(io_impl_mpio_t * io, const char * filename) {
     MPI_Offset disp = 0;
     int count = 1;
 
-    MPI_File_open(comm, filename, MPI_MODE_RDONLY, info, &io->fh);
-    MPI_File_set_view(io->fh, disp, io->element, io->file, "native", info);
-    MPI_File_read_all(io->fh, io->super.aggr->buf, count, io->array,
-		      &io->status);
+    ifail = MPI_File_open(comm, filename, MPI_MODE_RDONLY, info, &io->fh);
+    if (ifail != MPI_SUCCESS) goto err;
+    ifail = MPI_File_set_view(io->fh, disp, io->element, io->file, "native",
+			      info);
+    if (ifail != MPI_SUCCESS) goto err;
+    ifail = MPI_File_read_all(io->fh, io->super.aggr->buf, count, io->array,
+			      &io->status);
+    if (ifail != MPI_SUCCESS) goto err;
     MPI_File_close(&io->fh);
   }
 
-  return 0;
+  return ifail;
+
+ err:
+  MPI_File_close(&io->fh);
+  return ifail;
 }
 
 /*****************************************************************************
@@ -274,6 +292,7 @@ int io_impl_mpio_write_end(io_impl_mpio_t * io) {
   assert(io);
 
   MPI_File_write_all_end(io->fh, io->super.aggr->buf, &io->status);
+  MPI_File_close(&io->fh);
 
   return 0;
 }

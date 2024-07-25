@@ -56,7 +56,7 @@ Computed surface order f(gamma)  =  3.5092360e-01
 
 Using Beris-Edwards solver:
 Rotational diffusion const =  5.0000000e-01
-LC fluctuations:           =  off
+LC fluctuations            =  off
 
 System properties
 ----------------
@@ -93,11 +93,6 @@ Ghost relaxation time:    1.00000e+00
 Hydrodynamics
 -------------
 Hydrodynamics: on
-
-Order parameter I/O
--------------------
-Order parameter I/O format:   
-I/O decomposition:            1 1 1
 
 Advection scheme order: 2
 Initialising shear profile

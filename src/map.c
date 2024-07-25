@@ -8,7 +8,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2012-2023 The University of Edinburgh
+ *  (c) 2012-2024 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -26,10 +26,7 @@
 #include "map.h"
 #include "util.h"
 
-static int map_read(FILE * fp, int index, void * self);
-static int map_write(FILE * fp, int index, void * self);
-static int map_read_ascii(FILE * fp, int index, void * self);
-static int map_write_ascii(FILE * fp, int index, void * self);
+static const int nchar_per_ascii_double_ = MAP_DATA_RECORD_LENGTH_ASCII;
 
 int map_halo_impl(cs_t * cs, int nall, int na, void * buf,
 		  MPI_Datatype mpidata);
@@ -38,91 +35,31 @@ int map_halo_impl(cs_t * cs, int nall, int na, void * buf,
  *
  *  map_create
  *
- *  Allocate the map object, the status field, and any additional
- *  data required.
- *
  *****************************************************************************/
 
-__host__ int map_create(pe_t * pe, cs_t * cs, int ndata, map_t ** pobj) {
+int map_create(pe_t * pe, cs_t * cs, const map_options_t * options,
+	       map_t ** map) {
 
-  int nsites;
-  int nhalo;
-  int ndevice;
   map_t * obj = NULL;
 
   assert(pe);
   assert(cs);
-  assert(ndata >= 0);
-  assert(pobj);
-
-  cs_nsites(cs, &nsites);
-  cs_nhalo(cs, &nhalo);
+  assert(options);
+  assert(map);
 
   obj = (map_t *) calloc(1, sizeof(map_t));
-  assert(obj);
-  if (obj == NULL) pe_fatal(pe, "calloc(map_t) failed\n");
+  if (obj == NULL) goto err;
 
-  obj->status = (char*) calloc(nsites, sizeof(char));
-  assert(obj->status);
-  if (obj->status == NULL) pe_fatal(pe, "calloc(map->status) failed\n");
+  if (map_initialise(pe, cs, options, obj) != 0) goto err;
 
-  obj->pe = pe;
-  obj->cs = cs;
-  obj->nsite = nsites;
-  obj->ndata = ndata;
-
-  /* Avoid overflow in allocation */
-  if (INT_MAX/(nsites*imax(1, obj->ndata)) < 1) {
-    pe_info(pe, "map_init: failure in int32_t allocation\n");
-    return -1;
-  }
-
-      /* ndata may be zero, but avoid zero-sized allocations */
-
-  if (ndata > 0) {
-    obj->data = (double *) calloc((size_t) ndata*nsites, sizeof(double));
-    assert(obj->data);
-    if (obj->data == NULL) pe_fatal(pe, "calloc(map->data) failed\n");
-  }
-
-  /* Allocate target copy of structure (or alias) */
-
-  tdpGetDeviceCount(&ndevice);
-
-  if (ndevice == 0) {
-    obj->target = obj;
-  }
-  else {
-    char * tmp = NULL;
-    double * dtmp = NULL;
-
-    tdpMalloc((void **) &obj->target, sizeof(map_t));
-    tdpMemset(obj->target, 0, sizeof(map_t));
-    tdpMalloc((void **) &tmp, nsites*sizeof(char));
-    tdpMemset(tmp, 0, nsites*sizeof(char));
-
-    tdpMemcpy(&obj->target->status, &tmp, sizeof(char *),
-	      tdpMemcpyHostToDevice);
-    tdpMemcpy(&obj->target->is_porous_media, &obj->is_porous_media,
-	      sizeof(int), tdpMemcpyHostToDevice); 
-    tdpMemcpy(&obj->target->nsite, &obj->nsite, sizeof(int),
-	      tdpMemcpyHostToDevice);
-    tdpMemcpy(&obj->target->ndata, &obj->ndata, sizeof(int),
-	      tdpMemcpyHostToDevice); 
-
-    /* Data */
-    if (obj->ndata > 0) {
-      size_t nsz = (size_t) obj->ndata*nsites*sizeof(double);
-      tdpAssert(tdpMalloc((void **) &dtmp, nsz));
-      tdpAssert(tdpMemset(dtmp, 0, nsz));
-      tdpAssert(tdpMemcpy(&obj->target->data, &dtmp, sizeof(double *),
-		          tdpMemcpyHostToDevice));
-    }
-  }
-
-  *pobj = obj;
+  *map = obj;
 
   return 0;
+
+ err:
+
+  if (obj) free(obj);
+  return -1;
 }
 
 /*****************************************************************************
@@ -131,34 +68,199 @@ __host__ int map_create(pe_t * pe, cs_t * cs, int ndata, map_t ** pobj) {
  *
  *****************************************************************************/
 
-__host__ int map_free(map_t * obj) {
+int map_free(map_t ** map) {
 
-  int ndevice;
-  char * tmp = NULL;
-  double * dtmp = NULL;
+  assert(map);
 
-  assert(obj);
+  map_finalise(*map);
+  free(*map);
+  *map = NULL;
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  map_initialise
+ *
+ *****************************************************************************/
+
+int map_initialise(pe_t * pe, cs_t * cs, const map_options_t * options,
+		   map_t * map) {
+  int ndevice = 0;
+
+  assert(pe);
+  assert(cs);
+  assert(options);
+  assert(map);
+
+  if (map_options_valid(options) == 0) {
+    pe_warn(pe, "map_initialise: options invalid\n");
+    goto err;
+  }
+
+  map->pe = pe;
+  map->cs = cs;
+  map->nsite = cs->param->nsites;
+  map->ndata = options->ndata;
+
+  map->status = (char *) calloc(map->nsite, sizeof(char));
+  assert(map->status);
+  if (map->status == NULL) {
+    pe_warn(pe, "map_initialise: calloc(map->status) failed\n");
+    goto err;
+  }
+
+  /* Avoid overflow in allocation */
+  if (INT_MAX/(map->nsite*imax(1, options->ndata)) < 1) {
+    pe_warn(pe, "map_initialise: failure in int32_t allocation\n");
+    goto err;
+  }
+
+  /* ndata may be zero, but avoid zero-sized allocations */
+
+  if (map->ndata > 0) {
+    map->data = (double *) calloc((size_t) map->ndata*map->nsite,
+				  sizeof(double));
+    assert(map->data);
+    if (map->data == NULL) {
+      pe_warn(pe, "map_initialise: calloc(map->data) failed\n");
+      goto err;
+    }
+  }
+    map->options = *options;
+
+  {
+    /* i/o metadata */
+    int ifail = 0;
+    io_element_t element = {0};
+
+    /* Count for ascii is "%3d" for status, " %22.15e" for each data item
+     * ie., 3 char, plus 23 char(s), plus a new line */
+    io_element_t ascii = {
+      .datatype = MPI_CHAR,
+      .datasize = sizeof(char),
+      .count    = 3 + nchar_per_ascii_double_*map->ndata + 1,
+      .endian   = io_endianness()
+    };
+    io_element_t binary = {
+      .datatype = MPI_CHAR,
+      .datasize = sizeof(char),
+      .count    = 1 + (int) sizeof(double)*map->ndata,
+      .endian   = io_endianness()
+    };
+
+    map->ascii = ascii;
+    map->binary = binary;
+    map->filestub = options->filestub;
+
+    if (options->iodata.input.iorformat == IO_RECORD_ASCII)  element = ascii;
+    if (options->iodata.input.iorformat == IO_RECORD_BINARY) element = binary;
+    ifail = io_metadata_initialise(cs, &options->iodata.input, &element,
+				   &map->input);
+    if (ifail != 0) {
+      pe_warn(pe, "Failed to initialise map input metadata\n");
+      goto err;
+    }
+
+    if (options->iodata.output.iorformat == IO_RECORD_ASCII)  element = ascii;
+    if (options->iodata.output.iorformat == IO_RECORD_BINARY) element = binary;
+    ifail = io_metadata_initialise(cs, &options->iodata.output, &element,
+				   &map->output);
+    if (ifail != 0) {
+      pe_warn(pe, "Failed to initialise map output metadata\n");
+      goto err;
+    }
+  }
+
+  /* Allocate target copy of structure (or alias) */
+
+  tdpGetDeviceCount(&ndevice);
+
+  if (ndevice == 0) {
+    map->target = map;
+  }
+  else {
+    char * status = NULL;
+
+    tdpAssert( tdpMalloc((void **) &map->target, sizeof(map_t)) );
+    tdpAssert( tdpMemset(map->target, 0, sizeof(map_t)) );
+
+    tdpAssert( tdpMalloc((void **) &status, map->nsite*sizeof(char)) );
+    tdpAssert( tdpMemset(status, 0, map->nsite*sizeof(char)) );
+    tdpAssert( tdpMemcpy(&map->target->status, &status, sizeof(char *),
+			 tdpMemcpyHostToDevice) );
+
+    tdpAssert( tdpMemcpy(&map->target->is_porous_media, &map->is_porous_media,
+			 sizeof(int), tdpMemcpyHostToDevice) );
+    tdpAssert( tdpMemcpy(&map->target->nsite, &map->nsite, sizeof(int),
+			 tdpMemcpyHostToDevice) );
+    tdpAssert( tdpMemcpy(&map->target->ndata, &map->ndata, sizeof(int),
+			 tdpMemcpyHostToDevice) );
+
+    /* Data */
+    if (map->ndata > 0) {
+      size_t nsz = (size_t) map->ndata*map->nsite*sizeof(double);
+      double * data = NULL;
+      tdpAssert( tdpMalloc((void **) &data, nsz));
+      tdpAssert( tdpMemset(data, 0, nsz));
+      tdpAssert( tdpMemcpy(&map->target->data, &data, sizeof(double *),
+			   tdpMemcpyHostToDevice) );
+    }
+  }
+
+  return 0;
+
+ err:
+  /* All failures are before any device memory is involved ... */
+  if (map->input.cs) io_metadata_finalise(&map->input);
+  if (map->output.cs) io_metadata_finalise(&map->output);
+  if (map->data) free(map->data);
+  if (map->status) free(map->status);
+
+  *map = (map_t) {0};
+
+  return -1;
+}
+
+/*****************************************************************************
+ *
+ *  map_finalise
+ *
+ *****************************************************************************/
+
+int map_finalise(map_t * map) {
+
+  assert(map);
+  assert(map->status);
+
+  int ndevice = 0;
 
   tdpGetDeviceCount(&ndevice);
 
   if (ndevice > 0) {
-    tdpAssert(tdpMemcpy(&tmp, &obj->target->status, sizeof(char *),
-			tdpMemcpyDeviceToHost)); 
-    tdpAssert(tdpFree(tmp));
+    char * status = NULL;
 
-    if (obj->ndata > 0) {
-      tdpAssert(tdpMemcpy(&dtmp, &obj->target->data, sizeof(double *),
-			  tdpMemcpyDeviceToHost));
-      tdpAssert(tdpFree(dtmp));
+    if (map->ndata > 0) {
+      double * data = NULL;
+      tdpAssert( tdpMemcpy(&data, &map->target->data, sizeof(double *),
+			   tdpMemcpyDeviceToHost) );
+      tdpAssert( tdpFree(data) );
     }
-    tdpFree(obj->target);
+
+    tdpAssert( tdpMemcpy(&status, &map->target->status, sizeof(char *),
+			 tdpMemcpyDeviceToHost) );
+    tdpAssert( tdpFree(status) );
+    tdpAssert( tdpFree(map->target) );
   }
 
-  if (obj->info) io_info_free(obj->info);
+  io_metadata_finalise(&map->input);
+  io_metadata_finalise(&map->output);
 
-  free(obj->data);
-  free(obj->status);
-  free(obj);
+  if (map->data) free(map->data);
+  if (map->status) free(map->status);
+
+  *map = (map_t) {0};
 
   return 0;
 }
@@ -169,7 +271,7 @@ __host__ int map_free(map_t * obj) {
  *
  *****************************************************************************/
 
-__host__ int map_memcpy(map_t * map, tdpMemcpyKind flag) {
+int map_memcpy(map_t * map, tdpMemcpyKind flag) {
 
   int ndevice;
   char * tmp;
@@ -203,67 +305,13 @@ __host__ int map_memcpy(map_t * map, tdpMemcpyKind flag) {
 
 /*****************************************************************************
  *
- *  map_init_io_info
- *
- *****************************************************************************/
-
-__host__
-int map_init_io_info(map_t * obj, int grid[3], int form_in, int form_out) {
-
-  io_info_args_t args = io_info_args_default();
-  size_t sz;
-
-  assert(obj);
-  assert(obj->info == NULL);
-
-  args.grid[X] = grid[X];
-  args.grid[Y] = grid[Y];
-  args.grid[Z] = grid[Z];
-  
-  io_info_create(obj->pe, obj->cs, &args, &obj->info);
-  if (obj->info == NULL) pe_fatal(obj->pe, "io_info_create(map) failed\n");
-
-  io_info_set_name(obj->info, "map");
-  io_info_write_set(obj->info, IO_FORMAT_BINARY, map_write);
-  io_info_write_set(obj->info, IO_FORMAT_ASCII, map_write_ascii);
-  io_info_read_set(obj->info, IO_FORMAT_BINARY, map_read);
-  io_info_read_set(obj->info, IO_FORMAT_ASCII, map_read_ascii);
-
-  sz = sizeof(char) + obj->ndata*sizeof(double);
-  io_info_set_bytesize(obj->info, IO_FORMAT_BINARY, sz);
-  io_info_set_bytesize(obj->info, IO_FORMAT_ASCII, 2 + 23*obj->ndata + 1);
-
-  io_info_format_set(obj->info, form_in, form_out);
-  io_info_metadata_filestub_set(obj->info, "map");
-
-  return 0;
-}
-
-/*****************************************************************************
- *
- *  map_io_info
- *
- *****************************************************************************/
-
-__host__ int map_io_info(map_t * obj, io_info_t ** info) {
-
-  assert(obj);
-  assert(info);
-
-  *info = obj->info;
-
-  return 0;
-}
-
-/*****************************************************************************
- *
  *  map_halo
  *
  *  This should only be required when porous media read from file.
  *
  *****************************************************************************/
 
-__host__ int map_halo(map_t * obj) {
+int map_halo(map_t * obj) {
 
   assert(obj);
 
@@ -278,107 +326,11 @@ __host__ int map_halo(map_t * obj) {
 
 /*****************************************************************************
  *
- *  map_status
- *
- *  Return map status as an integer.
- *
- *****************************************************************************/
-
-__host__ __device__
-int map_status(map_t * obj, int index, int * status) {
-
-  assert(obj);
-  assert(status);
-
-  *status = (int) obj->status[addr_rank0(obj->nsite, index)];
-
-  return 0;
-}
-
-/*****************************************************************************
- *
- *  map_status_set
- *
- *****************************************************************************/
-
-__host__ __device__
-int map_status_set(map_t * obj, int index, int status) {
-
-  assert(obj);
-  assert(status >= 0);
-  assert(status < MAP_STATUS_MAX);
-
-  obj->status[addr_rank0(obj->nsite, index)] = status;
-
-  return 0;
-}
-
-/*****************************************************************************
- *
- *  map_ndata
- *
- *****************************************************************************/
-
-__host__ __device__
-int map_ndata(map_t * obj, int * ndata) {
-
-  assert(obj);
-  assert(ndata);
-
-  *ndata = obj->ndata;
-
-  return 0;
-}
-
-/*****************************************************************************
- *
- *  map_data
- *
- *****************************************************************************/
-
-__host__ __device__
-int map_data(map_t * obj, int index, double * data) {
-
-  int n;
-
-  assert(obj);
-  assert(data);
-
-  for (n = 0; n < obj->ndata; n++) {
-    data[n] = obj->data[addr_rank1(obj->nsite, obj->ndata, index, n)];
-  }
-
-  return 0;
-}
-
-/*****************************************************************************
- *
- *  map_data_set
- *
- *****************************************************************************/
-
-__host__ __device__
-int map_data_set(map_t * obj, int index, double * data) {
-
-  int n;
-
-  assert(obj);
-  assert(data);
-
-  for (n = 0; n < obj->ndata; n++) {
-    obj->data[addr_rank1(obj->nsite, obj->ndata, index, n)] = data[n];
-  }
-
-  return 0;
-}
-
-/*****************************************************************************
- *
  *  map_pm
  *
  *****************************************************************************/
 
-__host__ int map_pm(map_t * obj, int * flag) {
+int map_pm(map_t * obj, int * flag) {
 
   assert(obj);
   assert(flag);
@@ -394,7 +346,7 @@ __host__ int map_pm(map_t * obj, int * flag) {
  *
  *****************************************************************************/
 
-__host__ int map_pm_set(map_t * obj, int flag) {
+int map_pm_set(map_t * obj, int flag) {
 
   assert(obj);
 
@@ -409,7 +361,7 @@ __host__ int map_pm_set(map_t * obj, int flag) {
  *
  *****************************************************************************/
 
-__host__ int map_volume_allreduce(map_t * obj, int status, int * volume) {
+int map_volume_allreduce(map_t * obj, int status, int * volume) {
 
   int vol_local;
   MPI_Comm comm;
@@ -462,27 +414,22 @@ int map_volume_local(map_t * obj, int status_wanted, int * volume) {
 
 /*****************************************************************************
  *
- *  map_write
+ *  map_read_buf
  *
  *****************************************************************************/
 
-static int map_write(FILE * fp, int index, void * self) {
+int map_read_buf(map_t * map, int index, const char * buf) {
 
-  int n, nw;
-  int indexf;
-  map_t * obj = (map_t*) self;
+  assert(map);
+  assert(buf);
 
-  assert(fp);
-  assert(obj);
+  int iaddr = addr_rank0(map->nsite, index);
+  memcpy(map->status + iaddr, buf, sizeof(char));
 
-  indexf = addr_rank0(obj->nsite, index);
-  nw = fwrite(&obj->status[indexf], sizeof(char), 1, fp);
-  if (nw != 1) pe_fatal(obj->pe, "fwrite(map->status) failed\n");
-
-  for (n = 0; n < obj->ndata; n++) {
-    indexf = addr_rank1(obj->nsite, obj->ndata, index, n);
-    nw = fwrite(&obj->data[indexf], sizeof(double), 1, fp);
-    if (nw != 1) pe_fatal(obj->pe, "fwrite(map->data) failed\n");
+  for (int id = 0; id < map->ndata; id++) {
+    size_t ioff = sizeof(char) + sizeof(double)*id;
+    iaddr = addr_rank1(map->nsite, map->ndata, index, id);
+    memcpy(map->data + iaddr, buf + ioff, sizeof(double));
   }
 
   return 0;
@@ -490,27 +437,139 @@ static int map_write(FILE * fp, int index, void * self) {
 
 /*****************************************************************************
  *
- *  map_read
+ *  map_write_buf
  *
  *****************************************************************************/
 
-static int map_read(FILE * fp, int index, void * self) {
+int map_write_buf(map_t * map, int index, char * buf) {
 
-  int n, nr;
-  int indexf;
-  map_t * obj = (map_t*) self;
+  int ifail = 0;
 
-  assert(fp);
-  assert(obj);
+  assert(map);
+  assert(buf);
 
-  indexf = addr_rank0(obj->nsite, index);
-  nr = fread(&obj->status[indexf], sizeof(char), 1, fp);
-  if (nr != 1) pe_fatal(obj->pe, "fread(map->status) failed");
+  int iaddr = addr_rank0(map->nsite, index);
+  memcpy(buf, map->status + iaddr, sizeof(char));
 
-  for (n = 0; n < obj->ndata; n++) {
-    indexf = addr_rank1(obj->nsite, obj->ndata, index, n);
-    nr = fread(&obj->data[indexf], sizeof(double), 1, fp);
-    if (nr != 1) pe_fatal(obj->pe, "fread(map->data) failed\n");
+  for (int id = 0; id < map->ndata; id++) {
+    size_t ioff = sizeof(char) + sizeof(double)*id;
+    iaddr = addr_rank1(map->nsite, map->ndata, index, id);
+    memcpy(buf + ioff, map->data + iaddr, sizeof(double));
+  }
+
+  return ifail;
+}
+
+/*****************************************************************************
+ *
+ *  map_write_buf_ascii
+ *
+ *****************************************************************************/
+
+int map_write_buf_ascii(map_t * map, int index, char * buf) {
+
+  const int nbyte = nchar_per_ascii_double_;
+  int ifail = 0;
+
+  assert(map);
+  assert(buf);
+
+  {
+    /* Status: three characters (plus the `\0`) */
+    char tmp[BUFSIZ] = {0};
+    int iaddr = addr_rank0(map->nsite, index);
+    int nr = snprintf(tmp, 4, "%3d", map->status[iaddr]);
+    if (nr != 3) ifail = -1;
+    memcpy(buf, tmp, 3*sizeof(char));
+  }
+
+  for (int id = 0; id < map->ndata; id++) {
+    char tmp[BUFSIZ] = {0};
+    int iaddr = addr_rank1(map->nsite, map->ndata, index, id);
+    int nr = snprintf(tmp, nbyte + 1, " %22.15e", map->data[iaddr]);
+    if (nr != nbyte) ifail = -2;
+    memcpy(buf + (3 + id*nbyte)*sizeof(char), tmp, nbyte*sizeof(char));
+  }
+
+  /* Add new line */
+  {
+    char tmp[BUFSIZ] = {0};
+    int nr = snprintf(tmp, 2, "\n");
+    if (nr != 1) ifail = -3;
+    memcpy(buf + (3 + map->ndata*nbyte)*sizeof(char), tmp, sizeof(char));
+  }
+
+  return ifail;
+}
+
+/*****************************************************************************
+ *
+ *  map_read_buf_ascii
+ *
+ *****************************************************************************/
+
+int map_read_buf_ascii(map_t * map, int index, const char * buf) {
+
+  const int nbyte = nchar_per_ascii_double_;
+  int ifail = 0;
+  int nr = 0;
+
+  assert(map);
+  assert(buf);
+
+  /* Status */
+  {
+    char tmp[BUFSIZ] = {0};
+    int iaddr = addr_rank0(map->nsite, index);
+    int status = -1;
+    memcpy(tmp, buf, 3*sizeof(char));
+    nr = sscanf(tmp, "%d", &status);
+    if (nr != 1) ifail = -1;
+    map->status[iaddr] = status;
+  }
+
+  /* Wetting data */
+  for (int id = 0; id < map->ndata; id++) {
+    char tmp[BUFSIZ] = {0};
+    int iaddr = addr_rank1(map->nsite, map->ndata, index, id);
+    memcpy(tmp, buf + (3 + id*nbyte)*sizeof(char), nbyte*sizeof(char));
+    nr = sscanf(tmp, "%le", map->data + iaddr);
+    if (nr != 1) ifail = 2;
+  }
+
+  return ifail;
+}
+
+/*****************************************************************************
+ *
+ *  map_io_aggr_pack
+ *
+ *****************************************************************************/
+
+int map_io_aggr_pack(map_t * map, io_aggregator_t * aggr) {
+
+  assert(map);
+  assert(aggr);
+  assert(aggr->buf);
+
+  #pragma omp parallel
+  {
+    int iasc = map->options.iodata.output.iorformat == IO_RECORD_ASCII;
+    int ibin = map->options.iodata.output.iorformat == IO_RECORD_BINARY;
+    assert(iasc ^ ibin); /* one or other */
+
+    #pragma omp for
+    for (int ib = 0; ib < cs_limits_size(aggr->lim); ib++) {
+      int ic = cs_limits_ic(aggr->lim, ib);
+      int jc = cs_limits_jc(aggr->lim, ib);
+      int kc = cs_limits_kc(aggr->lim, ib);
+
+      /* Write at (ic, jc, kc) */
+      int index = cs_index(map->cs, ic, jc, kc);
+      size_t offset = ib*aggr->szelement;
+      if (iasc) map_write_buf_ascii(map, index, aggr->buf + offset);
+      if (ibin) map_write_buf(map, index, aggr->buf + offset);
+    }
   }
 
   return 0;
@@ -518,64 +577,99 @@ static int map_read(FILE * fp, int index, void * self) {
 
 /*****************************************************************************
  *
- *  map_write_ascii
+ *  map_io_aggr_unpack
  *
  *****************************************************************************/
 
-static int map_write_ascii(FILE * fp, int index, void * self) {
+int map_io_aggr_unpack(map_t * map, const io_aggregator_t * aggr) {
 
-  int n, nw;
-  int indexf;
-  int status;
-  map_t * obj = (map_t *) self;
+  assert(map);
+  assert(aggr);
+  assert(aggr->buf);
 
-  assert(fp);
-  assert(obj);
+  #pragma omp parallel
+  {
+    int iasc = map->options.iodata.input.iorformat == IO_RECORD_ASCII;
+    int ibin = map->options.iodata.input.iorformat == IO_RECORD_BINARY;
+    assert(iasc ^ ibin);
 
-  status = obj->status[addr_rank0(obj->nsite, index)];
-  assert(status < 99); /* Fixed format check. */
+    #pragma omp for
+    for (int ib = 0; ib < cs_limits_size(aggr->lim); ib++) {
+      int ic = cs_limits_ic(aggr->lim, ib);
+      int jc = cs_limits_jc(aggr->lim, ib);
+      int kc = cs_limits_kc(aggr->lim, ib);
 
-  nw = fprintf(fp, "%2d", status);
-  if (nw != 2) pe_fatal(obj->pe, "fprintf(map->status) failed\n");
-
-  for (n = 0; n < obj->ndata; n++) {
-    indexf = addr_rank1(obj->nsite, obj->ndata, index, n);
-    fprintf(fp, " %22.15e", obj->data[indexf]);
+      /* Read for (ic, jc, kc) */
+      int index = cs_index(map->cs, ic, jc, kc);
+      size_t offset = ib*aggr->szelement;
+      if (iasc) map_read_buf_ascii(map, index, aggr->buf + offset);
+      if (ibin) map_read_buf(map, index, aggr->buf + offset);
+    }
   }
-
-  nw = fprintf(fp, "\n");
-  if (nw != 1) pe_fatal(obj->pe, "fprintf(map) failed\n");
 
   return 0;
 }
 
 /*****************************************************************************
  *
- *  map_read_ascii
+ *  map_io_read
  *
  *****************************************************************************/
 
-static int map_read_ascii(FILE * fp, int index, void * self) {
+int map_io_read(map_t * map, int timestep) {
 
-  int n, nr;
-  int indexf;
-  int status;
-  map_t * obj = (map_t*) self;
+  int ifail = 0;
 
-  assert(fp);
-  assert(obj);
+  assert(map);
 
-  nr = fscanf(fp, "%2d", &status);
-  if (nr != 1) pe_fatal(obj->pe, "fscanf(map->status) failed\n");
-  obj->status[addr_rank0(obj->nsite, index)] = status;
+  {
+    io_metadata_t * meta = &map->input;
+    io_impl_t * io = NULL;
+    char filename[BUFSIZ] = {0};
 
-  for (n = 0; n < obj->ndata; n++) {
-    indexf = addr_rank1(obj->nsite, obj->ndata, index, n);
-    nr = fscanf(fp, " %le", obj->data + indexf);
-    if (nr != 1) pe_fatal(obj->pe, "fscanf(map->data[%d]) failed\n", n);
+    io_subfile_name(&meta->subfile, map->filestub, timestep, filename, BUFSIZ);
+
+    ifail = io_impl_create(meta, &io);
+
+    if (ifail == 0) {
+      ifail = io->impl->read(io, filename);
+      map_io_aggr_unpack(map, io->aggr);
+      io->impl->free(&io);
+    }
   }
 
-  return 0;
+  return ifail;
+}
+
+/*****************************************************************************
+ *
+ *  map_io_write
+ *
+ *****************************************************************************/
+
+int map_io_write(map_t * map, int timestep) {
+
+  int ifail = 0;
+
+  assert(map);
+
+  {
+    const io_metadata_t * meta = &map->output;
+
+    io_impl_t * io = NULL;
+    char filename[BUFSIZ] = {0};
+
+    io_subfile_name(&meta->subfile, map->filestub, timestep, filename, BUFSIZ);
+    ifail = io_impl_create(meta, &io);
+
+    if (ifail == 0) {
+      map_io_aggr_pack(map, io->aggr);
+      ifail = io->impl->write(io, filename);
+      io->impl->free(&io);
+    }
+  }
+
+  return ifail;
 }
 
 /*****************************************************************************

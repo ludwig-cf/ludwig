@@ -24,7 +24,6 @@
 #include "coords.h"
 #include "io_impl.h"
 #include "io_event.h"
-#include "io_harness.h"       /* To be removed in favour of refactored io */
 #include "kernel.h"
 #include "leesedwards.h"
 #include "field_options.h"
@@ -82,8 +81,6 @@ struct field_s {
   io_metadata_t iometadata_in;  /* Input details */
   io_metadata_t iometadata_out; /* Output details */
 
-  io_info_t * info;             /* I/O Handler (to be removed) */
-
   field_halo_t h;               /* Host halo */
   field_options_t opts;         /* Options */
 
@@ -104,9 +101,6 @@ __host__ int field_create(pe_t * pe, cs_t * cs, lees_edw_t * le,
 __host__ int field_free(field_t * obj);
 
 __host__ int field_memcpy(field_t * obj, tdpMemcpyKind flag);
-__host__ int field_init_io_info(field_t * obj, int grid[3], int form_in,
-				int form_out);
-__host__ int field_io_info(field_t * obj, io_info_t ** info);
 __host__ int field_halo(field_t * obj);
 __host__ int field_halo_swap(field_t * obj, field_halo_enum_t flag);
 __host__ int field_leesedwards(field_t * obj);

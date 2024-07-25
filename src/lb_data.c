@@ -1,6 +1,6 @@
 /*****************************************************************************
  *
- *  model.c
+ *  lb_data.c
  *
  *  This encapsulates data/operations related to distributions.
  *  However, the implementation of the distribution is exposed
@@ -10,7 +10,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2010-2023 The University of Edinburgh
+ *  (c) 2010-2024 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -21,23 +21,17 @@
  *****************************************************************************/
 
 #include <assert.h>
+#include <limits.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
-#include "pe.h"
-#include "coords.h"
 #include "lb_data.h"
-#include "io_harness.h"
 
 #include "timer.h"
 #include "util.h"
 
 static int lb_mpi_init(lb_t * lb);
-static int lb_f_read(FILE *, int index, void * self);
-static int lb_f_read_ascii(FILE *, int index, void * self);
-static int lb_f_write(FILE *, int index, void * self);
-static int lb_f_write_ascii(FILE *, int index, void * self);
 static int lb_model_param_init(lb_t * lb);
 static int lb_init(lb_t * lb);
 static int lb_data_touch(lb_t * lb);
@@ -102,7 +96,12 @@ int lb_data_create(pe_t * pe, cs_t * cs, const lb_data_options_t * options,
       int nz = nlocal[Z] + 2*nhalo;
       obj->nsite = nx*ny*nz;
     }
-    {
+    if (obj->nsite < 1 || INT_MAX/obj->nvel < obj->nsite) {
+      /* Suggests local system size has overflowed int32_t ... */
+      /* ... or will overflow indexing */
+      pe_exit(pe, "Local system size overflows INT_MAX in distributions\n");
+    }
+    else {
       size_t sz = sizeof(double)*obj->nsite*obj->ndist*obj->nvel;
       assert(sz > 0); /* Should not overflow in size_t I hope! */
       obj->f      = (double *) mem_aligned_malloc(MEM_PAGESIZE, sz);
@@ -122,7 +121,7 @@ int lb_data_create(pe_t * pe, cs_t * cs, const lb_data_options_t * options,
     }
   }
 
-  /* Collision parameters. This is fixed-size struct could not allocate...*/ 
+  /* Collision parameters. This is fixed-size struct could not allocate...*/
   obj->param = (lb_collide_param_t *) calloc(1, sizeof(lb_collide_param_t));
   assert(obj->param);
   if (obj->param == NULL) {
@@ -167,7 +166,7 @@ int lb_data_create(pe_t * pe, cs_t * cs, const lb_data_options_t * options,
     if (options->iodata.output.iorformat == IO_RECORD_BINARY) element = binary;
     ifail = io_metadata_initialise(cs, &options->iodata.output, &element,
 				   &obj->output);
-    if (ifail != 0) pe_fatal(pe, "lb_data: bad i/o output decomposition\n"); 
+    if (ifail != 0) pe_fatal(pe, "lb_data: bad i/o output decomposition\n");
   }
 
   *lb = obj;
@@ -193,11 +192,11 @@ __host__ int lb_free(lb_t * lb) {
   tdpGetDeviceCount(&ndevice);
 
   if (ndevice > 0) {
-    tdpMemcpy(&tmp, &lb->target->f, sizeof(double *), tdpMemcpyDeviceToHost); 
+    tdpMemcpy(&tmp, &lb->target->f, sizeof(double *), tdpMemcpyDeviceToHost);
     tdpFree(tmp);
 
     tdpMemcpy(&tmp, &lb->target->fprime, sizeof(double *),
-	      tdpMemcpyDeviceToHost); 
+	      tdpMemcpyDeviceToHost);
     tdpFree(tmp);
     tdpFree(lb->target);
   }
@@ -206,7 +205,6 @@ __host__ int lb_free(lb_t * lb) {
   io_metadata_finalise(&lb->output);
 
   if (lb->halo) halo_swap_free(lb->halo);
-  if (lb->io_info) io_info_free(lb->io_info);
   if (lb->f) free(lb->f);
   if (lb->fprime) free(lb->fprime);
 
@@ -274,7 +272,7 @@ __host__ int lb_memcpy(lb_t * lb, tdpMemcpyKind flag) {
  *  values. This is nhalolocal.
  *
  ***************************************************************************/
- 
+
 static int lb_init(lb_t * lb) {
 
   int nlocal[3];
@@ -312,7 +310,7 @@ static int lb_init(lb_t * lb) {
     tdpMalloc((void **) &tmp, ndata*sizeof(double));
     tdpMemset(tmp, 0, ndata*sizeof(double));
     tdpMemcpy(&lb->target->f, &tmp, sizeof(double *), tdpMemcpyHostToDevice);
- 
+
     tdpMalloc((void **) &tmp, ndata*sizeof(double));
     tdpMemset(tmp, 0, ndata*sizeof(double));
     tdpMemcpy(&lb->target->fprime, &tmp, sizeof(double *),
@@ -441,51 +439,6 @@ static int lb_mpi_init(lb_t * lb) {
 
 /*****************************************************************************
  *
- *  lb_io_info_set
- *
- *****************************************************************************/
-
-__host__ int lb_io_info_set(lb_t * lb, io_info_t * io_info, int form_in, int form_out) {
-
-  char string[FILENAME_MAX];
-
-  assert(lb);
-  assert(io_info);
-
-  lb->io_info = io_info;
-
-  sprintf(string, "%1d x Distribution: d%dq%d", lb->ndist, lb->ndim, lb->nvel);
-
-  io_info_set_name(lb->io_info, string);
-  io_info_read_set(lb->io_info, IO_FORMAT_BINARY, lb_f_read);
-  io_info_write_set(lb->io_info, IO_FORMAT_BINARY, lb_f_write);
-  io_info_set_bytesize(lb->io_info, IO_FORMAT_BINARY,
-		       sizeof(double)*lb->ndist*lb->nvel);
-  io_info_read_set(lb->io_info, IO_FORMAT_ASCII, lb_f_read_ascii);
-  io_info_write_set(lb->io_info, IO_FORMAT_ASCII, lb_f_write_ascii);
-  io_info_format_set(lb->io_info, form_in, form_out);
-
-  return 0;
-}
-
-/*****************************************************************************
- *
- *  lb_io_info
- *
- *****************************************************************************/
-
-__host__ int lb_io_info(lb_t * lb, io_info_t ** io_info) {
-
-  assert(lb);
-  assert(io_info);
-
-  *io_info = lb->io_info;
-
-  return 0;
-}
-
-/*****************************************************************************
- *
  *  lb_data_touch
  *
  *  Kernel driver to initialise data.
@@ -589,160 +542,6 @@ __host__ int lb_halo_swap(lb_t * lb, lb_halo_enum_t flag) {
   default:
     lb_halo_post(lb, &lb->h);
     lb_halo_wait(lb, &lb->h);
-  }
-
-  return 0;
-}
-
-/*****************************************************************************
- *
- *  lb_f_read
- *
- *  Read one lattice site (index) worth of distributions.
- *  Note that read-write is always the same order irrespective
- *  of memory ordering (host/device).
- *
- *****************************************************************************/
-
-static int lb_f_read(FILE * fp, int index, void * self) {
-
-  int iread, n, p;
-  int nr = 0;
-  lb_t * lb = (lb_t*) self;
-
-  assert(fp);
-  assert(lb);
-
-  for (n = 0; n < lb->ndist; n++) {
-    for (p = 0; p < lb->model.nvel; p++) {
-      iread = LB_ADDR(lb->nsite, lb->ndist, lb->model.nvel, index, n, p);
-      nr += fread(lb->f + iread, sizeof(double), 1, fp);
-    }
-  }
-
-  if (nr != lb->ndist*lb->model.nvel) {
-    pe_fatal(lb->pe, "fread(lb) failed at %d\n", index);
-  }
-
-  return 0;
-}
-
-/*****************************************************************************
- *
- *  lb_f_read_ascii
- *
- *  Read one lattice site (index) worth of distributions.
- *
- *****************************************************************************/
-
-static int lb_f_read_ascii(FILE * fp, int index, void * self) {
-
-  int n, p;
-  int nr;
-  pe_t * pe = NULL;
-  lb_t * lb = (lb_t *) self;
-
-  assert(fp);
-  assert(lb);
-
-  pe = lb->pe;
-
-  /* skip output index */
-  nr = fscanf(fp, "%*d %*d %*d");
-  assert(nr == 1);
-
-  nr = 0;
-  for (n = 0; n < lb->ndist; n++) {
-    for (p = 0; p < lb->model.nvel; p++) {
-      int ijkp = LB_ADDR(lb->nsite, lb->ndist, lb->model.nvel, index, n, p);
-      nr += fscanf(fp, "%le", &lb->f[ijkp]);
-    }
-  }
-
-  if (nr != lb->ndist*lb->model.nvel) {
-    pe_fatal(pe, "fread(lb) failed at %d\n", index);
-  }
-
-  return 0;
-}
-
-/*****************************************************************************
- *
- *  lb_f_write
- *
- *  Write one lattice site (index) worth of distributions.
- *
- *****************************************************************************/
-
-static int lb_f_write(FILE * fp, int index, void * self) {
-
-  int iwrite, n, p;
-  int nw = 0;
-  lb_t * lb = (lb_t*) self;
-
-  assert(fp);
-  assert(self);
-
-  for (n = 0; n < lb->ndist; n++) {
-    for (p = 0; p < lb->model.nvel; p++) {
-      iwrite = LB_ADDR(lb->nsite, lb->ndist, lb->model.nvel, index, n, p);
-      nw += fwrite(lb->f + iwrite, sizeof(double), 1, fp);
-    }
-  }
-
-  if (nw != lb->ndist*lb->model.nvel) {
-    pe_fatal(lb->pe, "fwrite(lb) failed at %d\n", index);
-  }
-
-  return 0;
-}
-
-/*****************************************************************************
- *
- *  lb_f_write_ascii
- *
- *  Write one lattice site (index) worth of distributions.
- *
- *****************************************************************************/
-
-static int lb_f_write_ascii(FILE * fp, int index, void * self) {
-
-  int n, p;
-  int nw = 0;
-  lb_t * lb = (lb_t*) self;
-
-  pe_t * pe = NULL;
-  cs_t * cs = NULL;
-  int coords[3], noffset[3];
-
-  assert(fp);
-  assert(self);
-
-  pe = lb->pe;
-  cs = lb->cs;
-
-  cs_index_to_ijk(cs, index, coords);
-  cs_nlocal_offset(cs, noffset);
-
-  /* write output index */
-  {
-    int ic = noffset[X] + coords[X];
-    int jc = noffset[Y] + coords[Y];
-    int kc = noffset[Z] + coords[Z];
-    fprintf(fp, "%d %d %d ", ic, jc, kc);
-  }
-
-  for (n = 0; n < lb->ndist; n++) {
-    for (p = 0; p < lb->model.nvel; p++) {
-      int ijkp = LB_ADDR(lb->nsite, lb->ndist, lb->model.nvel, index, n, p);
-      fprintf(fp, "%le ", lb->f[ijkp]);
-      nw++;
-    }
-  }
-  fprintf(fp, "\n");
-
-  if (nw != lb->ndist*lb->model.nvel) {
-    pe_fatal(pe, "fwrite(lb) failed at %d\n", index);
   }
 
   return 0;
@@ -1056,7 +855,7 @@ int lb_halo_dequeue_recv(lb_t * lb, const lb_halo_t * h, int ireq) {
       int j = 1 + my;
       int k = 1 + mz;
       /* If Cartesian neighbour is self, just copy out of send buffer. */
-      if (h->nbrrank[i][j][k] == h->nbrrank[1][1][1]) recv = h->send[ireq]; 
+      if (h->nbrrank[i][j][k] == h->nbrrank[1][1][1]) recv = h->send[ireq];
     }
 
     assert(mm == 1 || mm == 2 || mm == 3);
@@ -1273,7 +1072,7 @@ int lb_halo_post(const lb_t * lb, lb_halo_t * h) {
       int mcount = h->count[ireq]*lb_halo_size(h->rlim[ireq]);
 
       if (h->nbrrank[i][j][k] == h->nbrrank[1][1][1]) mcount = 0;
-      
+
       MPI_Irecv(h->recv[ireq], mcount, MPI_DOUBLE, h->nbrrank[i][j][k],
 		h->tagbase + ireq, h->comm, h->request + ireq);
     }
@@ -1515,7 +1314,7 @@ __host__ int lb_io_aggr_pack(const lb_t * lb, io_aggregator_t * aggr) {
 
       /* Write data (ic,jc,kc) */
       int index = cs_index(lb->cs, ic, jc, kc);
-      int offset = ib*aggr->szelement;
+      size_t offset = ib*aggr->szelement;
       if (iasc) lb_write_buf_ascii(lb, index, aggr->buf + offset);
       if (ibin) lb_write_buf(lb, index, aggr->buf + offset);
     }
@@ -1567,6 +1366,8 @@ __host__ int lb_io_aggr_unpack(lb_t * lb, const io_aggregator_t * aggr) {
 
 int lb_io_write(lb_t * lb, int timestep, io_event_t * event) {
 
+  int ifail = 0;
+
   assert(lb);
   assert(event);
 
@@ -1575,42 +1376,37 @@ int lb_io_write(lb_t * lb, int timestep, io_event_t * event) {
   if (meta->iswriten == 0) {
     /* No comments at the moment */
     cJSON * comments = NULL;
-    int ifail = io_metadata_write(meta, "dist", NULL, comments);
+    ifail = io_metadata_write(meta, "dist", NULL, comments);
     if (ifail == 0) lb->output.iswriten = 1;
   }
 
-  if (meta->options.mode != IO_MODE_MPIIO) {
-    /* Old-style */
-    char filename[BUFSIZ] = {0};
-    sprintf(filename, "dist-%8.8d", timestep);
-    io_write_data(lb->io_info, filename, lb);
-  }
-
-  if (meta->options.mode == IO_MODE_MPIIO) {
-
+  /* Implementation */
+  {
     io_impl_t * io = NULL;
     char filename[BUFSIZ] = {0};
 
     io_subfile_name(&meta->subfile, "dist", timestep, filename, BUFSIZ);
-    io_impl_create(meta, &io);
-    assert(io);
+    ifail = io_impl_create(meta, &io);
+    assert(ifail == 0);
 
-    io_event_record(event, IO_EVENT_AGGR);
-    lb_memcpy(lb, tdpMemcpyDeviceToHost);
-    lb_io_aggr_pack(lb, io->aggr);
+    if (ifail == 0) {
+      io_event_record(event, IO_EVENT_AGGR);
+      lb_memcpy(lb, tdpMemcpyDeviceToHost);
+      lb_io_aggr_pack(lb, io->aggr);
 
-    io_event_record(event, IO_EVENT_WRITE);
-    io->impl->write(io, filename);
+      io_event_record(event, IO_EVENT_WRITE);
+      io->impl->write(io, filename);
 
-    if (meta->options.report) {
-      pe_info(lb->pe, "MPIIO wrote to %s\n", filename);
+      if (meta->options.report) {
+	pe_info(lb->pe, "MPIIO wrote to %s\n", filename);
+      }
+
+      io->impl->free(&io);
+      io_event_report(event, meta, "dist");
     }
-
-    io->impl->free(&io);
-    io_event_report(event, meta, "dist");
   }
 
-  return 0;
+  return ifail;
 }
 
 /*****************************************************************************
@@ -1621,29 +1417,27 @@ int lb_io_write(lb_t * lb, int timestep, io_event_t * event) {
 
 int lb_io_read(lb_t * lb, int timestep, io_event_t * event) {
 
+  int ifail = 0;
+
   assert(lb);
   assert(event);
 
-  const io_metadata_t * meta = &lb->input;
-
-  if (meta->options.mode != IO_MODE_MPIIO) {
-    char filename[BUFSIZ] = {0};
-    sprintf(filename, "dist-%8.8d", timestep);
-    io_read_data(lb->io_info, filename, lb);
-  }
-
-  if (meta->options.mode == IO_MODE_MPIIO) {
+  {
+    const io_metadata_t * meta = &lb->input;
     io_impl_t * io = NULL;
     char filename[BUFSIZ] = {0};
 
     io_subfile_name(&meta->subfile, "dist", timestep, filename, BUFSIZ);
-    io_impl_create(meta, &io);
-    assert(io);
 
-    io->impl->read(io, filename);
-    lb_io_aggr_unpack(lb, io->aggr);
-    io->impl->free(&io);
+    ifail = io_impl_create(meta, &io);
+    assert(ifail == 0);
+
+    if (ifail == 0) {
+      io->impl->read(io, filename);
+      lb_io_aggr_unpack(lb, io->aggr);
+      io->impl->free(&io);
+    }
   }
 
-  return 0;
+  return ifail;
 }

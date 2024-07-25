@@ -49,6 +49,7 @@ struct bbl_s {
   int active;           /* Global flag for active particles. */
   int ellipsoid_didt;   /* Switch for unsteady term method */
   int ndist;            /* Number of LB distributions active */
+  double eta;           /* Dynamic viscosity for lubrication correction */
   double deltag;        /* Excess or deficit of phi between steps */
   double stress[3][3];  /* Surface stress diagnostic */
 };
@@ -60,7 +61,7 @@ static int bbl_active_conservation(bbl_t * bbl, lb_t * lb,
 static int bbl_wall_lubrication_account(bbl_t * bbl, wall_t * wall,
 					colloids_info_t * cinfo);
 
-__global__ void bbl_pass0_kernel(kernel_ctxt_t * ktxt, cs_t * cs, lb_t * lb,
+__global__ void bbl_pass0_kernel(kernel_3d_t k3d, cs_t * cs, lb_t * lb,
 				 colloids_info_t * cinfo);
 
 static __constant__ lb_collide_param_t lbp;
@@ -76,6 +77,9 @@ void record_force_torque(colloid_t * pc);
 
 void bbl_ellipsoid_unsteady_mI(const double q[4], const double mi[3],
 			       const double omega[3], double didt[3][3]);
+
+int bbl_wall_lubr_correction_ellipsoid(bbl_t * bbl, wall_t * wall,
+				       colloid_t * pc, double wdrag[3]);
 
 /*****************************************************************************
  *
@@ -102,6 +106,15 @@ int bbl_create(pe_t * pe, cs_t * cs, lb_t * lb, bbl_t ** pobj) {
   bbl->cs = cs;
   bbl->ellipsoid_didt = BBL_ELLIPSOID_UPDATE_QUATERNION;
   lb_ndist(lb, &bbl->ndist);
+
+  /* I would like to obtain the viscosity from the lb data structure;
+   * but it's not present at initialisation, so ... */
+
+  {
+    physics_t * phys = NULL;
+    physics_ref(&phys);
+    physics_eta_shear(phys, &bbl->eta);
+  }
 
   *pobj = bbl;
 
@@ -307,10 +320,7 @@ int bbl_pass0(bbl_t * bbl, lb_t * lb, colloids_info_t * cinfo) {
 
   int nlocal[3];
   int nextra;
-  dim3 nblk, ntpb;
   cs_t * cstarget = NULL;
-  kernel_info_t limits;
-  kernel_ctxt_t * ctxt = NULL;
 
   assert(bbl);
   assert(lb);
@@ -321,22 +331,27 @@ int bbl_pass0(bbl_t * bbl, lb_t * lb, colloids_info_t * cinfo) {
 
   nextra = 1;
 
-  limits.imin = 1 - nextra; limits.imax = nlocal[X] + nextra;
-  limits.jmin = 1 - nextra; limits.jmax = nlocal[Y] + nextra;
-  limits.kmin = 1 - nextra; limits.kmax = nlocal[Z] + nextra;
+  {
+    dim3 nblk = {};
+    dim3 ntpb = {};
+    cs_limits_t lim = {
+      1 - nextra, nlocal[X] + nextra,
+      1 - nextra, nlocal[Y] + nextra,
+      1 - nextra, nlocal[Z] + nextra
+    };
+    kernel_3d_t k3d = kernel_3d(bbl->cs, lim);
 
-  tdpMemcpyToSymbol(tdpSymbol(lbp), lb->param, sizeof(lb_collide_param_t), 0,
-		    tdpMemcpyHostToDevice);
+    tdpMemcpyToSymbol(tdpSymbol(lbp), lb->param, sizeof(lb_collide_param_t), 0,
+		      tdpMemcpyHostToDevice);
 
-  kernel_ctxt_create(bbl->cs, 1, limits, &ctxt);
-  kernel_ctxt_launch_param(ctxt, &nblk, &ntpb);
 
-  tdpLaunchKernel(bbl_pass0_kernel, nblk, ntpb, 0, 0,
-		  ctxt->target, cstarget, lb->target, cinfo->target);
-  tdpAssert(tdpPeekAtLastError());
-  tdpAssert(tdpDeviceSynchronize());
+    kernel_3d_launch_param(k3d.kiterations, &nblk, &ntpb);
 
-  kernel_ctxt_free(ctxt);
+    tdpLaunchKernel(bbl_pass0_kernel, nblk, ntpb, 0, 0,
+		    k3d, cstarget, lb->target, cinfo->target);
+    tdpAssert(tdpPeekAtLastError());
+    tdpAssert(tdpDeviceSynchronize());
+  }
 
   return 0;
 }
@@ -349,39 +364,30 @@ int bbl_pass0(bbl_t * bbl, lb_t * lb, colloids_info_t * cinfo) {
  *
  *****************************************************************************/
 
-__global__ void bbl_pass0_kernel(kernel_ctxt_t * ktxt, cs_t * cs, lb_t * lb,
+__global__ void bbl_pass0_kernel(kernel_3d_t k3d, cs_t * cs, lb_t * lb,
 				 colloids_info_t * cinfo) {
 
   int kindex;
-  int kiter;
   LB_CS2_DOUBLE(cs2);
   LB_RCS2_DOUBLE(rcs2);
 
-  assert(ktxt);
   assert(cs);
   assert(lb);
   assert(cinfo);
 
-  kiter = kernel_iterations(ktxt);
+  for_simt_parallel(kindex, k3d.kiterations, 1) {
 
-  for_simt_parallel(kindex, kiter, 1) {
-
-    int ic, jc, kc, index;
-    int ia, ib, p;
     int noffset[3];
 
     double r[3], r0[3], rb[3], ub[3];
     double udotc, sdotq;
 
-    colloid_t * pc = NULL;
+    int ic = kernel_3d_ic(&k3d, kindex);
+    int jc = kernel_3d_jc(&k3d, kindex);
+    int kc = kernel_3d_kc(&k3d, kindex);
 
-    ic = kernel_coords_ic(ktxt, kindex);
-    jc = kernel_coords_jc(ktxt, kindex);
-    kc = kernel_coords_kc(ktxt, kindex);
-
-    index = kernel_coords_index(ktxt, ic, jc, kc);
-
-    pc = cinfo->map_new[index];
+    int index = kernel_3d_cs_index(&k3d, ic, jc, kc);
+    colloid_t * pc = cinfo->map_new[index];
 
     if (pc && (pc->s.bc == COLLOID_BC_BBL)) {
       cs_nlocal_offset(cs, noffset);
@@ -401,11 +407,11 @@ __global__ void bbl_pass0_kernel(kernel_ctxt_t * ktxt, cs_t * cs, lb_t * lb,
       ub[Y] = pc->s.v[Y] + pc->s.w[Z]*rb[X] - pc->s.w[X]*rb[Z];
       ub[Z] = pc->s.v[Z] + pc->s.w[X]*rb[Y] - pc->s.w[Y]*rb[X];
 
-      for (p = 1; p < lbp.nvel; p++) {
+      for (int p = 1; p < lbp.nvel; p++) {
 	udotc = lbp.cv[p][X]*ub[X] + lbp.cv[p][Y]*ub[Y] + lbp.cv[p][Z]*ub[Z];
 	sdotq = 0.0;
-	for (ia = 0; ia < 3; ia++) {
-	  for (ib = 0; ib < 3; ib++) {
+	for (int ia = 0; ia < 3; ia++) {
+	  for (int ib = 0; ib < 3; ib++) {
 	    double dab = (ia == ib);
 	    sdotq += (lbp.cv[p][ia]*lbp.cv[p][ib] - cs2*dab)*ub[ia]*ub[ib];
 	  }
@@ -905,7 +911,6 @@ int bbl_update_colloids(bbl_t * bbl, wall_t * wall, colloids_info_t * cinfo) {
   /* All colloids, including halo */
 
   colloids_info_all_head(cinfo, &pc);
-
   for ( ; pc; pc = pc->nextall) {
 
     if (pc->s.bc != COLLOID_BC_BBL) continue;
@@ -1193,7 +1198,9 @@ void bbl_ladd_ellipsoid(bbl_t * bbl, colloid_t * pc, wall_t * wall,
 
   util_q4_inertia_tensor(pc->s.quat, mI_P, mI);
 
-  wall_lubr_sphere(wall, pc->s.ah, pc->s.r, dwall);
+
+  /* Lubrication correction at wall ... */
+  bbl_wall_lubr_correction_ellipsoid(bbl, wall, pc, dwall);
 
   /* Add inertial terms to diagonal elements */
 
@@ -1377,10 +1384,10 @@ int bbl_6x6_gaussian_elimination(double a[6][6], double xb[6]) {
 static int bbl_wall_lubrication_account(bbl_t * bbl, wall_t * wall,
 					colloids_info_t * cinfo) {
 
-  double f[3] = {0.0, 0.0, 0.0};
-  double dwall[3];
   colloid_t * pc = NULL;
+  double f[3]    = {0.0, 0.0, 0.0};
 
+  assert(bbl);
   assert(cinfo);
 
   /* Local colloids */
@@ -1388,8 +1395,19 @@ static int bbl_wall_lubrication_account(bbl_t * bbl, wall_t * wall,
   colloids_info_local_head(cinfo, &pc);
 
   for (; pc; pc = pc->nextlocal) {
+    double dwall[3] = {0};
     if (pc->s.bc != COLLOID_BC_BBL) continue;
-    wall_lubr_sphere(wall, pc->s.ah, pc->s.r, dwall);
+
+    if (pc->s.shape == COLLOID_SHAPE_SPHERE) {
+      wall_lubr_sphere(wall, pc->s.ah, pc->s.r, dwall);
+    }
+    else if (pc->s.shape == COLLOID_SHAPE_ELLIPSOID) {
+      bbl_wall_lubr_correction_ellipsoid(bbl, wall, pc, dwall);
+    }
+    else {
+      /* Specifically, no COLLOID_SHAPE_DISK */
+      assert(0);
+    }
     f[X] -= pc->s.v[X]*dwall[X];
     f[Y] -= pc->s.v[Y]*dwall[Y];
     f[Z] -= pc->s.v[Z]*dwall[Z];
@@ -1501,4 +1519,118 @@ void bbl_ellipsoid_unsteady_mI(const double q[4],
   F[2][2] = -4.0*Izz*(q[0]*(ox*q[1] + oy*q[2]) + (oy*q[1] - ox*q[2])*q[3])*(-1.0 + 2.0*q[0]*q[0] + 2.0*q[3]*q[3]) + 4.0*Iyy*(q[0]*q[1] + q[2]*q[3])*(ox*q[0]*q[0] - ox*q[1]*q[1] - 2.0*oy*q[1]*q[2] + 2.0*oy*q[0]*q[3] + ox*(q[2]*q[2] - q[3]*q[3])) + 4.0*Ixx*(q[0]*q[2] - q[1]*q[3])*(oy*q[0]*q[0] + oy*q[1]*q[1] - 2.0*ox*q[1]*q[2] - 2.0*ox*q[0]*q[3] - oy*(q[2]*q[2] + q[3]*q[3]));
 
   return;
+}
+
+/*****************************************************************************
+ *
+ *  bbl_wall_lubr_correction_ellipsoid
+ *
+ *  We will compute the distance between the centre of the ellipsoid and
+ *  the tangent plane normal to each wall. This will provide the
+ *  normal separation. One computation per co-ordinate direction is
+ *  required.
+ *
+ *  This is fed into a fudge for the lubrication correction based on the
+ *  analytical expression for a sphere with a hydrodynamic radius of the
+ *  semi-major axis. A more representative effective radius could be
+ *  identified with some geometry.
+ *
+ *  A velocity-independent drag is returned.
+ *
+ *  Returns zero on success. If an overlap between the surface of the
+ *  ellipsoid and a wall position is detected, a non-zero value will
+ *  be returned.
+ *
+ *****************************************************************************/
+
+int bbl_wall_lubr_correction_ellipsoid(bbl_t * bbl, wall_t * wall,
+				       colloid_t * pc, double wdrag[3]) {
+  int ifail = 0;
+  double lmin[3] = {0};
+  double ltot[3] = {0};
+  double ah      = pc->s.elabc[X];  /* semi-major axis length */
+
+  cs_lmin(bbl->cs, lmin);
+  cs_ltot(bbl->cs, ltot);
+
+  if (wall->param->isboundary[X]) {
+    double xtan    = -1.0;     /* colloid centre to colloid tangent plane */
+    double nhat[3] = {1.0, 0.0, 0.0};                  /* +/- wall normal */
+    double hc      = wall->param->lubr_rc[X];                  /* cut off */
+    double dh      = wall->param->lubr_dh[X];    /* offset distance  wall */
+
+    double xc      = pc->s.r[X];
+    double drag    = 0.0;
+
+    xtan = util_q4_distance_to_tangent_plane(pc->s.elabc, pc->s.quat, nhat);
+
+    /* Compute a correction at (potentially) each end. */
+    {
+      double hbot = xc - (lmin[X] + dh) - xtan;    /* surface to bottom wall */
+      drag += wall_lubr_drag(bbl->eta, ah, hbot, hc);
+      if (hbot < 0.0) ifail = -1;
+    }
+    {
+      double htop = lmin[X] + (ltot[X] - dh) - xc - xtan;  /* surface to top */
+      drag += wall_lubr_drag(bbl->eta, ah, htop, hc);
+      if (htop < 0.0) ifail = +1;
+    }
+    wdrag[X] = drag;
+  }
+
+  /* Repeat for y-direction */
+
+  if (wall->param->isboundary[Y]) {
+    double ytan    = -1.0;     /* colloid centre to colloid tangent plane */
+    double nhat[3] = {0.0, 1.0, 0.0};                  /* +/- wall normal */
+    double hc      = wall->param->lubr_rc[Y];                  /* cut off */
+    double dh      = wall->param->lubr_dh[Y];    /* offset distance  wall */
+
+    double yc      = pc->s.r[Y];
+    double drag    = 0.0;
+
+    ytan = util_q4_distance_to_tangent_plane(pc->s.elabc, pc->s.quat, nhat);
+
+    /* Compute a correction at (potentially) each end. */
+    {
+      double hbot = yc - (lmin[Y] + dh) - ytan;    /* surface to bottom wall */
+      drag += wall_lubr_drag(bbl->eta, ah, hbot, hc);
+      if (hbot < 0.0) ifail = -1;
+    }
+    {
+      double htop = lmin[Y] + (ltot[Y] - dh) - yc - ytan;  /* surface to top */
+      drag += wall_lubr_drag(bbl->eta, ah, htop, hc);
+      if (htop < 0.0) ifail = +1;
+    }
+    wdrag[Y] = drag;
+  }
+
+  /* Repeat for z-direction */
+
+  if (wall->param->isboundary[Z]) {
+    double ztan    = -1.0;     /* colloid centre to colloid tangent plane */
+    double nhat[3] = {0.0, 0.0, 1.0};                  /* +/- wall normal */
+    double hc      = wall->param->lubr_rc[Z];                  /* cut off */
+    double dh      = wall->param->lubr_dh[Z];    /* offset distance  wall */
+
+    double zc      = pc->s.r[Z];
+    double drag    = 0.0;
+
+    ztan = util_q4_distance_to_tangent_plane(pc->s.elabc, pc->s.quat, nhat);
+
+    /* Compute a correction at (potentially) each end. */
+    {
+      double hbot = zc - (lmin[Z] + dh) - ztan;    /* surface to bottom wall */
+      drag += wall_lubr_drag(bbl->eta, ah, hbot, hc);
+      if (hbot < 0.0) ifail = -1;
+    }
+    {
+      double htop = lmin[Z] + (ltot[Z] - dh) - zc - ztan;  /* surface to top */
+      drag += wall_lubr_drag(bbl->eta, ah, htop, hc);
+      if (htop < 0.0) ifail = +1;
+    }
+    wdrag[Z] = drag;
+  }
+
+  return ifail;
 }

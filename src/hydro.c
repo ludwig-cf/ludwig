@@ -7,7 +7,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2012-2022 The University of Edinburgh
+ *  (c) 2012-2024 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -17,28 +17,24 @@
 
 #include <assert.h>
 #include <math.h>
-#include <stdlib.h> 
+#include <stdlib.h>
 
 #include "kernel.h"
 #include "hydro.h"
 #include "util.h"
 
 static int hydro_lees_edwards_parallel(hydro_t * obj);
-static int hydro_u_write(FILE * fp, int index, void * self);
-static int hydro_u_write_ascii(FILE * fp, int index, void * self);
-static int hydro_u_read(FILE * fp, int index, void * self);
-static int hydro_u_read_ascii(FILE * fp, int index, void * self);
 
 static __global__
 void hydro_field_set(hydro_t * hydro, double * field, double, double, double);
 
-__global__ void hydro_accumulate_kernel(kernel_ctxt_t * ktx, hydro_t * hydro,
+__global__ void hydro_accumulate_kernel(kernel_3d_t k3d, hydro_t * hydro,
                                         double fnet[3]);
-__global__ void hydro_correct_kernel(kernel_ctxt_t * ktx, hydro_t * hydro,
+__global__ void hydro_correct_kernel(kernel_3d_t k3d, hydro_t * hydro,
                                      double fnet[3]);
-__global__ void hydro_accumulate_kernel_v(kernel_ctxt_t * ktx, hydro_t * hydro,
+__global__ void hydro_accumulate_kernel_v(kernel_3d_v_t k3v, hydro_t * hydro,
                                           double fnet[3]);
-__global__ void hydro_correct_kernel_v(kernel_ctxt_t * ktx, hydro_t * hydro,
+__global__ void hydro_correct_kernel_v(kernel_3d_v_t k3v, hydro_t * hydro,
 				       double fnet[3]);
 __global__ void hydro_rho0_kernel(int nsite, double rho0, double * rho);
 
@@ -133,7 +129,6 @@ __host__ int hydro_free(hydro_t * obj) {
   tdpGetDeviceCount(&ndevice);
 
   if (ndevice > 0) tdpAssert(tdpFree(obj->target));
-  if (obj->info) io_info_free(obj->info);
 
   field_free(obj->eta);
   field_free(obj->force);
@@ -209,63 +204,6 @@ __host__ int hydro_halo_swap(hydro_t * obj, field_halo_enum_t flag) {
   assert(obj);
 
   field_halo_swap(obj->u, flag);
-
-  return 0;
-}
-
-/*****************************************************************************
- *
- *  hydro_init_io_info
- *
- *  There is no read for the velocity; this should come from the
- *  distribution.
- *
- *****************************************************************************/
-
-__host__ int hydro_init_io_info(hydro_t * obj, int grid[3], int form_in,
-				int form_out) {
-
-  io_info_args_t args = io_info_args_default();
-
-  assert(obj);
-  assert(grid);
-  assert(obj->info == NULL);
-
-  args.grid[X] = grid[X];
-  args.grid[Y] = grid[Y];
-  args.grid[Z] = grid[Z];
-
-  io_info_create(obj->pe, obj->cs, &args, &obj->info);
-  if (obj->info == NULL) pe_fatal(obj->pe, "io_info_create(hydro) failed\n");
-
-  io_info_set_name(obj->info, "Velocity field");
-  io_info_write_set(obj->info, IO_FORMAT_BINARY, hydro_u_write);
-  io_info_write_set(obj->info, IO_FORMAT_ASCII, hydro_u_write_ascii);
-  io_info_read_set(obj->info, IO_FORMAT_BINARY, hydro_u_read);
-  io_info_read_set(obj->info, IO_FORMAT_ASCII, hydro_u_read_ascii);
-
-  /* ASCII output size (see write_ascii) is 69 bytes */
-  io_info_set_bytesize(obj->info, IO_FORMAT_BINARY, NHDIM*sizeof(double));
-  io_info_set_bytesize(obj->info, IO_FORMAT_ASCII, 69);
-
-  io_info_format_set(obj->info, form_in, form_out);
-  io_info_metadata_filestub_set(obj->info, "vel");
-
-  return 0;
-}
-
-/*****************************************************************************
- *
- *  hydro_io_info
- *
- *****************************************************************************/
-
-__host__ int hydro_io_info(hydro_t * obj, io_info_t ** info) {
-
-  assert(obj);
-  assert(obj->info); /* Should have been initialised */
-
-  *info = obj->info;
 
   return 0;
 }
@@ -564,7 +502,7 @@ static int hydro_lees_edwards_parallel(hydro_t * obj) {
 
   sbuf = (double *) calloc(nsend, sizeof(double));
   rbuf = (double *) calloc(nrecv, sizeof(double));
- 
+
   if (sbuf == NULL) pe_fatal(obj->pe, "hydro: malloc(le sbuf) failed\n");
   if (rbuf == NULL) pe_fatal(obj->pe, "hydro: malloc(le rbuf) failed\n");
 
@@ -663,99 +601,6 @@ static int hydro_lees_edwards_parallel(hydro_t * obj) {
 
 /*****************************************************************************
  *
- *  hydro_u_write
- *
- *****************************************************************************/
-
-static int hydro_u_write(FILE * fp, int index, void * arg) {
-
-  int n;
-  double u[3];
-  hydro_t * obj = (hydro_t*) arg;
-
-  assert(fp);
-  assert(obj);
-
-  hydro_u(obj, index, u);
-  n = fwrite(u, sizeof(double), NHDIM, fp);
-  if (n != NHDIM) pe_fatal(obj->pe, "fwrite(hydro->u) failed\n");
-
-  return 0;
-}
-
-/*****************************************************************************
- *
- *  hydro_u_write_ascii
- *
- *****************************************************************************/
-
-static int hydro_u_write_ascii(FILE * fp, int index, void * arg) {
-
-  int n;
-  double u[3];
-  hydro_t * obj = (hydro_t *) arg;
-
-  assert(fp);
-  assert(obj);
-
-  hydro_u(obj, index, u);
-
-  n = fprintf(fp, "%22.15e %22.15e %22.15e\n", u[X], u[Y], u[Z]);
-
-  /* Expect total of 69 characters ... */
-  if (n != 69) pe_fatal(obj->pe, "fprintf(hydro->u) failed\n");
-
-  return 0;
-}
-
-/*****************************************************************************
- *
- *  hydro_u_read
- *
- *****************************************************************************/
-
-int hydro_u_read(FILE * fp, int index, void * self) {
-
-  int n;
-  double u[3];
-  hydro_t * obj = (hydro_t *) self;
-
-  assert(fp);
-  assert(obj);
-
-  n = fread(u, sizeof(double), NHDIM, fp);
-  if (n != NHDIM) pe_fatal(obj->pe, "fread(hydro->u) failed\n");
-
-  hydro_u_set(obj, index, u);
-
-  return 0;
-}
-
-/*****************************************************************************
- *
- *  hydro_u_read_ascii
- *
- *****************************************************************************/
-
-static int hydro_u_read_ascii(FILE * fp, int index, void * self) {
-
-  int n;
-  double u[3];
-  hydro_t * obj = (hydro_t *) self;
-
-  assert(fp);
-  assert(obj);
-
-  n = fscanf(fp, "%le %le %le", &u[X], &u[Y], &u[Z]);
-  if (n != NHDIM) pe_fatal(obj->pe, "fread(hydro->u) failed\n");
-
-  hydro_u_set(obj, index, u);
-
-  return 0;
-}
-
-/*****************************************************************************
- *
  *  hydro_u_gradient_tensor
  *
  *  Return the velocity gradient tensor w_ab = d_b u_a at
@@ -837,37 +682,35 @@ __host__ int hydro_correct_momentum(hydro_t * hydro) {
   double fnet[3] = {0.0, 0.0, 0.0};
   double * fnetd = NULL;
 
-  dim3 nblk, ntpb;
-  kernel_info_t limits;
-  kernel_ctxt_t * ctxt = NULL;
-
   assert(hydro);
 
   cs_nlocal(hydro->cs, nlocal);
   cs_cart_comm(hydro->cs, &comm);
 
-  limits.imin = 1; limits.imax = nlocal[X];
-  limits.jmin = 1; limits.jmax = nlocal[Y];
-  limits.kmin = 1; limits.kmax = nlocal[Z];
+  {
+    dim3 nblk = {};
+    dim3 ntpb = {};
+    cs_limits_t lim = {1, nlocal[X], 1, nlocal[Y], 1, nlocal[Z]};
+    kernel_3d_v_t k3v = kernel_3d_v(hydro->cs, lim, NSIMDVL);
 
-  kernel_ctxt_create(hydro->cs, NSIMDVL, limits, &ctxt);
-  kernel_ctxt_launch_param(ctxt, &nblk, &ntpb);
+    kernel_3d_launch_param(k3v.kiterations, &nblk, &ntpb);
 
-  tdpAssert(tdpMalloc((void **) &fnetd, 3*sizeof(double)));
-  tdpAssert(tdpMemcpy(fnetd, fnet, 3*sizeof(double), tdpMemcpyHostToDevice));
+    tdpAssert(tdpMalloc((void **) &fnetd, 3*sizeof(double)));
+    tdpAssert(tdpMemcpy(fnetd, fnet, 3*sizeof(double), tdpMemcpyHostToDevice));
 
-  /* Accumulate net force */
+    /* Accumulate net force */
 
-  tdpLaunchKernel(hydro_accumulate_kernel_v, nblk, ntpb, 0, 0,
-		  ctxt->target, hydro->target, fnetd);
+    tdpLaunchKernel(hydro_accumulate_kernel_v, nblk, ntpb, 0, 0,
+		    k3v, hydro->target, fnetd);
 
-  tdpAssert(tdpPeekAtLastError());
+    tdpAssert(tdpPeekAtLastError());
 
-  cs_ltot(hydro->cs, ltot);
-  rv = 1.0/(ltot[X]*ltot[Y]*ltot[Z]);
+    cs_ltot(hydro->cs, ltot);
+    rv = 1.0/(ltot[X]*ltot[Y]*ltot[Z]);
 
-  tdpAssert(tdpDeviceSynchronize());
-  tdpAssert(tdpMemcpy(fnet, fnetd, 3*sizeof(double), tdpMemcpyDeviceToHost));
+    tdpAssert(tdpDeviceSynchronize());
+    tdpAssert(tdpMemcpy(fnet, fnetd, 3*sizeof(double), tdpMemcpyDeviceToHost));
+  }
 
   /* Compute global correction */
 
@@ -881,14 +724,22 @@ __host__ int hydro_correct_momentum(hydro_t * hydro) {
 
   tdpMemcpy(fnetd, fnet, 3*sizeof(double), tdpMemcpyHostToDevice);
 
-  tdpLaunchKernel(hydro_correct_kernel_v, nblk, ntpb, 0, 0,
-		  ctxt->target, hydro->target, fnetd);
+  {
+    dim3 nblk = {};
+    dim3 ntpb = {};
+    cs_limits_t lim = {1, nlocal[X], 1, nlocal[Y], 1, nlocal[Z]};
+    kernel_3d_v_t k3v = kernel_3d_v(hydro->cs, lim, NSIMDVL);
 
-  tdpAssert(tdpPeekAtLastError());
-  tdpAssert(tdpDeviceSynchronize());
-  tdpFree(fnetd);
+    kernel_3d_launch_param(k3v.kiterations, &nblk, &ntpb);
 
-  kernel_ctxt_free(ctxt);
+    tdpLaunchKernel(hydro_correct_kernel_v, nblk, ntpb, 0, 0,
+		    k3v, hydro->target, fnetd);
+
+    tdpAssert(tdpPeekAtLastError());
+    tdpAssert(tdpDeviceSynchronize());
+  }
+
+  tdpAssert( tdpFree(fnetd) );
 
   return 0;
 }
@@ -901,18 +752,16 @@ __host__ int hydro_correct_momentum(hydro_t * hydro) {
  *
  *****************************************************************************/
 
-__global__ void hydro_accumulate_kernel(kernel_ctxt_t * ktx, hydro_t * hydro,
+__global__ void hydro_accumulate_kernel(kernel_3d_t k3d, hydro_t * hydro,
 					double fnet[3]) {
 
-  int kindex;
-  int kiterations;
+  int kindex = 0;
   int tid;
 
   __shared__ double fx[TARGET_PAD*TARGET_MAX_THREADS_PER_BLOCK];
   __shared__ double fy[TARGET_PAD*TARGET_MAX_THREADS_PER_BLOCK];
   __shared__ double fz[TARGET_PAD*TARGET_MAX_THREADS_PER_BLOCK];
 
-  assert(ktx);
   assert(hydro);
 
   tid = threadIdx.x;
@@ -920,18 +769,15 @@ __global__ void hydro_accumulate_kernel(kernel_ctxt_t * ktx, hydro_t * hydro,
   fy[TARGET_PAD*tid] = 0.0;
   fz[TARGET_PAD*tid] = 0.0;
 
-  kiterations = kernel_iterations(ktx);
+  for_simt_parallel(kindex, k3d.kiterations, 1) {
 
-  for_simt_parallel(kindex, kiterations, 1) {
+    int ic = kernel_3d_ic(&k3d, kindex);
+    int jc = kernel_3d_jc(&k3d, kindex);
+    int kc = kernel_3d_kc(&k3d, kindex);
+    int index = kernel_3d_cs_index(&k3d, ic, jc, kc);
+    double f[3] = {0};
 
-    int ic, jc, kc, index;
-    double f[3];
-
-    ic = kernel_coords_ic(ktx, kindex);
-    jc = kernel_coords_jc(ktx, kindex);
-    kc = kernel_coords_kc(ktx, kindex);
-    index = kernel_coords_index(ktx, ic, jc, kc);
-    hydro_f_local(hydro, index, f); 
+    hydro_f_local(hydro, index, f);
 
     fx[TARGET_PAD*tid] += f[X];
     fy[TARGET_PAD*tid] += f[Y];
@@ -967,39 +813,33 @@ __global__ void hydro_accumulate_kernel(kernel_ctxt_t * ktx, hydro_t * hydro,
  *
  *****************************************************************************/
 
-__global__ void hydro_accumulate_kernel_v(kernel_ctxt_t * ktx, hydro_t * hydro,
+__global__ void hydro_accumulate_kernel_v(kernel_3d_v_t k3v, hydro_t * hydro,
 					  double fnet[3]) {
 
-  int kindex;
-  int kiterations;
-  int tid;
+  int kindex = 0;
+  int tid = threadIdx.x;
 
   __shared__ double fx[TARGET_PAD*TARGET_MAX_THREADS_PER_BLOCK];
   __shared__ double fy[TARGET_PAD*TARGET_MAX_THREADS_PER_BLOCK];
   __shared__ double fz[TARGET_PAD*TARGET_MAX_THREADS_PER_BLOCK];
 
-  assert(ktx);
   assert(hydro);
 
-  tid = threadIdx.x;
   fx[TARGET_PAD*tid] = 0.0;
   fy[TARGET_PAD*tid] = 0.0;
   fz[TARGET_PAD*tid] = 0.0;
 
-  kiterations = kernel_vector_iterations(ktx);
+  for_simt_parallel(kindex, k3v.kiterations, NSIMDVL) {
 
-  for_simt_parallel(kindex, kiterations, NSIMDVL) {
+    double f[3] = {0};
 
-    int index;
-    int ia, iv;
-    double f[3];
+    int index = k3v.kindex0 + kindex;
 
-    index = kernel_baseindex(ktx, kindex);
-
-    for (ia = 0; ia < 3; ia++) {
+    for (int ia = 0; ia < 3; ia++) {
+      int iv = 0;
       double ftmp = 0.0;
       for_simd_v_reduction(iv, NSIMDVL, +: ftmp) {
-        ftmp += hydro->force->data[addr_rank1(hydro->nsite,NHDIM,index+iv,ia)]; 
+        ftmp += hydro->force->data[addr_rank1(hydro->nsite,NHDIM,index+iv,ia)];
       }
       f[ia] = ftmp;
     }
@@ -1038,24 +878,19 @@ __global__ void hydro_accumulate_kernel_v(kernel_ctxt_t * ktx, hydro_t * hydro,
  *
  *****************************************************************************/
 
-__global__ void hydro_correct_kernel(kernel_ctxt_t * ktx, hydro_t * hydro,
+__global__ void hydro_correct_kernel(kernel_3d_t k3d, hydro_t * hydro,
 				     double fnet[3]) {
 
-  int kindex;
-  int kiterations;
-  int ic, jc, kc, index;
+  int kindex = 0;
 
-  assert(ktx);
   assert(hydro);
 
-  kiterations = kernel_iterations(ktx);
+  for_simt_parallel(kindex, k3d.kiterations, 1) {
 
-  for_simt_parallel(kindex, kiterations, 1) {
-
-    ic = kernel_coords_ic(ktx, kindex);
-    jc = kernel_coords_jc(ktx, kindex);
-    kc = kernel_coords_kc(ktx, kindex);
-    index = kernel_coords_index(ktx, ic, jc, kc);
+    int ic = kernel_3d_ic(&k3d, kindex);
+    int jc = kernel_3d_jc(&k3d, kindex);
+    int kc = kernel_3d_kc(&k3d, kindex);
+    int index = kernel_3d_cs_index(&k3d, ic, jc, kc);
 
     hydro_f_local_add(hydro, index, fnet);
   }
@@ -1071,26 +906,22 @@ __global__ void hydro_correct_kernel(kernel_ctxt_t * ktx, hydro_t * hydro,
  *
  *****************************************************************************/
 
-__global__ void hydro_correct_kernel_v(kernel_ctxt_t * ktx, hydro_t * hydro,
+__global__ void hydro_correct_kernel_v(kernel_3d_v_t k3v, hydro_t * hydro,
 				       double fnet[3]) {
 
-  int kindex;
-  int kiterations;
+  int kindex = 0;
 
-  assert(ktx);
   assert(hydro);
 
-  kiterations = kernel_vector_iterations(ktx);
+  for_simt_parallel(kindex, k3v.kiterations, NSIMDVL) {
 
-  for_simt_parallel(kindex, kiterations, NSIMDVL) {
-
-    int index = kernel_baseindex(ktx, kindex);
+    int index = k3v.kindex0 +  kindex;
 
     for (int ia = 0; ia < 3; ia++) {
       int iv = 0;
       for_simd_v(iv, NSIMDVL) {
 	int haddr = addr_rank1(hydro->nsite, NHDIM, index + iv, ia);
-	hydro->force->data[haddr] += fnet[ia]; 
+	hydro->force->data[haddr] += fnet[ia];
       }
     }
   }
@@ -1109,27 +940,10 @@ __global__ void hydro_correct_kernel_v(kernel_ctxt_t * ktx, hydro_t * hydro,
 
 int hydro_io_write(hydro_t * hydro, int timestep, io_event_t * event) {
 
-  /* For backwards compatibility, we currently allow old-style output */
-  /* Call to io_write_data() must be here, as only have hydro->info
-     for the old options (not u->info etc). This will go away with
-     a consistent impl. */
+  assert(hydro);
 
-  const io_metadata_t * rmeta = &hydro->rho->iometadata_out;
-  const io_metadata_t * umeta = &hydro->u->iometadata_out;
-
-  if (rmeta->options.mode == IO_MODE_MPIIO) {
-    field_io_write(hydro->rho, timestep, event);
-  }
-
-  if (umeta->options.mode == IO_MODE_MPIIO) {
-    field_io_write(hydro->u, timestep, event);
-  }
-  else {
-    /* Old style has "vel" only. */
-    char filename[BUFSIZ] = {0};
-    sprintf(filename, "%s-%8.8d", hydro->u->name, timestep);
-    io_write_data(hydro->info, filename, hydro);
-  }
+  field_io_write(hydro->rho, timestep, event);
+  field_io_write(hydro->u,   timestep, event);
 
   return 0;
 }
@@ -1144,22 +958,10 @@ int hydro_io_write(hydro_t * hydro, int timestep, io_event_t * event) {
 
 int hydro_io_read(hydro_t * hydro, int timestep, io_event_t * event) {
 
-  const io_metadata_t * rmeta = &hydro->rho->iometadata_in;
-  const io_metadata_t * umeta = &hydro->u->iometadata_in;
+  assert(hydro);
 
-  if (rmeta->options.mode == IO_MODE_MPIIO) {
-    field_io_read(hydro->rho, timestep, event);
-  }
-
-  if (umeta->options.mode == IO_MODE_MPIIO) {
-    field_io_read(hydro->u, timestep, event);
-  }
-  else {
-    /* Old style has "vel" only. */
-    char filename[BUFSIZ] = {0};
-    sprintf(filename, "%s-%8.8d", hydro->u->name, timestep);
-    io_read_data(hydro->info, filename, hydro);
-  }
+  field_io_read(hydro->rho, timestep, event);
+  field_io_read(hydro->u,   timestep, event);
 
   return 0;
 }

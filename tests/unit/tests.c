@@ -7,7 +7,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2010-2023 The University of Edinburgh
+ *  (c) 2010-2024 The University of Edinburgh
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *
@@ -46,11 +46,31 @@ __host__ int main(int argc, char ** argv) {
 
 __host__ int tests_create(int argc, char ** argv) {
 
+  /* This is largely alphabetical order, but a better order related
+   * to dependencies might be more appropriate */
+
+  /* Fundamentals: parallel environment, coordinate systems */
+
   test_pe_suite();
   test_coords_suite();
   test_cs_limits_suite();
+  test_le_suite();
 
-  test_kernel_suite();
+  /* i/o infrastructure */
+  test_io_aggregator_suite();
+  test_io_element_suite();
+  test_io_options_suite();
+  test_io_options_rt_suite();
+  test_io_info_args_suite();
+  test_io_info_args_rt_suite();
+  test_io_subfile_suite();
+  test_io_metadata_suite();
+  test_io_impl_mpio_suite();
+
+  /* Kernel helpers */
+  test_kernel_3d_suite();
+  test_kernel_3d_v_suite();
+
   test_gradient_d3q27_suite();
   test_angle_cosine_suite();
   test_assumptions_suite();
@@ -77,16 +97,7 @@ __host__ int tests_create(int argc, char ** argv) {
   test_hydro_options_suite();
   test_hydro_suite();
   test_interaction_suite();
-  test_io_aggregator_suite();
-  test_io_element_suite();
-  test_io_options_suite();
-  test_io_options_rt_suite();
-  test_io_info_args_suite();
-  test_io_info_args_rt_suite();
-  test_io_subfile_suite();
-  test_io_metadata_suite();
-  test_io_impl_mpio_suite();
-  test_io_suite();
+
   test_lb_d2q9_suite();
   test_lb_d3q15_suite();
   test_lb_d3q19_suite();
@@ -97,12 +108,19 @@ __host__ int tests_create(int argc, char ** argv) {
   test_lb_bc_outflow_opts_suite();
   test_lb_bc_outflow_rhou_suite();
   test_lc_anchoring_suite();
-  test_le_suite();
   test_lubrication_suite();
+
+  /* Map tests */
+  test_map_options_suite();
   test_map_suite();
   test_map_init_suite();
+
   test_model_suite();
+
+  /* Noise tests */
+  test_noise_options_suite();
   test_noise_suite();
+
   test_pair_lj_cut_suite();
   test_pair_ss_cut_suite();
   test_pair_ss_cut_ij_suite();

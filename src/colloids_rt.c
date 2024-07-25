@@ -570,6 +570,28 @@ int colloids_rt_state_stub(pe_t * pe, rt_t * rt, colloids_info_t * cinfo,
 
   snprintf(key, BUFSIZ-1, "%s_%s", stub, "m");
   nrt = rt_double_parameter_vector(rt, key, state->m);
+
+  /* Initial direction for spherical squirmers */
+
+  if (state->active && state->shape == COLLOID_SHAPE_SPHERE) {
+    if (nrt == 0) {
+      pe_info(pe, "An active sphere must have a direction\n");
+      pe_info(pe, "Use `colloid_m` to specify an initial vector\n");
+      pe_exit(pe, "Please check and try again\n");
+    }
+    else {
+      /* Ensure m is non-zero, and force a unit vector */
+      double rmod = modulus(state->m);
+      if (rmod <= 0.0) {
+	pe_info(pe, "Must specify colloid_m as non-zero\n");
+	pe_exit(pe, "Please check and try again\n");
+      }
+      state->m[X] /= rmod;
+      state->m[Y] /= rmod;
+      state->m[Z] /= rmod;
+    }
+  }
+
   if (nrt) pe_info(pe, format_e3, key, state->m[X], state->m[Y], state->m[Z]);
 
   snprintf(key, BUFSIZ-1, "%s_%s", stub, "b1");

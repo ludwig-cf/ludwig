@@ -5,7 +5,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2010-2023 The University of Edinburgh
+ *  (c) 2010-2024 The University of Edinburgh
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *
@@ -66,7 +66,7 @@ int test_io_options_rt_suite(void);
 int test_io_subfile_suite(void);
 int test_io_metadata_suite(void);
 int test_io_impl_mpio_suite(void);
-int test_io_suite(void);
+
 int test_lb_d2q9_suite(void);
 int test_lb_d3q15_suite(void);
 int test_lb_d3q19_suite(void);
@@ -79,12 +79,18 @@ int test_lb_bc_outflow_rhou_suite(void);
 int test_lc_anchoring_suite(void);
 int test_le_suite(void);
 int test_kernel_suite(void);
+int test_kernel_3d_suite(void);
+int test_kernel_3d_v_suite(void);
 int test_lubrication_suite(void);
+int test_map_options_suite(void);
 int test_map_suite(void);
 int test_map_init_suite(void);
 int test_model_suite(void);
 int test_nernst_planck_suite(void);
+
+int test_noise_options_suite(void);
 int test_noise_suite(void);
+
 int test_pair_lj_cut_suite(void);
 int test_pair_ss_cut_suite(void);
 int test_pair_ss_cut_ij_suite(void);

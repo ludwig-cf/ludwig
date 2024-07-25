@@ -10,7 +10,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2007-2023 The University of Edinburgh.
+ *  (c) 2007-2024 The University of Edinburgh.
  *
  *  Contributing authors:
  *  Grace Kim
@@ -135,6 +135,12 @@ int ewald_create(pe_t * pe, cs_t * cs, double mu_input, double rc_input,
 int ewald_free(ewald_t * ewald) {
 
   assert(ewald);
+
+  free(sinx_);
+  free(cosx_);
+  free(sinkr_);
+  free(coskr_);
+
   free(ewald);
 
   return 0;

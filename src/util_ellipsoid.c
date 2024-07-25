@@ -589,7 +589,7 @@ int util_ellipsoid_euler_from_vectors(const double a0[3], const double b0[3],
  *  cf2 = (16/3) e^3 [+2e +(3e^2 - 1) log(1+e/1-e)]^-1
  *
  *  The Stokes' relationship is:
- *  F = 6 pi mu a (U_1 cf1 xhat + U_2 cf2 yhat)
+ *  F = 6 pi eta a (U_1 cf1 xhat + U_2 cf2 yhat)
  *
  *  a    is the semi-major axis
  *  b    is the semi-minor axis (b < a)
@@ -631,172 +631,10 @@ int util_ellipsoid_prolate_settling_velocity(double a,
 
 /*****************************************************************************
  *
- *  util_ellipsoid_is_sphere
- *
- *  Return 1 if a = b = c.
- *
- *****************************************************************************/
-
-int util_ellipsoid_is_sphere(const double elabc[3]) {
-
-  double a = elabc[0];
-  double b = elabc[1];
-  double c = elabc[2];
-
-  return ((fabs(b - a) < DBL_EPSILON) && (fabs(c - b) < DBL_EPSILON));
-}
-
-/*****************************************************************************
- *
- *  util_spheroid_normal_tangent
- *
- *  Calculate surface normal or tangent on a spheroid at a point r
- *  which may be at, or near, the surface.
- *
- *  The computation is rather similar: tangent = 1 gives tangent,
- *  otherwise the normal is returned.
- *
- *  Note
- *  "Spheroid" has a != b and b = c (for oblate or prolate case).
- *
- *  See, e.g., S.R. Keller and T.Y.T. Wu, J. Fluid Mech. 80, 259--278 (1977).
- *
- *  CHECK what happens in the oblate case?
- *
- *  The vector returned should be a unit vector if r is exactly at the
- *  surface, but may not be in other cases.
- *
- ****************************************************************************/
-
-int util_spheroid_normal_tangent(const double elabc[3], const double elbz[3],
-				 const double r[3], int tangent,
-				 double result[3]) {
-  int ifail = 0;
-  double elc;
-  double ele,ele2;
-  double ela,ela2;
-  double elz,elz2;
-  double elr;
-  double rmod;
-  double elrho[3];
-  double diff1, diff2;
-
-  /* elabc[0] must be a, the largest dimension, and b == c */
-  assert(elabc[0] >  elabc[1]);
-  assert(fabs(elabc[1] - elabc[2]) < DBL_EPSILON);
-
-  ela = elabc[0];
-  elc = sqrt(elabc[0]*elabc[0] - elabc[1]*elabc[1]);
-  ele = elc/ela;
-  elz = dot_product(r, elbz);
-
-  for (int ia = 0; ia < 3; ia++) {
-    elrho[ia] = r[ia] - elz*elbz[ia];
-  }
-  elr = modulus(elrho);
-  rmod = 0.0;
-  if (elr != 0.0) rmod = 1.0/elr;
-
-  for (int ia = 0; ia < 3; ia++) {
-    elrho[ia] = elrho[ia]*rmod;
-  }
-
-  ela2  = ela*ela;
-  elz2  = elz*elz;
-  ele2  = ele*ele;
-  diff1 = ela2 - elz2;
-  diff2 = ela2 - ele2*elz2;
-
-  /* If r is not exactly at the surface, then elz > ela. An adjustment
-   * is made ... */
-
-  if (diff1 < 0.0) {
-    double dr[3] = {0};
-    double gridin[3] = {0};
-    double elzin = 0.0;
-    elr = modulus(r);
-    rmod = 0.0;
-    if (elr != 0.0) rmod = 1.0/elr;
-    for (int ia = 0; ia < 3; ia++) {
-      dr[ia] = r[ia]*rmod;
-    }
-    for (int ia = 0; ia < 3; ia++) {
-      gridin[ia] = r[ia] - dr[ia];
-    }
-    elzin = dot_product(gridin, elbz);
-    elz2  = elzin*elzin;
-    diff1 = ela2 - elz2;
-
-    if (diff2 < 0.0) diff2 = ela2 - ele2*elz2;
-  }
-
-  assert(diff1 >= 0.0);
-  assert(diff2 >  0.0);
-
-  {
-    double denom = sqrt(diff2);
-    double term1 = sqrt(diff1)/denom;
-    double term2 = sqrt(1.0 - ele*ele)*elz/denom;
-
-    if (tangent) {
-      /* Tangent vector */
-      for (int ia = 0; ia < 3; ia++) {
-	result[ia] = -term1*elbz[ia] + term2*elrho[ia];
-      }
-      elr = modulus(elrho);
-      if (elr <= 0.0) ifail = -999; /* tangent fails */
-    }
-    else {
-      /* Normal vector */
-      for (int ia = 0; ia < 3; ia++) {
-	result[ia] = +term2*elbz[ia] + term1*elrho[ia];
-      }
-    }
-    /* If r is exactly at the surface, the result will be a unit vector. */
-  }
-
-  return ifail;
-}
-
-/*****************************************************************************
- *
- *  util_spheroid_surface_normal
- *
- *  Calculate surface normal on an spheroid.
- *  elabc[3]  - a >= b = c for spheroid here
- *  m[3]      - vector aligned along principal axis a
- *  r[3]      - position at surface
- *  v[3]      - normal vector at position r
- *
- ****************************************************************************/
-
-int util_spheroid_surface_normal(const double elabc[3], const double m[3],
-				 const double r[3], double v[3]) {
-
-  return util_spheroid_normal_tangent(elabc, m, r, 0, v);
-}
-
-/*****************************************************************************
- *
- *  util_spheroid_surface_tangent
- *
- *  Calculate surface tangent on a spheroid.
- *  See comments above for normal version, except the result is the tangent.
- *
- *****************************************************************************/
-
-int util_spheroid_surface_tangent(const double elabc[3], const double m[3],
-				  const double r[3], double vt[3]) {
-
-  return util_spheroid_normal_tangent(elabc, m, r, 1, vt);
-}
-
-/*****************************************************************************
- *
  *  util_discrete_volume_ellipsoid
  *
  *  A utility to return the discrete volume of an ellipsoid with axes
- *  abs[3] and orientation described by quaternion q placed on the
+ *  abc[3] and orientation described by quaternion q placed on the
  *  unit lattice at position r.
  *
  *  We just draw a large box around the central position based on the
@@ -804,6 +642,7 @@ int util_spheroid_surface_tangent(const double elabc[3], const double m[3],
  *  The inside/outside determination is via util_q4_is_inside_ellipsoid().
  *
  *  The return value is the volume as an integer.
+ *  The volume is also returned as a double in the argument list.
  *
  *****************************************************************************/
 
@@ -831,4 +670,114 @@ int util_discrete_volume_ellipsoid(const double abc[3], const double r0[3],
   *vol = 1.0*inside;
 
   return inside;
+}
+
+/****************************************************************************
+ *
+ *  util_ellipsoid_eqn_lhs
+ *
+ *  Calculate the lhs of the equation for an ellipsoid using the equation
+ *  of the ellipsoid
+ *
+ ****************************************************************************/
+
+double ellipsoid_eqn_lhs(const double elA[3][3], const double rsep[3]) {
+
+  double lhs =
+    + elA[0][0]*rsep[X]*rsep[X]
+    + elA[1][1]*rsep[Y]*rsep[Y]
+    + elA[2][2]*rsep[Z]*rsep[Z]
+    + (elA[0][1]+elA[1][0])*rsep[X]*rsep[Y]
+    + (elA[0][2]+elA[2][0])*rsep[X]*rsep[Z]
+    + (elA[1][2]+elA[2][1])*rsep[Y]*rsep[Z];
+
+  return lhs;
+}
+
+/*****************************************************************************
+ *
+ *  util_ellipsoid_gaussian_rad_curv
+ *
+ *  Calculate the Gaussian curvature of an ellipsoid in the body fixed
+ *  coordinate system
+ *
+ ****************************************************************************/
+
+double Gaussian_RadCurv_ellipsoid(const double *elabc, const double x[3]) {
+
+  double a2 = elabc[0]*elabc[0];
+  double b2 = elabc[1]*elabc[1];
+  double c2 = elabc[2]*elabc[2];
+  double s1= ((x[0]*x[0])/(a2*a2)) + ((x[1]*x[1])/(b2*b2)) + ((x[2]*x[2])/(c2*c2));
+
+  return elabc[0]*elabc[1]*elabc[2]*s1;
+}
+
+/*****************************************************************************
+ *
+ *  util_q4_to_r
+ *
+ *  Return the rotation matrix which corresponds to q.
+ *
+ *  The rotation matrix may be constructed directly from
+ *
+ *     b = (2q_0 - 1) a + 2(q.a)q + 2q_0 q x a
+ *
+ *  See util_q4_rotate_vector() above.
+ *
+ *****************************************************************************/
+
+void util_q4_to_r(const double q[4], double r[3][3]) {
+
+  r[0][0] = 2.0*(q[0]*q[0] - 0.5 + q[1]*q[1]            );
+  r[0][1] = 2.0*(                  q[2]*q[1] - q[0]*q[3]);
+  r[0][2] = 2.0*(                  q[3]*q[1] + q[0]*q[2]);
+
+  r[1][0] = 2.0*(                  q[1]*q[2] + q[0]*q[3]);
+  r[1][1] = 2.0*(q[0]*q[0] - 0.5 + q[2]*q[2]            );
+  r[1][2] = 2.0*(                  q[3]*q[2] - q[0]*q[1]);
+
+  r[2][0] = 2.0*(                  q[1]*q[3] - q[0]*q[2]);
+  r[2][1] = 2.0*(                  q[2]*q[3] + q[0]*q[1]);
+  r[2][2] = 2.0*(q[0]*q[0] - 0.5 + q[3]*q[3]            );
+
+  return;
+}
+
+/*****************************************************************************
+ *
+ *  util_q4_distance_to_tangent_plane
+ *
+ *  For ellipsoid with principal semi-axis lengths abc and orientation
+ *  described by q, what is the normal distance from the centre to the
+ *  tangent plane with plane normal nhat (nhat in the lab frame).
+ *
+ *  See e.g., Ferguson, Mathematical Geology, 11, 329--336 (1979).
+ *  https://link.springer.com/content/pdf/10.1007/BF01034997.pdf
+ *
+ *  In brief:
+ *  If the normal is n_i then beta_j = n_i R_ij where R_ij is the
+ *  rotation to move from the lab frame to the principal frame.
+ *
+ *  The distance is then d = sqrt(beta_i^2 abc_i^2)
+ *
+ *  Here, the rotation matrix is replaced by the rotation q^*.
+ *
+ *****************************************************************************/
+
+double util_q4_distance_to_tangent_plane(const double abc[3],
+					 const double q[4],
+					 const double nhat[3]) {
+  double d       = 0.0;
+  double qbar[4] = {q[0], -q[1], -q[2], -q[3]};
+  double beta[3] = {0};
+
+  util_q4_rotate_vector(qbar, nhat, beta);
+
+  for (int i = 0; i < 3; i++) {
+    d += beta[i]*beta[i]*abc[i]*abc[i];
+  }
+  assert(d >= 0.0);
+
+  return sqrt(d);
 }
