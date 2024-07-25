@@ -4,23 +4,19 @@
 #  https://www.archer2.ac.uk
 #
 #  PrgEnv-cray
-#    - Use cce >= 12 to avoid problem in openmp
-#    - "module load cce/12.0.3"
+#  PrgEnv-gnu
 #
-#  Same compiler options for all PrgEnv are available.
+#  But prefer PrgEnv-aocc
+#    - CFLAGS = -DADDR_SOA -Ofast -DNDSIMDVL=1 ...
+#      for just about the best performance
 #
 ##############################################################################
 
 BUILD   = parallel
 MODEL   = -D_D3Q19_
+TARGET  =
 
 CC      = cc -fopenmp
-CFLAGS  = -g -O3 -Wall -DNSIMDVL=2 -DNDEBUG
+CFLAGS  = -g -Ofast -Wall -DNSIMDVL=1 -DADDR_AOS -DNDEBUG
 
-MPI_INC_PATH      =
-MPI_LIB_PATH      =
-MPI_LIB           =
-
-LAUNCH_SERIAL_CMD =
-LAUNCH_MPIRUN_CMD = srun
-MPIRUN_NTASK_FLAG = -n
+LAUNCH_MPIRUN_CMD = srun --ntasks=1

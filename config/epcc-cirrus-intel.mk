@@ -22,10 +22,4 @@ CFLAGS = -fast -DNDEBUG -DNSIMDVL=4
 AR = ar
 ARFLAGS = -cru
 
-MPI_INC_PATH      =
-MPI_LIB_PATH      =
-MPI_LIB           =
-
-LAUNCH_SERIAL_CMD =
-LAUNCH_MPIRUN_CMD = mpirun
-MPIRUN_NTASK_FLAG = -np
+LAUNCH_MPIRUN_CMD = mpirun -np 1

@@ -12,6 +12,7 @@
 
 BUILD   = serial
 MODEL   = -D_D3Q19_
+TARGET  = hipcc
 
 CC      = hipcc
 CFLAGS  = -x hip -fgpu-rdc -O2
@@ -20,11 +21,5 @@ AR      = ar
 ARFLAGS = -cr
 LDFLAGS = -fgpu-rdc --hip-link
 
-MPI_HOME     =
-MPI_INC_PATH =
-MPI_LIB_PATH =
-
-LAUNCH_SERIAL_CMD =
 LAUNCH_MPIRUN_CMD =
-MPIRUN_NTASK_FLAG =
 
