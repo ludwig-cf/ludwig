@@ -169,6 +169,17 @@ int lb_data_create(pe_t * pe, cs_t * cs, const lb_data_options_t * options,
     if (ifail != 0) pe_fatal(pe, "lb_data: bad i/o output decomposition\n");
   }
 
+  /* Run the aggregator here and now in an attempt to make sure we
+   * don't suffer an oom at the point of output */
+
+  {
+    io_impl_t * io = NULL;
+    int ifail = io_impl_create(&obj->output, &io);
+    if (ifail != 0) pe_exit(pe, "lb_data.c: error in aggregator creation\n");
+    lb_io_aggr_pack(obj, io->aggr);
+    io->impl->free(&io);
+  }
+
   *lb = obj;
 
   return 0;
