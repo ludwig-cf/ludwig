@@ -1261,7 +1261,7 @@ int lb_halo_post(const lb_t * lb, lb_halo_t * h) {
       int scount = h->count[ireq]*lb_halo_size(h->slim[ireq]);
       dim3 nblk, ntpb;
       kernel_launch_param(scount, &nblk, &ntpb);
-      lb_halo_enqueue_send_kernel<<<nblk, ntpb>>>(lb, h, ireq);
+      tdpLaunchKernel(lb_halo_enqueue_send_kernel, nblk, ntpb, 0, 0, lb, h, ireq);
     }
   } else {
     #pragma omp parallel
@@ -1327,7 +1327,7 @@ int lb_halo_wait(lb_t * lb, lb_halo_t * h) {
       int rcount = h->count[ireq]*lb_halo_size(h->slim[ireq]);
       dim3 nblk, ntpb;
       kernel_launch_param(rcount, &nblk, &ntpb);
-      lb_halo_dequeue_recv_kernel<<<nblk, ntpb>>>(lb, h, ireq);
+      tdpLaunchKernel(lb_halo_dequeue_recv_kernel, nblk, ntpb, 0, 0, lb, h, ireq);
     }
   } else {
     #pragma omp parallel
