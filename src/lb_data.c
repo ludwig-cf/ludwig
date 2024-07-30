@@ -1126,6 +1126,8 @@ int lb_halo_create(const lb_t * lb, lb_halo_t * h, lb_halo_enum_t scheme) {
 
   /* Message count (velocities) for each communication direction */
 
+   int8_t *send_count = (int8_t *) malloc(h->map.nvel * sizeof(int8_t));
+   int8_t *recv_count = (int8_t *) malloc(h->map.nvel * sizeof(int8_t));
    for (int p = 1; p < h->map.nvel; p++) {
 
     int count = 0;
@@ -1157,12 +1159,14 @@ int lb_halo_create(const lb_t * lb, lb_halo_t * h, lb_halo_enum_t scheme) {
     /* Allocate send buffer for send region */
     if (count > 0) {
       int scount = count*lb_halo_size(h->slim[p]);
+      send_count[p] = scount;
       h->send[p] = (double *) calloc(scount, sizeof(double));
       assert(h->send[p]);
     }
     /* Allocate recv buffer */
     if (count > 0) {
       int rcount = count*lb_halo_size(h->rlim[p]);
+      recv_count[p] = count;
       h->recv[p] = (double *) calloc(rcount, sizeof(double));
       assert(h->recv[p]);
     }
@@ -1190,8 +1194,8 @@ int lb_halo_create(const lb_t * lb, lb_halo_t * h, lb_halo_enum_t scheme) {
 			 tdpMemcpyHostToDevice) );
 
     for (int p = 1; p < h->map.nvel; p++) {         
-      int scount = h->map.nvel*lb_halo_size(h->slim[p]);  // h->map.nvel*lb->ndist used for full halo exchange for now. work on implementing reduced halo exchange using something like h->count calculated above.
-      int rcount = h->map.nvel*lb_halo_size(h->rlim[p]);
+      int scount = send_count[p]*lb_halo_size(h->slim[p]);  
+      int rcount = recv_count[p]*lb_halo_size(h->rlim[p]);
       tdpAssert( tdpMalloc((void**) &h->send_d[p], scount * sizeof(double)) );
       tdpAssert( tdpMalloc((void**) &h->recv_d[p], rcount * sizeof(double)) );
     }
