@@ -541,6 +541,8 @@ __host__ int lb_halo_swap(lb_t * lb, lb_halo_enum_t flag) {
   case LB_HALO_TARGET:
     tdpMemcpy(&data, &lb->target->f, sizeof(double *), tdpMemcpyDeviceToHost);
     halo_swap_packed(lb->halo, data);
+    //lb_halo_post(lb, &lb->h);
+    //lb_halo_wait(lb, &lb->h);
     break;
   case LB_HALO_OPENMP_FULL:
     lb_halo_post(lb, &lb->h);
@@ -876,7 +878,7 @@ __global__ void lb_halo_enqueue_send_kernel(const lb_t * lb, lb_halo_t * h, int 
 	        if (h->full || dot == mm) {
 	          int index = cs_index(lb->cs, ic, jc, kc);
 	          int laddr = LB_ADDR(lb->nsite, lb->ndist, lb->nvel, index, n, p);
-	          h->send[ireq][ih*h->count[ireq] + ib] = lb->f[laddr];
+	          h->send_d[ireq][ih*h->count[ireq] + ib] = lb->f[laddr];
 	          ib++;
 	        }
 	      }
@@ -1262,10 +1264,12 @@ int lb_halo_post(const lb_t * lb, lb_halo_t * h) {
   tdpGetDeviceCount(&ndevice);
   if (ndevice > 0) {
     for (int ireq = 0; ireq < h->map.nvel; ireq++) {
-      int scount = h->count[ireq]*lb_halo_size(h->slim[ireq]);
-      dim3 nblk, ntpb;
-      kernel_launch_param(scount, &nblk, &ntpb);
-      tdpLaunchKernel(lb_halo_enqueue_send_kernel, nblk, ntpb, 0, 0, lb, h, ireq);
+      if (h->count[ireq] > 0) {
+        int scount = h->count[ireq]*lb_halo_size(h->slim[ireq]);
+        dim3 nblk, ntpb;
+        kernel_launch_param(scount, &nblk, &ntpb);
+        tdpLaunchKernel(lb_halo_enqueue_send_kernel, nblk, ntpb, 0, 0, lb, h, ireq);
+      }
     }
   } else {
     #pragma omp parallel
@@ -1275,6 +1279,11 @@ int lb_halo_post(const lb_t * lb, lb_halo_t * h) {
       }
     }
   }
+
+  //cudaDeviceSynchronize();
+  //printf("done kernel\n");
+  //MPI_Barrier(MPI_COMM_WORLD);
+  //abort();
 
   TIMER_stop(TIMER_LB_HALO_PACK);
 
@@ -1296,7 +1305,7 @@ int lb_halo_post(const lb_t * lb, lb_halo_t * h) {
       if (h->nbrrank[i][j][k] == h->nbrrank[1][1][1]) mcount = 0;
 
       MPI_Isend(buf, mcount, MPI_DOUBLE, h->nbrrank[i][j][k],
-		h->tagbase + ireq, h->comm, h->request + 27 + ireq);
+		            h->tagbase + ireq, h->comm, h->request + 27 + ireq);
     }
   }
 
@@ -1328,10 +1337,12 @@ int lb_halo_wait(lb_t * lb, lb_halo_t * h) {
   tdpGetDeviceCount(&ndevice);
   if (ndevice > 0) {
     for (int ireq = 0; ireq < h->map.nvel; ireq++) {
-      int rcount = h->count[ireq]*lb_halo_size(h->slim[ireq]);
-      dim3 nblk, ntpb;
-      kernel_launch_param(rcount, &nblk, &ntpb);
-      tdpLaunchKernel(lb_halo_dequeue_recv_kernel, nblk, ntpb, 0, 0, lb, h, ireq);
+      if (h->count[ireq] > 0) {
+        int rcount = h->count[ireq]*lb_halo_size(h->slim[ireq]);
+        dim3 nblk, ntpb;
+        kernel_launch_param(rcount, &nblk, &ntpb);
+        tdpLaunchKernel(lb_halo_dequeue_recv_kernel, nblk, ntpb, 0, 0, lb, h, ireq);
+      }
     }
   } else {
     #pragma omp parallel
@@ -1359,6 +1370,21 @@ int lb_halo_free(lb_t * lb, lb_halo_t * h) {
 
   assert(lb);
   assert(h);
+
+  int ndevice = 0;
+  tdpGetDeviceCount(&ndevice);
+
+  if (ndevice > 0) {
+    tdpAssert( tdpMemcpy(h->send_d, h->target->send, 27*sizeof(double *),
+			 tdpMemcpyDeviceToHost) );
+    tdpAssert( tdpMemcpy(h->recv_d, h->target->recv, 27*sizeof(double *),
+			 tdpMemcpyDeviceToHost) );
+    for (int p = 1; p < h->nvel; p++) {
+      tdpFree(h->send_d[p]);
+      tdpFree(h->recv_d[p]);
+    }
+    tdpFree(h->target);
+  }
 
   for (int ireq = 0; ireq < 27; ireq++) {
     free(h->send[ireq]);
