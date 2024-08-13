@@ -539,10 +539,10 @@ __host__ int lb_halo_swap(lb_t * lb, lb_halo_enum_t flag) {
 
   switch (flag) {
   case LB_HALO_TARGET:
-    tdpMemcpy(&data, &lb->target->f, sizeof(double *), tdpMemcpyDeviceToHost);
-    halo_swap_packed(lb->halo, data);
-    //lb_halo_post(lb, &lb->h);
-    //lb_halo_wait(lb, &lb->h);
+    //tdpMemcpy(&data, &lb->target->f, sizeof(double *), tdpMemcpyDeviceToHost);
+    //halo_swap_packed(lb->halo, data);
+    lb_halo_post(lb, &lb->h);
+    lb_halo_wait(lb, &lb->h);
     break;
   case LB_HALO_OPENMP_FULL:
     lb_halo_post(lb, &lb->h);
@@ -878,7 +878,7 @@ __global__ void lb_halo_enqueue_send_kernel(const lb_t * lb, lb_halo_t * h, int 
 	        if (h->full || dot == mm) {
 	          int index = cs_index(lb->cs, ic, jc, kc);
 	          int laddr = LB_ADDR(lb->nsite, lb->ndist, lb->nvel, index, n, p);
-	          h->send_d[ireq][ih*h->count[ireq] + ib] = lb->f[laddr];
+	          h->send[ireq][ih*h->count[ireq] + ib] = lb->f[laddr];
 	          ib++;
 	        }
 	      }
@@ -1195,9 +1195,12 @@ int lb_halo_create(const lb_t * lb, lb_halo_t * h, lb_halo_enum_t scheme) {
     tdpAssert( tdpMemcpy(h->target, h, sizeof(lb_halo_t),
 			 tdpMemcpyHostToDevice) );
 
-    for (int p = 1; p < h->map.nvel; p++) {         
-      int scount = send_count[p]*lb_halo_size(h->slim[p]);  
-      int rcount = recv_count[p]*lb_halo_size(h->rlim[p]);
+    for (int p = 0; p < h->map.nvel; p++) {         
+      //int scount = send_count[p]*lb_halo_size(h->slim[p]);  
+      //int rcount = recv_count[p]*lb_halo_size(h->rlim[p]);
+      int scount = 96*lb_halo_size(h->slim[p]);  
+      int rcount = 96*lb_halo_size(h->rlim[p]);
+      printf("lb create p %d send count %d\n", p, send_count[p]);
       tdpAssert( tdpMalloc((void**) &h->send_d[p], scount * sizeof(double)) );
       tdpAssert( tdpMalloc((void**) &h->recv_d[p], rcount * sizeof(double)) );
     }
@@ -1280,16 +1283,15 @@ int lb_halo_post(const lb_t * lb, lb_halo_t * h) {
     }
   }
 
-  //cudaDeviceSynchronize();
-  //printf("done kernel\n");
-  //MPI_Barrier(MPI_COMM_WORLD);
-  //abort();
+  cudaDeviceSynchronize();
+  printf("done kernel\n");
+  MPI_Barrier(MPI_COMM_WORLD);
 
   TIMER_stop(TIMER_LB_HALO_PACK);
 
   TIMER_start(TIMER_LB_HALO_ISEND);
 
-  for (int ireq = 0; ireq < h->map.nvel; ireq++) {
+  for (int ireq = 1; ireq < h->map.nvel; ireq++) {
 
     h->request[27+ireq] = MPI_REQUEST_NULL;
 
@@ -1302,12 +1304,18 @@ int lb_halo_post(const lb_t * lb, lb_halo_t * h) {
       if (have_gpu_aware_mpi_) buf = h->send_d[ireq];
 
       /* Short circuit messages to self. */
-      if (h->nbrrank[i][j][k] == h->nbrrank[1][1][1]) mcount = 0;
+      //if (h->nbrrank[i][j][k] == h->nbrrank[1][1][1]) mcount = 0;
+      if (h->nbrrank[i][j][k] == h->nbrrank[1][1][1]) continue;
+      printf("send ireq %d scount %d\n", ireq, mcount);
 
       MPI_Isend(buf, mcount, MPI_DOUBLE, h->nbrrank[i][j][k],
 		            h->tagbase + ireq, h->comm, h->request + 27 + ireq);
     }
   }
+  
+  cudaDeviceSynchronize();
+  printf("done sending\n");
+  MPI_Barrier(MPI_COMM_WORLD);
 
   TIMER_stop(TIMER_LB_HALO_ISEND);
 
@@ -1379,7 +1387,7 @@ int lb_halo_free(lb_t * lb, lb_halo_t * h) {
 			 tdpMemcpyDeviceToHost) );
     tdpAssert( tdpMemcpy(h->recv_d, h->target->recv, 27*sizeof(double *),
 			 tdpMemcpyDeviceToHost) );
-    for (int p = 1; p < h->nvel; p++) {
+    for (int p = 1; p < h->map.nvel; p++) {
       tdpFree(h->send_d[p]);
       tdpFree(h->recv_d[p]);
     }
