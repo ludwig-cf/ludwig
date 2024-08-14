@@ -1407,7 +1407,6 @@ int field_halo_create(const field_t * field, field_halo_t * h) {
     for (int p = 1; p < h->nvel; p++) {
       int scount = field->nf*field_halo_size(h->slim[p]);
       int rcount = field->nf*field_halo_size(h->rlim[p]);
-      printf("field create p %d send count %d\n", p, field->nf);
       tdpAssert( tdpMalloc((void**) &h->send_d[p], scount * sizeof(double)) );
       tdpAssert( tdpMalloc((void**) &h->recv_d[p], rcount * sizeof(double)) );
     }
@@ -1458,7 +1457,6 @@ int field_halo_post(const field_t * field, field_halo_t * h) {
 
     /* Skip messages to self */
     if (h->nbrrank[i][j][k] == h->nbrrank[1][1][1]) continue;
-    //printf("field halo post buf %f\n", buf[ireq]);
 
     MPI_Irecv(buf, mcount, MPI_DOUBLE, h->nbrrank[i][j][k],
 	      tagbase + ireq, h->comm, h->request + ireq);
@@ -1500,7 +1498,6 @@ int field_halo_post(const field_t * field, field_halo_t * h) {
     /* Skip messages to self ... */
     if (h->nbrrank[i][j][k] == h->nbrrank[1][1][1]) continue;
 
-    //printf("send ireq %d send count %d\n", ireq, mcount);
     MPI_Isend(buf, mcount, MPI_DOUBLE, h->nbrrank[i][j][k],
 	      tagbase + ireq, h->comm, h->request + 27 + ireq);
   }

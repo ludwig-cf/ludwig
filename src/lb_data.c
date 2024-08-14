@@ -1198,9 +1198,8 @@ int lb_halo_create(const lb_t * lb, lb_halo_t * h, lb_halo_enum_t scheme) {
     for (int p = 0; p < h->map.nvel; p++) {         
       //int scount = send_count[p]*lb_halo_size(h->slim[p]);  
       //int rcount = recv_count[p]*lb_halo_size(h->rlim[p]);
-      int scount = 96*lb_halo_size(h->slim[p]);  
+      int scount = 96*lb_halo_size(h->slim[p]);  // For some reason send_count[p] is zero for some values of p, which might cause issues so set to max observed value for now.
       int rcount = 96*lb_halo_size(h->rlim[p]);
-      printf("lb create p %d send count %d\n", p, send_count[p]);
       tdpAssert( tdpMalloc((void**) &h->send_d[p], scount * sizeof(double)) );
       tdpAssert( tdpMalloc((void**) &h->recv_d[p], rcount * sizeof(double)) );
     }
@@ -1271,7 +1270,7 @@ int lb_halo_post(const lb_t * lb, lb_halo_t * h) {
         int scount = h->count[ireq]*lb_halo_size(h->slim[ireq]);
         dim3 nblk, ntpb;
         kernel_launch_param(scount, &nblk, &ntpb);
-        tdpLaunchKernel(lb_halo_enqueue_send_kernel, nblk, ntpb, 0, 0, lb, h, ireq);
+        tdpLaunchKernel(lb_halo_enqueue_send_kernel, nblk, ntpb, 0, 0, lb->target, h->target, ireq);
       }
     }
   } else {
@@ -1306,7 +1305,6 @@ int lb_halo_post(const lb_t * lb, lb_halo_t * h) {
       /* Short circuit messages to self. */
       //if (h->nbrrank[i][j][k] == h->nbrrank[1][1][1]) mcount = 0;
       if (h->nbrrank[i][j][k] == h->nbrrank[1][1][1]) continue;
-      printf("send ireq %d scount %d\n", ireq, mcount);
 
       MPI_Isend(buf, mcount, MPI_DOUBLE, h->nbrrank[i][j][k],
 		            h->tagbase + ireq, h->comm, h->request + 27 + ireq);
