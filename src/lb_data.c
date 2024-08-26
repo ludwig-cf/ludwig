@@ -1308,7 +1308,7 @@ int lb_halo_post(lb_t * lb, lb_halo_t * h) {
         dim3 nblk, ntpb;
         kernel_launch_param(scount, &nblk, &ntpb);
         tdpLaunchKernel(lb_halo_enqueue_send_kernel, nblk, ntpb, 0, 0, lb->target, h->target, ireq);
-        cudaDeviceSynchronize();
+        tdpDeviceSynchronize();
       }
     }
   } else {
@@ -1319,10 +1319,6 @@ int lb_halo_post(lb_t * lb, lb_halo_t * h) {
       }
     }
   }
-
-  cudaDeviceSynchronize();
-  printf("done kernel\n");
-  MPI_Barrier(MPI_COMM_WORLD);
 
   TIMER_stop(TIMER_LB_HALO_PACK);
 
@@ -1349,10 +1345,6 @@ int lb_halo_post(lb_t * lb, lb_halo_t * h) {
     }
   }
   
-  cudaDeviceSynchronize();
-  printf("done sending\n");
-  MPI_Barrier(MPI_COMM_WORLD);
-
   TIMER_stop(TIMER_LB_HALO_ISEND);
 
   return 0;
@@ -1386,7 +1378,7 @@ int lb_halo_wait(lb_t * lb, lb_halo_t * h) {
         dim3 nblk, ntpb;
         kernel_launch_param(rcount, &nblk, &ntpb);
         tdpLaunchKernel(lb_halo_dequeue_recv_kernel, nblk, ntpb, 0, 0, lb->target, h->target, ireq);
-        cudaDeviceSynchronize();
+        tdpDeviceSynchronize();
       }
     }
   } else {
