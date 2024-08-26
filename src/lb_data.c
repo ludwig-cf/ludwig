@@ -52,6 +52,33 @@ static const int have_gpu_aware_mpi_ = 1;
 static const int have_gpu_aware_mpi_ = 0;
 #endif
 
+void copyModelToDevice(lb_model_t *h_model, lb_model_t *d_model) {
+    int nvel = h_model->nvel;
+    // Allocate memory on the GPU for the arrays in the struct
+    int8_t (*d_cv)[3];
+    double *d_wv;
+    double *d_na;
+
+    tdpMalloc((void**)&d_cv, sizeof(int8_t[3]) * nvel);
+    tdpMalloc((void**)&d_wv, sizeof(double) * nvel);
+    tdpMalloc((void**)&d_na, sizeof(double) * nvel);
+
+    // Copy the data from host to the GPU
+    tdpMemcpy(d_cv, h_model->cv, sizeof(int8_t[3]) * nvel, tdpMemcpyHostToDevice);
+    tdpMemcpy(d_wv, h_model->wv, sizeof(double) * nvel, tdpMemcpyHostToDevice);
+    tdpMemcpy(d_na, h_model->na, sizeof(double) * nvel, tdpMemcpyHostToDevice);
+
+    // Set the pointers in the struct to the newly allocated GPU memory
+    tdpMemcpy(&(d_model->cv), &d_cv, sizeof(int8_t(*)[3]), tdpMemcpyHostToDevice);
+    tdpMemcpy(&(d_model->wv), &d_wv, sizeof(double*), tdpMemcpyHostToDevice);
+    tdpMemcpy(&(d_model->na), &d_na, sizeof(double*), tdpMemcpyHostToDevice);
+
+    //copy the rest data to gpu
+    tdpMemcpy(&(d_model->ndim), &(h_model->ndim), sizeof(int8_t), tdpMemcpyHostToDevice);
+    tdpMemcpy(&(d_model->nvel), &(h_model->nvel), sizeof(int8_t), tdpMemcpyHostToDevice);
+    tdpMemcpy(&(d_model->cs2), &(h_model->cs2), sizeof(double), tdpMemcpyHostToDevice);
+}
+
 /*****************************************************************************
  *
  *  lb_data_create
@@ -314,6 +341,7 @@ static int lb_init(lb_t * lb) {
   }
   else {
     lb_collide_param_t * ptmp  = NULL;
+    cs_t * cstarget = NULL;
 
     tdpMalloc((void **) &lb->target, sizeof(lb_t));
     tdpMemset(lb->target, 0, sizeof(lb_t));
@@ -329,6 +357,10 @@ static int lb_init(lb_t * lb) {
 
     tdpGetSymbolAddress((void **) &ptmp, tdpSymbol(static_param));
     tdpMemcpy(&lb->target->param, &ptmp, sizeof(lb_collide_param_t *),
+	      tdpMemcpyHostToDevice);
+    
+    cs_target(lb->cs, &cstarget);
+    tdpMemcpy(&lb->target->cs, &cstarget, sizeof(cs_t *),
 	      tdpMemcpyHostToDevice);
   }
 
@@ -1128,8 +1160,8 @@ int lb_halo_create(const lb_t * lb, lb_halo_t * h, lb_halo_enum_t scheme) {
 
   /* Message count (velocities) for each communication direction */
 
-   int8_t *send_count = (int8_t *) malloc(h->map.nvel * sizeof(int8_t));
-   int8_t *recv_count = (int8_t *) malloc(h->map.nvel * sizeof(int8_t));
+   int *send_count = (int *) calloc(h->map.nvel, sizeof(int));
+   int *recv_count = (int *) calloc(h->map.nvel, sizeof(int));
    for (int p = 1; p < h->map.nvel; p++) {
 
     int count = 0;
@@ -1196,10 +1228,10 @@ int lb_halo_create(const lb_t * lb, lb_halo_t * h, lb_halo_enum_t scheme) {
 			 tdpMemcpyHostToDevice) );
 
     for (int p = 0; p < h->map.nvel; p++) {         
-      //int scount = send_count[p]*lb_halo_size(h->slim[p]);  
-      //int rcount = recv_count[p]*lb_halo_size(h->rlim[p]);
-      int scount = 96*lb_halo_size(h->slim[p]);  // For some reason send_count[p] is zero for some values of p, which might cause issues so set to max observed value for now.
-      int rcount = 96*lb_halo_size(h->rlim[p]);
+      int scount = send_count[p]*lb_halo_size(h->slim[p]);  
+      int rcount = recv_count[p]*lb_halo_size(h->rlim[p]);
+      //int scount = 96*lb_halo_size(h->slim[p]);  // For some reason send_count[p] is zero for some values of p, which might cause issues so set to max observed value for now.
+      //int rcount = 96*lb_halo_size(h->rlim[p]);
       tdpAssert( tdpMalloc((void**) &h->send_d[p], scount * sizeof(double)) );
       tdpAssert( tdpMalloc((void**) &h->recv_d[p], rcount * sizeof(double)) );
     }
@@ -1210,6 +1242,8 @@ int lb_halo_create(const lb_t * lb, lb_halo_t * h, lb_halo_enum_t scheme) {
 			 tdpMemcpyHostToDevice) );
 
   }
+  free(send_count);
+  free(recv_count);
 
   return 0;
 }
@@ -1220,7 +1254,7 @@ int lb_halo_create(const lb_t * lb, lb_halo_t * h, lb_halo_enum_t scheme) {
  *
  *****************************************************************************/
 
-int lb_halo_post(const lb_t * lb, lb_halo_t * h) {
+int lb_halo_post(lb_t * lb, lb_halo_t * h) {
 
   assert(lb);
   assert(h);
@@ -1248,7 +1282,8 @@ int lb_halo_post(const lb_t * lb, lb_halo_t * h) {
       double * buf = h->recv[ireq];
       if (have_gpu_aware_mpi_) buf = h->recv_d[ireq];
 
-      if (h->nbrrank[i][j][k] == h->nbrrank[1][1][1]) mcount = 0;
+      //if (h->nbrrank[i][j][k] == h->nbrrank[1][1][1]) mcount = 0;
+      if (h->nbrrank[i][j][k] == h->nbrrank[1][1][1]) continue;
       
       MPI_Irecv(buf, mcount, MPI_DOUBLE, h->nbrrank[i][j][k],
 		h->tagbase + ireq, h->comm, h->request + ireq);
@@ -1265,12 +1300,15 @@ int lb_halo_post(const lb_t * lb, lb_halo_t * h) {
   int ndevice;
   tdpGetDeviceCount(&ndevice);
   if (ndevice > 0) {
+    copyModelToDevice(&lb->model, &lb->target->model);
+    copyModelToDevice(&h->map, &h->target->map);
     for (int ireq = 0; ireq < h->map.nvel; ireq++) {
       if (h->count[ireq] > 0) {
         int scount = h->count[ireq]*lb_halo_size(h->slim[ireq]);
         dim3 nblk, ntpb;
         kernel_launch_param(scount, &nblk, &ntpb);
         tdpLaunchKernel(lb_halo_enqueue_send_kernel, nblk, ntpb, 0, 0, lb->target, h->target, ireq);
+        cudaDeviceSynchronize();
       }
     }
   } else {
@@ -1347,7 +1385,8 @@ int lb_halo_wait(lb_t * lb, lb_halo_t * h) {
         int rcount = h->count[ireq]*lb_halo_size(h->slim[ireq]);
         dim3 nblk, ntpb;
         kernel_launch_param(rcount, &nblk, &ntpb);
-        tdpLaunchKernel(lb_halo_dequeue_recv_kernel, nblk, ntpb, 0, 0, lb, h, ireq);
+        tdpLaunchKernel(lb_halo_dequeue_recv_kernel, nblk, ntpb, 0, 0, lb->target, h->target, ireq);
+        cudaDeviceSynchronize();
       }
     }
   } else {

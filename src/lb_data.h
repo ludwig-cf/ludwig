@@ -95,7 +95,7 @@ struct lb_halo_s {
 };
 
 int lb_halo_create(const lb_t * lb, lb_halo_t * h, lb_halo_enum_t scheme);
-int lb_halo_post(const lb_t * lb, lb_halo_t * h);
+int lb_halo_post(lb_t * lb, lb_halo_t * h);
 int lb_halo_wait(lb_t * lb, lb_halo_t * h);
 int lb_halo_free(lb_t * lb, lb_halo_t * h);
 
