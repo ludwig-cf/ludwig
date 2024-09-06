@@ -1193,7 +1193,7 @@ int lb_halo_create(const lb_t * lb, lb_halo_t * h, lb_halo_enum_t scheme) {
     /* Allocate send buffer for send region */
     if (count > 0) {
       int scount = count*lb_halo_size(h->slim[p]);
-      send_count[p] = scount;
+      send_count[p] = count;
       h->send[p] = (double *) calloc(scount, sizeof(double));
       assert(h->send[p]);
     }
@@ -1228,10 +1228,9 @@ int lb_halo_create(const lb_t * lb, lb_halo_t * h, lb_halo_enum_t scheme) {
 			 tdpMemcpyHostToDevice) );
 
     for (int p = 0; p < h->map.nvel; p++) {         
+      // XXX: don't allocate zero sized arrays (generally when p == 0)
       int scount = send_count[p]*lb_halo_size(h->slim[p]);  
       int rcount = recv_count[p]*lb_halo_size(h->rlim[p]);
-      //int scount = 96*lb_halo_size(h->slim[p]);  // For some reason send_count[p] is zero for some values of p, which might cause issues so set to max observed value for now.
-      //int rcount = 96*lb_halo_size(h->rlim[p]);
       tdpAssert( tdpMalloc((void**) &h->send_d[p], scount * sizeof(double)) );
       tdpAssert( tdpMalloc((void**) &h->recv_d[p], rcount * sizeof(double)) );
     }
