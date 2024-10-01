@@ -1202,16 +1202,25 @@ int angle_cosine_init(pe_t * pe, cs_t * cs, rt_t * rt, interact_t * interact) {
  *  3) ncell >= 2       must have at least two cells to separate
  *                      'left-going' and 'right-going' communications.
  *
+ *  There are some edge cases where we can relax these constraints:
+ *
+ *  a) A direction which is non-periodic (eg., has walls)
+ *     and is not decomposed (mpisz == 1) will have no message passing.
+ *     In such a case,  (1) and (2) may be ignored, and (3) is relaxed to
+ *     ncell >= 1. This may be useful for systems which are "narrow" (cf. a0).
+ *
  *****************************************************************************/
 
 int colloids_init_halo_range_check(pe_t * pe, cs_t * cs,
 				   colloids_info_t * cinfo) {
 
   int ifail = 0;
-  int ncolloid;
-  int ncell[3];
-  int nlocal[3];
+  int ncolloid = 0;
+  int ncell[3] = {0};
+  int nlocal[3] = {0};
   int nhalo = 1;       /* Always, for purpose of BBL. */
+
+  int nar[3] = {0};    /* See point (a) above */
 
   double a0max = 0.0;  /* Maximum colloid a0 present */
   double lcell[3];
@@ -1228,23 +1237,27 @@ int colloids_init_halo_range_check(pe_t * pe, cs_t * cs,
 
   colloids_info_a0max(cinfo, &a0max);
 
-  if (2.0*a0max >= 1.0*(nlocal[X] - nhalo)) ifail = 1;
-  if (2.0*a0max >= 1.0*(nlocal[Y] - nhalo)) ifail = 1;
-  if (2.0*a0max >= 1.0*(nlocal[Z] - nhalo)) ifail = 1;
+  if (cs->param->periodic[X] == 0 && cs->param->mpi_cartsz[X] == 1) nar[X] = 1;
+  if (cs->param->periodic[Y] == 0 && cs->param->mpi_cartsz[Y] == 1) nar[Y] = 1;
+  if (cs->param->periodic[Z] == 0 && cs->param->mpi_cartsz[Z] == 1) nar[Z] = 1;
+
+  if (nar[X] == 0 && (2.0*a0max >= 1.0*(nlocal[X] - nhalo))) ifail = 1;
+  if (nar[Y] == 0 && (2.0*a0max >= 1.0*(nlocal[Y] - nhalo))) ifail = 1;
+  if (nar[Z] == 0 && (2.0*a0max >= 1.0*(nlocal[Z] - nhalo))) ifail = 1;
   if (ifail == 1) {
     pe_fatal(pe, "Particle diameter larger than (nlocal - 1) domain size\n");
   }
 
-  if (lcell[X] <= a0max) ifail = 1;
-  if (lcell[Y] <= a0max) ifail = 1;
-  if (lcell[Z] <= a0max) ifail = 1;
+  if (nar[X] == 0 && (lcell[X] <= a0max)) ifail = 1;
+  if (nar[Y] == 0 && (lcell[Y] <= a0max)) ifail = 1;
+  if (nar[Z] == 0 && (lcell[Z] <= a0max)) ifail = 1;
   if (ifail == 1) {
     pe_fatal(pe, "Particle a0 > cell width breaks BBL message passing\n");
   }
 
-  if (ncell[X] < 2) ifail = 1;
-  if (ncell[Y] < 2) ifail = 1;
-  if (ncell[Z] < 2) ifail = 1;
+  if (ncell[X] < (2 - nar[X])) ifail = 1;
+  if (ncell[Y] < (2 - nar[Y])) ifail = 1;
+  if (ncell[Z] < (2 - nar[Z])) ifail = 1;
 
   if (ifail == 1) {
     pe_fatal(pe, "Must have two cells minimum\n");
@@ -1254,9 +1267,9 @@ int colloids_init_halo_range_check(pe_t * pe, cs_t * cs,
 
   cs_nhalo(cs, &nhalo);
 
-  if (lcell[X] < (a0max + nhalo - 0.5)) ifail = 1;
-  if (lcell[Y] < (a0max + nhalo - 0.5)) ifail = 1;
-  if (lcell[Z] < (a0max + nhalo - 0.5)) ifail = 1;
+  if (nar[X] == 0 && (lcell[X] < (a0max + nhalo - 0.5))) ifail = 1;
+  if (nar[Y] == 0 && (lcell[Y] < (a0max + nhalo - 0.5))) ifail = 1;
+  if (nar[Z] == 0 && (lcell[Z] < (a0max + nhalo - 0.5))) ifail = 1;
 
   if (ifail == 1) {
     pe_fatal(pe, "Must have cell width > a0_max + nhalo\n");
