@@ -401,7 +401,7 @@ void fe_symm_str_v(fe_symm_t * fe, int index, double s[3][3][NSIMDVL]) {
     phi = fe->phi->data[addr_rank1(fe->phi->nsites, 1, index + iv, 0)];
     delsq = fe->dphi->delsq[addr_rank1(fe->dphi->nsite, 1, index + iv, 0)];
 
-    p0 = 0.5*a*phi*phi + 0.75*b*phi*phi*phi*phi - kappa*phi*delsq 
+    p0 = 0.5*a*phi*phi + 0.75*b*phi*phi*phi*phi - kappa*phi*delsq
       - 0.5*kappa*(grad[X][iv]*grad[X][iv] + grad[Y][iv]*grad[Y][iv]
 		   + grad[Z][iv]*grad[Z][iv]);
 

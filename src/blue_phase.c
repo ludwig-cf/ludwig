@@ -505,7 +505,7 @@ __host__ __device__ int fe_lc_bulk_stress(fe_lc_t * fe, int index,
 
 
   /* bulk contribution to free energy */
-  fe_lc_compute_bulk_fed(fe, q, &fed); 
+  fe_lc_compute_bulk_fed(fe, q, &fed);
 
   /* bulk contribtion to stress using the above contributions */
 
@@ -637,7 +637,7 @@ __host__ __device__ int fe_lc_grad_stress(fe_lc_t * fe, int index,
   }
 
   /* gradient contribution to free energy */
-  fe_lc_compute_gradient_fed(fe, q, dq, &fed); 
+  fe_lc_compute_gradient_fed(fe, q, dq, &fed);
 
   /* gradient contribtion to stress using the above contributions */
 
@@ -942,7 +942,7 @@ __host__ __device__ int fe_lc_compute_stress_active(fe_lc_t * fe,
    * while code was           -zeta*(q[ia][ib] + r3*d[ia][ib])
    * for zeta = zeta1 */
   /* The sign of zeta0 needs to be clarified cf Eq. 36 of notes */
-  /* For "backwards compatability" use zeta0 = +1/3 at the moment */
+  /* For "backwards compatibility" use zeta0 = +1/3 at the moment */
 
   for (ia = 0; ia < 3; ia++) {
     for (ib = 0; ib < 3; ib++) {
@@ -1112,8 +1112,8 @@ int fe_lc_compute_h(fe_lc_t * fe, double gamma, double q[3][3],
  *
  *  Compute the bulk free energy density as a function of q.
  *
- *  Note: This function contains also the part quadratic in q 
- *        which is normally part of the gradient free energy. 
+ *  Note: This function contains also the part quadratic in q
+ *        which is normally part of the gradient free energy.
  *
  *****************************************************************************/
 
@@ -1158,7 +1158,7 @@ int fe_lc_compute_bulk_fed(fe_lc_t * fe, double q[3][3], double * fed) {
     - r3*fe->param->a0*fe->param->gamma*q3
     + 0.25*fe->param->a0*fe->param->gamma*q2*q2;
 
-  /* Add terms quadratic in q from gradient free energy */ 
+  /* Add terms quadratic in q from gradient free energy */
 
   *fed += 0.5*kappa1*4.0*q0*q0*q2;
 
@@ -1169,7 +1169,7 @@ int fe_lc_compute_bulk_fed(fe_lc_t * fe, double q[3][3], double * fed) {
  *
  *  fe_lc_compute_gradient_fed
  *
- *  Compute the gradient contribution to the free energy density 
+ *  Compute the gradient contribution to the free energy density
  *  as a function of q and the q gradient tensor dq.
  *
  *  Note: The part quadratic in q has been added to the bulk free energy.
@@ -1216,7 +1216,7 @@ int fe_lc_compute_gradient_fed(fe_lc_t * fe, double q[3][3],
     for (ib = 0; ib < 3; ib++) {
 
       sum = 0.0;
-  
+
       q2 += q[ia][ib]*q[ia][ib];
 
       for (ic = 0; ic < 3; ic++) {
@@ -1314,7 +1314,7 @@ __host__ int fe_lc_dimensionless_field_strength(const fe_lc_param_t * param,
     fieldsq += param->e0[ia]*param->e0[ia];
   }
 
-  /* Remember epsilon is stored with factor (1/12pi) */ 
+  /* Remember epsilon is stored with factor (1/12pi) */
 
   {
     double a0 = param->a0;
@@ -1369,7 +1369,7 @@ int fe_lc_redshift_set(fe_lc_t * fe,  double redshift) {
  *
  *  fe_lc_amplitude_compute
  *
- *  Scalar order parameter in the nematic state, minimum of bulk free energy 
+ *  Scalar order parameter in the nematic state, minimum of bulk free energy
  *
  *****************************************************************************/
 
@@ -1377,7 +1377,7 @@ __host__ __device__ int fe_lc_amplitude_compute(const fe_lc_param_t * param,
 						double * a) {
 
   assert(a);
-  
+
   *a = (2.0/3.0)*(0.25 + 0.75*sqrt(1.0 - 8.0/(3.0*param->gamma)));
 
   return 0;
@@ -1679,7 +1679,7 @@ void fe_lc_mol_field_v(fe_lc_t * fe, int index, double h[3][3][NSIMDVL]) {
   double * __restrict__ delsq;
 
   assert(fe);
- 
+
   data = fe->q->data;
   grad = fe->dq->grad;
   delsq = fe->dq->delsq;
@@ -1734,11 +1734,11 @@ void fe_lc_mol_field_v(fe_lc_t * fe, int index, double h[3][3][NSIMDVL]) {
  *****************************************************************************/
 
 __host__ __device__
-void fe_lc_stress_v(fe_lc_t * fe, int index, double s[3][3][NSIMDVL]) { 
+void fe_lc_stress_v(fe_lc_t * fe, int index, double s[3][3][NSIMDVL]) {
 
   int iv;
   int ia;
- 
+
   double q[3][3][NSIMDVL];
   double h[3][3][NSIMDVL];
   double dq[3][3][3][NSIMDVL];
@@ -1911,7 +1911,7 @@ __host__ __device__ void fe_lc_str_anti_v(fe_lc_t * fe, int index,
 
 __host__ __device__
 void fe_lc_compute_fed_v(fe_lc_t * fe,
-			 double q[3][3][NSIMDVL], 
+			 double q[3][3][NSIMDVL],
 			 double dq[3][3][3][NSIMDVL],
 			 double fed[NSIMDVL]) {
   int iv;
@@ -2083,7 +2083,7 @@ void fe_lc_compute_fed_v(fe_lc_t * fe,
  *
  *  Alan's note for GPU version.
  *
- *  To get temperary q[][][] etc arrays into registers really requires
+ *  To get temporary q[][][] etc arrays into registers really requires
  *  inlining to caller file scope.
  *
  *  NO gamma = gamma(r) at the mooment.
@@ -2092,9 +2092,9 @@ void fe_lc_compute_fed_v(fe_lc_t * fe,
 
 __host__ __device__
 void fe_lc_compute_h_v(fe_lc_t * fe,
-		       double q[3][3][NSIMDVL], 
+		       double q[3][3][NSIMDVL],
 		       double dq[3][3][3][NSIMDVL],
-		       double dsq[3][3][NSIMDVL], 
+		       double dsq[3][3][NSIMDVL],
 		       double h[3][3][NSIMDVL]) {
 
   int iv;
@@ -2308,7 +2308,7 @@ void fe_lc_compute_stress_v(fe_lc_t * fe,
 
   fe_lc_compute_fed_v(fe, q, dq, p0);
 
-  for_simd_v(iv, NSIMDVL) p0[iv] = 0.0 - p0[iv]; 
+  for_simd_v(iv, NSIMDVL) p0[iv] = 0.0 - p0[iv];
 
   /* The contraction Q_ab H_ab */
 
@@ -2400,7 +2400,7 @@ void fe_lc_compute_stress_v(fe_lc_t * fe,
   for_simd_v(iv, NSIMDVL) sthtmp[iv] += - kappa0*dq[0][1][1][iv]*dq[2][1][2][iv] - kappa1*dq[0][1][2][iv]*dq[1][1][2][iv]+ kappa1*dq[0][1][2][iv]*dq[1][1][2][iv];
 
   for_simd_v(iv, NSIMDVL) sthtmp[iv] += - kappa0*dq[0][1][2][iv]*dq[0][2][0][iv] - kappa1*dq[0][2][0][iv]*dq[1][2][0][iv]+ kappa1*dq[0][2][0][iv]*dq[2][1][0][iv];
-    
+
   for_simd_v(iv, NSIMDVL) sthtmp[iv] -= 2.0*kappa1*q0*dq[0][2][0][iv]*q[0][0][iv];
 
   for_simd_v(iv, NSIMDVL) sthtmp[iv] += - kappa0*dq[0][1][2][iv]*dq[1][2][1][iv] - kappa1*dq[0][2][1][iv]*dq[1][2][1][iv]+ kappa1*dq[0][2][1][iv]*dq[2][1][1][iv];
@@ -2533,7 +2533,7 @@ void fe_lc_compute_stress_v(fe_lc_t * fe,
   for_simd_v(iv, NSIMDVL) sthtmp[iv] += - kappa0*dq[1][1][0][iv]*dq[0][0][0][iv] - kappa1*dq[1][0][0][iv]*dq[1][0][0][iv]+ kappa1*dq[1][0][0][iv]*dq[0][1][0][iv];
 
   for_simd_v(iv, NSIMDVL) sthtmp[iv] += 2.0*kappa1*q0*dq[1][0][0][iv]*q[0][2][iv];
-  
+
   for_simd_v(iv, NSIMDVL) sthtmp[iv] += - kappa0*dq[1][1][0][iv]*dq[1][0][1][iv] - kappa1*dq[1][0][1][iv]*dq[1][0][1][iv]+ kappa1*dq[1][0][1][iv]*dq[0][1][1][iv];
 
   for_simd_v(iv, NSIMDVL) sthtmp[iv] += 2.0*kappa1*q0*dq[1][0][1][iv]*q[1][2][iv];
@@ -2581,7 +2581,7 @@ void fe_lc_compute_stress_v(fe_lc_t * fe,
   for_simd_v(iv, NSIMDVL) sthtmp[iv] += -xi*h[1][2][iv]*(q[2][2][iv] + r3)   -xi*(q[1][2][iv]    )*h[2][2][iv];
 
   for_simd_v(iv, NSIMDVL) sthtmp[iv] += - kappa0*dq[1][2][0][iv]*dq[0][0][0][iv] - kappa1*dq[1][0][0][iv]*dq[2][0][0][iv]+ kappa1*dq[1][0][0][iv]*dq[0][2][0][iv];
-  
+
   for_simd_v(iv, NSIMDVL) sthtmp[iv] -= 2.0*kappa1*q0*dq[1][0][0][iv]*q[0][1][iv];
 
   for_simd_v(iv, NSIMDVL) sthtmp[iv] += - kappa0*dq[1][2][0][iv]*dq[1][0][1][iv] - kappa1*dq[1][0][1][iv]*dq[2][0][1][iv]+ kappa1*dq[1][0][1][iv]*dq[0][2][1][iv];
@@ -2710,7 +2710,7 @@ void fe_lc_compute_stress_v(fe_lc_t * fe,
   for_simd_v(iv, NSIMDVL) sthtmp[iv] += - kappa0*dq[2][1][2][iv]*dq[2][2][2][iv] - kappa1*dq[2][2][2][iv]*dq[1][2][2][iv]+ kappa1*dq[2][2][2][iv]*dq[2][1][2][iv];
 
   for_simd_v(iv, NSIMDVL) sthtmp[iv] -= 2.0*kappa1*q0*dq[2][2][2][iv]*q[2][0][iv];
-  
+
   for_simd_v(iv, NSIMDVL) sthtmp[iv] += q[2][0][iv]*h[1][0][iv] - h[2][0][iv]*q[1][0][iv];
 
   for_simd_v(iv, NSIMDVL) sthtmp[iv] += q[2][1][iv]*h[1][1][iv] - h[2][1][iv]*q[1][1][iv];
@@ -2773,4 +2773,3 @@ void fe_lc_compute_stress_v(fe_lc_t * fe,
 
   return;
 }
-

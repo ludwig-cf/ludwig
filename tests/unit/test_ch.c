@@ -59,7 +59,7 @@ int test_ch_suite(void) {
 
 int test_ch_create(pe_t * pe) {
 
-  const int nfield = 2;  /* phi, psi   */ 
+  const int nfield = 2;  /* phi, psi   */
   const double m1 = 1.0; /* mobility 1 */
   const double m2 = 2.0; /* mobility 2 */
 

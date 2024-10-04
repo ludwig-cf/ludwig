@@ -19,7 +19,7 @@
  *
  *  mu_a = kT log(rho_a) + Z_a e psi
  *
- *  See, e.g., Rotenberg et al. Coarse-grained simualtions of charge,
+ *  See, e.g., Rotenberg et al. Coarse-grained simulations of charge,
  *  current and flow in heterogeneous media,
  *  Faraday Discussions \textbf{14}, 223--243 (2010).
  *
@@ -50,7 +50,7 @@ struct fe_electro_s {
   fe_t super;
   pe_t * pe;             /* Parallel environment */
   psi_t * psi;           /* A reference to the electrokinetic quantities */
-  double * mu_ref;       /* Reference mu currently unused (i.e., zero). */ 
+  double * mu_ref;       /* Reference mu currently unused (i.e., zero). */
   fe_electro_t * target; /* Device copy */
 };
 
@@ -96,8 +96,8 @@ static  __constant__ fe_vt_t fe_electro_dvt = {
  *  Retain a reference to the electrokinetics object psi.
  *
  *  Note: In this model we do not set the chemical potential.
- *        In the gradient method the ionic electrostatic forces 
- *        on the fluid are implicitly calculated through the 
+ *        In the gradient method the ionic electrostatic forces
+ *        on the fluid are implicitly calculated through the
  *        electric charge density and the electric field.
  *
  *****************************************************************************/
@@ -249,7 +249,7 @@ int fe_electro_mu(fe_electro_t * fe, int index, double * mu) {
   for (n = 0; n < fe->psi->nk; n++) {
     psi_rho(fe->psi, index, n, &rho);
     assert(rho >= 0.0); /* For log(rho + epsilon) */
-  
+
     mu[n] = kt*log(rho + DBL_EPSILON) + fe->psi->valency[n]*fe->psi->e*psi;
   }
 
@@ -282,7 +282,7 @@ int fe_electro_mu_solv(fe_electro_t * fe, int index, int k, double * mu) {
  *    S_ab = -epsilon ( E_a E_b - (1/2) d_ab E^2) + d_ab kt sum_k rho_k
  *  where epsilon is the (uniform) permittivity.
  *
- *  The last term is the ideal gas contribution which is excluded in the 
+ *  The last term is the ideal gas contribution which is excluded in the
  *  excess stress tensor.
  *
  *****************************************************************************/
@@ -305,7 +305,7 @@ int fe_electro_stress(fe_electro_t * fe, int index, double s[3][3]) {
   physics_ref(&phys);
   physics_kt(phys, &kt);
   psi_nk(fe->psi, &nk);
-  psi_unit_charge(fe->psi, &eunit);	 
+  psi_unit_charge(fe->psi, &eunit);
   reunit = 1.0/eunit;
 
   psi_epsilon(fe->psi, &epsilon);
@@ -358,7 +358,7 @@ int fe_electro_stress_ex(fe_electro_t * fe, int index, double s[3][3]) {
 
   physics_ref(&phys);
   physics_kt(phys, &kt);
-  psi_unit_charge(fe->psi, &eunit);	 
+  psi_unit_charge(fe->psi, &eunit);
   reunit = 1.0/eunit;
 
   psi_epsilon(fe->psi, &epsilon);

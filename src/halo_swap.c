@@ -26,7 +26,7 @@ typedef struct halo_swap_param_s halo_swap_param_t;
 struct halo_swap_s {
   pe_t * pe;
   cs_t * cs;
-  halo_swap_param_t * param; 
+  halo_swap_param_t * param;
   double * fxlo;
   double * fxhi;
   double * fylo;
@@ -254,7 +254,7 @@ __host__ int halo_swap_create(pe_t * pe, cs_t * cs, int nhcomm, int naddr,
 
     tdpGetSymbolAddress((void **) &tmpp, tdpSymbol(const_param));
     tdpAssert( tdpMemcpy(&halo->target->param, &tmpp,
-			 sizeof(halo_swap_param_t *), tdpMemcpyHostToDevice) ); 
+			 sizeof(halo_swap_param_t *), tdpMemcpyHostToDevice) );
 
     /* Device constants */
     halo_swap_commit(halo);
@@ -714,7 +714,7 @@ __host__ int halo_swap_packed(halo_swap_t * halo, double * data) {
   int ih, jh, kh;
   int ixlo, ixhi;
   int iylo, iyhi;
-  int izlo, izhi;  
+  int izlo, izhi;
   int m, mc, p;
   int nd, nh;
   int hsz[3];
@@ -991,7 +991,7 @@ __host__ int halo_swap_packed(halo_swap_t * halo, double * data) {
 
   jh = halo->param->hext[Z][Y] - nh;
   kh = halo->param->hext[Y][Z] - nh - halo->param->nswap;
-  
+
   for (ic = 0; ic < halo->param->nall[X]; ic++) {
     for (jc = 0; jc < halo->param->nswap; jc++) {
       for (kc = 0; kc < halo->param->nswap; kc++) {
@@ -1229,7 +1229,7 @@ void halo_swap_unpack_rank1(halo_swap_t * halo, int id, double * data) {
       indexh = halo_swap_index(halo, ic, jc, hi + kc);
       buflo = halo->hzlo;
       bufhi = halo->hzhi;
-    } 
+    }
 
 
     if (halo->param->nb == 1) {

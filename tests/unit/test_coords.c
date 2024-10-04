@@ -726,7 +726,7 @@ int test_cs_from_json(pe_t * pe) {
   assert(pe);
 
   {
-    /* Just about the bare minumum of information */
+    /* Just about the bare minimum of information */
 
     cJSON * json = cJSON_Parse("{"
 			       "\"options\": {"

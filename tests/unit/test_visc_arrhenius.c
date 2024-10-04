@@ -121,7 +121,7 @@ int test_visc_arrhenius_update(pe_t * pe, cs_t * cs, field_t * phi) {
   const double eta_plus  = 0.5;
   const double eta_minus = 0.1;
   const double phistar   = 1.0;
-  
+
   visc_arrhenius_param_t param = {eta_minus, eta_plus, phistar};
   visc_arrhenius_t * visc = NULL;
 

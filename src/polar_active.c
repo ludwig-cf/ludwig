@@ -8,7 +8,7 @@
  *      + (delta kappa1 / 2) (e_abc d_b P_c)^2
  *      + (kappa2/2) (d_a P_b P_c)^2
  *
- *  This is an implemetation of a free energy with vector order
+ *  This is an implementation of a free energy with vector order
  *  parameter.
  *
  *  For the time being, we demand delta = kappa2 = zero; this is until
@@ -297,7 +297,7 @@ int fe_polar_fed(fe_polar_t * fe, int index, double * fed) {
  *       - lambda [(1/2)(P_a h_b - P_b h_a) - (1/3)P_c h_c d_ab]
  *       - zeta [P_a P_b - (1/3) P_c P_c d_ab]
  *       - kappa1 d_a P_c d_b P_c
- * 
+ *
  *  This is antisymmetric. Note that extra minus sign added at
  *  the end to allow the force on the Navier Stokes to be
  *  computed as F_a = - d_b S_ab.
@@ -395,8 +395,8 @@ void fe_polar_stress_v(fe_polar_t * fe, int index, double s[3][3][NSIMDVL]) {
  *  fe_polar_mol_field
  *
  *  H_a = - A P_a - B (P_b)^2 P_a + kappa1 \nabla^2 P_a
- *        + 2 kappa2 P_c \nabla^2 P_c P_a 
- *  
+ *        + 2 kappa2 P_c \nabla^2 P_c P_a
+ *
  *****************************************************************************/
 
 __host__ __device__

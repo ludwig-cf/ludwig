@@ -58,7 +58,7 @@ struct lees_edw_param_s {
   double uy;                /* u[Y] for all planes */
   double dx_min;            /* Position first plane */
   double dx_sep;            /* Plane separation */
-  double omega;             /* u_y = u_le cos (omega t) for oscillatory */  
+  double omega;             /* u_y = u_le cos (omega t) for oscillatory */
   double time0;             /* time offset */
 };
 
@@ -413,7 +413,7 @@ static int lees_edw_init_tables(lees_edw_t * le) {
  *  periodic halo regions.
  *
  ****************************************************************************/
- 
+
 static int lees_edw_checks(lees_edw_t * le) {
 
   int n;
@@ -512,7 +512,7 @@ int lees_edw_steady_uy(lees_edw_t * le, int ic, double * uy) {
   nplane = (int) ((le->param->dx_min + xglobal)/le->param->dx_sep);
 
   *uy = xglobal*gammadot - le->param->uy*nplane;
- 
+
   return 0;
 }
 
@@ -546,7 +546,7 @@ int lees_edw_block_uy(lees_edw_t * le, int ic, double * uy) {
   cs_nlocal_offset(le->cs, offset);
 
   /* So, just count the number of blocks from the centre L_x/2
-   * and mutliply by the plane speed. */
+   * and multiply by the plane speed. */
 
   xh = offset[X] + (double) ic - lmin[X] - 0.5*ltot[X];
   if (xh > 0.0) {
@@ -798,7 +798,7 @@ __host__ __device__ void lees_edw_index_v(lees_edw_t * le, int ic[NSIMDVL],
   }
 
   return;
-} 
+}
 
 /*****************************************************************************
  *

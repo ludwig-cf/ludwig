@@ -206,7 +206,7 @@ __host__ int cs_init(cs_t * cs) {
 
   cs->param->noffset[X] = cs->listnoffset[X][cs->param->mpi_cartcoords[X]];
   cs->param->noffset[Y] = cs->listnoffset[Y][cs->param->mpi_cartcoords[Y]];
-  cs->param->noffset[Z] = cs->listnoffset[Z][cs->param->mpi_cartcoords[Z]];  
+  cs->param->noffset[Z] = cs->listnoffset[Z][cs->param->mpi_cartcoords[Z]];
 
   cs->param->str[Z] = 1;
   cs->param->str[Y] = cs->param->str[Z]*(cs->param->nlocal[Z] + 2*cs->param->nhalo);
@@ -275,7 +275,7 @@ __host__ int cs_info(cs_t * cs) {
     }
   }
 
-  uniform = (nmin[X] == nmax[X] && nmin[Y] == nmax[Y] && nmin[Z] == nmax[Z]); 
+  uniform = (nmin[X] == nmax[X] && nmin[Y] == nmax[Y] && nmin[Z] == nmax[Z]);
 
 
   pe_info(cs->pe, "\n");

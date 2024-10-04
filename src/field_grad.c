@@ -56,7 +56,7 @@ __host__ int field_grad_create(pe_t * pe, field_t * f, int level,
   ifail = field_grad_init(obj);
   if (ifail != 0) {
     pe_info(pe, "field_grad: failure in int32_t indexing\n");
-    pe_fatal(pe, "The local doamin size is too large\n");
+    pe_fatal(pe, "The local domain size is too large\n");
   }
 
   *pobj = obj;
@@ -111,7 +111,7 @@ static int field_grad_init(field_grad_t * obj) {
     if (obj->delsq == NULL) pe_fatal(obj->pe, "calloc(field_grad->delsq) failed");
 
     /* Allocate data space on target (or alias) */
- 
+
     if (ndevice > 0) {
       tdpAssert( tdpMalloc((void **) &tmp, nfsz*NVECTOR*sizeof(double)) );
       tdpAssert( tdpMemcpy(&obj->target->grad, &tmp, sizeof(double *),
@@ -280,10 +280,10 @@ __host__ void field_grad_free(field_grad_t * obj) {
 
   if (ndevice > 0) {
     tdpAssert( tdpMemcpy(&tmp, &obj->target->grad, sizeof(double *),
-			 tdpMemcpyDeviceToHost) ); 
+			 tdpMemcpyDeviceToHost) );
     tdpAssert( tdpFree(tmp) );
     tdpAssert( tdpMemcpy(&tmp, &obj->target->delsq, sizeof(double *),
-			 tdpMemcpyDeviceToHost) ); 
+			 tdpMemcpyDeviceToHost) );
     tdpAssert( tdpFree(tmp) );
     tdpAssert( tdpMemcpy(&tmp, &obj->target->d_ab, sizeof(double *),
 			 tdpMemcpyDeviceToHost) );

@@ -17,7 +17,7 @@
  *  with
  *
  *    F_phi  = symmetric phi^4 free energy
- *    F_psi  = kT [\psi ln \psi + (1 - \psi) ln (1 - \psi)] 
+ *    F_psi  = kT [\psi ln \psi + (1 - \psi) ln (1 - \psi)]
  *    F_surf = - (1/2)\epsilon\psi (grad \phi)^2
  *             - (1/2)\beta \psi^2 (grad \phi)^2
  *    F_add  = + (1/2) W \psi \phi^2
@@ -47,7 +47,7 @@
  * a_       = -0.0208333;
  * b_       = +0.0208333;
  * kappa_   = +0.12;
- * 
+ *
  * kt_      = 0.00056587;
  * epsilon_ = 0.03;
  * beta_    = 0.0;
@@ -285,13 +285,13 @@ __host__ int fe_surf_xi0(fe_surf_t * fe, double * xi0) {
  *  fe_surf_langmuir_isotherm
  *
  *  The Langmuir isotherm psi_c is given by
- *  
+ *
  *  ln psi_c = (1/2) epsilon / (kT xi_0^2)
  *
  *  and can be a useful reference. The situation is more complex if
  *  beta is not zero (Frumpkin isotherm).
  *
- ****************************************************************************/ 
+ ****************************************************************************/
 
 __host__ int fe_surf_langmuir_isotherm(fe_surf_t * fe, double * psi_c) {
 
@@ -355,14 +355,14 @@ __host__ int fe_surf_fed(fe_surf_t * fe, int index, double * fed) {
 /****************************************************************************
  *
  *  fe_surf_mu
- * 
+ *
  *  Two chemical potentials are present:
  *
  *  \mu_\phi = A\phi + B\phi^3 - kappa \nabla^2 \phi
  *           + W\phi \psi
  *           + \epsilon (\psi \nabla^2\phi + \nabla\phi . \nabla\psi)
- *           + \beta (\psi^2 \nabla^2\phi + 2\psi \nabla\phi . \nabla\psi) 
- * 
+ *           + \beta (\psi^2 \nabla^2\phi + 2\psi \nabla\phi . \nabla\psi)
+ *
  *  \mu_\psi = kT (ln \psi - ln (1 - \psi) + (1/2) W \phi^2
  *           - (1/2) \epsilon (\nabla \phi)^2
  *           - \beta \psi (\nabla \phi)^2
@@ -422,7 +422,7 @@ __host__ int fe_surf_mu(fe_surf_t * fe, int index, double * mu) {
  *     + \epsilon \phi \psi \nabla^2 \phi
  *     + 2 \beta \phi \psi \nabla_a\phi \nabla_a\psi
  *     + \beta\phi\psi^2 \nabla^2 \phi
- *     - (1/2) \beta\psi^2 (\nabla\phi)^2  
+ *     - (1/2) \beta\psi^2 (\nabla\phi)^2
  *
  *  P_ab = (\kappa - \epsilon\psi - \beta\psi^2) \nabla_a \phi \nabla_b \phi
  *

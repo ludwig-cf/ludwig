@@ -2,7 +2,7 @@
  *
  *  test_fe_electro_symm.c
  *
- *  Electrokinetic + symetric free energy
+ *  Electrokinetic + symmetric free energy
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre

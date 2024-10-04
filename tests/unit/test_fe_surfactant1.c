@@ -37,7 +37,7 @@ static fe_surf_param_t pref = {-0.0208333,    /* a */
 			       +0.0208333,    /* b */
 			       0.12,          /* kappa */
 			       0.00056587,    /* kT */
-			       0.03,          /* epsilon */ 
+			       0.03,          /* epsilon */
 			       0.0,           /* beta */
 			       0.0};          /* W */
 

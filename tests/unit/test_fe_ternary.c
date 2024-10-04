@@ -278,4 +278,3 @@ __host__ int test_fe_ternary_str(pe_t * pe, cs_t * cs, field_t * phi) {
 
   return 0;
 }
-

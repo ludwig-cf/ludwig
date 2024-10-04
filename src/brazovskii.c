@@ -15,13 +15,13 @@
  *  Parameters:
  *
  *  One should have b, c > 0 for stability purposes. Then for a < 0
- *  and kappa > 0 one gets two homogenous phases with
+ *  and kappa > 0 one gets two homogeneous phases with
  *  phi = +/- sqrt(-a/b) cf. the symmetric case.
  *
  *  Negative kappa favours the presence of interfaces, and lamellae
  *  can form. Approximately, the lamellar phase can be described by
  *  phi ~= A sin(k_0 x) in the traverse direction, where
- *  A^2 = 4 (1 + kappa^2/4cb)/3 and k_0 = sqrt(-kappa/2c). 
+ *  A^2 = 4 (1 + kappa^2/4cb)/3 and k_0 = sqrt(-kappa/2c).
  *
  *  Edinburgh Soft Matter and Statistical Physics Group
  *  and Edinburgh Parallel Computing Centre
