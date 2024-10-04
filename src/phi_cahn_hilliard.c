@@ -1163,7 +1163,7 @@ static int phi_ch_subtract_sum_phi_after_forward_step(phi_ch_t * pch, field_t * 
     tdpAssert(tdpDeviceSynchronize());
   }
 
-  tdpFree(local_d);
+  tdpAssert( tdpFree(local_d) );
 
   return 0;
 }

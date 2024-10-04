@@ -48,7 +48,7 @@ __host__ int field_init(field_t * obj, int nhcomm, lees_edw_t * le);
 #include "mpi-ext.h"
 #endif
 
-#ifdef __NVCC__
+#ifdef __HIPCC__
 /* There are two file-scope switches here, which need to be generalised
  * via some suitable interface; they are separate, but both relate to
  * GPU execution. */
@@ -168,13 +168,13 @@ __host__ int field_free(field_t * obj) {
 
   assert(obj);
 
-  tdpGetDeviceCount(&ndevice);
+  tdpAssert( tdpGetDeviceCount(&ndevice) );
 
   if (ndevice > 0) {
-    tdpMemcpy(&tmp, &obj->target->data, sizeof(double *),
-	      tdpMemcpyDeviceToHost);
-    tdpFree(tmp);
-    tdpFree(obj->target);
+    tdpAssert( tdpMemcpy(&tmp, &obj->target->data, sizeof(double *),
+			 tdpMemcpyDeviceToHost) );
+    tdpAssert( tdpFree(tmp) );
+    tdpAssert( tdpFree(obj->target) );
   }
 
   if (obj->data) free(obj->data);
@@ -239,7 +239,7 @@ __host__ int field_init(field_t * obj, int nhcomm, lees_edw_t * le) {
 
   /* Allocate target copy of structure (or alias) */
 
-  tdpGetDeviceCount(&ndevice);
+  tdpAssert( tdpGetDeviceCount(&ndevice) );
 
   if (ndevice == 0) {
     obj->target = obj;
@@ -247,17 +247,17 @@ __host__ int field_init(field_t * obj, int nhcomm, lees_edw_t * le) {
   else {
     cs_t * cstarget = NULL;
     lees_edw_t * letarget = NULL;
-    tdpMalloc((void **) &obj->target, sizeof(field_t));
-    tdpMalloc((void **) &tmp, nfsz*sizeof(double));
-    tdpMemcpy(&obj->target->data, &tmp, sizeof(double *),
-	      tdpMemcpyHostToDevice);
+    tdpAssert( tdpMalloc((void **) &obj->target, sizeof(field_t)) );
+    tdpAssert( tdpMalloc((void **) &tmp, nfsz*sizeof(double)) );
+    tdpAssert( tdpMemcpy(&obj->target->data, &tmp, sizeof(double *),
+			 tdpMemcpyHostToDevice) );
 
     cs_target(obj->cs, &cstarget);
     if (le) lees_edw_target(obj->le, &letarget);
-    tdpMemcpy(&obj->target->cs, &cstarget, sizeof(cs_t *),
-	      tdpMemcpyHostToDevice);
-    tdpMemcpy(&obj->target->le, &letarget, sizeof(lees_edw_t *),
-	      tdpMemcpyHostToDevice);
+    tdpAssert( tdpMemcpy(&obj->target->cs, &cstarget, sizeof(cs_t *),
+			 tdpMemcpyHostToDevice) );
+    tdpAssert( tdpMemcpy(&obj->target->le, &letarget, sizeof(lees_edw_t *),
+			 tdpMemcpyHostToDevice) );
     field_memcpy(obj, tdpMemcpyHostToDevice);
   }
 
@@ -276,7 +276,7 @@ __host__ int field_memcpy(field_t * obj, tdpMemcpyKind flag) {
   size_t nfsz;
   double * tmp;
 
-  tdpGetDeviceCount(&ndevice);
+  tdpAssert( tdpGetDeviceCount(&ndevice) );
 
   if (ndevice == 0) {
     /* Ensure we alias */
@@ -285,18 +285,18 @@ __host__ int field_memcpy(field_t * obj, tdpMemcpyKind flag) {
   else {
 
     nfsz = (size_t) obj->nf*obj->nsites;
-    tdpMemcpy(&tmp, &obj->target->data, sizeof(double *),
-	      tdpMemcpyDeviceToHost);
+    tdpAssert( tdpMemcpy(&tmp, &obj->target->data, sizeof(double *),
+			 tdpMemcpyDeviceToHost) );
 
     switch (flag) {
     case tdpMemcpyHostToDevice:
-      tdpMemcpy(&obj->target->nf, &obj->nf, sizeof(int), flag);
-      tdpMemcpy(&obj->target->nhcomm, &obj->nhcomm, sizeof(int), flag);
-      tdpMemcpy(&obj->target->nsites, &obj->nsites, sizeof(int), flag);
-      tdpMemcpy(tmp, obj->data, nfsz*sizeof(double), flag);
+      tdpAssert( tdpMemcpy(&obj->target->nf, &obj->nf, sizeof(int), flag) );
+      tdpAssert( tdpMemcpy(&obj->target->nhcomm, &obj->nhcomm, sizeof(int), flag) );
+      tdpAssert( tdpMemcpy(&obj->target->nsites, &obj->nsites, sizeof(int), flag) );
+      tdpAssert( tdpMemcpy(tmp, obj->data, nfsz*sizeof(double), flag) );
       break;
     case tdpMemcpyDeviceToHost:
-      tdpMemcpy(obj->data, tmp, nfsz*sizeof(double), flag);
+      tdpAssert( tdpMemcpy(obj->data, tmp, nfsz*sizeof(double), flag) );
       break;
     default:
       pe_fatal(obj->pe, "Bad flag in field_memcpy\n");
@@ -1393,8 +1393,8 @@ int field_halo_create(const field_t * field, field_halo_t * h) {
 
   /* Device */
 
-  tdpGetDeviceCount(&ndevice);
-  tdpStreamCreate(&h->stream);
+  tdpAssert( tdpGetDeviceCount(&ndevice) );
+  tdpAssert( tdpStreamCreate(&h->stream) );
 
   if (ndevice == 0) {
     h->target = h;
@@ -1608,7 +1608,8 @@ int field_halo_free(field_halo_t * h) {
   assert(h);
 
   int ndevice = 0;
-  tdpGetDeviceCount(&ndevice);
+
+  tdpAssert( tdpGetDeviceCount(&ndevice) );
 
   if (ndevice > 0) {
     tdpAssert( tdpMemcpy(h->send_d, h->target->send, 27*sizeof(double *),
@@ -1616,10 +1617,10 @@ int field_halo_free(field_halo_t * h) {
     tdpAssert( tdpMemcpy(h->recv_d, h->target->recv, 27*sizeof(double *),
 			 tdpMemcpyDeviceToHost) );
     for (int p = 1; p < h->nvel; p++) {
-      tdpFree(h->send_d[p]);
-      tdpFree(h->recv_d[p]);
+      tdpAssert( tdpFree(h->send_d[p]) );
+      tdpAssert( tdpFree(h->recv_d[p]) );
     }
-    tdpFree(h->target);
+    tdpAssert( tdpFree(h->target) );
   }
 
   for (int p = 1; p < h->nvel; p++) {

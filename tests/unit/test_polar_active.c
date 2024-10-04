@@ -10,7 +10,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2010-2017 The University of Edinbrugh
+ *  (c) 2010-2024 The University of Edinbrugh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -60,7 +60,7 @@ int test_polar_active_suite(void) {
 
   field_options_t opts = field_options_ndata_nhalo(nf, nhalo);
 
-  tdpGetDeviceCount(&ndevice);
+  tdpAssert( tdpGetDeviceCount(&ndevice) );
 
   pe_create(MPI_COMM_WORLD, PE_QUIET, &pe);
 

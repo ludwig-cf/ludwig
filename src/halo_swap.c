@@ -7,7 +7,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2016-2020 The University of Edinburgh
+ *  (c) 2016-2024 The University of Edinburgh
  *
  *  Contributing authors:
  *  Alan Gray (alang@epcc.ed.ac.uk)
@@ -167,30 +167,30 @@ __host__ int halo_swap_create(pe_t * pe, cs_t * cs, int nhcomm, int naddr,
   /* Host buffers, actual and halo regions */
 
   sz = (size_t) halo->param->hsz[X]*na*nb*sizeof(double);
-  tdpHostAlloc((void **) &halo->fxlo, sz, mflag);
-  tdpHostAlloc((void **) &halo->fxhi, sz, mflag);
-  tdpHostAlloc((void **) &halo->hxlo, sz, mflag);
-  tdpHostAlloc((void **) &halo->hxhi, sz, mflag);
+  tdpAssert( tdpHostAlloc((void **) &halo->fxlo, sz, mflag) );
+  tdpAssert( tdpHostAlloc((void **) &halo->fxhi, sz, mflag) );
+  tdpAssert( tdpHostAlloc((void **) &halo->hxlo, sz, mflag) );
+  tdpAssert( tdpHostAlloc((void **) &halo->hxhi, sz, mflag) );
 
   sz = (size_t) halo->param->hsz[Y]*na*nb*sizeof(double);
-  tdpHostAlloc((void **) &halo->fylo, sz, mflag);
-  tdpHostAlloc((void **) &halo->fyhi, sz, mflag);
-  tdpHostAlloc((void **) &halo->hylo, sz, mflag);
-  tdpHostAlloc((void **) &halo->hyhi, sz, mflag);
+  tdpAssert( tdpHostAlloc((void **) &halo->fylo, sz, mflag) );
+  tdpAssert( tdpHostAlloc((void **) &halo->fyhi, sz, mflag) );
+  tdpAssert( tdpHostAlloc((void **) &halo->hylo, sz, mflag) );
+  tdpAssert( tdpHostAlloc((void **) &halo->hyhi, sz, mflag) );
 
   sz = (size_t) halo->param->hsz[Z]*na*nb*sizeof(double);
-  tdpHostAlloc((void **) &halo->fzlo, sz, mflag);
-  tdpHostAlloc((void **) &halo->fzhi, sz, mflag);
-  tdpHostAlloc((void **) &halo->hzlo, sz, mflag);
-  tdpHostAlloc((void **) &halo->hzhi, sz, mflag);
+  tdpAssert( tdpHostAlloc((void **) &halo->fzlo, sz, mflag) );
+  tdpAssert( tdpHostAlloc((void **) &halo->fzhi, sz, mflag) );
+  tdpAssert( tdpHostAlloc((void **) &halo->hzlo, sz, mflag) );
+  tdpAssert( tdpHostAlloc((void **) &halo->hzhi, sz, mflag) );
 
-  tdpStreamCreate(&halo->stream[X]);
-  tdpStreamCreate(&halo->stream[Y]);
-  tdpStreamCreate(&halo->stream[Z]);
+  tdpAssert( tdpStreamCreate(&halo->stream[X]) );
+  tdpAssert( tdpStreamCreate(&halo->stream[Y]) );
+  tdpAssert( tdpStreamCreate(&halo->stream[Z]) );
 
   /* Device buffers: allocate or alias */
 
-  tdpGetDeviceCount(&ndevice);
+  tdpAssert( tdpGetDeviceCount(&ndevice) );
 
   if (ndevice == 0) {
     halo->target = halo;
@@ -200,61 +200,61 @@ __host__ int halo_swap_create(pe_t * pe, cs_t * cs, int nhcomm, int naddr,
     halo_swap_param_t * tmpp;
 
     /* Target structure */
-    tdpMalloc((void **) &halo->target, sizeof(halo_swap_t));
-    tdpMemset(halo->target, 0, sizeof(halo_swap_t));
+    tdpAssert( tdpMalloc((void **) &halo->target, sizeof(halo_swap_t)) );
+    tdpAssert( tdpMemset(halo->target, 0, sizeof(halo_swap_t)) );
 
     /* Buffers */
     sz = (size_t) halo->param->hsz[X]*na*nb*sizeof(double);
 
-    tdpMalloc((void **) &tmp, sz);
-    tdpMemcpy(&halo->target->fxlo, &tmp, sizeof(double *),
-	      tdpMemcpyHostToDevice);
-    tdpMalloc((void **) &tmp, sz);
-    tdpMemcpy(&halo->target->fxhi, &tmp, sizeof(double *),
-	      tdpMemcpyHostToDevice);
+    tdpAssert( tdpMalloc((void **) &tmp, sz) );
+    tdpAssert( tdpMemcpy(&halo->target->fxlo, &tmp, sizeof(double *),
+			 tdpMemcpyHostToDevice) );
+    tdpAssert( tdpMalloc((void **) &tmp, sz) );
+    tdpAssert( tdpMemcpy(&halo->target->fxhi, &tmp, sizeof(double *),
+			 tdpMemcpyHostToDevice) );
 
-    tdpMalloc((void **) &tmp, sz);
-    tdpMemcpy(&halo->target->hxlo, &tmp, sizeof(double *),
-	      tdpMemcpyHostToDevice);
-    tdpMalloc((void **) & tmp, sz);
-    tdpMemcpy(&halo->target->hxhi, &tmp, sizeof(double *),
-	      tdpMemcpyHostToDevice);
+    tdpAssert( tdpMalloc((void **) &tmp, sz) );
+    tdpAssert( tdpMemcpy(&halo->target->hxlo, &tmp, sizeof(double *),
+			 tdpMemcpyHostToDevice) );
+    tdpAssert( tdpMalloc((void **) & tmp, sz) );
+    tdpAssert( tdpMemcpy(&halo->target->hxhi, &tmp, sizeof(double *),
+			 tdpMemcpyHostToDevice) );
 
     sz = (size_t) halo->param->hsz[Y]*na*nb*sizeof(double);
 
-    tdpMalloc((void ** ) &tmp, sz);
-    tdpMemcpy(&halo->target->fylo, &tmp, sizeof(double *),
-	      tdpMemcpyHostToDevice);
-    tdpMalloc((void **) &tmp, sz);
-    tdpMemcpy(&halo->target->fyhi, &tmp, sizeof(double *),
-	      tdpMemcpyHostToDevice);
+    tdpAssert( tdpMalloc((void ** ) &tmp, sz) );
+    tdpAssert( tdpMemcpy(&halo->target->fylo, &tmp, sizeof(double *),
+			 tdpMemcpyHostToDevice) );
+    tdpAssert( tdpMalloc((void **) &tmp, sz) );
+    tdpAssert( tdpMemcpy(&halo->target->fyhi, &tmp, sizeof(double *),
+			 tdpMemcpyHostToDevice) );
 
-    tdpMalloc((void **) &tmp, sz);
-    tdpMemcpy(&halo->target->hylo, &tmp, sizeof(double *),
-	      tdpMemcpyHostToDevice);
-    tdpMalloc((void **) &tmp, sz);
-    tdpMemcpy(&halo->target->hyhi, &tmp, sizeof(double *),
-	      tdpMemcpyHostToDevice);
+    tdpAssert( tdpMalloc((void **) &tmp, sz) );
+    tdpAssert( tdpMemcpy(&halo->target->hylo, &tmp, sizeof(double *),
+			 tdpMemcpyHostToDevice) );
+    tdpAssert( tdpMalloc((void **) &tmp, sz) );
+    tdpAssert( tdpMemcpy(&halo->target->hyhi, &tmp, sizeof(double *),
+			 tdpMemcpyHostToDevice) );
 
     sz = (size_t) halo->param->hsz[Z]*na*nb*sizeof(double);
 
-    tdpMalloc((void **) &tmp, sz);
-    tdpMemcpy(&halo->target->fzlo, &tmp, sizeof(double *),
-	      tdpMemcpyHostToDevice);
-    tdpMalloc((void **) &tmp, sz);
-    tdpMemcpy(&halo->target->fzhi, &tmp, sizeof(double *),
-	      tdpMemcpyHostToDevice);
+    tdpAssert( tdpMalloc((void **) &tmp, sz) );
+    tdpAssert( tdpMemcpy(&halo->target->fzlo, &tmp, sizeof(double *),
+			 tdpMemcpyHostToDevice) );
+    tdpAssert( tdpMalloc((void **) &tmp, sz) );
+    tdpAssert( tdpMemcpy(&halo->target->fzhi, &tmp, sizeof(double *),
+			 tdpMemcpyHostToDevice) );
 
-    tdpMalloc((void **) &tmp, sz);
-    tdpMemcpy(&halo->target->hzlo, &tmp, sizeof(double *),
-	      tdpMemcpyHostToDevice);
-    tdpMalloc((void **) &tmp, sz);
-    tdpMemcpy(&halo->target->hzhi, &tmp, sizeof(double *),
-	      tdpMemcpyHostToDevice);
+    tdpAssert( tdpMalloc((void **) &tmp, sz) );
+    tdpAssert( tdpMemcpy(&halo->target->hzlo, &tmp, sizeof(double *),
+			 tdpMemcpyHostToDevice) );
+    tdpAssert( tdpMalloc((void **) &tmp, sz) );
+    tdpAssert( tdpMemcpy(&halo->target->hzhi, &tmp, sizeof(double *),
+			 tdpMemcpyHostToDevice) );
 
     tdpGetSymbolAddress((void **) &tmpp, tdpSymbol(const_param));
-    tdpMemcpy(&halo->target->param, &tmpp, sizeof(halo_swap_param_t *),
-	      tdpMemcpyHostToDevice); 
+    tdpAssert( tdpMemcpy(&halo->target->param, &tmpp,
+			 sizeof(halo_swap_param_t *), tdpMemcpyHostToDevice) ); 
 
     /* Device constants */
     halo_swap_commit(halo);
@@ -277,69 +277,69 @@ __host__ int halo_swap_free(halo_swap_t * halo) {
 
   assert(halo);
 
-  tdpGetDeviceCount(&ndevice);
+  tdpAssert( tdpGetDeviceCount(&ndevice) );
 
   if (ndevice > 0) {
     double * tmp;
 
-    tdpMemcpy(&tmp, &halo->target->fxlo, sizeof(double *),
-	      tdpMemcpyDeviceToHost);
-    tdpFree(tmp);
-    tdpMemcpy(&tmp, &halo->target->fxhi, sizeof(double *),
-	      tdpMemcpyDeviceToHost);
-    tdpFree(tmp);
-    tdpMemcpy(&tmp, &halo->target->fylo, sizeof(double *),
-	      tdpMemcpyDeviceToHost);
-    tdpFree(tmp);
-    tdpMemcpy(&tmp, &halo->target->fyhi, sizeof(double *),
-	      tdpMemcpyDeviceToHost);
-    tdpFree(tmp);
-    tdpMemcpy(&tmp, &halo->target->fzlo, sizeof(double *),
-	      tdpMemcpyDeviceToHost);
-    tdpFree(tmp);
-    tdpMemcpy(&tmp, &halo->target->fzhi, sizeof(double *),
-	      tdpMemcpyDeviceToHost);
-    tdpFree(tmp);
+    tdpAssert( tdpMemcpy(&tmp, &halo->target->fxlo, sizeof(double *),
+			 tdpMemcpyDeviceToHost) );
+    tdpAssert( tdpFree(tmp) );
+    tdpAssert( tdpMemcpy(&tmp, &halo->target->fxhi, sizeof(double *),
+			 tdpMemcpyDeviceToHost) );
+    tdpAssert( tdpFree(tmp) );
+    tdpAssert( tdpMemcpy(&tmp, &halo->target->fylo, sizeof(double *),
+			 tdpMemcpyDeviceToHost) );
+    tdpAssert( tdpFree(tmp) );
+    tdpAssert( tdpMemcpy(&tmp, &halo->target->fyhi, sizeof(double *),
+			 tdpMemcpyDeviceToHost) );
+    tdpAssert( tdpFree(tmp) );
+    tdpAssert( tdpMemcpy(&tmp, &halo->target->fzlo, sizeof(double *),
+			 tdpMemcpyDeviceToHost) );
+    tdpAssert( tdpFree(tmp) );
+    tdpAssert( tdpMemcpy(&tmp, &halo->target->fzhi, sizeof(double *),
+			 tdpMemcpyDeviceToHost) );
+    tdpAssert( tdpFree(tmp) );
 
-    tdpMemcpy(&tmp, &halo->target->hxlo, sizeof(double *),
-	      tdpMemcpyDeviceToHost);
-    tdpFree(tmp);
-    tdpMemcpy(&tmp, &halo->target->hxhi, sizeof(double *),
-	      tdpMemcpyDeviceToHost);
-    tdpFree(tmp);
-    tdpMemcpy(&tmp, &halo->target->hylo, sizeof(double *),
-	      tdpMemcpyDeviceToHost);
-    tdpFree(tmp);
-    tdpMemcpy(&tmp, &halo->target->hyhi, sizeof(double *),
-	      tdpMemcpyDeviceToHost);
-    tdpFree(tmp);
-    tdpMemcpy(&tmp, &halo->target->hzlo, sizeof(double *),
-	      tdpMemcpyDeviceToHost);
-    tdpFree(tmp);
-    tdpMemcpy(&tmp, &halo->target->hzhi, sizeof(double *),
-	      tdpMemcpyDeviceToHost);
-    tdpFree(tmp);
+    tdpAssert( tdpMemcpy(&tmp, &halo->target->hxlo, sizeof(double *),
+			 tdpMemcpyDeviceToHost) );
+    tdpAssert( tdpFree(tmp) );
+    tdpAssert( tdpMemcpy(&tmp, &halo->target->hxhi, sizeof(double *),
+			 tdpMemcpyDeviceToHost) );
+    tdpAssert( tdpFree(tmp) );
+    tdpAssert( tdpMemcpy(&tmp, &halo->target->hylo, sizeof(double *),
+			 tdpMemcpyDeviceToHost) );
+    tdpAssert( tdpFree(tmp) );
+    tdpAssert( tdpMemcpy(&tmp, &halo->target->hyhi, sizeof(double *),
+			 tdpMemcpyDeviceToHost) );
+    tdpAssert( tdpFree(tmp) );
+    tdpAssert( tdpMemcpy(&tmp, &halo->target->hzlo, sizeof(double *),
+			 tdpMemcpyDeviceToHost) );
+    tdpAssert( tdpFree(tmp) );
+    tdpAssert( tdpMemcpy(&tmp, &halo->target->hzhi, sizeof(double *),
+			 tdpMemcpyDeviceToHost) );
+    tdpAssert( tdpFree(tmp) );
 
-    tdpFree(halo->target);
+    tdpAssert( tdpFree(halo->target) );
   }
 
-  tdpFreeHost(halo->fxlo);
-  tdpFreeHost(halo->fxhi);
-  tdpFreeHost(halo->fylo);
-  tdpFreeHost(halo->fyhi);
-  tdpFreeHost(halo->fzlo);
-  tdpFreeHost(halo->fzhi);
+  tdpAssert( tdpFreeHost(halo->fxlo) );
+  tdpAssert( tdpFreeHost(halo->fxhi) );
+  tdpAssert( tdpFreeHost(halo->fylo) );
+  tdpAssert( tdpFreeHost(halo->fyhi) );
+  tdpAssert( tdpFreeHost(halo->fzlo) );
+  tdpAssert( tdpFreeHost(halo->fzhi) );
 
-  tdpFreeHost(halo->hxlo);
-  tdpFreeHost(halo->hxhi);
-  tdpFreeHost(halo->hylo);
-  tdpFreeHost(halo->hyhi);
-  tdpFreeHost(halo->hzlo);
-  tdpFreeHost(halo->hzhi);
+  tdpAssert( tdpFreeHost(halo->hxlo) );
+  tdpAssert( tdpFreeHost(halo->hxhi) );
+  tdpAssert( tdpFreeHost(halo->hylo) );
+  tdpAssert( tdpFreeHost(halo->hyhi) );
+  tdpAssert( tdpFreeHost(halo->hzlo) );
+  tdpAssert( tdpFreeHost(halo->hzhi) );
 
-  tdpStreamDestroy(halo->stream[X]);
-  tdpStreamDestroy(halo->stream[Y]);
-  tdpStreamDestroy(halo->stream[Z]);
+  tdpAssert( tdpStreamDestroy(halo->stream[X]) );
+  tdpAssert( tdpStreamDestroy(halo->stream[Y]) );
+  tdpAssert( tdpStreamDestroy(halo->stream[Z]) );
 
   free(halo->param);
   free(halo);
@@ -736,7 +736,7 @@ __host__ int halo_swap_packed(halo_swap_t * halo, double * data) {
   /* 2D systems require fix... in the meantime...*/
   assert(halo->param->nlocal[Z] >= halo->param->nswap);
 
-  tdpGetDeviceCount(&ndevice);
+  tdpAssert( tdpGetDeviceCount(&ndevice) );
   halo_swap_commit(halo);
 
   cs_cart_comm(halo->cs, &comm);
@@ -791,14 +791,14 @@ __host__ int halo_swap_packed(halo_swap_t * halo, double * data) {
 
   if (ndevice > 0) {
     ncount = hsz[X]*halo->param->nfel;
-    tdpMemcpy(&tmp, &halo->target->fxlo, sizeof(double *),
-	      tdpMemcpyDeviceToHost);
-    tdpMemcpyAsync(halo->fxlo, tmp, ncount*sizeof(double),
-		   tdpMemcpyDeviceToHost, halo->stream[X]);
-    tdpMemcpy(&tmp, &halo->target->fxhi, sizeof(double *),
-	      tdpMemcpyDeviceToHost);
-    tdpMemcpyAsync(halo->fxhi, tmp, ncount*sizeof(double),
-		   tdpMemcpyDeviceToHost, halo->stream[X]);
+    tdpAssert( tdpMemcpy(&tmp, &halo->target->fxlo, sizeof(double *),
+			 tdpMemcpyDeviceToHost) );
+    tdpAssert( tdpMemcpyAsync(halo->fxlo, tmp, ncount*sizeof(double),
+			      tdpMemcpyDeviceToHost, halo->stream[X]) );
+    tdpAssert( tdpMemcpy(&tmp, &halo->target->fxhi, sizeof(double *),
+			 tdpMemcpyDeviceToHost) );
+    tdpAssert( tdpMemcpyAsync(halo->fxhi, tmp, ncount*sizeof(double),
+			      tdpMemcpyDeviceToHost, halo->stream[X]) );
   }
 
   /* pack Y edges on accelerator */
@@ -809,14 +809,14 @@ __host__ int halo_swap_packed(halo_swap_t * halo, double * data) {
 
   if (ndevice > 0) {
     ncount = hsz[Y]*halo->param->nfel;
-    tdpMemcpy(&tmp, &halo->target->fylo, sizeof(double *),
-	      tdpMemcpyDeviceToHost);
-    tdpMemcpyAsync(halo->fylo, tmp, ncount*sizeof(double),
-		   tdpMemcpyDeviceToHost, halo->stream[Y]);
-    tdpMemcpy(&tmp, &halo->target->fyhi, sizeof(double *),
-	      tdpMemcpyDeviceToHost);
-    tdpMemcpyAsync(halo->fyhi, tmp, ncount*sizeof(double),
-		   tdpMemcpyDeviceToHost, halo->stream[Y]);
+    tdpAssert( tdpMemcpy(&tmp, &halo->target->fylo, sizeof(double *),
+			 tdpMemcpyDeviceToHost) );
+    tdpAssert( tdpMemcpyAsync(halo->fylo, tmp, ncount*sizeof(double),
+			      tdpMemcpyDeviceToHost, halo->stream[Y]) );
+    tdpAssert( tdpMemcpy(&tmp, &halo->target->fyhi, sizeof(double *),
+			 tdpMemcpyDeviceToHost) );
+    tdpAssert( tdpMemcpyAsync(halo->fyhi, tmp, ncount*sizeof(double),
+			      tdpMemcpyDeviceToHost, halo->stream[Y]) );
   }
 
   /* pack Z edges on accelerator */
@@ -827,36 +827,36 @@ __host__ int halo_swap_packed(halo_swap_t * halo, double * data) {
 
   if (ndevice > 0) {
     ncount = hsz[Z]*halo->param->nfel;
-    tdpMemcpy(&tmp, &halo->target->fzlo, sizeof(double *),
-	      tdpMemcpyDeviceToHost);
-    tdpMemcpyAsync(halo->fzlo, tmp, ncount*sizeof(double),
-		   tdpMemcpyDeviceToHost, halo->stream[Z]);
-    tdpMemcpy(&tmp, &halo->target->fzhi, sizeof(double *),
-	      tdpMemcpyDeviceToHost);
-    tdpMemcpyAsync(halo->fzhi, tmp, ncount*sizeof(double),
-		   tdpMemcpyDeviceToHost, halo->stream[Z]);
+    tdpAssert( tdpMemcpy(&tmp, &halo->target->fzlo, sizeof(double *),
+			 tdpMemcpyDeviceToHost) );
+    tdpAssert( tdpMemcpyAsync(halo->fzlo, tmp, ncount*sizeof(double),
+			      tdpMemcpyDeviceToHost, halo->stream[Z]) );
+    tdpAssert( tdpMemcpy(&tmp, &halo->target->fzhi, sizeof(double *),
+			 tdpMemcpyDeviceToHost) );
+    tdpAssert( tdpMemcpyAsync(halo->fzhi, tmp, ncount*sizeof(double),
+			      tdpMemcpyDeviceToHost, halo->stream[Z]) );
   }
 
 
   /* Wait for X; copy or MPI recvs; put X halos back on device, and unpack */
 
-  tdpStreamSynchronize(halo->stream[X]);
+  tdpAssert( tdpStreamSynchronize(halo->stream[X]) );
   ncount = hsz[X]*halo->param->nfel;
 
   if (mpicartsz[X] == 1) {
     /* note these copies do not alias for ndevice == 1 */
     /* fxhi -> hxlo */
     memcpy(halo->hxlo, halo->fxhi, ncount*sizeof(double));
-    tdpMemcpy(&tmp, &halo->target->hxlo, sizeof(double *),
-	      tdpMemcpyDeviceToHost);
-    tdpMemcpyAsync(tmp, halo->fxhi, ncount*sizeof(double),
-		    tdpMemcpyHostToDevice, halo->stream[X]);
+    tdpAssert( tdpMemcpy(&tmp, &halo->target->hxlo, sizeof(double *),
+			 tdpMemcpyDeviceToHost) );
+    tdpAssert( tdpMemcpyAsync(tmp, halo->fxhi, ncount*sizeof(double),
+			      tdpMemcpyHostToDevice, halo->stream[X]) );
     /* fxlo -> hxhi */
     memcpy(halo->hxhi, halo->fxlo, ncount*sizeof(double));
-    tdpMemcpy(&tmp, &halo->target->hxhi, sizeof(double *),
-	      tdpMemcpyDeviceToHost);
-    tdpMemcpyAsync(tmp, halo->fxlo, ncount*sizeof(double),
-		    tdpMemcpyHostToDevice, halo->stream[X]);
+    tdpAssert( tdpMemcpy(&tmp, &halo->target->hxhi, sizeof(double *),
+			 tdpMemcpyDeviceToHost) );
+    tdpAssert( tdpMemcpyAsync(tmp, halo->fxlo, ncount*sizeof(double),
+			      tdpMemcpyHostToDevice, halo->stream[X]) );
   }
   else {
     MPI_Isend(halo->fxhi, ncount, MPI_DOUBLE,
@@ -867,16 +867,16 @@ __host__ int halo_swap_packed(halo_swap_t * halo, double * data) {
     for (m = 0; m < 4; m++) {
       MPI_Waitany(4, req_x, &mc, status);
       if (mc == 0 && ndevice > 0) {
-	tdpMemcpy(&tmp, &halo->target->hxlo, sizeof(double *),
-		  tdpMemcpyDeviceToHost);
-	tdpMemcpyAsync(tmp, halo->hxlo, ncount*sizeof(double),
-		       tdpMemcpyHostToDevice, halo->stream[X]);
+	tdpAssert( tdpMemcpy(&tmp, &halo->target->hxlo, sizeof(double *),
+			     tdpMemcpyDeviceToHost) );
+	tdpAssert( tdpMemcpyAsync(tmp, halo->hxlo, ncount*sizeof(double),
+				  tdpMemcpyHostToDevice, halo->stream[X]) );
       }
       if (mc == 1 && ndevice > 0) {
-	tdpMemcpy(&tmp, &halo->target->hxhi, sizeof(double *),
-		  tdpMemcpyDeviceToHost);
-	tdpMemcpyAsync(tmp, halo->hxhi, ncount*sizeof(double),
-		       tdpMemcpyHostToDevice, halo->stream[X]);
+	tdpAssert( tdpMemcpy(&tmp, &halo->target->hxhi, sizeof(double *),
+			     tdpMemcpyDeviceToHost) );
+	tdpAssert( tdpMemcpyAsync(tmp, halo->hxhi, ncount*sizeof(double),
+				  tdpMemcpyHostToDevice, halo->stream[X]) );
       }
     }
   }
@@ -888,7 +888,7 @@ __host__ int halo_swap_packed(halo_swap_t * halo, double * data) {
   /* Now wait for Y data to arrive from device */
   /* Fill in 4 corners of Y edge data from X halo */
 
-  tdpStreamSynchronize(halo->stream[Y]);
+  tdpAssert( tdpStreamSynchronize(halo->stream[Y]) );
 
   ih = halo->param->hext[Y][X] - nh;
   jh = halo->param->hext[X][Y] - nh - halo->param->nswap;
@@ -921,16 +921,16 @@ __host__ int halo_swap_packed(halo_swap_t * halo, double * data) {
   if (mpicartsz[Y] == 1) {
     /* fyhi -> hylo */
     memcpy(halo->hylo, halo->fyhi, ncount*sizeof(double));
-    tdpMemcpy(&tmp, &halo->target->hylo, sizeof(double *),
-	      tdpMemcpyDeviceToHost);
-    tdpMemcpyAsync(tmp, halo->fyhi, ncount*sizeof(double),
-		   tdpMemcpyHostToDevice, halo->stream[Y]);
+    tdpAssert( tdpMemcpy(&tmp, &halo->target->hylo, sizeof(double *),
+			 tdpMemcpyDeviceToHost) );
+    tdpAssert( tdpMemcpyAsync(tmp, halo->fyhi, ncount*sizeof(double),
+			      tdpMemcpyHostToDevice, halo->stream[Y]) );
     /* fylo -> hyhi */
     memcpy(halo->hyhi, halo->fylo, ncount*sizeof(double));
-    tdpMemcpy(&tmp, &halo->target->hyhi, sizeof(double *),
-	      tdpMemcpyDeviceToHost);
-    tdpMemcpyAsync(tmp, halo->fylo,ncount*sizeof(double),
-		   tdpMemcpyHostToDevice, halo->stream[Y]);
+    tdpAssert( tdpMemcpy(&tmp, &halo->target->hyhi, sizeof(double *),
+			 tdpMemcpyDeviceToHost) );
+    tdpAssert( tdpMemcpyAsync(tmp, halo->fylo,ncount*sizeof(double),
+			      tdpMemcpyHostToDevice, halo->stream[Y]) );
   }
   else {
     MPI_Isend(halo->fyhi, ncount, MPI_DOUBLE,
@@ -941,16 +941,16 @@ __host__ int halo_swap_packed(halo_swap_t * halo, double * data) {
     for (m = 0; m < 4; m++) {
       MPI_Waitany(4, req_y, &mc, status);
       if (mc == 0 && ndevice > 0) {
-	tdpMemcpy(&tmp, &halo->target->hylo, sizeof(double *),
-		  tdpMemcpyDeviceToHost);
-	tdpMemcpyAsync(tmp, halo->hylo, ncount*sizeof(double),
-		       tdpMemcpyHostToDevice, halo->stream[Y]);
+	tdpAssert( tdpMemcpy(&tmp, &halo->target->hylo, sizeof(double *),
+			     tdpMemcpyDeviceToHost) );
+	tdpAssert( tdpMemcpyAsync(tmp, halo->hylo, ncount*sizeof(double),
+				  tdpMemcpyHostToDevice, halo->stream[Y]) );
       }
       if (mc == 1 && ndevice > 0) {
-	tdpMemcpy(&tmp, &halo->target->hyhi, sizeof(double *),
-		  tdpMemcpyDeviceToHost);
-	tdpMemcpyAsync(tmp, halo->hyhi, ncount*sizeof(double),
-			tdpMemcpyHostToDevice, halo->stream[Y]);
+	tdpAssert( tdpMemcpy(&tmp, &halo->target->hyhi, sizeof(double *),
+			     tdpMemcpyDeviceToHost) );
+	tdpAssert( tdpMemcpyAsync(tmp, halo->hyhi, ncount*sizeof(double),
+				  tdpMemcpyHostToDevice, halo->stream[Y]) );
       }
     }
   }
@@ -963,7 +963,7 @@ __host__ int halo_swap_packed(halo_swap_t * halo, double * data) {
   /* Wait for Z data from device */
   /* Fill in 4 corners of Z edge data from X halo  */
 
-  tdpStreamSynchronize(halo->stream[Z]);
+  tdpAssert( tdpStreamSynchronize(halo->stream[Z]) );
 
   ih = halo->param->hext[Z][X] - nh;
   kh = halo->param->hext[X][Z] - nh - halo->param->nswap;
@@ -1018,15 +1018,15 @@ __host__ int halo_swap_packed(halo_swap_t * halo, double * data) {
 
   if (mpicartsz[Z] == 1) {
     /* fzhi -> hzlo */
-    tdpMemcpy(&tmp, &halo->target->hzlo, sizeof(double *),
-	      tdpMemcpyDeviceToHost);
-    tdpMemcpyAsync(tmp, halo->fzhi, ncount*sizeof(double),
-		   tdpMemcpyHostToDevice, halo->stream[Z]);
+    tdpAssert( tdpMemcpy(&tmp, &halo->target->hzlo, sizeof(double *),
+			 tdpMemcpyDeviceToHost) );
+    tdpAssert( tdpMemcpyAsync(tmp, halo->fzhi, ncount*sizeof(double),
+			      tdpMemcpyHostToDevice, halo->stream[Z]) );
     /* fzlo -> hzhi */
-    tdpMemcpy(&tmp, &halo->target->hzhi, sizeof(double *),
-	      tdpMemcpyDeviceToHost);
-    tdpMemcpyAsync(tmp, halo->fzlo, ncount*sizeof(double),
-		   tdpMemcpyHostToDevice, halo->stream[Z]);
+    tdpAssert( tdpMemcpy(&tmp, &halo->target->hzhi, sizeof(double *),
+			 tdpMemcpyDeviceToHost) );
+    tdpAssert( tdpMemcpyAsync(tmp, halo->fzlo, ncount*sizeof(double),
+			      tdpMemcpyHostToDevice, halo->stream[Z]) );
   }
   else {
     MPI_Isend(halo->fzhi, ncount, MPI_DOUBLE,
@@ -1037,16 +1037,16 @@ __host__ int halo_swap_packed(halo_swap_t * halo, double * data) {
     for (m = 0; m < 4; m++) {
       MPI_Waitany(4, req_z, &mc, status);
       if (mc == 0 && ndevice > 0) {
-	tdpMemcpy(&tmp, &halo->target->hzlo, sizeof(double *),
-		  tdpMemcpyDeviceToHost);
-	tdpMemcpyAsync(tmp, halo->hzlo, ncount*sizeof(double),
-		       tdpMemcpyHostToDevice, halo->stream[Z]);
+	tdpAssert( tdpMemcpy(&tmp, &halo->target->hzlo, sizeof(double *),
+			     tdpMemcpyDeviceToHost) );
+	tdpAssert( tdpMemcpyAsync(tmp, halo->hzlo, ncount*sizeof(double),
+				  tdpMemcpyHostToDevice, halo->stream[Z]) );
       }
       if (mc == 1 && ndevice > 0) {
-	tdpMemcpy(&tmp, &halo->target->hzhi, sizeof(double *),
-		  tdpMemcpyDeviceToHost);
-	tdpMemcpyAsync(tmp, halo->hzhi, ncount*sizeof(double),
-		       tdpMemcpyHostToDevice, halo->stream[Z]);
+	tdpAssert( tdpMemcpy(&tmp, &halo->target->hzhi, sizeof(double *),
+			     tdpMemcpyDeviceToHost) );
+	tdpAssert( tdpMemcpyAsync(tmp, halo->hzhi, ncount*sizeof(double),
+				  tdpMemcpyHostToDevice, halo->stream[Z]) );
       }
     }
   }
@@ -1055,9 +1055,9 @@ __host__ int halo_swap_packed(halo_swap_t * halo, double * data) {
   tdpLaunchKernel(halo->data_unpack, nblk, ntpb, 0, halo->stream[Z],
 		  halo->target, Z, data);
 
-  tdpStreamSynchronize(halo->stream[X]);
-  tdpStreamSynchronize(halo->stream[Y]);
-  tdpStreamSynchronize(halo->stream[Z]);
+  tdpAssert( tdpStreamSynchronize(halo->stream[X]) );
+  tdpAssert( tdpStreamSynchronize(halo->stream[Y]) );
+  tdpAssert( tdpStreamSynchronize(halo->stream[Z]) );
 
   return 0;
 }

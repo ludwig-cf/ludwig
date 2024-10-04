@@ -85,7 +85,7 @@ __host__ int hydro_create(pe_t * pe, cs_t * cs, lees_edw_t * le,
 
   /* Allocate target copy of structure (or alias) */
 
-  tdpGetDeviceCount(&ndevice);
+  tdpAssert( tdpGetDeviceCount(&ndevice) );
 
   if (ndevice == 0) {
     obj->target = obj;
@@ -126,7 +126,7 @@ __host__ int hydro_free(hydro_t * obj) {
 
   assert(obj);
 
-  tdpGetDeviceCount(&ndevice);
+  tdpAssert( tdpGetDeviceCount(&ndevice) );
 
   if (ndevice > 0) tdpAssert(tdpFree(obj->target));
 
@@ -152,7 +152,7 @@ __host__ int hydro_memcpy(hydro_t * obj, tdpMemcpyKind flag) {
 
   assert(obj);
 
-  tdpGetDeviceCount(&ndevice);
+  tdpAssert( tdpGetDeviceCount(&ndevice) );
 
   if (ndevice == 0) {
     /* Ensure we alias */
@@ -722,7 +722,7 @@ __host__ int hydro_correct_momentum(hydro_t * hydro) {
 
   /* Apply correction and finish */
 
-  tdpMemcpy(fnetd, fnet, 3*sizeof(double), tdpMemcpyHostToDevice);
+  tdpAssert( tdpMemcpy(fnetd, fnet, 3*sizeof(double), tdpMemcpyHostToDevice) );
 
   {
     dim3 nblk = {};

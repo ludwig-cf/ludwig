@@ -7,7 +7,7 @@
  *  Edinburgh Soft Matter and Statistical Physics and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2010-2022 The University of Edinburgh
+ *  (c) 2010-2024 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -216,18 +216,18 @@ __host__ int cs_init(cs_t * cs) {
 
   /* Device side */
 
-  tdpGetDeviceCount(&ndevice);
+  tdpAssert( tdpGetDeviceCount(&ndevice) );
 
   if (ndevice == 0) {
     cs->target = cs;
   }
   else {
     cs_param_t * tmp;
-    tdpMalloc((void **) &cs->target, sizeof(cs_t));
-    tdpMemset(cs->target, 0, sizeof(cs_t));
+    tdpAssert( tdpMalloc((void **) &cs->target, sizeof(cs_t)) );
+    tdpAssert( tdpMemset(cs->target, 0, sizeof(cs_t)) );
     tdpGetSymbolAddress((void **) &tmp, tdpSymbol(const_param));
-    tdpMemcpy(&cs->target->param, (const void *) &tmp, sizeof(cs_param_t *),
-	      tdpMemcpyHostToDevice);
+    tdpAssert( tdpMemcpy(&cs->target->param, (const void *) &tmp,
+			 sizeof(cs_param_t *), tdpMemcpyHostToDevice) );
     cs_commit(cs);
   }
 

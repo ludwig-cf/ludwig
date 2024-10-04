@@ -970,7 +970,7 @@ __host__ int do_test_fe_lc_device1(pe_t * pe, cs_t * cs, fe_lc_t * fe) {
     tdpAssert(tdpMemcpy(p, &param, sizeof(fe_lc_param_t),
 			tdpMemcpyHostToDevice));
     tdpLaunchKernel(do_test_fe_lc_kernel1, nblk, ntpb, 0, 0, fetarget, p);
-    tdpDeviceSynchronize();
+    tdpAssert( tdpDeviceSynchronize() );
     tdpAssert(tdpFree(p));
   }
 

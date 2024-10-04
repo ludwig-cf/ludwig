@@ -9,7 +9,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2010-2023 The University of Edinburgh
+ *  (c) 2010-2024 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -106,7 +106,7 @@ __host__ int lees_edw_create(pe_t * pe, cs_t * cs,
   lees_edw_init_tables(le);
   le->nref = 1;
 
-  tdpGetDeviceCount(&ndevice);
+  tdpAssert( tdpGetDeviceCount(&ndevice) );
 
   if (ndevice == 0) {
     le->target = le;
@@ -115,14 +115,15 @@ __host__ int lees_edw_create(pe_t * pe, cs_t * cs,
     lees_edw_param_t * tmp;
     cs_t * cst;
 
-    tdpMalloc((void **) &le->target, sizeof(lees_edw_t));
-    tdpMemset(le->target, 0, sizeof(lees_edw_t));
+    tdpAssert( tdpMalloc((void **) &le->target, sizeof(lees_edw_t)) );
+    tdpAssert( tdpMemset(le->target, 0, sizeof(lees_edw_t)) );
     tdpGetSymbolAddress((void **) &tmp, tdpSymbol(static_param));
-    tdpMemcpy(&le->target->param, (const void *) &tmp,
-	      sizeof(lees_edw_param_t *), tdpMemcpyHostToDevice);
+    tdpAssert( tdpMemcpy(&le->target->param, (const void *) &tmp,
+			 sizeof(lees_edw_param_t *), tdpMemcpyHostToDevice) );
 
     cs_target(cs, &cst);
-    tdpMemcpy(&le->target->cs, &cst, sizeof(cs_t *), tdpMemcpyHostToDevice);
+    tdpAssert( tdpMemcpy(&le->target->cs, &cst, sizeof(cs_t *),
+			 tdpMemcpyHostToDevice) );
 
     lees_edw_commit(le);
   }
@@ -161,7 +162,7 @@ __host__ int lees_edw_free(lees_edw_t * le) {
 
   if (le->nref <= 0) {
 
-    if (le->target != le) tdpFree(le->target);
+    if (le->target != le) tdpAssert( tdpFree(le->target) );
 
     pe_free(le->pe);
     cs_free(le->cs);

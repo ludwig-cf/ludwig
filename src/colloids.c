@@ -81,7 +81,7 @@ __host__ int colloids_info_create(pe_t * pe, cs_t * cs, int ncell[3],
   obj->rho0 = RHO_DEFAULT;
   obj->drmax = DRMAX_DEFAULT;
 
-  tdpGetDeviceCount(&ndevice);
+  tdpAssert( tdpGetDeviceCount(&ndevice) );
 
   if (ndevice == 0) {
     obj->target = obj;
@@ -184,7 +184,7 @@ __host__ int colloids_memcpy(colloids_info_t * info, int flag) {
   assert(info);
   assert(info->map_new);
 
-  tdpGetDeviceCount(&ndevice);
+  tdpAssert( tdpGetDeviceCount(&ndevice) );
 
   if (ndevice == 0) {
     /* Bare pointer equality causes HIPCC to choke, hence explicit (()) */
@@ -284,7 +284,7 @@ __host__ int colloids_info_map_init(colloids_info_t * info) {
 
   /* Allocate data space on target */
 
-  tdpGetDeviceCount(&ndevice);
+  tdpAssert( tdpGetDeviceCount(&ndevice) );
 
   if (ndevice > 0) {
     void * tmp;

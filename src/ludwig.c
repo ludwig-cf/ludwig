@@ -468,7 +468,7 @@ void ludwig_run(const char * inputfile) {
     MPI_Comm_rank(node_comm, &node_rank);
     MPI_Comm_size(node_comm, &node_size);
 
-    tdpGetDeviceCount(&ndevice);
+    tdpAssert( tdpGetDeviceCount(&ndevice) );
 
     if (ndevice > 0 && ndevice < node_size) {
       pe_info(ludwig->pe,  "MPI tasks per node: %d\n", node_size);
@@ -2136,7 +2136,7 @@ int ludwig_colloids_update(ludwig_t * ludwig) {
   colloids_info_ntotal(ludwig->collinfo, &ncolloid);
   if (ncolloid == 0) return 0;
 
-  tdpGetDeviceCount(&ndevice);
+  tdpAssert( tdpGetDeviceCount(&ndevice) );
 
   lb_ndist(ludwig->lb, &ndist);
   iconserve = (ludwig->psi || (ludwig->phi && ndist == 1));

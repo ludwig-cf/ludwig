@@ -8,7 +8,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group
  *  and Edinburgh Parallel Computing Centre
  *
- *  (c) 2022 The University of Edinburgh
+ *  (c) 2022-2024 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -79,7 +79,7 @@ __host__ int fe_null_create(pe_t * pe, fe_null_t ** p) {
 
   /* Allocate target memory, or alias */
 
-  tdpGetDeviceCount(&ndevice);
+  tdpAssert( tdpGetDeviceCount(&ndevice) );
 
   if (ndevice == 0) {
     fe->target = fe;
@@ -112,9 +112,9 @@ __host__ int fe_null_free(fe_null_t * fe) {
 
   assert(fe);
 
-  tdpGetDeviceCount(&ndevice);
+  tdpAssert( tdpGetDeviceCount(&ndevice) );
 
-  if (ndevice > 0) tdpFree(fe->target);
+  if (ndevice > 0) tdpAssert( tdpFree(fe->target) );
   free(fe);
 
   return 0;

@@ -17,7 +17,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group
  *  and Edinburgh Parallel Computing Centre
  *
- *  (c) 2019-2021 The University of Edinburgh
+ *  (c) 2019-2024 The University of Edinburgh
  *
  *  Contributing authors:
  *  Shan Chen (shan.chen@epfl.ch)
@@ -111,7 +111,7 @@ int fe_ternary_create(pe_t * pe, cs_t * cs, field_t * phi,
     
   /* Allocate target memory, or alias */
     
-  tdpGetDeviceCount(&ndevice);
+  tdpAssert( tdpGetDeviceCount(&ndevice) );
     
   if (ndevice == 0) {
     obj->target = obj;
@@ -163,7 +163,7 @@ __host__ int fe_ternary_free(fe_ternary_t * fe) {
     
   assert(fe);
     
-  tdpGetDeviceCount(&ndevice);
+  tdpAssert( tdpGetDeviceCount(&ndevice) );
   if (ndevice > 0) tdpAssert(tdpFree(fe->target));
     
   free(fe->param);

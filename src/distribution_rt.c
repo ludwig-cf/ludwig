@@ -179,7 +179,7 @@ int lb_run_time_prev(pe_t * pe, cs_t * cs, rt_t * rt, lb_t ** lb) {
      * not as to disrupt the regression tests. */
     {
       int ndevice = 0;
-      tdpGetDeviceCount(&ndevice);
+      tdpAssert( tdpGetDeviceCount(&ndevice) );
       if (ndevice > 0) options.halo = LB_HALO_TARGET;
     }
 

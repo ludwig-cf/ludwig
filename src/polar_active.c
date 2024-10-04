@@ -34,7 +34,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2011-2018 The University of Edinburgh
+ *  (c) 2011-2024 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -118,7 +118,7 @@ __host__ int fe_polar_create(pe_t * pe, cs_t * cs, field_t * p,
   obj->super.func = &fe_polar_hvt;
   obj->super.id = FE_POLAR;
 
-  tdpGetDeviceCount(&ndevice);
+  tdpAssert( tdpGetDeviceCount(&ndevice) );
 
   if (ndevice == 0) {
     obj->target = obj;
@@ -126,19 +126,19 @@ __host__ int fe_polar_create(pe_t * pe, cs_t * cs, field_t * p,
   else {
     fe_polar_param_t * tmp;
     fe_vt_t * vt;
-    tdpMalloc((void **) &obj->target, sizeof(fe_polar_t));
-    tdpMemset(obj->target, 0, sizeof(fe_polar_t));
+    tdpAssert( tdpMalloc((void **) &obj->target, sizeof(fe_polar_t)) );
+    tdpAssert( tdpMemset(obj->target, 0, sizeof(fe_polar_t)) );
     tdpGetSymbolAddress((void **) &tmp, tdpSymbol(const_param));
-    tdpMemcpy(&obj->target->param, &tmp, sizeof(fe_polar_param_t *),
-	      tdpMemcpyHostToDevice);
+    tdpAssert( tdpMemcpy(&obj->target->param, &tmp, sizeof(fe_polar_param_t *),
+			 tdpMemcpyHostToDevice) );
     tdpGetSymbolAddress((void **) &vt, tdpSymbol(fe_polar_dvt));
-    tdpMemcpy(&obj->target->super.func, &vt, sizeof(fe_vt_t *),
-	      tdpMemcpyHostToDevice);
+    tdpAssert( tdpMemcpy(&obj->target->super.func, &vt, sizeof(fe_vt_t *),
+			 tdpMemcpyHostToDevice) );
 
-    tdpMemcpy(&obj->target->p, &p->target, sizeof(field_t *),
-	      tdpMemcpyHostToDevice);
-    tdpMemcpy(&obj->target->dp, &dp->target, sizeof(field_grad_t *),
-	      tdpMemcpyHostToDevice);
+    tdpAssert( tdpMemcpy(&obj->target->p, &p->target, sizeof(field_t *),
+			 tdpMemcpyHostToDevice) );
+    tdpAssert( tdpMemcpy(&obj->target->dp, &dp->target, sizeof(field_grad_t *),
+			 tdpMemcpyHostToDevice) );
   }
 
   *fe = obj;

@@ -28,7 +28,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group
  *  and Edinburgh Parallel Computing Centre
  *
- *  (c) 2010-2021 The University of Edinburgh
+ *  (c) 2010-2024 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -111,7 +111,7 @@ int fe_surf_create(pe_t * pe, cs_t * cs, field_t * phi,
 
   /* Allocate target memory, or alias */
 
-  tdpGetDeviceCount(&ndevice);
+  tdpAssert( tdpGetDeviceCount(&ndevice) );
 
   if (ndevice == 0) {
     fe_surf_param_set(obj, param);
@@ -119,10 +119,10 @@ int fe_surf_create(pe_t * pe, cs_t * cs, field_t * phi,
   }
   else {
     fe_surf_param_t * tmp;
-    tdpMalloc((void **) &obj->target, sizeof(fe_surf_t));
+    tdpAssert( tdpMalloc((void **) &obj->target, sizeof(fe_surf_t)) );
     tdpGetSymbolAddress((void **) &tmp, tdpSymbol(const_param));
-    tdpMemcpy(&obj->target->param, tmp, sizeof(fe_surf_param_t *),
-	      tdpMemcpyHostToDevice);
+    tdpAssert( tdpMemcpy(&obj->target->param, tmp, sizeof(fe_surf_param_t *),
+			 tdpMemcpyHostToDevice) );
     /* Now copy. */
     assert(0); /* No implementation */
   }
@@ -144,8 +144,8 @@ __host__ int fe_surf_free(fe_surf_t * fe) {
 
   assert(fe);
 
-  tdpGetDeviceCount(&ndevice);
-  if (ndevice > 0) tdpFree(fe->target);
+  tdpAssert( tdpGetDeviceCount(&ndevice) );
+  if (ndevice > 0) tdpAssert( tdpFree(fe->target) );
 
   free(fe->param);
   free(fe);

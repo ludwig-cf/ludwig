@@ -30,7 +30,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2013-2018 The University of Edinburgh
+ *  (c) 2013-2024 The University of Edinburgh
  *
  *  Contributing authors:
  *    Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -138,7 +138,7 @@ __host__ int fe_es_create(pe_t * pe, cs_t * cs, fe_symm_t * symm,
   psi_nk(psi, &fe->param->nk);
   fe_es_epsilon_set(fe, psi->epsilon, psi->epsilon2);
 
-  tdpGetDeviceCount(&ndevice);
+  tdpAssert( tdpGetDeviceCount(&ndevice) );
 
   if (ndevice == 0) {
     fe->target = fe;
@@ -147,10 +147,10 @@ __host__ int fe_es_create(pe_t * pe, cs_t * cs, fe_symm_t * symm,
     fe_vt_t * vt;
     fe_es_param_t * tmp;
 
-    tdpMalloc((void **) &fe->target, sizeof(fe_es_t));
+    tdpAssert( tdpMalloc((void **) &fe->target, sizeof(fe_es_t)) );
     tdpGetSymbolAddress((void **) &tmp, tdpSymbol(const_param));
-    tdpMemcpy(&fe->target->param, tmp, sizeof(fe_es_param_t *),
-	      tdpMemcpyHostToDevice);
+    tdpAssert( tdpMemcpy(&fe->target->param, tmp, sizeof(fe_es_param_t *),
+			 tdpMemcpyHostToDevice) );
     tdpGetSymbolAddress((void **) &vt, tdpSymbol(fe_es_dvt));
   }
 
@@ -169,7 +169,7 @@ __host__ int fe_es_free(fe_es_t * fe) {
 
   assert(fe);
 
-  if (fe->target != fe) tdpFree(fe->target);
+  if (fe->target != fe) tdpAssert( tdpFree(fe->target) );
 
   free(fe->param);
   free(fe);

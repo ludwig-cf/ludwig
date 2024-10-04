@@ -11,7 +11,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2010-2023 The University of Edinburgh
+ *  (c) 2010-2024 The University of Edinburgh
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *
@@ -263,7 +263,7 @@ int distribution_stats_momentum(lb_t * lb, map_t * map, int root,
     MPI_Type_free(&dt);
   }
 
-  tdpFree(sum_d);
+  tdpAssert( tdpFree(sum_d) );
 
   return 0;
 }

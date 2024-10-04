@@ -71,7 +71,7 @@ __host__ int ch_create(pe_t * pe, cs_t * cs, ch_info_t info, ch_t ** ch) {
   advflux_cs_create(pe, cs, info.nfield, &obj->flux);
   assert(obj->flux);
 
-  tdpGetDeviceCount(&ndevice);
+  tdpAssert( tdpGetDeviceCount(&ndevice) );
 
   if (ndevice == 0) {
     obj->target = obj;
@@ -109,7 +109,7 @@ __host__ int ch_free(ch_t * ch) {
   {
     int ndevice = 0;
 
-    tdpGetDeviceCount(&ndevice);
+    tdpAssert( tdpGetDeviceCount(&ndevice) );
     if (ndevice > 0) tdpAssert(tdpFree(ch->target));
   }
 

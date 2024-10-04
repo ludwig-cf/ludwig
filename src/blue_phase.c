@@ -118,7 +118,7 @@ __host__ int fe_lc_create(pe_t * pe, cs_t * cs, lees_edw_t * le,
 
   /* Allocate device memory, or alias */
 
-  tdpGetDeviceCount(&ndevice);
+  tdpAssert( tdpGetDeviceCount(&ndevice) );
 
   if (ndevice == 0) {
     fe->target = fe;
@@ -167,7 +167,7 @@ __host__ int fe_lc_free(fe_lc_t * fe) {
 
   assert(fe);
 
-  tdpGetDeviceCount(&ndevice);
+  tdpAssert( tdpGetDeviceCount(&ndevice) );
 
   if (ndevice > 0) tdpAssert(tdpFree(fe->target));
 

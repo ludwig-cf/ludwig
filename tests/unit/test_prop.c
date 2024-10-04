@@ -7,7 +7,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2010-2022 Ths University of Edinburgh
+ *  (c) 2010-2024 Ths University of Edinburgh
  *
  *  Contributing authors: 
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -46,7 +46,7 @@ int test_lb_prop_suite(void) {
   cs_create(pe, &cs);
   cs_init(cs);
 
-  tdpGetDeviceCount(&ndevice);
+  tdpAssert( tdpGetDeviceCount(&ndevice) );
 
   do_test_velocity(pe, cs, 1, LB_HALO_TARGET);
   do_test_velocity(pe, cs, 2, LB_HALO_TARGET);
