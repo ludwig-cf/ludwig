@@ -196,20 +196,21 @@ int lb_data_create(pe_t * pe, cs_t * cs, const lb_data_options_t * options,
 __host__ int lb_free(lb_t * lb) {
 
   int ndevice;
-  double * tmp;
 
   assert(lb);
 
-  tdpGetDeviceCount(&ndevice);
+  tdpAssert( tdpGetDeviceCount(&ndevice) );
 
   if (ndevice > 0) {
-    tdpMemcpy(&tmp, &lb->target->f, sizeof(double *), tdpMemcpyDeviceToHost);
-    tdpFree(tmp);
+    double * tmp = NULL;
+    tdpAssert( tdpMemcpy(&tmp, &lb->target->f, sizeof(double *),
+			 tdpMemcpyDeviceToHost) );
+    tdpAssert( tdpFree(tmp) );
 
-    tdpMemcpy(&tmp, &lb->target->fprime, sizeof(double *),
-	      tdpMemcpyDeviceToHost);
-    tdpFree(tmp);
-    tdpFree(lb->target);
+    tdpAssert( tdpMemcpy(&tmp, &lb->target->fprime, sizeof(double *),
+			 tdpMemcpyDeviceToHost) );
+    tdpAssert( tdpFree(tmp) );
+    tdpAssert( tdpFree(lb->target) );
   }
 
   io_metadata_finalise(&lb->input);
@@ -241,7 +242,7 @@ __host__ int lb_memcpy(lb_t * lb, tdpMemcpyKind flag) {
 
   assert(lb);
 
-  tdpGetDeviceCount(&ndevice);
+  tdpAssert( tdpGetDeviceCount(&ndevice) );
 
   if (ndevice == 0) {
     /* Make sure we alias */
@@ -253,18 +254,19 @@ __host__ int lb_memcpy(lb_t * lb, tdpMemcpyKind flag) {
 
     assert(lb->target);
 
-    tdpMemcpy(&tmpf, &lb->target->f, sizeof(double *), tdpMemcpyDeviceToHost);
+    tdpAssert( tdpMemcpy(&tmpf, &lb->target->f, sizeof(double *),
+			 tdpMemcpyDeviceToHost) );
 
     switch (flag) {
     case tdpMemcpyHostToDevice:
-      tdpMemcpy(&lb->target->ndim,  &lb->ndim,  sizeof(int), flag);
-      tdpMemcpy(&lb->target->nvel,  &lb->nvel,  sizeof(int), flag);
-      tdpMemcpy(&lb->target->ndist, &lb->ndist, sizeof(int), flag);
-      tdpMemcpy(&lb->target->nsite, &lb->nsite, sizeof(int), flag);
-      tdpMemcpy(tmpf, lb->f, nsz, flag);
+      tdpAssert( tdpMemcpy(&lb->target->ndim,  &lb->ndim,  sizeof(int), flag) );
+      tdpAssert( tdpMemcpy(&lb->target->nvel,  &lb->nvel,  sizeof(int), flag) );
+      tdpAssert( tdpMemcpy(&lb->target->ndist, &lb->ndist, sizeof(int), flag) );
+      tdpAssert( tdpMemcpy(&lb->target->nsite, &lb->nsite, sizeof(int), flag) );
+      tdpAssert( tdpMemcpy(tmpf, lb->f, nsz, flag) );
       break;
     case tdpMemcpyDeviceToHost:
-      tdpMemcpy(lb->f, tmpf, nsz, flag);
+      tdpAssert( tdpMemcpy(lb->f, tmpf, nsz, flag) );
       break;
     default:
       pe_fatal(lb->pe, "Bad flag in lb_memcpy\n");
@@ -307,7 +309,7 @@ static int lb_init(lb_t * lb) {
 
   ndata = lb->nsite*lb->ndist*lb->model.nvel;
 
-  tdpGetDeviceCount(&ndevice);
+  tdpAssert( tdpGetDeviceCount(&ndevice) );
 
   if (ndevice == 0) {
     lb->target = lb;
@@ -315,21 +317,22 @@ static int lb_init(lb_t * lb) {
   else {
     lb_collide_param_t * ptmp  = NULL;
 
-    tdpMalloc((void **) &lb->target, sizeof(lb_t));
-    tdpMemset(lb->target, 0, sizeof(lb_t));
+    tdpAssert( tdpMalloc((void **) &lb->target, sizeof(lb_t)) );
+    tdpAssert( tdpMemset(lb->target, 0, sizeof(lb_t)) );
 
-    tdpMalloc((void **) &tmp, ndata*sizeof(double));
-    tdpMemset(tmp, 0, ndata*sizeof(double));
-    tdpMemcpy(&lb->target->f, &tmp, sizeof(double *), tdpMemcpyHostToDevice);
+    tdpAssert( tdpMalloc((void **) &tmp, ndata*sizeof(double)) );
+    tdpAssert( tdpMemset(tmp, 0, ndata*sizeof(double)) );
+    tdpAssert( tdpMemcpy(&lb->target->f, &tmp, sizeof(double *),
+			 tdpMemcpyHostToDevice) );
 
-    tdpMalloc((void **) &tmp, ndata*sizeof(double));
-    tdpMemset(tmp, 0, ndata*sizeof(double));
-    tdpMemcpy(&lb->target->fprime, &tmp, sizeof(double *),
-	      tdpMemcpyHostToDevice);
+    tdpAssert( tdpMalloc((void **) &tmp, ndata*sizeof(double)) );
+    tdpAssert( tdpMemset(tmp, 0, ndata*sizeof(double)) );
+    tdpAssert( tdpMemcpy(&lb->target->fprime, &tmp, sizeof(double *),
+			 tdpMemcpyHostToDevice) );
 
     tdpGetSymbolAddress((void **) &ptmp, tdpSymbol(static_param));
-    tdpMemcpy(&lb->target->param, &ptmp, sizeof(lb_collide_param_t *),
-	      tdpMemcpyHostToDevice);
+    tdpAssert( tdpMemcpy(&lb->target->param, &ptmp,
+			 sizeof(lb_collide_param_t *), tdpMemcpyHostToDevice));
   }
 
   lb_mpi_init(lb);
@@ -539,7 +542,8 @@ __host__ int lb_halo_swap(lb_t * lb, lb_halo_enum_t flag) {
 
   switch (flag) {
   case LB_HALO_TARGET:
-    tdpMemcpy(&data, &lb->target->f, sizeof(double *), tdpMemcpyDeviceToHost);
+    tdpAssert( tdpMemcpy(&data, &lb->target->f, sizeof(double *),
+			 tdpMemcpyDeviceToHost) );
     halo_swap_packed(lb->halo, data);
     break;
   case LB_HALO_OPENMP_FULL:

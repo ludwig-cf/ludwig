@@ -146,7 +146,7 @@ __host__ int pth_force_driver(pth_t * pth, colloids_info_t * cinfo,
     kernel_3d_launch_param(k3d.kiterations, &nblk, &ntpb);
 
     tdpAssert( tdpMalloc((void **) &fwd, 3*sizeof(double)) );
-    tdpMemcpy(fwd, fw, 3*sizeof(double), tdpMemcpyHostToDevice);
+    tdpAssert( tdpMemcpy(fwd, fw, 3*sizeof(double), tdpMemcpyHostToDevice) );
 
     TIMER_start(TIMER_PHI_FORCE_CALC);
 
@@ -155,10 +155,10 @@ __host__ int pth_force_driver(pth_t * pth, colloids_info_t * cinfo,
 
     tdpLaunchKernel(pth_force_wall_kernel, nblk, ntpb, 0, 0,
 		    k3d, pth->target, map->target, wallt, fwd);
-    tdpDeviceSynchronize();
+    tdpAssert( tdpDeviceSynchronize() );
   }
 
-  tdpMemcpy(fw, fwd, 3*sizeof(double), tdpMemcpyDeviceToHost);
+  tdpAssert( tdpMemcpy(fw, fwd, 3*sizeof(double), tdpMemcpyDeviceToHost) );
   wall_momentum_add(wall, fw);
 
   tdpAssert( tdpFree(fwd) );
@@ -257,7 +257,7 @@ __host__ int pth_force_fluid_wall_driver(pth_t * pth, hydro_t * hydro,
     tdpAssert( tdpDeviceSynchronize() );
   }
 
-  tdpMemcpy(fw, fwd, 3*sizeof(double), tdpMemcpyDeviceToHost);
+  tdpAssert( tdpMemcpy(fw, fwd, 3*sizeof(double), tdpMemcpyDeviceToHost) );
   wall_momentum_add(wall, fw);
 
   return 0;

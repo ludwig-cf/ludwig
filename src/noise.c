@@ -206,7 +206,7 @@ int noise_initialise(pe_t * pe, cs_t * cs, const noise_options_t * options,
 
   /* Device allocations */
 
-  tdpGetDeviceCount(&ndevice);
+  tdpAssert( tdpGetDeviceCount(&ndevice) );
 
   if (ndevice == 0) {
     ns->target = ns;
@@ -245,7 +245,7 @@ int noise_finalise(noise_t * ns) {
 
   assert(ns);
 
-  tdpGetDeviceCount(&ndevice);
+  tdpAssert( tdpGetDeviceCount(&ndevice) );
 
   if (ndevice > 0) {
     unsigned int * state = NULL;
@@ -356,7 +356,7 @@ int noise_memcpy(noise_t * ns, tdpMemcpyKind flag) {
 
   assert(ns);
 
-  tdpGetDeviceCount(&ndevice);
+  tdpAssert( tdpGetDeviceCount(&ndevice) );
 
   if (ndevice == 0) {
     assert(ns->target == ns);

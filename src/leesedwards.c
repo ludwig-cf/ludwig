@@ -9,7 +9,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2010-2023 The University of Edinburgh
+ *  (c) 2010-2024 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -58,7 +58,7 @@ struct lees_edw_param_s {
   double uy;                /* u[Y] for all planes */
   double dx_min;            /* Position first plane */
   double dx_sep;            /* Plane separation */
-  double omega;             /* u_y = u_le cos (omega t) for oscillatory */  
+  double omega;             /* u_y = u_le cos (omega t) for oscillatory */
   double time0;             /* time offset */
 };
 
@@ -106,7 +106,7 @@ __host__ int lees_edw_create(pe_t * pe, cs_t * cs,
   lees_edw_init_tables(le);
   le->nref = 1;
 
-  tdpGetDeviceCount(&ndevice);
+  tdpAssert( tdpGetDeviceCount(&ndevice) );
 
   if (ndevice == 0) {
     le->target = le;
@@ -115,14 +115,15 @@ __host__ int lees_edw_create(pe_t * pe, cs_t * cs,
     lees_edw_param_t * tmp;
     cs_t * cst;
 
-    tdpMalloc((void **) &le->target, sizeof(lees_edw_t));
-    tdpMemset(le->target, 0, sizeof(lees_edw_t));
+    tdpAssert( tdpMalloc((void **) &le->target, sizeof(lees_edw_t)) );
+    tdpAssert( tdpMemset(le->target, 0, sizeof(lees_edw_t)) );
     tdpGetSymbolAddress((void **) &tmp, tdpSymbol(static_param));
-    tdpMemcpy(&le->target->param, (const void *) &tmp,
-	      sizeof(lees_edw_param_t *), tdpMemcpyHostToDevice);
+    tdpAssert( tdpMemcpy(&le->target->param, (const void *) &tmp,
+			 sizeof(lees_edw_param_t *), tdpMemcpyHostToDevice) );
 
     cs_target(cs, &cst);
-    tdpMemcpy(&le->target->cs, &cst, sizeof(cs_t *), tdpMemcpyHostToDevice);
+    tdpAssert( tdpMemcpy(&le->target->cs, &cst, sizeof(cs_t *),
+			 tdpMemcpyHostToDevice) );
 
     lees_edw_commit(le);
   }
@@ -161,7 +162,7 @@ __host__ int lees_edw_free(lees_edw_t * le) {
 
   if (le->nref <= 0) {
 
-    if (le->target != le) tdpFree(le->target);
+    if (le->target != le) tdpAssert( tdpFree(le->target) );
 
     pe_free(le->pe);
     cs_free(le->cs);
@@ -412,7 +413,7 @@ static int lees_edw_init_tables(lees_edw_t * le) {
  *  periodic halo regions.
  *
  ****************************************************************************/
- 
+
 static int lees_edw_checks(lees_edw_t * le) {
 
   int n;
@@ -511,7 +512,7 @@ int lees_edw_steady_uy(lees_edw_t * le, int ic, double * uy) {
   nplane = (int) ((le->param->dx_min + xglobal)/le->param->dx_sep);
 
   *uy = xglobal*gammadot - le->param->uy*nplane;
- 
+
   return 0;
 }
 
@@ -545,7 +546,7 @@ int lees_edw_block_uy(lees_edw_t * le, int ic, double * uy) {
   cs_nlocal_offset(le->cs, offset);
 
   /* So, just count the number of blocks from the centre L_x/2
-   * and mutliply by the plane speed. */
+   * and multiply by the plane speed. */
 
   xh = offset[X] + (double) ic - lmin[X] - 0.5*ltot[X];
   if (xh > 0.0) {
@@ -797,7 +798,7 @@ __host__ __device__ void lees_edw_index_v(lees_edw_t * le, int ic[NSIMDVL],
   }
 
   return;
-} 
+}
 
 /*****************************************************************************
  *

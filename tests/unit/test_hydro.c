@@ -48,7 +48,7 @@ int test_hydro_suite(void) {
 
   pe_create(MPI_COMM_WORLD, PE_QUIET, &pe);
 
-  tdpGetDeviceCount(&ndevice);
+  tdpAssert( tdpGetDeviceCount(&ndevice) );
 
   do_test1(pe);
   do_test_halo1(pe, 1, 1, FIELD_HALO_TARGET);
