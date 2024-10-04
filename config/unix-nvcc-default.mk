@@ -9,6 +9,7 @@
 
 BUILD   = parallel
 MODEL   = -D_D3Q19_
+TARGET  = nvcc
 
 CC     = nvcc
 CFLAGS = -ccbin=mpicc -O2 -DADDR_SOA -arch=sm_61 -x cu -dc
