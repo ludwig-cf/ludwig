@@ -31,6 +31,8 @@
 #include "timer.h"
 #include "util.h"
 
+#include "nvtx3/nvToolsExt.h"
+
 static int lb_mpi_init(lb_t * lb);
 static int lb_model_param_init(lb_t * lb);
 static int lb_init(lb_t * lb);
@@ -569,6 +571,8 @@ __host__ int lb_halo_swap(lb_t * lb, lb_halo_enum_t flag) {
 
   assert(lb);
 
+  nvtxRangePush("halo_swap");
+
   switch (flag) {
   case LB_HALO_TARGET:
     //tdpMemcpy(&data, &lb->target->f, sizeof(double *), tdpMemcpyDeviceToHost);
@@ -588,6 +592,8 @@ __host__ int lb_halo_swap(lb_t * lb, lb_halo_enum_t flag) {
     lb_halo_post(lb, &lb->h);
     lb_halo_wait(lb, &lb->h);
   }
+
+  nvtxRangePop();
 
   return 0;
 }
