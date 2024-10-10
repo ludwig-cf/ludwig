@@ -48,6 +48,12 @@ enum {NDIM = 3, NVEL = 27};
 typedef struct lb_collide_param_s lb_collide_param_t;
 typedef struct lb_halo_s lb_halo_t;
 typedef struct lb_data_s lb_t;
+typedef struct lb_graph_halo_s lb_graph_halo_t;
+
+struct lb_graph_halo_s {
+  tdpGraph_t graph;
+  tdpGraphExec_t exec;
+};
 
 struct lb_collide_param_s {
   int8_t isghost;                      /* switch for ghost modes */
@@ -92,6 +98,9 @@ struct lb_halo_s {
   lb_halo_t * target;
   double * send_d[27];            /* halo: device send buffer per direction */
   double * recv_d[27];            /* halo: device recv buffer per direction */
+  
+  lb_graph_halo_t gsend;          /* Graph API halo swap */
+  lb_graph_halo_t grecv;
 };
 
 int lb_halo_create(const lb_t * lb, lb_halo_t * h, lb_halo_enum_t scheme);
@@ -181,5 +190,8 @@ __host__ int lb_io_aggr_unpack(lb_t * lb, const io_aggregator_t * aggr);
 
 __host__ int lb_io_write(lb_t * lb, int timestep, io_event_t * event);
 __host__ int lb_io_read(lb_t * lb, int timestep, io_event_t * event);
+
+int lb_graph_halo_send_create(const lb_t * lb, lb_halo_t * h, int * send_count);
+int lb_graph_halo_recv_create(const lb_t * lb, lb_halo_t * h, int * recv_count);
 
 #endif
