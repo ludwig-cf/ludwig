@@ -444,6 +444,46 @@ static __host__ void util_swap(int ia, int ib, double a[3], double b[3][3]) {
 
 /*****************************************************************************
  *
+ *  util_discrete_area_disk
+ *
+ *  For a disk of radius a0 and position r0 in two dimensions, what is
+ *  the discrete area?
+ *
+ *****************************************************************************/
+
+int util_discrete_area_disk(double a0, const double r0[2], double * vn) {
+
+  int ifail = 0;
+
+  if (vn == NULL) {
+    ifail = -1;
+  }
+  else {
+
+    /* Reduce the coordinates to 0 <= x < 1 etc */
+    double x0 = r0[X] - floor(r0[X]);
+    double y0 = r0[Y] - floor(r0[Y]);
+
+    int nr = ceil(a0);
+
+    assert(0.0 <= x0 && x0 < 1.0);
+    assert(0.0 <= y0 && y0 < 1.0);
+
+    *vn = 0.0;
+
+    for (int ic = -nr; ic <= nr; ic++) {
+      for (int jc = -nr; jc <= nr; jc++) {
+	double rsq = pow(1.0*ic - x0, 2) + pow(1.0*jc - y0, 2);
+	if (rsq < a0*a0) *vn += 1.0;
+      }
+    }
+  }
+
+  return ifail;
+}
+
+/*****************************************************************************
+ *
  *  util_discrete_volume_sphere
  *
  *  What is the discrete volume of a sphere radius a0 at position

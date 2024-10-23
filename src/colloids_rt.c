@@ -7,7 +7,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2014-2023 The University of Edinburgh
+ *  (c) 2014-2024 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -67,7 +67,9 @@ int colloids_rt_init_random(pe_t * pe, cs_t * cs, rt_t * rt, wall_t * wall,
 int colloids_rt_state_stub(pe_t * pe, rt_t * rt, colloids_info_t * cinfo,
 			   const char * stub,
 			   colloid_state_t * state);
-int colloids_rt_cell_list_checks(pe_t * pe, cs_t * cs, colloids_info_t ** pinfo,
+int colloids_rt_cell_list_checks(pe_t * pe, cs_t * cs,
+				 const lb_model_t * model,
+				 colloids_info_t ** pinfo,
 				 interact_t * interact);
 
 /*****************************************************************************
@@ -154,7 +156,7 @@ int colloids_init_rt(pe_t * pe, rt_t * rt, cs_t * cs, colloids_info_t ** pinfo,
 
   wall_ss_cut_init(pe, cs, rt, wall, *interact);
 
-  colloids_rt_cell_list_checks(pe, cs, pinfo, *interact);
+  colloids_rt_cell_list_checks(pe, cs, model, pinfo, *interact);
   colloids_init_halo_range_check(pe, cs, *pinfo);
   if (nc > 1) interact_range_check(*interact, *pinfo);
 
@@ -777,12 +779,17 @@ int colloids_rt_gravity(pe_t * pe, rt_t * rt, colloids_info_t * cinfo) {
  *  For given set of colloids in the default cell list, and given
  *  interactions, work out what the best cell list size is.
  *
+ *  The lb_model_t is included here to get the dimensionsality;
+ *  in priciple one could have an entirely separate procedure for
+ *  two-dimensional systems of disks.
+ *
  *  The cell width should be as small as possible to prevent
  *  unnecessary halo transfers.
  *
  *****************************************************************************/
 
 int colloids_rt_cell_list_checks(pe_t * pe, cs_t * cs,
+				 const lb_model_t * model,
 				 colloids_info_t ** pinfo,
 				 interact_t * interact) {
   int nc;
@@ -842,6 +849,9 @@ int colloids_rt_cell_list_checks(pe_t * pe, cs_t * cs,
     pe_info(pe, "Surface-surface interaction: %14.7e\n", hcmax);
     pe_info(pe, "Centre-centre interaction:   %14.7e\n", rcmax);
   }
+
+  /* If we have 2d disks, then prevent nbest[Z] going to zero... */
+  if (model->ndim == 2) nbest[Z] = imax(1, nbest[Z]);
 
   /* Transfer colloids to new cell list if required */
 

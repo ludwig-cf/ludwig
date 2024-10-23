@@ -51,6 +51,8 @@ __host__ __device__ double dmax(const double a, const double b);
 
 __host__ int util_jacobi(double a[3][3], double vals[3], double vecs[3][3]);
 __host__ int util_jacobi_sort(double a[3][3], double vals[3], double vecs[3][3]);
+
+int util_discrete_area_disk(double a0, const double r0[2], double * area);
 __host__ int util_discrete_volume_sphere(const double r0[3], double a0,
 					 double * vn);
 __host__ int util_gauss_jordan(const int n, double * a, double * b);
