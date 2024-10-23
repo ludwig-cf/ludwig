@@ -780,7 +780,7 @@ int colloids_rt_gravity(pe_t * pe, rt_t * rt, colloids_info_t * cinfo) {
  *  interactions, work out what the best cell list size is.
  *
  *  The lb_model_t is included here to get the dimensionsality;
- *  in priciple one could have an entirely separate procedure for
+ *  in principle one could have an entirely separate procedure for
  *  two-dimensional systems of disks.
  *
  *  The cell width should be as small as possible to prevent

@@ -10,8 +10,8 @@
  *  (c) 2010-2024 The University of Edinburgh
  *
  *  Contributing authors:
- *  Kevin Stratford (kevin@epcc.ed.ac.uk) 
- *  
+ *  Kevin Stratford (kevin@epcc.ed.ac.uk)
+ *
  ****************************************************************************/
 
 #include <stdint.h>

@@ -95,10 +95,10 @@ int util_reverse_byte_order(void * arg, void * result, MPI_Datatype type) {
   carg = (char *) arg;
 
   if (type == MPI_INT) {
-    
+
     int iresult;
     p = (char *) &iresult;
-      
+
     for (b = 0; b < sizeof(int); b++) {
       p[b] = carg[sizeof(int) - (b + 1)];
     }
@@ -174,7 +174,7 @@ double modulus(const double a[3]) {
  *
  *  The rotated vector is computed via
  *      v' = (1 - cos \theta)(\hat{w}.v) \hat{w} + cos \theta v +
- *           (\hat{w} x v) sin \theta      
+ *           (\hat{w} x v) sin \theta
  *
  *  For theta positive this gives rotations in the correct sense
  *  in the right-handed coordinate system.
@@ -229,7 +229,7 @@ void rotate_vector(double v[3], const double w[3]) {
 int util_random_unit_vector(int * state, double rhat[3]) {
 
   double r[2];
-  double zeta1, zeta2, zsq;  
+  double zeta1, zeta2, zsq;
 
   do {
     util_ranlcg_reap_uniform(state, r);
@@ -411,7 +411,7 @@ __host__ int util_jacobi(double a[3][3], double vals[3], double vecs[3][3]) {
     }
   }
 
-  /* Exceded maximum iterations: a fail ... */
+  /* Exceeded maximum iterations: a fail ... */
 
   return -1;
 }
@@ -680,7 +680,7 @@ int util_matrix_free(int m, double ***p) {
   }
   free(*p);
   *p = NULL;
- 
+
   return 0;
 }
 
@@ -873,7 +873,7 @@ static __host__ long int util_ranlcg_multiply(long a, long s, long c, long m);
  *
  *  util_ranlcg_reap_gaussian
  *
- *  Box-Mueller. Caller responisble for maintaining state.
+ *  Box-Mueller. Caller responsible for maintaining state.
  *
  *  Returns two Gaussian deviates per call.
  *
