@@ -537,6 +537,38 @@ static int bbl_pass1(bbl_t * bbl, lb_t * lb, colloids_info_t * cinfo) {
 
 
 	/* Squirmer section */
+	/* Some rationalisation may be in order here but prefer
+	* a clear separation of different shapes at the moment ... */
+
+	if (pc->s.active && pc->s.shape == COLLOID_SHAPE_DISK) {
+
+	  /* Both the link vector rb and the direction of motion s.m
+	   * must have z-component = 0 in 2d */
+	  /* If so, vector1 has only a component in z, and tans then
+	   * has only components in (x,y). */
+
+	  mod = modulus(p_link->rb)*modulus(pc->s.m);
+	  rmod = 0.0;
+	  if (mod != 0.0) rmod = 1.0/mod;
+	  cost = rmod*dot_product(p_link->rb, pc->s.m);
+	  if (cost*cost > 1.0) cost = 1.0;
+	  assert(cost*cost <= 1.0);
+	  sint = sqrt(1.0 - cost*cost);
+
+	  cross_product(p_link->rb, pc->s.m, vector1);
+	  cross_product(vector1, p_link->rb, tans);
+
+	  mod = modulus(tans);
+	  rmod = 0.0;
+	  if (mod != 0.0) rmod = 1.0/mod;
+	  plegendre = -sint*(pc->s.b2*cost + pc->s.b1);
+
+	  /* Compute correction to bbl for a sphere: */
+	  dm_a = 0.0;
+	  for (ia = 0; ia < 3; ia++) {
+	    dm_a += -delta*plegendre*rmod*tans[ia]*lb->model.cv[ij][ia];
+	  }
+	}
 
 	if (pc->s.active && pc->s.shape == COLLOID_SHAPE_SPHERE) {
 
