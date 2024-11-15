@@ -631,13 +631,14 @@ int test_mpi_file_write_all(void) {
   MPI_Type_create_subarray(ndims, sizes, subsizes, starts, MPI_ORDER_C,
 			     etype, &filetype);
   MPI_Type_commit(&filetype);
-  
+
   {
     /* Write */
 
-    MPI_File fh = MPI_FILE_NULL; 
+    MPI_File fh = MPI_FILE_NULL;
     MPI_Offset disp = 0;
 
+    int ifail = MPI_SUCCESS;
     int count = 1;
     double wbuf[NX*NY] = {0};
 
@@ -646,15 +647,21 @@ int test_mpi_file_write_all(void) {
       wbuf[id] = 1.0*id;
     }
 
-    MPI_File_open(comm, filename, MPI_MODE_WRONLY+MPI_MODE_CREATE, info, &fh);
+    ifail = MPI_File_open(comm, filename, MPI_MODE_WRONLY + MPI_MODE_CREATE,
+			  info, &fh);
+    assert(ifail == MPI_SUCCESS);
 
     /* Set the view */
     /* As this is serial the datetype is the filetype */
 
-    MPI_File_set_view(fh, disp, etype, filetype, "native", info);
+    ifail = MPI_File_set_view(fh, disp, etype, filetype, "native", info);
+    assert(ifail == MPI_SUCCESS);
 
-    MPI_File_write_all(fh, wbuf, count, filetype, MPI_STATUS_IGNORE);
-    MPI_File_close(&fh);
+    ifail = MPI_File_write_all(fh, wbuf, count, filetype, MPI_STATUS_IGNORE);
+    assert(ifail == MPI_SUCCESS);
+
+    ifail = MPI_File_close(&fh);
+    assert(ifail == MPI_SUCCESS);
   }
 
 
@@ -663,16 +670,22 @@ int test_mpi_file_write_all(void) {
     MPI_File fh = MPI_FILE_NULL;
     MPI_Offset disp = 0;
 
+    int ifail = MPI_SUCCESS;
     int count = 1;
     double rbuf[NX*NY] = {0};
 
-    MPI_File_open(comm, filename, MPI_MODE_RDONLY, info, &fh);
+    ifail = MPI_File_open(comm, filename, MPI_MODE_RDONLY, info, &fh);
+    assert(ifail == MPI_SUCCESS);
 
     /* Set the view */
-    MPI_File_set_view(fh, disp, etype, filetype, "native", info);
+    ifail = MPI_File_set_view(fh, disp, etype, filetype, "native", info);
+    assert(ifail == MPI_SUCCESS);
 
-    MPI_File_read_all(fh, rbuf, count, filetype, MPI_STATUS_IGNORE);
-    MPI_File_close(&fh);
+    ifail = MPI_File_read_all(fh, rbuf, count, filetype, MPI_STATUS_IGNORE);
+    assert(ifail == MPI_SUCCESS);
+
+    ifail = MPI_File_close(&fh);
+    assert(ifail == MPI_SUCCESS);
 
     for (int id = 0; id < NX*NY; id++) {
       assert(fabs(rbuf[id] - 1.0*id) < DBL_EPSILON);
@@ -703,4 +716,3 @@ int test_mpi_comm_split_type(void) {
 
   return 0;
 }
-
