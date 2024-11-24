@@ -58,12 +58,17 @@ typedef intmax_t MPI_Offset;
 
 enum return_codes {
   MPI_SUCCESS = 0,               /* Success */
+  MPI_ERR_ACCESS,                /* Permission denied */
+  MPI_ERR_AMODE,                 /* Invalid mode argument */
   MPI_ERR_ARG,                   /* Invalid argument of other kind */
   MPI_ERR_BUFFER,                /* Invalid buffer pointer argument */
   MPI_ERR_COMM,                  /* Invalid communicator argument */
   MPI_ERR_COUNT,                 /* Invalid count argument */
   MPI_ERR_DATATYPE,              /* Invalid datatype */
   MPI_ERR_INFO,                  /* Invalid info argument */
+  MPI_ERR_ERRHANDLER,            /* Invalid errhandler handle */
+  MPI_ERR_INTERN,                /* Internal (implementation) error */
+  MPI_ERR_IO,                    /* Other i/o error */
   MPI_ERR_FILE,                  /* Bad file handle */
   MPI_ERR_NO_SUCH_FILE,          /* File does not exist */
   MPI_ERR_OP,                    /* Invalid operation argument */
@@ -263,6 +268,8 @@ int MPI_Cart_sub(MPI_Comm comm, int * remain_dims, MPI_Comm * new_comm);
 /* Bindings for environmental inquiry */
 
 int MPI_Errhandler_set(MPI_Comm comm, MPI_Errhandler errhandler);
+int MPI_Error_string(int ierr, char * str, int * lenresult);
+int MPI_Error_class(int ierrcode, int * ierrclass);
 
 double MPI_Wtime(void);
 double MPI_Wtick(void);
