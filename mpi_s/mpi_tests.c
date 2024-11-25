@@ -241,7 +241,7 @@ static int test_mpi_allreduce(void) {
     int irecv = 1;
     int iret  = MPI_Allreduce(MPI_IN_PLACE, &irecv, 1, MPI_INT, MPI_SUM, comm);
     if (iret != MPI_SUCCESS) ifail = 1;
-    assert(ifaill == 0);
+    assert(ifail == 0);
     if (irecv != 1) ifail = 1;
     assert(ifail == 0);
   }
