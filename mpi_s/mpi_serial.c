@@ -2055,14 +2055,13 @@ int MPI_File_open(MPI_Comm comm, const char * filename, int amode,
 
   if (fp == NULL) {
     /* Fail in fopen() => errno is set (many possible values ...) */
-    switch (errno) {
-    case ENOENT:
+    if (errno ==  ENOENT) {
       ifail = MPI_ERR_NO_SUCH_FILE;
       mpi_file_errors_return(&file, &ifail,
 			     "MPI_File_open(): no such file %s",
 			     filename);
-      break;
-    default:
+    }
+    else {
       ifail = MPI_ERR_IO;
       mpi_file_errors_return(&file, &ifail,
 			     "MPI_File_open(): failed file %s mode %s",
@@ -2142,12 +2141,11 @@ int MPI_File_delete(const char * filename, MPI_Info info) {
      * MPI_ERR_NO_SUCH_FILE if the file does not exist; or
      * MPI_ERR_FILE_IN_USE or MPI_ERR_ACCESS. We use the latter. */
 
-    switch (errno) {
-    case ENOENT:
+    if (errno == ENOENT) {
       ifail = MPI_ERR_NO_SUCH_FILE;
       mpi_file_errors_return(&file, &ifail, "MPI_Delete(): no such file");
-      break;
-    default:
+    }
+    else {
       ifail = MPI_ERR_ACCESS;
       mpi_file_errors_return(&file, &ifail, "MPI_Delete(): access error");
     }
