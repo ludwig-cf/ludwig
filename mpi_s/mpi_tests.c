@@ -752,7 +752,6 @@ int test_mpi_file_write_all(void) {
     MPI_File fh = MPI_FILE_NULL;
     MPI_Offset disp = 0;
 
-    int ifail = MPI_SUCCESS;
     int count = 1;
     double rbuf[NX*NY] = {0};
 
