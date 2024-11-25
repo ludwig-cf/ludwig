@@ -2064,7 +2064,7 @@ int MPI_File_open(MPI_Comm comm, const char * filename, int amode,
       break;
     default:
       ifail = MPI_ERR_IO;
-      mpi_file_errors_return(&file, &ifail, 
+      mpi_file_errors_return(&file, &ifail,
 			     "MPI_File_open(): failed file %s mode %s",
 			     filename, fdmode);
     }
@@ -2815,7 +2815,7 @@ static int mpi_err_tag(int tag) {
  *
  *  The first optional argument must be present, and it should be a
  *  format string suitable for a printf()-like function. Remaining
- *  argements should be consistent with the format.
+ *  arguments should be consistent with the format.
  *
  *  This is fatal if ifail != MPI_SUCCESS.
  *
@@ -2898,7 +2898,7 @@ static int mpi_datatype_user(MPI_Datatype dt) {
   int isuser = 0;
 
   assert(mpi_info_);
-  assert(MPI_DATATYPE_NULL == 0);   /* mpi_info->dt[0] is null */ 
+  assert(MPI_DATATYPE_NULL == 0);   /* mpi_info->dt[0] is null */
 
   /* Is dt a valid user datatype */
 
