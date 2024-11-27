@@ -1227,10 +1227,6 @@ int bbl_update_ellipsoid(bbl_t * bbl, wall_t * wall, colloid_t * pc,
     util_vector_copy(4, quaternext, pc->s.quat);
   }
 
-  /* Re-orient swimming direction */
-
-  util_q4_rotate_vector(pc->s.quat, v1, pc->s.m);
-
   return iret;
 }
 
