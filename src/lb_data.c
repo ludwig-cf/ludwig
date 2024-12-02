@@ -1256,8 +1256,8 @@ int lb_halo_create(const lb_t * lb, lb_halo_t * h, lb_halo_enum_t scheme) {
 			 tdpMemcpyHostToDevice) );
     
     if (have_graph_api_) {
-      lb_graph_halo_send_create(lb, h, send_count);
-      lb_graph_halo_recv_create(lb, h, recv_count);
+      lb_graph_halo_send_create(lb, h, h->count);
+      lb_graph_halo_recv_create(lb, h, h->count);
     }
 
   }
@@ -1321,12 +1321,15 @@ int lb_halo_post(lb_t * lb, lb_halo_t * h) {
   if (ndevice > 0) {
     copyModelToDevice(&lb->model, &lb->target->model);
     copyModelToDevice(&h->map, &h->target->map);
-    for (int ireq = 0; ireq < h->map.nvel; ireq++) {
-      if (h->count[ireq] > 0) {
-        if (have_graph_api_) {
-          tdpAssert( tdpGraphLaunch(h->gsend.exec, h->stream) );
-          tdpAssert( tdpStreamSynchronize(h->stream) );
-        } else {
+    if (have_graph_api_) {
+      printf("here 1\n");
+      tdpAssert( tdpGraphLaunch(h->gsend.exec, h->stream) );
+      printf("here 2\n");
+      tdpAssert( tdpStreamSynchronize(h->stream) );
+      printf("here 3\n");
+    } else {
+      for (int ireq = 0; ireq < h->map.nvel; ireq++) {
+        if (h->count[ireq] > 0) {
           int scount = h->count[ireq]*lb_halo_size(h->slim[ireq]);
           dim3 nblk, ntpb;
           kernel_launch_param(scount, &nblk, &ntpb);
@@ -1396,12 +1399,15 @@ int lb_halo_wait(lb_t * lb, lb_halo_t * h) {
   int ndevice;
   tdpGetDeviceCount(&ndevice);
   if (ndevice > 0) {
-    for (int ireq = 0; ireq < h->map.nvel; ireq++) {
-      if (h->count[ireq] > 0) {
-        if (have_graph_api_) {
-          tdpAssert( tdpGraphLaunch(h->grecv.exec, h->stream) );
-          tdpAssert( tdpStreamSynchronize(h->stream) );
-        } else {
+    if (have_graph_api_) {
+      printf("here 4\n");
+      tdpAssert( tdpGraphLaunch(h->grecv.exec, h->stream) );
+      printf("here 5\n");
+      tdpAssert( tdpStreamSynchronize(h->stream) );
+      printf("here 6\n");
+    } else {
+      for (int ireq = 0; ireq < h->map.nvel; ireq++) {
+        if (h->count[ireq] > 0) {
           int rcount = h->count[ireq]*lb_halo_size(h->slim[ireq]);
           dim3 nblk, ntpb;
           kernel_launch_param(rcount, &nblk, &ntpb);
@@ -1458,11 +1464,16 @@ int lb_halo_free(lb_t * lb, lb_halo_t * h) {
   }
 
   if (have_graph_api_) {
+    printf("here 7\n");
     tdpAssert( tdpGraphDestroy(h->gsend.graph) );
+    printf("here 8\n");
     tdpAssert( tdpGraphDestroy(h->grecv.graph) );
+    printf("here 9\n");
   }
 
+  tdpAssert( tdpStreamDestroy(h->stream) );
   lb_model_free(&h->map);
+  *h = (lb_halo_t) {0};
 
   return 0;
 }
@@ -1774,35 +1785,35 @@ int lb_graph_halo_send_create(const lb_t * lb, lb_halo_t * h, int * send_count) 
     if (have_gpu_aware_mpi_) {
       /* Don't need explicit device -> host copy */
     }
-//    else {
-//      /* We do need to add the memcpys to the graph definition
-//       * (except messages to self... ) */
-//
-//      int i = 1 + h->cv[h->nvel - ireq][X];
-//      int j = 1 + h->cv[h->nvel - ireq][Y];
-//      int k = 1 + h->cv[h->nvel - ireq][Z];
-//
-//      if (h->nbrrank[i][j][k] != h->nbrrank[1][1][1]) {
-//	tdpGraphNode_t memcpyNode;
-//        tdpMemcpy3DParms memcpyParams = {0};
-//
-//	memcpyParams.srcArray = NULL;
-//	memcpyParams.srcPos   = make_tdpPos(0, 0, 0);
-//	memcpyParams.srcPtr   = make_tdpPitchedPtr(h->send_d[ireq],
-//						   sizeof(double)*scount,
-//						   scount, 1);
-//	memcpyParams.dstArray = NULL;
-//	memcpyParams.dstPos   = make_tdpPos(0, 0, 0);
-//	memcpyParams.dstPtr   = make_tdpPitchedPtr(h->send[ireq],
-//						   sizeof(double)*scount,
-//						   scount, 1);
-//	memcpyParams.extent   = make_tdpExtent(sizeof(double)*scount, 1, 1);
-//	memcpyParams.kind     = tdpMemcpyDeviceToHost;
-//
-//	tdpAssert( tdpGraphAddMemcpyNode(&memcpyNode, h->gsend.graph,
-//					 &kernelNode, 1, &memcpyParams) );
-//      }
-//    }
+    else {
+      /* We do need to add the memcpys to the graph definition
+       * (except messages to self... ) */
+
+      int i = 1 + h->map.cv[h->map.nvel - ireq][X];
+      int j = 1 + h->map.cv[h->map.nvel - ireq][Y];
+      int k = 1 + h->map.cv[h->map.nvel - ireq][Z];
+
+      if (h->nbrrank[i][j][k] != h->nbrrank[1][1][1]) {
+	      tdpGraphNode_t memcpyNode;
+        tdpMemcpy3DParms memcpyParams = {0};
+
+	      memcpyParams.srcArray = NULL;
+	      memcpyParams.srcPos   = make_tdpPos(0, 0, 0);
+	      memcpyParams.srcPtr   = make_tdpPitchedPtr(h->send_d[ireq],
+						   sizeof(double)*scount,
+						   scount, 1);
+	      memcpyParams.dstArray = NULL;
+	      memcpyParams.dstPos   = make_tdpPos(0, 0, 0);
+	      memcpyParams.dstPtr   = make_tdpPitchedPtr(h->send[ireq],
+						   sizeof(double)*scount,
+						   scount, 1);
+	      memcpyParams.extent   = make_tdpExtent(sizeof(double)*scount, 1, 1);
+	      memcpyParams.kind     = tdpMemcpyDeviceToHost;
+
+	      tdpAssert( tdpGraphAddMemcpyNode(&memcpyNode, h->gsend.graph,
+					 &kernelNode, 1, &memcpyParams) );
+      }
+    }
   }
 
   tdpAssert( tdpGraphInstantiate(&h->gsend.exec, h->gsend.graph, 0) );
@@ -1830,31 +1841,31 @@ int lb_graph_halo_recv_create(const lb_t * lb, lb_halo_t * h, int * recv_count) 
     if (have_gpu_aware_mpi_) {
       /* Don't need explicit copies */
     }
-//    else {
-//      int i = 1 + h->cv[h->nvel - ireq][X];
-//      int j = 1 + h->cv[h->nvel - ireq][Y];
-//      int k = 1 + h->cv[h->nvel - ireq][Z];
-//
-//      if (h->nbrrank[i][j][k] != h->nbrrank[1][1][1]) {
-//	tdpMemcpy3DParms memcpyParams = {0};
-//
-//	memcpyParams.srcArray = NULL;
-//	memcpyParams.srcPos   = make_tdpPos(0, 0, 0);
-//	memcpyParams.srcPtr   = make_tdpPitchedPtr(h->recv[ireq],
-//						   sizeof(double)*rcount,
-//						   rcount, 1);
-//	memcpyParams.dstArray = NULL;
-//	memcpyParams.dstPos   = make_tdpPos(0, 0, 0);
-//	memcpyParams.dstPtr   = make_tdpPitchedPtr(h->recv_d[ireq],
-//						   sizeof(double)*rcount,
-//						   rcount, 1);
-//	memcpyParams.extent   = make_tdpExtent(sizeof(double)*rcount, 1, 1);
-//	memcpyParams.kind     = tdpMemcpyHostToDevice;
-//
-//	tdpAssert( tdpGraphAddMemcpyNode(&memcpyNode, h->grecv.graph, NULL,
-//					 0, &memcpyParams) );
-//      }
-//    }
+    else {
+      int i = 1 + h->map.cv[h->map.nvel - ireq][X];
+      int j = 1 + h->map.cv[h->map.nvel - ireq][Y];
+      int k = 1 + h->map.cv[h->map.nvel - ireq][Z];
+
+      if (h->nbrrank[i][j][k] != h->nbrrank[1][1][1]) {
+	      tdpMemcpy3DParms memcpyParams = {0};
+
+	      memcpyParams.srcArray = NULL;
+	      memcpyParams.srcPos   = make_tdpPos(0, 0, 0);
+	      memcpyParams.srcPtr   = make_tdpPitchedPtr(h->recv[ireq],
+						   sizeof(double)*rcount,
+						   rcount, 1);
+	      memcpyParams.dstArray = NULL;
+	      memcpyParams.dstPos   = make_tdpPos(0, 0, 0);
+	      memcpyParams.dstPtr   = make_tdpPitchedPtr(h->recv_d[ireq],
+						   sizeof(double)*rcount,
+						   rcount, 1);
+        memcpyParams.extent   = make_tdpExtent(sizeof(double)*rcount, 1, 1);
+        memcpyParams.kind     = tdpMemcpyHostToDevice;
+
+	      tdpAssert( tdpGraphAddMemcpyNode(&memcpyNode, h->grecv.graph, NULL,
+					 0, &memcpyParams) );
+      }
+    }
 
     /* Always need the dis-aggregateion kernel */
 
@@ -1879,19 +1890,19 @@ int lb_graph_halo_recv_create(const lb_t * lb, lb_halo_t * h, int * recv_count) 
       tdpAssert( tdpGraphAddKernelNode(&node, h->grecv.graph, NULL,
 				       0, &kernelNodeParams) );
     }
-//    else {
-//      int i = 1 + h->cv[h->nvel - ireq][X];
-//      int j = 1 + h->cv[h->nvel - ireq][Y];
-//      int k = 1 + h->cv[h->nvel - ireq][Z];
-//      if (h->nbrrank[i][j][k] != h->nbrrank[1][1][1]) {
-//	tdpAssert( tdpGraphAddKernelNode(&node, h->grecv.graph, &memcpyNode,
-//					 1, &kernelNodeParams) );
-//      }
-//      else {
-//	tdpAssert( tdpGraphAddKernelNode(&node, h->grecv.graph, NULL, 0,
-//					 &kernelNodeParams) );
-//      }
-//    }
+    else {
+      int i = 1 + h->map.cv[h->map.nvel - ireq][X];
+      int j = 1 + h->map.cv[h->map.nvel - ireq][Y];
+      int k = 1 + h->map.cv[h->map.nvel - ireq][Z];
+      if (h->nbrrank[i][j][k] != h->nbrrank[1][1][1]) {
+	      tdpAssert( tdpGraphAddKernelNode(&node, h->grecv.graph, &memcpyNode,
+					 1, &kernelNodeParams) );
+      }
+      else {
+	      tdpAssert( tdpGraphAddKernelNode(&node, h->grecv.graph, NULL, 0,
+					 &kernelNodeParams) );
+      }
+    }
   }
 
   tdpAssert( tdpGraphInstantiate(&h->grecv.exec, h->grecv.graph, 0) );
