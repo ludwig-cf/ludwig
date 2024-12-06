@@ -334,13 +334,13 @@ int test_o8m_struct(pe_t * pe, cs_t * cs, lees_edw_t * le, fe_lc_t * fe,
   /* Now the free energy density. This requires that the gradients are
    * set. These values use the standard 27-point stencil in 3-d. */
 
-  /* Gradient computation is on the device, so ... */
+  /* Gradient computation is on the device, so ...
+  *  ... copy to gpu and perform gpu halo ... */
 
   field_memcpy(fq, tdpMemcpyHostToDevice);
   field_halo(fq);
 
   field_grad_compute(fqgrad);
-
   field_grad_memcpy(fqgrad, tdpMemcpyDeviceToHost);
 
   ic = 1;

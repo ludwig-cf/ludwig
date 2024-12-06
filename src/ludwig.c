@@ -612,7 +612,11 @@ void ludwig_run(const char * inputfile) {
 	TIMER_start(TIMER_HALO_LATTICE);
 	hydro_u_halo(ludwig->hydro);
 	TIMER_stop(TIMER_HALO_LATTICE);
+
+	/* Work-around for gpu regression tests ... */
+	hydro_memcpy(ludwig->hydro, tdpMemcpyDeviceToHost);
       }
+
 
       /* Time splitting for high electrokinetic diffusions in Nernst Planck */
 
@@ -661,6 +665,11 @@ void ludwig_run(const char * inputfile) {
       psi_halo_psijump(ludwig->psi);
       psi_halo_rho(ludwig->psi);
       TIMER_stop(TIMER_HALO_LATTICE);
+
+      if (ludwig->hydro) {
+	/* Workaround for gpu regression tests ... */
+	hydro_memcpy(ludwig->hydro, tdpMemcpyHostToDevice);
+      }
 
       nernst_planck_adjust_multistep(ludwig->psi);
       psi_zero_mean(ludwig->psi);
