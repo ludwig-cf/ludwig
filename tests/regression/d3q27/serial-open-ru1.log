@@ -76,8 +76,8 @@ Boundary walls:                  - Y Z
 Boundary speed u_x (bottom):     0.0000000e+00
 Boundary speed u_x (top):        0.0000000e+00
 Boundary normal lubrication rc:  0.0000000e+00
-Wall boundary links allocated:   5664
-Memory (total, bytes):           90624
+Wall boundary links allocated:   10080
+Memory (total, bytes):           161280
 Boundary shear initialise:       0
 Initial conditions.
 

@@ -101,7 +101,7 @@ int test_bp_suite(void) {
  *
  *  test_bp_nonfield
  *
- *  Values confimed via Wolfram Alpha eigenvalue widget.
+ *  Values confirmed via Wolfram Alpha eigenvalue widget.
  *
  *****************************************************************************/
 
@@ -159,9 +159,9 @@ static int test_bp_nonfield(void) {
  *       kappa0 = 0.01
  *       kappa1 = 0.01
  *                with one constant approximation (kappa0 = kappa1 = kappa).
- *       epsilon  dielectric anisotropy (typcially comes out to be 41.4 in
+ *       epsilon  dielectric anisotropy (typically comes out to be 41.4 in
  *                lattice units based on matching Frederick transition).
- *                          
+ *
  *
  *  Molecular aspect ratio:
  *       xi = 0.7
@@ -242,7 +242,7 @@ int test_o8m_struct(pe_t * pe, cs_t * cs, lees_edw_t * le, fe_lc_t * fe,
   fe_lc_reduced_temperature(fe, &vtest);
   test_assert(fabs(value - vtest) < TEST_DOUBLE_TOLERANCE);
 
-  /* Set up the q tensor and sample some lattice sites. 
+  /* Set up the q tensor and sample some lattice sites.
    * Note there are a limited number of unique order parameter values,
    * so an exhaustive test is probably not worth while. */
 
@@ -334,13 +334,13 @@ int test_o8m_struct(pe_t * pe, cs_t * cs, lees_edw_t * le, fe_lc_t * fe,
   /* Now the free energy density. This requires that the gradients are
    * set. These values use the standard 27-point stencil in 3-d. */
 
-  /* Gradient computation is on the device, so ... */
+  /* Gradient computation is on the device, so ...
+  *  ... copy to gpu and perform gpu halo ... */
 
   field_memcpy(fq, tdpMemcpyHostToDevice);
   field_halo(fq);
 
   field_grad_compute(fqgrad);
-
   field_grad_memcpy(fqgrad, tdpMemcpyDeviceToHost);
 
   ic = 1;
@@ -373,7 +373,7 @@ int test_o8m_struct(pe_t * pe, cs_t * cs, lees_edw_t * le, fe_lc_t * fe,
 
   fe_lc_compute_fed(fe, gamma, q, dq, &value);
   test_assert(fabs(value - 1.056203e-02) < TEST_FLOAT_TOLERANCE);
-  
+
   {
     double fed_bulk = 0.0;
     double fed_grad = 0.0;
@@ -580,7 +580,7 @@ int test_o8m_struct(pe_t * pe, cs_t * cs, lees_edw_t * le, fe_lc_t * fe,
   test_assert(fabs(dsq[X][Z] - -9.837494e-03) < TEST_FLOAT_TOLERANCE);
   test_assert(fabs(dsq[Y][X] - -9.837494e-03) < TEST_FLOAT_TOLERANCE);
   test_assert(fabs(dsq[Y][Y] - -7.887056e-03) < TEST_FLOAT_TOLERANCE);
-  test_assert(fabs(dsq[Y][Z] - -8.924220e-03) < TEST_FLOAT_TOLERANCE);  
+  test_assert(fabs(dsq[Y][Z] - -8.924220e-03) < TEST_FLOAT_TOLERANCE);
   test_assert(fabs(dsq[Z][X] - -8.924220e-03) < TEST_FLOAT_TOLERANCE);
   test_assert(fabs(dsq[Z][Y] - -9.837494e-03) < TEST_FLOAT_TOLERANCE);
   test_assert(fabs(dsq[Z][Z] - -7.887056e-03) < TEST_FLOAT_TOLERANCE);
@@ -602,7 +602,7 @@ int test_o8m_struct(pe_t * pe, cs_t * cs, lees_edw_t * le, fe_lc_t * fe,
   test_assert(fabs(dsq[X][X] -  7.375082e-03) < TEST_FLOAT_TOLERANCE);
   test_assert(fabs(dsq[X][Y] -  0.0000000000) < TEST_FLOAT_TOLERANCE);
   test_assert(fabs(dsq[X][Z] -  0.0000000000) < TEST_FLOAT_TOLERANCE);
-  test_assert(fabs(dsq[Y][X] -  0.0000000000) < TEST_FLOAT_TOLERANCE);  
+  test_assert(fabs(dsq[Y][X] -  0.0000000000) < TEST_FLOAT_TOLERANCE);
   test_assert(fabs(dsq[Y][Y] - -4.179480e-02) < TEST_FLOAT_TOLERANCE);
   test_assert(fabs(dsq[Y][Z] - -2.748179e-02) < TEST_FLOAT_TOLERANCE);
   test_assert(fabs(dsq[Z][X] -  0.0000000000) < TEST_FLOAT_TOLERANCE);
@@ -628,7 +628,7 @@ int test_o8m_struct(pe_t * pe, cs_t * cs, lees_edw_t * le, fe_lc_t * fe,
   test_assert(fabs(dsq[X][Z] -  9.837494e-03) < TEST_FLOAT_TOLERANCE);
   test_assert(fabs(dsq[Y][X] -  9.837494e-03) < TEST_FLOAT_TOLERANCE);
   test_assert(fabs(dsq[Y][Y] - -7.887056e-03) < TEST_FLOAT_TOLERANCE);
-  test_assert(fabs(dsq[Y][Z] - -8.924220e-03) < TEST_FLOAT_TOLERANCE);  
+  test_assert(fabs(dsq[Y][Z] - -8.924220e-03) < TEST_FLOAT_TOLERANCE);
   test_assert(fabs(dsq[Z][X] -  8.924220e-03) < TEST_FLOAT_TOLERANCE);
   test_assert(fabs(dsq[Z][Y] - -9.837494e-03) < TEST_FLOAT_TOLERANCE);
   test_assert(fabs(dsq[Z][Z] - -7.887056e-03) < TEST_FLOAT_TOLERANCE);
@@ -650,7 +650,7 @@ int test_o8m_struct(pe_t * pe, cs_t * cs, lees_edw_t * le, fe_lc_t * fe,
   test_assert(fabs(dsq[X][X] -  2.779621e-04) < TEST_FLOAT_TOLERANCE);
   test_assert(fabs(dsq[X][Y] -  7.180623e-04) < TEST_FLOAT_TOLERANCE);
   test_assert(fabs(dsq[X][Z] -  0.0000000000) < TEST_FLOAT_TOLERANCE);
-  test_assert(fabs(dsq[Y][X] -  1.308445e-03) < TEST_FLOAT_TOLERANCE);  
+  test_assert(fabs(dsq[Y][X] -  1.308445e-03) < TEST_FLOAT_TOLERANCE);
   test_assert(fabs(dsq[Y][Y] - -5.056451e-03) < TEST_FLOAT_TOLERANCE);
   test_assert(fabs(dsq[Y][Z] -  0.0000000000) < TEST_FLOAT_TOLERANCE);
   test_assert(fabs(dsq[Z][X] -  0.0000000000) < TEST_FLOAT_TOLERANCE);
@@ -674,7 +674,7 @@ int test_o8m_struct(pe_t * pe, cs_t * cs, lees_edw_t * le, fe_lc_t * fe,
   test_assert(fabs(dsq[X][X] - -1.007305e-04) < TEST_FLOAT_TOLERANCE);
   test_assert(fabs(dsq[X][Y] -  0.0000000000) < TEST_FLOAT_TOLERANCE);
   test_assert(fabs(dsq[X][Z] -  0.0000000000) < TEST_FLOAT_TOLERANCE);
-  test_assert(fabs(dsq[Y][X] -  0.0000000000) < TEST_FLOAT_TOLERANCE);  
+  test_assert(fabs(dsq[Y][X] -  0.0000000000) < TEST_FLOAT_TOLERANCE);
   test_assert(fabs(dsq[Y][Y] -  2.779621e-04) < TEST_FLOAT_TOLERANCE);
   test_assert(fabs(dsq[Y][Z] -  7.180623e-04) < TEST_FLOAT_TOLERANCE);
   test_assert(fabs(dsq[Z][X] -  0.0000000000) < TEST_FLOAT_TOLERANCE);
@@ -692,7 +692,7 @@ int test_o8m_struct(pe_t * pe, cs_t * cs, lees_edw_t * le, fe_lc_t * fe,
     jc = 1;
     kc = 1;
     index = lees_edw_index(le, ic, jc, kc);
-    
+
     fe_lc_stress(fe, index, sfull);
     fe_lc_bulk_stress(fe, index, sbulk);
     fe_lc_grad_stress(fe, index, sgrad);
@@ -713,7 +713,7 @@ int test_o8m_struct(pe_t * pe, cs_t * cs, lees_edw_t * le, fe_lc_t * fe,
     jc = 1;
     kc = 2;
     index = lees_edw_index(le, ic, jc, kc);
-    
+
     fe_lc_stress(fe, index, sfull);
     fe_lc_bulk_stress(fe, index, sbulk);
     fe_lc_grad_stress(fe, index, sgrad);
@@ -734,7 +734,7 @@ int test_o8m_struct(pe_t * pe, cs_t * cs, lees_edw_t * le, fe_lc_t * fe,
     jc = 1;
     kc = 3;
     index = lees_edw_index(le, ic, jc, kc);
-    
+
     fe_lc_stress(fe, index, sfull);
     fe_lc_bulk_stress(fe, index, sbulk);
     fe_lc_grad_stress(fe, index, sgrad);
@@ -755,7 +755,7 @@ int test_o8m_struct(pe_t * pe, cs_t * cs, lees_edw_t * le, fe_lc_t * fe,
     jc = 12;
     kc = 4;
     index = lees_edw_index(le, ic, jc, kc);
-    
+
     fe_lc_stress(fe, index, sfull);
     fe_lc_bulk_stress(fe, index, sbulk);
     fe_lc_grad_stress(fe, index, sgrad);
@@ -776,7 +776,7 @@ int test_o8m_struct(pe_t * pe, cs_t * cs, lees_edw_t * le, fe_lc_t * fe,
     jc = 6;
     kc = 7;
     index = lees_edw_index(le, ic, jc, kc);
-    
+
     fe_lc_stress(fe, index, sfull);
     fe_lc_bulk_stress(fe, index, sbulk);
     fe_lc_grad_stress(fe, index, sgrad);

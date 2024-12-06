@@ -48,15 +48,6 @@ __host__ int field_init(field_t * obj, int nhcomm, lees_edw_t * le);
 #include "mpi-ext.h"
 #endif
 
-#ifdef __HIPCC__
-/* There are two file-scope switches here, which need to be generalised
- * via some suitable interface; they are separate, but both relate to
- * GPU execution. */
-static const int have_graph_api_ = 1;
-#else
-static const int have_graph_api_ = 0;
-#endif
-
 #if defined (MPIX_CUDA_AWARE_SUPPORT) && MPIX_CUDA_AWARE_SUPPORT
 static const int have_gpu_aware_mpi_ = 1;
 #else
@@ -1416,10 +1407,8 @@ int field_halo_create(const field_t * field, field_halo_t * h) {
     tdpAssert( tdpMemcpy(h->target->recv, h->recv_d, 27*sizeof(double *),
 			 tdpMemcpyHostToDevice) );
 
-    if (have_graph_api_) {
-      field_graph_halo_send_create(field, h);
-      field_graph_halo_recv_create(field, h);
-    }
+    field_graph_halo_send_create(field, h);
+    field_graph_halo_recv_create(field, h);
   }
 
   return 0;
@@ -1433,10 +1422,13 @@ int field_halo_create(const field_t * field, field_halo_t * h) {
 
 int field_halo_post(const field_t * field, field_halo_t * h) {
 
+  int ndevice = 0;
   const int tagbase = 2022;
 
   assert(field);
   assert(h);
+
+  tdpAssert( tdpGetDeviceCount(&ndevice) );
 
   /* Post recvs */
 
@@ -1468,7 +1460,7 @@ int field_halo_post(const field_t * field, field_halo_t * h) {
 
   TIMER_start(TIMER_FIELD_HALO_PACK);
 
-  if (have_graph_api_) {
+  if (ndevice) {
     tdpAssert( tdpGraphLaunch(h->gsend.exec, h->stream) );
     tdpAssert( tdpStreamSynchronize(h->stream) );
   }
@@ -1515,8 +1507,12 @@ int field_halo_post(const field_t * field, field_halo_t * h) {
 
 int field_halo_wait(field_t * field, field_halo_t * h) {
 
+  int ndevice = 0;
+
   assert(field);
   assert(h);
+
+  tdpAssert( tdpGetDeviceCount(&ndevice) );
 
   TIMER_start(TIMER_FIELD_HALO_WAITALL);
 
@@ -1526,7 +1522,7 @@ int field_halo_wait(field_t * field, field_halo_t * h) {
 
   TIMER_start(TIMER_FIELD_HALO_UNPACK);
 
-  if (have_graph_api_) {
+  if (ndevice) {
     tdpAssert( tdpGraphLaunch(h->grecv.exec, h->stream) );
     tdpAssert( tdpStreamSynchronize(h->stream) );
   }
@@ -1628,7 +1624,7 @@ int field_halo_free(field_halo_t * h) {
     free(h->recv[p]);
   }
 
-  if (have_graph_api_) {
+  if (ndevice > 0) {
     tdpAssert( tdpGraphDestroy(h->gsend.graph) );
     tdpAssert( tdpGraphDestroy(h->grecv.graph) );
   }
