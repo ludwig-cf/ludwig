@@ -374,6 +374,10 @@ static int lb_init(lb_t * lb) {
     tdpGetSymbolAddress((void **) &ptmp, tdpSymbol(static_param));
     tdpAssert( tdpMemcpy(&lb->target->param, &ptmp,
 			 sizeof(lb_collide_param_t *), tdpMemcpyHostToDevice));
+
+    cs_target(lb->cs, &cstarget);
+    tdpMemcpy(&lb->target->cs, &cstarget, sizeof(cs_t *),
+	      tdpMemcpyHostToDevice);
   }
 
   lb_mpi_init(lb);
