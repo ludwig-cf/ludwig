@@ -8,7 +8,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2010-2022 The University of Edinburgh
+ *  (c) 2010-2024 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -232,7 +232,7 @@ int do_test_halo(pe_t * pe, cs_t * cs, int dim, const lb_data_options_t * opts) 
   assert(dim == X || dim == Y || dim == Z);
   assert(opts);
 
-  tdpGetDeviceCount(&ndevice);
+  tdpAssert( tdpGetDeviceCount(&ndevice) );
 
   lb_data_create(pe, cs, opts, &lb);
 

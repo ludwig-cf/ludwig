@@ -10,14 +10,14 @@
  *  [0] FE_PHI \phi is compositional order parameter
  *  [1] FE_PSI \psi is surfactant concentration
  *  [2] FE_RHO is 'spectating' at the moment
- * 
+ *
  *  The free energy density is:
  *
  *
  *  Edinburgh Soft Matter and Statistical Physics Group
  *  and Edinburgh Parallel Computing Centre
  *
- *  (c) 2019-2021 The University of Edinburgh
+ *  (c) 2019-2024 The University of Edinburgh
  *
  *  Contributing authors:
  *  Shan Chen (shan.chen@epfl.ch)
@@ -87,32 +87,32 @@ int fe_ternary_create(pe_t * pe, cs_t * cs, field_t * phi,
                       fe_ternary_t ** fe) {
   int ndevice;
   fe_ternary_t * obj = NULL;
-    
+
   assert(pe);
   assert(cs);
   assert(fe);
   assert(phi);
   assert(dphi);
-    
+
   obj = (fe_ternary_t *) calloc(1, sizeof(fe_ternary_t));
   assert(obj);
   if (obj == NULL) pe_fatal(pe, "calloc(fe_surf1_t) failed\n");
-    
+
   obj->param = (fe_ternary_param_t *) calloc(1, sizeof(fe_ternary_param_t));
   assert(obj->param);
   if (obj->param == NULL) pe_fatal(pe, "calloc(fe_ternary_param_t) fail\n");
-    
+
   obj->pe = pe;
   obj->cs = cs;
   obj->phi = phi;
   obj->dphi = dphi;
   obj->super.func = &fe_ternary_hvt;
   obj->super.id = FE_TERNARY;
-    
+
   /* Allocate target memory, or alias */
-    
-  tdpGetDeviceCount(&ndevice);
-    
+
+  tdpAssert( tdpGetDeviceCount(&ndevice) );
+
   if (ndevice == 0) {
     obj->target = obj;
   }
@@ -144,10 +144,10 @@ int fe_ternary_create(pe_t * pe, cs_t * cs, field_t * phi,
     tdpAssert(tdpMemcpy(&obj->target->dphi, &dphi->target,
 			sizeof(field_grad_t *), tdpMemcpyHostToDevice));
   }
-    
+
   fe_ternary_param_set(obj, param);
   *fe = obj;
-    
+
   return 0;
 }
 
@@ -158,17 +158,17 @@ int fe_ternary_create(pe_t * pe, cs_t * cs, field_t * phi,
  ****************************************************************************/
 
 __host__ int fe_ternary_free(fe_ternary_t * fe) {
-    
+
   int ndevice;
-    
+
   assert(fe);
-    
-  tdpGetDeviceCount(&ndevice);
+
+  tdpAssert( tdpGetDeviceCount(&ndevice) );
   if (ndevice > 0) tdpAssert(tdpFree(fe->target));
-    
+
   free(fe->param);
   free(fe);
-    
+
   return 0;
 }
 
@@ -188,19 +188,19 @@ __host__ int fe_ternary_info(fe_ternary_t * fe) {
   double h1, h2, h3;
 
   pe_t * pe = NULL;
-    
+
   assert(fe);
-    
+
   pe = fe->pe;
-    
+
   fe_ternary_sigma(fe, sigma);
-    
+
   pe_info(pe, "Ternary free energy parameters:\n");
   pe_info(pe, "Surface penalty kappa1 = %12.5e\n", fe->param->kappa1);
   pe_info(pe, "Surface penalty kappa2 = %12.5e\n", fe->param->kappa2);
   pe_info(pe, "Surface penalty kappa3 = %12.5e\n", fe->param->kappa3);
   pe_info(pe, "Interface width alpha  = %12.5e\n", fe->param->alpha);
-    
+
   pe_info(pe, "\n");
   pe_info(pe, "Derived quantities\n");
   pe_info(pe, "Interfacial tension 12 = %12.5e\n",  sigma[0]);
@@ -242,12 +242,12 @@ __host__ int fe_ternary_info(fe_ternary_t * fe) {
  ****************************************************************************/
 
 __host__ int fe_ternary_target(fe_ternary_t * fe, fe_t ** target) {
-    
+
   assert(fe);
   assert(target);
-    
+
   *target = (fe_t *) fe->target;
-    
+
   return 0;
 }
 
@@ -277,9 +277,9 @@ __host__ int fe_ternary_param_set(fe_ternary_t * fe, fe_ternary_param_t vals) {
 __host__ int fe_ternary_param(fe_ternary_t * fe, fe_ternary_param_t * values) {
 
   assert(fe);
-    
+
   *values = *fe->param;
-    
+
   return 0;
 }
 
@@ -291,21 +291,21 @@ __host__ int fe_ternary_param(fe_ternary_t * fe, fe_ternary_param_t * values) {
  ****************************************************************************/
 
 __host__ int fe_ternary_sigma(fe_ternary_t * fe,  double * sigma) {
-    
+
   double alpha, kappa1, kappa2, kappa3;
-    
+
   assert(fe);
   assert(sigma);
-    
+
   alpha  = fe->param->alpha;
   kappa1 = fe->param->kappa1;
   kappa2 = fe->param->kappa2;
   kappa3 = fe->param->kappa3;
-    
+
   sigma[0] = alpha*(kappa1 + kappa2)/6.0;
   sigma[1] = alpha*(kappa2 + kappa3)/6.0;
   sigma[2] = alpha*(kappa1 + kappa3)/6.0;
-    
+
   return 0;
 }
 
@@ -334,7 +334,7 @@ __host__ int fe_ternary_angles(fe_ternary_t * fe, double * theta) {
 
   assert(fe);
   assert(theta);
-    
+
   fe_ternary_sigma(fe, sigma);
 
   d1 = sigma[1]*sigma[1] - (sigma[0]*sigma[0] + sigma[2]*sigma[2]);
@@ -365,7 +365,7 @@ __host__ int fe_ternary_angles(fe_ternary_t * fe, double * theta) {
  *
  ****************************************************************************/
 
-__host__ int fe_ternary_wetting_angles(fe_ternary_t * fe, double * angle) { 
+__host__ int fe_ternary_wetting_angles(fe_ternary_t * fe, double * angle) {
 
   double a, h;
   double kappa1, kappa2, kappa3;
@@ -406,12 +406,12 @@ __host__ int fe_ternary_wetting_angles(fe_ternary_t * fe, double * angle) {
  ****************************************************************************/
 
 __host__ int fe_ternary_xi0(fe_ternary_t * fe, double * xi0) {
-    
+
   assert(fe);
   assert(xi0);
-    
+
   *xi0 = fe->param->alpha;
-    
+
   return 0;
 }
 
@@ -433,7 +433,7 @@ __host__ int fe_ternary_xi0(fe_ternary_t * fe, double * xi0) {
 
 __host__ __device__ int fe_ternary_fed(fe_ternary_t * fe, int index,
 				       double * fed) {
-    
+
   int ia;
   double field[2];
   double phi;
@@ -446,21 +446,21 @@ __host__ __device__ int fe_ternary_fed(fe_ternary_t * fe, int index,
   double kappa1, kappa2, kappa3, alpha2;
 
   assert(fe);
-    
+
   kappa1 = fe->param->kappa1;
   kappa2 = fe->param->kappa2;
   kappa3 = fe->param->kappa3;
   alpha2 = fe->param->alpha*fe->param->alpha;
 
   field_scalar_array(fe->phi, index, field);
-    
+
   rho = 1.0;
   phi = field[FE_PHI];
   psi = field[FE_PSI];
-    
+
   drho = 0.0;
   field_grad_pair_grad(fe->dphi, index, grad);
-    
+
   dsum = 0.0;
   for (ia = 0; ia < 3; ia++) {
     d3 = drho + grad[FE_PHI][ia] - grad[FE_PSI][ia];
@@ -470,7 +470,7 @@ __host__ __device__ int fe_ternary_fed(fe_ternary_t * fe, int index,
   s1  = rho + phi - psi;
   s2  = 2.0 + psi - rho - phi;
   fe1 = 0.03125*kappa1*s1*s1*s2*s2 + 0.125*alpha2*kappa1*dsum;
-    
+
   dsum = 0.0;
   for (ia = 0; ia < 3; ia++) {
     d3 = drho - grad[FE_PHI][ia] - grad[FE_PSI][ia];
@@ -495,7 +495,7 @@ __host__ __device__ int fe_ternary_fed(fe_ternary_t * fe, int index,
  *
  *  Three chemical potentials are present:
  *
- *   \mu_\rho 
+ *   \mu_\rho
  * = 1/8 kappa1  (rho + phi - psi)(rho + phi - psi - 2)(rho + phi - psi - 1)
  * - 1/8 kappa2  (rho - phi - psi)(rho - phi - psi - 2)(rho - phi - psi - 1)
  * + 1/4 alpha^2 (kappa1 + kappa2)(\Delta\psi - \Delta\phi)
@@ -528,10 +528,10 @@ __host__ __device__ int fe_ternary_mu(fe_ternary_t * fe, int index,
     double kappa1, kappa2, kappa3, alpha2;
     double krhorho, kphipsi, kpsipsi;
     double s1, s2;
-    
+
     assert(fe);
     assert(mu);
-    
+
     kappa1 = fe->param->kappa1;
     kappa2 = fe->param->kappa2;
     kappa3 = fe->param->kappa3;
@@ -543,14 +543,14 @@ __host__ __device__ int fe_ternary_mu(fe_ternary_t * fe, int index,
 
     field_scalar_array(fe->phi, index, field);
 
-    rho = 1.0;    
+    rho = 1.0;
     phi = field[FE_PHI];
     psi = field[FE_PSI];
-    
+
     field_grad_pair_delsq(fe->dphi, index, delsq);
 
     delsq_rho = 0.0;
-    
+
     /* mu_phi */
 
     s1 = (rho + phi - psi)*(rho + phi - psi - 2.0)*(rho + phi - psi - 1.0);
@@ -563,7 +563,7 @@ __host__ __device__ int fe_ternary_mu(fe_ternary_t * fe, int index,
     s1 = (rho + phi - psi)*(rho + phi - psi - 2.0)*(rho + phi - psi - 1.0);
     s2 = (rho - phi - psi)*(rho - phi - psi - 2.0)*(rho - phi - psi - 1.0);
 
-    mu[FE_PSI] = -0.125*kappa1*s1 - 0.125*kappa2*s2 
+    mu[FE_PSI] = -0.125*kappa1*s1 - 0.125*kappa2*s2
                + kappa3*psi*(psi - 1.0)*(2.0*psi - 1.0)
                + krhorho*delsq_rho - kphipsi*delsq[FE_PHI]
                - kpsipsi*delsq[FE_PSI];
@@ -602,7 +602,7 @@ __host__ __device__ int fe_ternary_str(fe_ternary_t * fe, int index,
     double krhophi, krhopsi, kphipsi;
     double drhodphi, drhodpsi, dphidpsi;
     KRONECKER_DELTA_CHAR(d);
-    
+
     assert(fe);
 
     kappa1 = fe->param->kappa1;
@@ -618,14 +618,14 @@ __host__ __device__ int fe_ternary_str(fe_ternary_t * fe, int index,
     kphipsi = - krhophi;
 
     field_scalar_array(fe->phi, index, field);
-    
+
     rho = 1.0;
     phi = field[FE_PHI];
     psi = field[FE_PSI];
     rho2 = rho*rho;
     phi2 = phi*phi;
     psi2 = psi*psi;
-    
+
     field_grad_pair_grad(fe->dphi, index, grad);
     field_grad_pair_delsq(fe->dphi, index, delsq);
 
@@ -640,8 +640,8 @@ __host__ __device__ int fe_ternary_str(fe_ternary_t * fe, int index,
 
     p1 = (kappa1 + kappa2)*
       (0.09375*(rho2*rho2 + phi2*phi2)
-       + 0.5625*(rho2*phi2 + rho2*psi2 + phi2*psi2) 
-       - 0.3750*rho*psi*(rho2 + psi2) 
+       + 0.5625*(rho2*phi2 + rho2*psi2 + phi2*psi2)
+       - 0.3750*rho*psi*(rho2 + psi2)
        + 0.75*(rho2*psi  - rho*phi2 - rho*psi2 + phi2*psi)
        - 0.25*rho2*rho + 0.125*rho2 + 0.125*phi2 - 0.25*rho*psi
        - 1.125*rho*phi2*psi);
@@ -674,7 +674,7 @@ __host__ __device__ int fe_ternary_str(fe_ternary_t * fe, int index,
     p6 = dphidpsi  + phi*delsq[FE_PSI] + psi*delsq[FE_PHI];
 
     /* Final stress */
-    
+
     for (ia = 0; ia < 3; ia++) {
       for (ib = 0; ib < 3; ib++) {
 
@@ -708,9 +708,9 @@ __host__ __device__ int fe_ternary_str_v(fe_ternary_t * fe, int index,
   int ia, ib;
   int iv;
   double s1[3][3];
-    
+
   assert(fe);
-    
+
   for (iv = 0; iv < NSIMDVL; iv++) {
     fe_ternary_str(fe, index + iv, s1);
     for (ia = 0; ia < 3; ia++) {

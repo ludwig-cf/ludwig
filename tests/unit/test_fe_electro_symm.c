@@ -2,7 +2,7 @@
  *
  *  test_fe_electro_symm.c
  *
- *  Electrokinetic + symetric free energy
+ *  Electrokinetic + symmetric free energy
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -39,7 +39,8 @@ int test_fe_electro_symm_suite(void) {
   pe_t * pe = NULL;
 
   pe_create(MPI_COMM_WORLD, PE_QUIET, &pe);
-  tdpGetDeviceCount(&ndevice);
+
+  tdpAssert( tdpGetDeviceCount(&ndevice) );
 
   if (ndevice) {
     pe_info(pe, "SKIP     ./unit/test_fe_electro_symm\n");

@@ -7,9 +7,9 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2010-2022 Ths University of Edinburgh
+ *  (c) 2010-2024 The University of Edinburgh
  *
- *  Contributing authors: 
+ *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *
  *****************************************************************************/
@@ -46,7 +46,7 @@ int test_lb_prop_suite(void) {
   cs_create(pe, &cs);
   cs_init(cs);
 
-  tdpGetDeviceCount(&ndevice);
+  tdpAssert( tdpGetDeviceCount(&ndevice) );
 
   do_test_velocity(pe, cs, 1, LB_HALO_TARGET);
   do_test_velocity(pe, cs, 2, LB_HALO_TARGET);
@@ -158,8 +158,8 @@ int do_test_velocity(pe_t * pe, cs_t * cs, int ndist, lb_halo_enum_t halo) {
  *  Check each element of the distribution has propagated exactly one
  *  lattice spacing in the appropriate direction.
  *
- *  We use the global index as the test of the soruce.
- *  
+ *  We use the global index as the test of the source.
+ *
  *****************************************************************************/
 
 int do_test_source_destination(pe_t * pe, cs_t * cs, int ndist,

@@ -7,7 +7,7 @@
  *  Edinburgh Soft Matter and Statistical Phsyics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2020-2022 The University of Edinburgh
+ *  (c) 2020-2024 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -46,7 +46,7 @@ __host__ int test_visc_arrhenius_suite(void) {
   cs_t * cs = NULL;
   field_t * phi = NULL;
 
-  tdpGetDeviceCount(&ndevice);
+  tdpAssert( tdpGetDeviceCount(&ndevice) );
 
   pe_create(MPI_COMM_WORLD, PE_QUIET, &pe);
 
@@ -121,7 +121,7 @@ int test_visc_arrhenius_update(pe_t * pe, cs_t * cs, field_t * phi) {
   const double eta_plus  = 0.5;
   const double eta_minus = 0.1;
   const double phistar   = 1.0;
-  
+
   visc_arrhenius_param_t param = {eta_minus, eta_plus, phistar};
   visc_arrhenius_t * visc = NULL;
 

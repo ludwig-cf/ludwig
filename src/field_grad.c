@@ -7,7 +7,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2012-2023 The University of Edinburgh
+ *  (c) 2012-2024 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -56,7 +56,7 @@ __host__ int field_grad_create(pe_t * pe, field_t * f, int level,
   ifail = field_grad_init(obj);
   if (ifail != 0) {
     pe_info(pe, "field_grad: failure in int32_t indexing\n");
-    pe_fatal(pe, "The local doamin size is too large\n");
+    pe_fatal(pe, "The local domain size is too large\n");
   }
 
   *pobj = obj;
@@ -86,19 +86,20 @@ static int field_grad_init(field_grad_t * obj) {
   /* Failure in int32_t indexing ... */
   if (INT_MAX < nfsz || nfsz < 1) return -1;
 
-  tdpGetDeviceCount(&ndevice);
+  tdpAssert( tdpGetDeviceCount(&ndevice) );
 
   if (ndevice == 0) {
     obj->target = obj;
   }
   else {
-    tdpMalloc((void **) &obj->target, sizeof(field_grad_t));
-    tdpMemset(obj->target, 0, sizeof(field_grad_t));
-    tdpMemcpy(&obj->target->nf, &obj->nf, sizeof(int), tdpMemcpyHostToDevice);
-    tdpMemcpy(&obj->target->nsite, &obj->nsite, sizeof(int),
-	      tdpMemcpyHostToDevice);
-    tdpMemcpy(&obj->target->field, &obj->field->target, sizeof(field_t *),
-	      tdpMemcpyHostToDevice);
+    tdpAssert( tdpMalloc((void **) &obj->target, sizeof(field_grad_t)) );
+    tdpAssert( tdpMemset(obj->target, 0, sizeof(field_grad_t)) );
+    tdpAssert( tdpMemcpy(&obj->target->nf, &obj->nf, sizeof(int),
+			 tdpMemcpyHostToDevice) );
+    tdpAssert( tdpMemcpy(&obj->target->nsite, &obj->nsite, sizeof(int),
+			 tdpMemcpyHostToDevice) );
+    tdpAssert( tdpMemcpy(&obj->target->field, &obj->field->target,
+			 sizeof(field_t *), tdpMemcpyHostToDevice) );
   }
 
   if (obj->level >= 2) {
@@ -110,15 +111,15 @@ static int field_grad_init(field_grad_t * obj) {
     if (obj->delsq == NULL) pe_fatal(obj->pe, "calloc(field_grad->delsq) failed");
 
     /* Allocate data space on target (or alias) */
- 
-    if (ndevice > 0) {
-      tdpMalloc((void **) &tmp, nfsz*NVECTOR*sizeof(double));
-      tdpMemcpy(&obj->target->grad, &tmp, sizeof(double *),
-		tdpMemcpyHostToDevice);
 
-      tdpMalloc((void **) &tmp, nfsz*sizeof(double));
-      tdpMemcpy(&obj->target->delsq, &tmp, sizeof(double *),
-		tdpMemcpyHostToDevice);
+    if (ndevice > 0) {
+      tdpAssert( tdpMalloc((void **) &tmp, nfsz*NVECTOR*sizeof(double)) );
+      tdpAssert( tdpMemcpy(&obj->target->grad, &tmp, sizeof(double *),
+			   tdpMemcpyHostToDevice) );
+
+      tdpAssert( tdpMalloc((void **) &tmp, nfsz*sizeof(double)) );
+      tdpAssert( tdpMemcpy(&obj->target->delsq, &tmp, sizeof(double *),
+			   tdpMemcpyHostToDevice) );
     }
   }
 
@@ -128,9 +129,9 @@ static int field_grad_init(field_grad_t * obj) {
     if (obj->d_ab == NULL) pe_fatal(obj->pe, "calloc(fieldgrad->d_ab) failed\n");
 
     if (ndevice > 0) {
-      tdpMalloc((void **) &tmp, NSYMM*nfsz*sizeof(double));
-      tdpMemcpy(&obj->target->d_ab, &tmp, sizeof(double *),
-		tdpMemcpyHostToDevice);
+      tdpAssert( tdpMalloc((void **) &tmp, NSYMM*nfsz*sizeof(double)) );
+      tdpAssert( tdpMemcpy(&obj->target->d_ab, &tmp, sizeof(double *),
+			   tdpMemcpyHostToDevice) );
     }
   }
 
@@ -141,13 +142,13 @@ static int field_grad_init(field_grad_t * obj) {
     if (obj->delsq_delsq == NULL) pe_fatal(obj->pe, "calloc(grad->delsq_delsq) failed");
 
     if (ndevice > 0) {
-      tdpMalloc((void **) &tmp, NVECTOR*nfsz*sizeof(double));
-      tdpMemcpy(&obj->target->grad_delsq, &tmp, sizeof(double *),
-		tdpMemcpyHostToDevice); 
+      tdpAssert( tdpMalloc((void **) &tmp, NVECTOR*nfsz*sizeof(double)) );
+      tdpAssert( tdpMemcpy(&obj->target->grad_delsq, &tmp, sizeof(double *),
+			   tdpMemcpyHostToDevice) );
 
-      tdpMalloc((void **) &tmp, nfsz*sizeof(double));
-      tdpMemcpy(&obj->target->delsq_delsq, &tmp, sizeof(double *),
-		tdpMemcpyHostToDevice); 
+      tdpAssert( tdpMalloc((void **) &tmp, nfsz*sizeof(double)) );
+      tdpAssert( tdpMemcpy(&obj->target->delsq_delsq, &tmp, sizeof(double *),
+			   tdpMemcpyHostToDevice) );
     }
   }
 
@@ -168,7 +169,7 @@ __host__ int field_grad_memcpy(field_grad_t * obj, tdpMemcpyKind flag) {
 
   assert(obj);
 
-  tdpGetDeviceCount(&ndevice);
+  tdpAssert( tdpGetDeviceCount(&ndevice) );
 
   if (ndevice == 0) {
     /* Ensure we alias */
@@ -195,21 +196,23 @@ __host__ int field_grad_memcpy(field_grad_t * obj, tdpMemcpyKind flag) {
 
     switch (flag) {
     case tdpMemcpyHostToDevice:
-      tdpMemcpy(&obj->target->nf, &obj->nf, sizeof(int),
-		tdpMemcpyHostToDevice);
-      tdpMemcpy(&obj->target->nsite, &obj->nsite, sizeof(int),
-		tdpMemcpyHostToDevice);
+      tdpAssert( tdpMemcpy(&obj->target->nf, &obj->nf, sizeof(int),
+			   tdpMemcpyHostToDevice) );
+      tdpAssert( tdpMemcpy(&obj->target->nsite, &obj->nsite, sizeof(int),
+			   tdpMemcpyHostToDevice) );
 
-      tdpMemcpy(grad, obj->grad, NVECTOR*nsz, tdpMemcpyHostToDevice);
-      tdpMemcpy(delsq, obj->delsq, nsz, tdpMemcpyHostToDevice);
+      tdpAssert( tdpMemcpy(grad, obj->grad, NVECTOR*nsz,
+			   tdpMemcpyHostToDevice) );
+      tdpAssert( tdpMemcpy(delsq, obj->delsq, nsz, tdpMemcpyHostToDevice) );
       if (obj->level >= 4) {
-	tdpMemcpy(grad_delsq, obj->grad_delsq, NVECTOR*nsz, flag);
-	tdpMemcpy(delsq_delsq, obj->delsq_delsq, nsz, flag);
+	tdpAssert( tdpMemcpy(grad_delsq, obj->grad_delsq, NVECTOR*nsz, flag) );
+	tdpAssert( tdpMemcpy(delsq_delsq, obj->delsq_delsq, nsz, flag) );
       }
       break;
     case tdpMemcpyDeviceToHost:
-      tdpMemcpy(obj->grad, grad, NVECTOR*nsz, tdpMemcpyDeviceToHost);
-      tdpMemcpy(obj->delsq, delsq, nsz, tdpMemcpyDeviceToHost);
+      tdpAssert( tdpMemcpy(obj->grad, grad, NVECTOR*nsz,
+			   tdpMemcpyDeviceToHost) );
+      tdpAssert( tdpMemcpy(obj->delsq, delsq, nsz, tdpMemcpyDeviceToHost) );
       if (obj->level >= 4) {
 	tdpAssert(tdpMemcpy(obj->grad_delsq, grad_delsq, nsz*NVECTOR, flag));
 	tdpAssert(tdpMemcpy(obj->delsq_delsq, delsq_delsq, nsz, flag));
@@ -273,26 +276,26 @@ __host__ void field_grad_free(field_grad_t * obj) {
 
   assert(obj);
 
-  tdpGetDeviceCount(&ndevice);
+  tdpAssert( tdpGetDeviceCount(&ndevice) );
 
   if (ndevice > 0) {
-    tdpMemcpy(&tmp, &obj->target->grad, sizeof(double *),
-	      tdpMemcpyDeviceToHost); 
-    tdpFree(tmp);
-    tdpMemcpy(&tmp, &obj->target->delsq, sizeof(double *),
-	      tdpMemcpyDeviceToHost); 
-    tdpFree(tmp);
-    tdpMemcpy(&tmp, &obj->target->d_ab, sizeof(double *),
-	      tdpMemcpyDeviceToHost);
-    if (tmp) tdpFree(tmp);
-    tdpMemcpy(&tmp, &obj->target->grad_delsq, sizeof(double *),
-	      tdpMemcpyDeviceToHost);
-    if (tmp) tdpFree(tmp);
-    tdpMemcpy(&tmp, &obj->target->delsq_delsq, sizeof(double *),
-	      tdpMemcpyDeviceToHost);
-    if (tmp) tdpFree(tmp);
+    tdpAssert( tdpMemcpy(&tmp, &obj->target->grad, sizeof(double *),
+			 tdpMemcpyDeviceToHost) );
+    tdpAssert( tdpFree(tmp) );
+    tdpAssert( tdpMemcpy(&tmp, &obj->target->delsq, sizeof(double *),
+			 tdpMemcpyDeviceToHost) );
+    tdpAssert( tdpFree(tmp) );
+    tdpAssert( tdpMemcpy(&tmp, &obj->target->d_ab, sizeof(double *),
+			 tdpMemcpyDeviceToHost) );
+    if (tmp) tdpAssert( tdpFree(tmp) );
+    tdpAssert( tdpMemcpy(&tmp, &obj->target->grad_delsq, sizeof(double *),
+			 tdpMemcpyDeviceToHost) );
+    if (tmp) tdpAssert( tdpFree(tmp) );
+    tdpAssert( tdpMemcpy(&tmp, &obj->target->delsq_delsq, sizeof(double *),
+			 tdpMemcpyDeviceToHost) );
+    if (tmp) tdpAssert( tdpFree(tmp) );
 
-    tdpFree(obj->target);
+    tdpAssert( tdpFree(obj->target) );
   }
 
   if (obj->grad) free(obj->grad);
