@@ -63,6 +63,8 @@ static const int have_gpu_aware_mpi_ = 1;
 static const int have_gpu_aware_mpi_ = 0;
 #endif
 
+__global__ void lb_null_kernel(const lb_t * lb, lb_halo_t * h, int ireq) {};
+
 void copyModelToDevice(lb_model_t *h_model, lb_model_t *d_model) {
     int nvel = h_model->nvel;
     // Allocate memory on the GPU for the arrays in the struct
@@ -935,6 +937,54 @@ __global__ void lb_halo_enqueue_send_kernel(const lb_t * lb, lb_halo_t * h, int 
   }
 }
 
+__global__ void lb_halo_enqueue_send_kernel_2(const lb_t * lb, lb_halo_t * h, int ireq) {
+
+  assert(0 <= ireq && ireq < h->map.nvel);
+
+  if (h->count[ireq] > 0) {
+
+    int8_t mx = h->map.cv[ireq][X];
+    int8_t my = h->map.cv[ireq][Y];
+    int8_t mz = h->map.cv[ireq][Z];
+    int8_t mm = mx*mx + my*my + mz*mz;
+
+    int nx = 1 + h->slim[ireq].imax - h->slim[ireq].imin;
+    int ny = 1 + h->slim[ireq].jmax - h->slim[ireq].jmin;
+    int nz = 1 + h->slim[ireq].kmax - h->slim[ireq].kmin;
+
+    int strz = 1;
+    int stry = strz*nz;
+    int strx = stry*ny;
+
+    assert(mm == 1 || mm == 2 || mm == 3);
+
+	  int ih = 0;
+    for_simt_parallel (ih, nx*ny*nz, 1) {
+      int ic = h->slim[ireq].imin + ih/strx;
+      int jc = h->slim[ireq].jmin + (ih % strx)/stry;
+      int kc = h->slim[ireq].kmin + (ih % stry)/strz;
+      int ib = 0; /* Buffer index */
+
+      for (int n = 0; n < lb->ndist; n++) {
+	      for (int p = 0; p < lb->nvel; p++) {
+	        /* Recall, if full, we need p = 0 */
+	        //int8_t px = lb->model.cv[p][X];
+	        //int8_t py = lb->model.cv[p][Y];
+	        //int8_t pz = lb->model.cv[p][Z];
+	        //int dot = mx*px + my*py + mz*pz;
+	        //if (h->full || dot == mm) {
+	        if (h->full ) {
+	        //  //int index = cs_index(lb->cs, ic, jc, kc);
+	        //  //int laddr = LB_ADDR(lb->nsite, lb->ndist, lb->nvel, index, n, p);
+	        //  //h->send[ireq][ih*h->count[ireq] + ib] = lb->f[laddr];
+	          ib++;
+	        }
+	      }
+      }
+      //assert(ib == h->count[ireq]);
+    }
+  }
+}
 /*****************************************************************************
  *
  *  lb_halo_dequeue_recv
@@ -1327,7 +1377,7 @@ int lb_halo_post(lb_t * lb, lb_halo_t * h) {
       printf("here 2\n");
       tdpAssert( tdpStreamSynchronize(h->stream) );
       printf("here 3\n");
-    } else {
+    } //else {
       for (int ireq = 0; ireq < h->map.nvel; ireq++) {
         if (h->count[ireq] > 0) {
           int scount = h->count[ireq]*lb_halo_size(h->slim[ireq]);
@@ -1337,7 +1387,7 @@ int lb_halo_post(lb_t * lb, lb_halo_t * h) {
           tdpDeviceSynchronize();
         }
       }
-    }
+    //}
   } else {
     #pragma omp parallel
     {
@@ -1405,7 +1455,7 @@ int lb_halo_wait(lb_t * lb, lb_halo_t * h) {
       printf("here 5\n");
       tdpAssert( tdpStreamSynchronize(h->stream) );
       printf("here 6\n");
-    } else {
+    } //else {
       for (int ireq = 0; ireq < h->map.nvel; ireq++) {
         if (h->count[ireq] > 0) {
           int rcount = h->count[ireq]*lb_halo_size(h->slim[ireq]);
@@ -1415,7 +1465,7 @@ int lb_halo_wait(lb_t * lb, lb_halo_t * h) {
           tdpDeviceSynchronize();
         }
       }
-    }
+    //}
   } else {
     #pragma omp parallel
     {
@@ -1766,7 +1816,8 @@ int lb_graph_halo_send_create(const lb_t * lb, lb_halo_t * h, int * send_count) 
     void * kernelArgs[3] = {(void *) &lb->target,
                             (void *) &h->target,
                             (void *) &ireq};
-    kernelNodeParams.func = (void *) lb_halo_enqueue_send_kernel;
+    kernelNodeParams.func = (void *) lb_halo_enqueue_send_kernel_2;
+    //kernelNodeParams.func = (void *) lb_null_kernel;
     dim3 nblk;
     dim3 ntpb;
     int scount = send_count[ireq]*lb_halo_size(h->slim[ireq]);
@@ -1876,7 +1927,8 @@ int lb_graph_halo_recv_create(const lb_t * lb, lb_halo_t * h, int * recv_count) 
     void * kernelArgs[3] = {(void *) &lb->target,
                             (void *) &h->target,
                             (void *) &ireq};
-    kernelNodeParams.func = (void *) lb_halo_dequeue_recv_kernel;
+    //kernelNodeParams.func = (void *) lb_halo_dequeue_recv_kernel;
+    kernelNodeParams.func = (void *) lb_null_kernel;
 
     kernel_launch_param(rcount, &nblk, &ntpb);
 
