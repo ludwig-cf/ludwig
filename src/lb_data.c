@@ -63,6 +63,8 @@ static const int have_gpu_aware_mpi_ = 1;
 static const int have_gpu_aware_mpi_ = 0;
 #endif
 
+__global__ void lb_null_kernel(const lb_t * lb, lb_halo_t * h, int ireq) {};
+
 void copyModelToDevice(lb_model_t *h_model, lb_model_t *d_model) {
     int nvel = h_model->nvel;
     // Allocate memory on the GPU for the arrays in the struct
@@ -935,6 +937,54 @@ __global__ void lb_halo_enqueue_send_kernel(const lb_t * lb, lb_halo_t * h, int 
   }
 }
 
+__global__ void lb_halo_enqueue_send_kernel_2(const lb_t * lb, lb_halo_t * h, int ireq) {
+
+  assert(0 <= ireq && ireq < h->map.nvel);
+
+  if (h->count[ireq] > 0) {
+
+    int8_t mx = h->map.cv[ireq][X];
+    int8_t my = h->map.cv[ireq][Y];
+    int8_t mz = h->map.cv[ireq][Z];
+    int8_t mm = mx*mx + my*my + mz*mz;
+
+    int nx = 1 + h->slim[ireq].imax - h->slim[ireq].imin;
+    int ny = 1 + h->slim[ireq].jmax - h->slim[ireq].jmin;
+    int nz = 1 + h->slim[ireq].kmax - h->slim[ireq].kmin;
+
+    int strz = 1;
+    int stry = strz*nz;
+    int strx = stry*ny;
+
+    assert(mm == 1 || mm == 2 || mm == 3);
+
+	  int ih = 0;
+    for_simt_parallel (ih, nx*ny*nz, 1) {
+      int ic = h->slim[ireq].imin + ih/strx;
+      int jc = h->slim[ireq].jmin + (ih % strx)/stry;
+      int kc = h->slim[ireq].kmin + (ih % stry)/strz;
+      int ib = 0; /* Buffer index */
+
+      for (int n = 0; n < lb->ndist; n++) {
+	      for (int p = 0; p < lb->nvel; p++) {
+	        /* Recall, if full, we need p = 0 */
+	        //int8_t px = lb->model.cv[p][X];
+	        //int8_t py = lb->model.cv[p][Y];
+	        //int8_t pz = lb->model.cv[p][Z];
+	        //int dot = mx*px + my*py + mz*pz;
+	        //if (h->full || dot == mm) {
+	        if (h->full ) {
+	        //  //int index = cs_index(lb->cs, ic, jc, kc);
+	        //  //int laddr = LB_ADDR(lb->nsite, lb->ndist, lb->nvel, index, n, p);
+	        //  //h->send[ireq][ih*h->count[ireq] + ib] = lb->f[laddr];
+	          ib++;
+	        }
+	      }
+      }
+      //assert(ib == h->count[ireq]);
+    }
+  }
+}
 /*****************************************************************************
  *
  *  lb_halo_dequeue_recv
@@ -1254,6 +1304,11 @@ int lb_halo_create(const lb_t * lb, lb_halo_t * h, lb_halo_enum_t scheme) {
 			 tdpMemcpyHostToDevice) );
     tdpAssert( tdpMemcpy(h->target->recv, h->recv_d, 27*sizeof(double *),
 			 tdpMemcpyHostToDevice) );
+    
+    if (have_graph_api_) {
+      lb_graph_halo_send_create(lb, h, h->count);
+      lb_graph_halo_recv_create(lb, h, h->count);
+    }
 
     if (have_graph_api_) {
       lb_graph_halo_send_create(lb, h, send_count);
@@ -1321,12 +1376,15 @@ int lb_halo_post(lb_t * lb, lb_halo_t * h) {
   if (ndevice > 0) {
     copyModelToDevice(&lb->model, &lb->target->model);
     copyModelToDevice(&h->map, &h->target->map);
-    for (int ireq = 0; ireq < h->map.nvel; ireq++) {
-      if (h->count[ireq] > 0) {
-        if (have_graph_api_) {
-          tdpAssert( tdpGraphLaunch(h->gsend.exec, h->stream) );
-          tdpAssert( tdpStreamSynchronize(h->stream) );
-        } else {
+    if (have_graph_api_) {
+      printf("here 1\n");
+      tdpAssert( tdpGraphLaunch(h->gsend.exec, h->stream) );
+      printf("here 2\n");
+      tdpAssert( tdpStreamSynchronize(h->stream) );
+      printf("here 3\n");
+    } //else {
+      for (int ireq = 0; ireq < h->map.nvel; ireq++) {
+        if (h->count[ireq] > 0) {
           int scount = h->count[ireq]*lb_halo_size(h->slim[ireq]);
           dim3 nblk, ntpb;
           kernel_launch_param(scount, &nblk, &ntpb);
@@ -1334,7 +1392,7 @@ int lb_halo_post(lb_t * lb, lb_halo_t * h) {
           tdpDeviceSynchronize();
         }
       }
-    }
+    //}
   } else {
     #pragma omp parallel
     {
@@ -1396,12 +1454,15 @@ int lb_halo_wait(lb_t * lb, lb_halo_t * h) {
   int ndevice;
   tdpGetDeviceCount(&ndevice);
   if (ndevice > 0) {
-    for (int ireq = 0; ireq < h->map.nvel; ireq++) {
-      if (h->count[ireq] > 0) {
-        if (have_graph_api_) {
-          tdpAssert( tdpGraphLaunch(h->grecv.exec, h->stream) );
-          tdpAssert( tdpStreamSynchronize(h->stream) );
-        } else {
+    if (have_graph_api_) {
+      printf("here 4\n");
+      tdpAssert( tdpGraphLaunch(h->grecv.exec, h->stream) );
+      printf("here 5\n");
+      tdpAssert( tdpStreamSynchronize(h->stream) );
+      printf("here 6\n");
+    } //else {
+      for (int ireq = 0; ireq < h->map.nvel; ireq++) {
+        if (h->count[ireq] > 0) {
           int rcount = h->count[ireq]*lb_halo_size(h->slim[ireq]);
           dim3 nblk, ntpb;
           kernel_launch_param(rcount, &nblk, &ntpb);
@@ -1409,7 +1470,7 @@ int lb_halo_wait(lb_t * lb, lb_halo_t * h) {
           tdpDeviceSynchronize();
         }
       }
-    }
+    //}
   } else {
     #pragma omp parallel
     {
@@ -1458,11 +1519,16 @@ int lb_halo_free(lb_t * lb, lb_halo_t * h) {
   }
 
   if (have_graph_api_) {
+    printf("here 7\n");
     tdpAssert( tdpGraphDestroy(h->gsend.graph) );
+    printf("here 8\n");
     tdpAssert( tdpGraphDestroy(h->grecv.graph) );
+    printf("here 9\n");
   }
 
+  tdpAssert( tdpStreamDestroy(h->stream) );
   lb_model_free(&h->map);
+  *h = (lb_halo_t) {0};
 
   return 0;
 }
@@ -1755,7 +1821,8 @@ int lb_graph_halo_send_create(const lb_t * lb, lb_halo_t * h, int * send_count) 
     void * kernelArgs[3] = {(void *) &lb->target,
                             (void *) &h->target,
                             (void *) &ireq};
-    kernelNodeParams.func = (void *) lb_halo_enqueue_send_kernel;
+    kernelNodeParams.func = (void *) lb_halo_enqueue_send_kernel_2;
+    //kernelNodeParams.func = (void *) lb_null_kernel;
     dim3 nblk;
     dim3 ntpb;
     int scount = send_count[ireq]*lb_halo_size(h->slim[ireq]);
@@ -1774,35 +1841,35 @@ int lb_graph_halo_send_create(const lb_t * lb, lb_halo_t * h, int * send_count) 
     if (have_gpu_aware_mpi_) {
       /* Don't need explicit device -> host copy */
     }
-//    else {
-//      /* We do need to add the memcpys to the graph definition
-//       * (except messages to self... ) */
-//
-//      int i = 1 + h->cv[h->nvel - ireq][X];
-//      int j = 1 + h->cv[h->nvel - ireq][Y];
-//      int k = 1 + h->cv[h->nvel - ireq][Z];
-//
-//      if (h->nbrrank[i][j][k] != h->nbrrank[1][1][1]) {
-//	tdpGraphNode_t memcpyNode;
-//        tdpMemcpy3DParms memcpyParams = {0};
-//
-//	memcpyParams.srcArray = NULL;
-//	memcpyParams.srcPos   = make_tdpPos(0, 0, 0);
-//	memcpyParams.srcPtr   = make_tdpPitchedPtr(h->send_d[ireq],
-//						   sizeof(double)*scount,
-//						   scount, 1);
-//	memcpyParams.dstArray = NULL;
-//	memcpyParams.dstPos   = make_tdpPos(0, 0, 0);
-//	memcpyParams.dstPtr   = make_tdpPitchedPtr(h->send[ireq],
-//						   sizeof(double)*scount,
-//						   scount, 1);
-//	memcpyParams.extent   = make_tdpExtent(sizeof(double)*scount, 1, 1);
-//	memcpyParams.kind     = tdpMemcpyDeviceToHost;
-//
-//	tdpAssert( tdpGraphAddMemcpyNode(&memcpyNode, h->gsend.graph,
-//					 &kernelNode, 1, &memcpyParams) );
-//      }
-//    }
+    else {
+      /* We do need to add the memcpys to the graph definition
+       * (except messages to self... ) */
+
+      int i = 1 + h->map.cv[h->map.nvel - ireq][X];
+      int j = 1 + h->map.cv[h->map.nvel - ireq][Y];
+      int k = 1 + h->map.cv[h->map.nvel - ireq][Z];
+
+      if (h->nbrrank[i][j][k] != h->nbrrank[1][1][1]) {
+	      tdpGraphNode_t memcpyNode;
+        tdpMemcpy3DParms memcpyParams = {0};
+
+	      memcpyParams.srcArray = NULL;
+	      memcpyParams.srcPos   = make_tdpPos(0, 0, 0);
+	      memcpyParams.srcPtr   = make_tdpPitchedPtr(h->send_d[ireq],
+						   sizeof(double)*scount,
+						   scount, 1);
+	      memcpyParams.dstArray = NULL;
+	      memcpyParams.dstPos   = make_tdpPos(0, 0, 0);
+	      memcpyParams.dstPtr   = make_tdpPitchedPtr(h->send[ireq],
+						   sizeof(double)*scount,
+						   scount, 1);
+	      memcpyParams.extent   = make_tdpExtent(sizeof(double)*scount, 1, 1);
+	      memcpyParams.kind     = tdpMemcpyDeviceToHost;
+
+	      tdpAssert( tdpGraphAddMemcpyNode(&memcpyNode, h->gsend.graph,
+					 &kernelNode, 1, &memcpyParams) );
+      }
+    }
   }
 
   tdpAssert( tdpGraphInstantiate(&h->gsend.exec, h->gsend.graph, 0) );
@@ -1830,31 +1897,31 @@ int lb_graph_halo_recv_create(const lb_t * lb, lb_halo_t * h, int * recv_count) 
     if (have_gpu_aware_mpi_) {
       /* Don't need explicit copies */
     }
-//    else {
-//      int i = 1 + h->cv[h->nvel - ireq][X];
-//      int j = 1 + h->cv[h->nvel - ireq][Y];
-//      int k = 1 + h->cv[h->nvel - ireq][Z];
-//
-//      if (h->nbrrank[i][j][k] != h->nbrrank[1][1][1]) {
-//	tdpMemcpy3DParms memcpyParams = {0};
-//
-//	memcpyParams.srcArray = NULL;
-//	memcpyParams.srcPos   = make_tdpPos(0, 0, 0);
-//	memcpyParams.srcPtr   = make_tdpPitchedPtr(h->recv[ireq],
-//						   sizeof(double)*rcount,
-//						   rcount, 1);
-//	memcpyParams.dstArray = NULL;
-//	memcpyParams.dstPos   = make_tdpPos(0, 0, 0);
-//	memcpyParams.dstPtr   = make_tdpPitchedPtr(h->recv_d[ireq],
-//						   sizeof(double)*rcount,
-//						   rcount, 1);
-//	memcpyParams.extent   = make_tdpExtent(sizeof(double)*rcount, 1, 1);
-//	memcpyParams.kind     = tdpMemcpyHostToDevice;
-//
-//	tdpAssert( tdpGraphAddMemcpyNode(&memcpyNode, h->grecv.graph, NULL,
-//					 0, &memcpyParams) );
-//      }
-//    }
+    else {
+      int i = 1 + h->map.cv[h->map.nvel - ireq][X];
+      int j = 1 + h->map.cv[h->map.nvel - ireq][Y];
+      int k = 1 + h->map.cv[h->map.nvel - ireq][Z];
+
+      if (h->nbrrank[i][j][k] != h->nbrrank[1][1][1]) {
+	      tdpMemcpy3DParms memcpyParams = {0};
+
+	      memcpyParams.srcArray = NULL;
+	      memcpyParams.srcPos   = make_tdpPos(0, 0, 0);
+	      memcpyParams.srcPtr   = make_tdpPitchedPtr(h->recv[ireq],
+						   sizeof(double)*rcount,
+						   rcount, 1);
+	      memcpyParams.dstArray = NULL;
+	      memcpyParams.dstPos   = make_tdpPos(0, 0, 0);
+	      memcpyParams.dstPtr   = make_tdpPitchedPtr(h->recv_d[ireq],
+						   sizeof(double)*rcount,
+						   rcount, 1);
+        memcpyParams.extent   = make_tdpExtent(sizeof(double)*rcount, 1, 1);
+        memcpyParams.kind     = tdpMemcpyHostToDevice;
+
+	      tdpAssert( tdpGraphAddMemcpyNode(&memcpyNode, h->grecv.graph, NULL,
+					 0, &memcpyParams) );
+      }
+    }
 
     /* Always need the dis-aggregateion kernel */
 
@@ -1865,7 +1932,8 @@ int lb_graph_halo_recv_create(const lb_t * lb, lb_halo_t * h, int * recv_count) 
     void * kernelArgs[3] = {(void *) &lb->target,
                             (void *) &h->target,
                             (void *) &ireq};
-    kernelNodeParams.func = (void *) lb_halo_dequeue_recv_kernel;
+    //kernelNodeParams.func = (void *) lb_halo_dequeue_recv_kernel;
+    kernelNodeParams.func = (void *) lb_null_kernel;
 
     kernel_launch_param(rcount, &nblk, &ntpb);
 
@@ -1879,19 +1947,19 @@ int lb_graph_halo_recv_create(const lb_t * lb, lb_halo_t * h, int * recv_count) 
       tdpAssert( tdpGraphAddKernelNode(&node, h->grecv.graph, NULL,
 				       0, &kernelNodeParams) );
     }
-//    else {
-//      int i = 1 + h->cv[h->nvel - ireq][X];
-//      int j = 1 + h->cv[h->nvel - ireq][Y];
-//      int k = 1 + h->cv[h->nvel - ireq][Z];
-//      if (h->nbrrank[i][j][k] != h->nbrrank[1][1][1]) {
-//	tdpAssert( tdpGraphAddKernelNode(&node, h->grecv.graph, &memcpyNode,
-//					 1, &kernelNodeParams) );
-//      }
-//      else {
-//	tdpAssert( tdpGraphAddKernelNode(&node, h->grecv.graph, NULL, 0,
-//					 &kernelNodeParams) );
-//      }
-//    }
+    else {
+      int i = 1 + h->map.cv[h->map.nvel - ireq][X];
+      int j = 1 + h->map.cv[h->map.nvel - ireq][Y];
+      int k = 1 + h->map.cv[h->map.nvel - ireq][Z];
+      if (h->nbrrank[i][j][k] != h->nbrrank[1][1][1]) {
+	      tdpAssert( tdpGraphAddKernelNode(&node, h->grecv.graph, &memcpyNode,
+					 1, &kernelNodeParams) );
+      }
+      else {
+	      tdpAssert( tdpGraphAddKernelNode(&node, h->grecv.graph, NULL, 0,
+					 &kernelNodeParams) );
+      }
+    }
   }
 
   tdpAssert( tdpGraphInstantiate(&h->grecv.exec, h->grecv.graph, 0) );

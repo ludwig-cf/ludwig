@@ -48,6 +48,12 @@ enum {NDIM = 3, NVEL = 27};
 typedef struct lb_collide_param_s lb_collide_param_t;
 typedef struct lb_halo_s lb_halo_t;
 typedef struct lb_data_s lb_t;
+typedef struct lb_graph_halo_s lb_graph_halo_t;
+
+struct lb_graph_halo_s {
+  tdpGraph_t graph;
+  tdpGraphExec_t exec;
+};
 
 typedef struct lb_graph_halo_s lb_graph_halo_t;
 
@@ -101,7 +107,7 @@ struct lb_halo_s {
   double * send_d[27];            /* halo: device send buffer per direction */
   double * recv_d[27];            /* halo: device recv buffer per direction */
   
-  lb_graph_halo_t gsend;     /* Graph API halo swap */
+  lb_graph_halo_t gsend;          /* Graph API halo swap */
   lb_graph_halo_t grecv;
 };
 

@@ -1755,24 +1755,24 @@ int field_graph_halo_send_create(const field_t * field, field_halo_t * h) {
       int k = 1 + h->cv[h->nvel - ireq][Z];
 
       if (h->nbrrank[i][j][k] != h->nbrrank[1][1][1]) {
-	tdpGraphNode_t memcpyNode;
+	      tdpGraphNode_t memcpyNode;
         tdpMemcpy3DParms memcpyParams = {0};
 
-	memcpyParams.srcArray = NULL;
-	memcpyParams.srcPos   = make_tdpPos(0, 0, 0);
-	memcpyParams.srcPtr   = make_tdpPitchedPtr(h->send_d[ireq],
+	      memcpyParams.srcArray = NULL;
+	      memcpyParams.srcPos   = make_tdpPos(0, 0, 0);
+	      memcpyParams.srcPtr   = make_tdpPitchedPtr(h->send_d[ireq],
 						   sizeof(double)*scount,
 						   scount, 1);
-	memcpyParams.dstArray = NULL;
-	memcpyParams.dstPos   = make_tdpPos(0, 0, 0);
-	memcpyParams.dstPtr   = make_tdpPitchedPtr(h->send[ireq],
+	      memcpyParams.dstArray = NULL;
+	      memcpyParams.dstPos   = make_tdpPos(0, 0, 0);
+	      memcpyParams.dstPtr   = make_tdpPitchedPtr(h->send[ireq],
 						   sizeof(double)*scount,
 						   scount, 1);
-	memcpyParams.extent   = make_tdpExtent(sizeof(double)*scount, 1, 1);
-	memcpyParams.kind     = tdpMemcpyDeviceToHost;
+	      memcpyParams.extent   = make_tdpExtent(sizeof(double)*scount, 1, 1);
+	      memcpyParams.kind     = tdpMemcpyDeviceToHost;
 
-	tdpAssert( tdpGraphAddMemcpyNode(&memcpyNode, h->gsend.graph,
-					 &kernelNode, 1, &memcpyParams) );
+	      tdpAssert( tdpGraphAddMemcpyNode(&memcpyNode, h->gsend.graph,
+	      				 &kernelNode, 1, &memcpyParams) );
       }
     }
   }
