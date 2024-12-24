@@ -9,7 +9,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2012-2023 The University of Edinburgh
+ *  (c) 2012-2024 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -42,13 +42,13 @@ int psi_create(pe_t * pe, cs_t * cs, const psi_options_t * opts,
 
   ifail = psi_initialise(pe, cs, opts, psi);
   if (ifail != 0) goto err;
-  
+
   *pobj = psi;
 
   return 0;
 
  err:
-  if (psi) free(psi);
+  free(psi);
   return -1;
 }
 
@@ -169,7 +169,7 @@ int psi_halo_psi(psi_t * psi) {
 
   assert(psi);
 
-  /* Fudge device implmentation at the moment */
+  /* Fudge device implementation at the moment */
   field_memcpy(psi->psi, tdpMemcpyHostToDevice);
   field_halo(psi->psi);
   field_memcpy(psi->psi, tdpMemcpyDeviceToHost);
@@ -588,7 +588,7 @@ int psi_zero_mean(psi_t * psi) {
 
   cs_ltot(psi->cs, ltot);
   cs_nhalo(psi->cs, &nhalo);
-  cs_nlocal(psi->cs, nlocal);  
+  cs_nlocal(psi->cs, nlocal);
   cs_cart_comm(psi->cs, &comm);
 
   sum_local = 0.0;
@@ -681,7 +681,7 @@ int psi_halo_psijump(psi_t * psi) {
 	    /* Borrow fluid site ic = 1 */
 	    index1 = cs_index(psi->cs, 1, jc, kc);
 	    psidata[addr_rank0(psi->nsites, index)] =
-	      psidata[addr_rank0(psi->nsites, index1)];   
+	      psidata[addr_rank0(psi->nsites, index1)];
 	  }
 	}
       }
@@ -705,11 +705,11 @@ int psi_halo_psijump(psi_t * psi) {
 	    /* Borrow fluid site at end ... */
 	    index1 = cs_index(psi->cs, nlocal[X], jc, kc);
 	    psidata[addr_rank0(psi->nsites, index)] =
-	      psidata[addr_rank0(psi->nsites, index1)];   
+	      psidata[addr_rank0(psi->nsites, index1)];
 	  }
 	}
       }
-    }  
+    }
   }
 
   if (mpicoords[Y] == 0) {
@@ -728,11 +728,11 @@ int psi_halo_psijump(psi_t * psi) {
 	      /* Not periodic ... just borrow from fluid site jc = 1 */
 	      index1 = cs_index(psi->cs, ic, 1, kc);
 	      psidata[addr_rank0(psi->nsites, index)] =
-		psidata[addr_rank0(psi->nsites, index1)];   
+		psidata[addr_rank0(psi->nsites, index1)];
 	    }
 	}
       }
-    }  
+    }
 
   }
 
@@ -752,11 +752,11 @@ int psi_halo_psijump(psi_t * psi) {
 	    /* Borrow fluid site at end */
 	    index1 = cs_index(psi->cs, ic, nlocal[Y], kc);
 	    psidata[addr_rank0(psi->nsites, index)] =
-	      psidata[addr_rank0(psi->nsites, index1)];   
+	      psidata[addr_rank0(psi->nsites, index1)];
 	  }
 	}
       }
-    }  
+    }
 
   }
 
@@ -776,11 +776,11 @@ int psi_halo_psijump(psi_t * psi) {
 	    /* Borrow fluid site kc = 1 */
 	    index1 = cs_index(psi->cs, ic, jc, 1);
 	    psidata[addr_rank0(psi->nsites, index)] =
-	      psidata[addr_rank0(psi->nsites, index1)];   
+	      psidata[addr_rank0(psi->nsites, index1)];
 	  }
 	}
       }
-    }  
+    }
 
   }
 
@@ -800,11 +800,11 @@ int psi_halo_psijump(psi_t * psi) {
 	    /* Borrow fluid site at end ... */
 	    index1 = cs_index(psi->cs, ic, jc, nlocal[Z]);
 	    psidata[addr_rank0(psi->nsites, index)] =
-	      psidata[addr_rank0(psi->nsites, index1)];   
+	      psidata[addr_rank0(psi->nsites, index1)];
 	  }
 	}
       }
-    }  
+    }
 
   }
 
@@ -862,8 +862,8 @@ int psi_output_step(psi_t * psi, int its) {
  *  To ensure overall electroneutrality, we consider the following:
  *
  *   (1) assume surface charges have been assigned
- *   (2) assume the fluid is initialised with the backgound charge density
- *       of the electrolyte 
+ *   (2) assume the fluid is initialised with the background charge density
+ *       of the electrolyte
  *   (3) assume some number of colloids has been initialised, each
  *       with a given charge.
  *

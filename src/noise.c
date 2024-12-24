@@ -67,7 +67,7 @@ int noise_create(pe_t * pe, cs_t * cs, const noise_options_t * options,
   return 0;
 
  err:
-  if (obj) free(obj);
+  free(obj);
 
   return -1;
 }
@@ -259,7 +259,7 @@ int noise_finalise(noise_t * ns) {
   if (ns->output.cs) io_metadata_finalise(&ns->output);
   if (ns->input.cs)  io_metadata_finalise(&ns->input);
 
-  if (ns->state) free(ns->state);
+  free(ns->state);
 
   *ns = (noise_t) {};
 

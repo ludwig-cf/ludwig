@@ -109,8 +109,8 @@ __host__ void colloids_info_free(colloids_info_t * info) {
   colloids_info_cell_list_clean(info);
 
   free(info->clist);
-  if (info->map_old) free(info->map_old);
-  if (info->map_new) free(info->map_new);
+  free(info->map_old);
+  free(info->map_new);
 
   if (info->target != info) tdpAssert(tdpFree(info->target));
 
@@ -174,6 +174,8 @@ __host__ int colloids_info_recreate(int newcell[3], colloids_info_t ** pinfo) {
 /*****************************************************************************
  *
  *  colloids_memcpy
+ *
+ *  FIXME: flag is unused
  *
  *****************************************************************************/
 

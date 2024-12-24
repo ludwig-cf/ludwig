@@ -112,7 +112,7 @@ __host__ int pth_free(pth_t * pth) {
     tdpAssert( tdpFree(pth->target) );
   }
 
-  if (pth->str) free(pth->str);
+  free(pth->str);
   free(pth);
 
   return 0;

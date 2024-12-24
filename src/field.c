@@ -168,7 +168,7 @@ __host__ int field_free(field_t * obj) {
     tdpAssert( tdpFree(obj->target) );
   }
 
-  if (obj->data) free(obj->data);
+  free(obj->data);
 
   field_halo_free(&obj->h);
 
@@ -1681,6 +1681,8 @@ int field_io_write(field_t * field, int timestep, io_event_t * event) {
 /*****************************************************************************
  *
  *  field_io_read
+ *
+ *  FIXME io_event is unused
  *
  *****************************************************************************/
 

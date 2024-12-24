@@ -8,7 +8,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2021-2022 The University of Edinburgh
+ *  (c) 2021-2024 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -108,9 +108,9 @@ int lb_model_free(lb_model_t * model) {
     free(model->ma);
   }
 
-  if (model->na) free(model->na);
-  if (model->cv) free(model->cv);
-  if (model->wv) free(model->wv);
+  free(model->na);
+  free(model->cv);
+  free(model->wv);
 
   *model = (lb_model_t) {0};
 
