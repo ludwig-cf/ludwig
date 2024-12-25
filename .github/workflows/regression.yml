@@ -94,7 +94,7 @@ jobs:
 
   d2q9-mpi:
     name: d2q9 / mpi
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
 
     steps:
     - name: Checkout repository
