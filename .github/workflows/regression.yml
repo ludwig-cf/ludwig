@@ -95,17 +95,14 @@ jobs:
   d2q9-mpi:
     name: d2q9 / mpi
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        mpi: ['openmpi']
 
     steps:
     - name: Checkout repository
       uses: actions/checkout@v4
-      with:
-        mpi: ${{ matrix.mpi }}
     - name: Set up MPI
       uses: mpi4py/setup-mpi@v1
+      with:
+        mpi: openmpi
     - run: mpicc --version
     - run: cp config/github-mpicc.mk config.mk
     - run: make -j 2
