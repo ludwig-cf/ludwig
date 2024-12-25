@@ -115,6 +115,9 @@ jobs:
   d3q15-mpi:
     name: d3q15 / mpi
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        mpi: ['openmpi']
 
     steps:
     - name: Checkout repository
