@@ -648,7 +648,7 @@ int noise_io_write(noise_t * ns, int timestep, io_event_t * event) {
       if (meta->options.report) {
 	pe_info(ns->pe, "Wrote noise state to file: %s\n", filename);
       }
-      io_event_report(event, meta, ns->options.filestub);
+      io_event_report_write(event, meta, ns->options.filestub);
     }
   }
 

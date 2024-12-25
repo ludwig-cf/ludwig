@@ -175,8 +175,6 @@ __host__ int colloids_info_recreate(int newcell[3], colloids_info_t ** pinfo) {
  *
  *  colloids_memcpy
  *
- *  FIXME: flag is unused
- *
  *****************************************************************************/
 
 __host__ int colloids_memcpy(colloids_info_t * info, int flag) {
@@ -193,11 +191,16 @@ __host__ int colloids_memcpy(colloids_info_t * info, int flag) {
     assert((info->target == info));
   }
   else {
-    colloid_t * tmp;
-    tdpAssert(tdpMemcpy(&tmp, &info->target->map_new, sizeof(colloid_t **),
-			tdpMemcpyDeviceToHost));
-    tdpAssert(tdpMemcpy(tmp, info->map_new, info->nsites*sizeof(colloid_t *),
-			tdpMemcpyHostToDevice));
+    if (flag == tdpMemcpyHostToDevice) {
+      colloid_t * tmp;
+      tdpAssert(tdpMemcpy(&tmp, &info->target->map_new, sizeof(colloid_t **),
+			  tdpMemcpyDeviceToHost));
+      tdpAssert(tdpMemcpy(tmp, info->map_new, info->nsites*sizeof(colloid_t *),
+			  tdpMemcpyHostToDevice));
+    }
+    else {
+      pe_exit(info->pe, "Bad flag in colloids_memcpy()\n");
+    }
   }
 
   return 0;

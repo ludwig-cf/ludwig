@@ -1417,7 +1417,7 @@ int lb_io_write(lb_t * lb, int timestep, io_event_t * event) {
       }
 
       io->impl->free(&io);
-      io_event_report(event, meta, "dist");
+      io_event_report_write(event, meta, "dist");
     }
   }
 

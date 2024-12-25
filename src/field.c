@@ -1672,7 +1672,7 @@ int field_io_write(field_t * field, int timestep, io_event_t * event) {
     }
 
     io->impl->free(&io);
-    io_event_report(event, meta, field->name);
+    io_event_report_write(event, meta, field->name);
   }
 
   return ifail;
@@ -1681,8 +1681,6 @@ int field_io_write(field_t * field, int timestep, io_event_t * event) {
 /*****************************************************************************
  *
  *  field_io_read
- *
- *  FIXME io_event is unused
  *
  *****************************************************************************/
 
@@ -1699,9 +1697,16 @@ int field_io_read(field_t * field, int timestep, io_event_t * event) {
   assert(ifail == 0);
 
   if (ifail == 0) {
+    io_event_record(event, IO_EVENT_READ);
     io->impl->read(io, filename);
+    io_event_record(event, IO_EVENT_DISAGGR);
     field_io_aggr_unpack(field, io->aggr);
     io->impl->free(&io);
+
+    if (meta->options.report) {
+      pe_info(field->pe, "MPIIO read from %s\n", filename);
+      io_event_report_read(event, meta, field->name);
+    }
   }
 
   return ifail;
@@ -1709,7 +1714,7 @@ int field_io_read(field_t * field, int timestep, io_event_t * event) {
 
 /*****************************************************************************
  *
- * field_graph_halo_send_create
+ *  field_graph_halo_send_create
  *
  *****************************************************************************/
 
