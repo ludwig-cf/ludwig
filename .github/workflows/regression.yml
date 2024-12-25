@@ -94,7 +94,7 @@ jobs:
 
   d2q9-mpi:
     name: d2q9 / mpi
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-latest
     strategy:
       matrix:
         mpi: ['openmpi']
@@ -102,6 +102,8 @@ jobs:
     steps:
     - name: Checkout repository
       uses: actions/checkout@v4
+      with:
+        mpi: ${{ matrix.mpi }}
     - name: Set up MPI
       uses: mpi4py/setup-mpi@v1
     - run: mpicc --version
@@ -114,10 +116,7 @@ jobs:
   
   d3q15-mpi:
     name: d3q15 / mpi
-    runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        mpi: ['openmpi']
+    runs-on: ubuntu-22.04
 
     steps:
     - name: Checkout repository
