@@ -95,6 +95,9 @@ jobs:
   d2q9-mpi:
     name: d2q9 / mpi
     runs-on: ubuntu-22.04
+    strategy:
+      matrix:
+        mpi: ['openmpi']
 
     steps:
     - name: Checkout repository
