@@ -264,8 +264,6 @@ int fe_electro_mu(fe_electro_t * fe, int index, double * mu) {
  *  This is a dummy which just returns zero, as an implementation is
  *  required. Physically, there is no solvation chemical potential.
  *
- *  FIXME
- *
  ****************************************************************************/
 
 __host__
