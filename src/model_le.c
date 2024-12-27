@@ -742,8 +742,8 @@ typedef struct lek_s {
   int nxdist;           /* total distributions crossing plane (local) */
   int nxbuff;           /* size of crossing buffer (2 x nplane x nxbuff) */
   int nprop;            /* no. distributions crossing (9  maximum in 3d) */
-  int8_t prop[2][9];    /* prop[0] is side 0 (cx +ve); */
-                        /* prop[1] is side 1 (cx -ve); */
+  int8_t prop[2][9];    /* prop[0] is side 0 (cx +ve) */
+                        /* prop[1] is side 1 (cx -ve) */
                         /* p values of cross-plane propagating distributions */
 } le_kernel_helper_t;
 
