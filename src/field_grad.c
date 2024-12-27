@@ -298,11 +298,11 @@ __host__ void field_grad_free(field_grad_t * obj) {
     tdpAssert( tdpFree(obj->target) );
   }
 
-  if (obj->grad) free(obj->grad);
-  if (obj->delsq) free(obj->delsq);
-  if (obj->grad_delsq) free(obj->grad_delsq);
-  if (obj->delsq_delsq) free(obj->delsq_delsq);
-  if (obj->d_ab) free(obj->d_ab);
+  free(obj->grad);
+  free(obj->delsq);
+  free(obj->grad_delsq);
+  free(obj->delsq_delsq);
+  free(obj->d_ab);
 
   obj->field = NULL;
   free(obj);

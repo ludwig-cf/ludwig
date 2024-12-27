@@ -155,14 +155,15 @@ __host__ int wall_free(wall_t * wall) {
   free(wall->param);
 
   /* slip quantities */
-  if (wall->linkk) free(wall->linkk);
-  if (wall->linkq) free(wall->linkq);
-  if (wall->links) free(wall->links);
 
-  if (wall->linki) free(wall->linki);
-  if (wall->linkj) free(wall->linkj);
-  if (wall->linkp) free(wall->linkp);
-  if (wall->linku) free(wall->linku);
+  free(wall->linkk);
+  free(wall->linkq);
+  free(wall->links);
+
+  free(wall->linki);
+  free(wall->linkj);
+  free(wall->linkp);
+  free(wall->linku);
 
   free(wall);
 

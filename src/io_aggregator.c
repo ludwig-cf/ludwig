@@ -8,7 +8,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2022 The University of Edinburgh
+ *  (c) 2022-2024 The University of Edinburgh
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *
@@ -43,7 +43,7 @@ int io_aggregator_create(io_element_t el, cs_limits_t lim,
   return 0;
 
  err:
-  if (newaggr) free(newaggr);
+  free(newaggr);
   return -1;
 }
 
