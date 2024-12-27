@@ -147,7 +147,7 @@ struct tdp_double3_s {
 #endif
 
 typedef enum tdpError tdpError_t;     /* an enum type */
-typedef int * tdpStream_t;            /* an opaque handle */
+typedef int  tdpStream_t;             /* an opaque handle */
 
 /* Incomplete. */
 struct tdpDeviceProp {

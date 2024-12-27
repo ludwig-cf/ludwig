@@ -607,7 +607,6 @@ __host__ int lb_collision_binary(lb_t * lb, hydro_t * hydro, noise_t * noise,
 
   int nlocal[3] = {0};
 
-  assert (NDIM == 3); /* NDIM = 2 warrants additional tests here. */
   assert(lb);
   assert(hydro);
   assert(fe);
@@ -709,28 +708,28 @@ __device__ void lb_collision_mrt2_site(lb_t * lb, hydro_t * hydro,
 				      fe_symm_t * fe, noise_t * noise,
 				      const int index0) {
   int ia, ib, m, p;
-  double f[NVEL*NSIMDVL];
-  double mode[NVEL*NSIMDVL];    /* Modes; hydrodynamic + ghost */
-  double rho[NSIMDVL];
-  double rrho[NSIMDVL];         /* Density, reciprocal density */
+  double f[NVEL*NSIMDVL] = {0};
+  double mode[NVEL*NSIMDVL] = {0};    /* Modes; hydrodynamic + ghost */
+  double rho[NSIMDVL] = {0};
+  double rrho[NSIMDVL] = {0};         /* Density, reciprocal density */
 
-  double u[3][NSIMDVL];         /* Velocity */
-  double s[3][3][NSIMDVL];      /* Stress */
-  double seq[3][3][NSIMDVL];    /* equilibrium stress */
-  double shat[3][3][NSIMDVL];   /* random stress */
-  double ghat[NVEL][NSIMDVL];   /* noise for ghosts */
+  double u[3][NSIMDVL] = {0};         /* Velocity */
+  double s[3][3][NSIMDVL] = {0};      /* Stress */
+  double seq[3][3][NSIMDVL] = {0};    /* equilibrium stress */
+  double shat[3][3][NSIMDVL] = {0};   /* random stress */
+  double ghat[NVEL][NSIMDVL] = {0};   /* noise for ghosts */
 
-  double force[3][NSIMDVL];     /* External force */
+  double force[3][NSIMDVL] = {0};     /* External force */
 
-  double tr_s[NSIMDVL];         /* Trace of stress */
-  double tr_seq[NSIMDVL];       /* Equilibrium value thereof */
-  double phi[NSIMDVL];          /* phi */
-  double jphi[3][NSIMDVL];      /* phi flux */
-  double jdotc[NSIMDVL];        /* Contraction jphi_a cv_ia */
-  double sphidotq[NSIMDVL];     /* phi second moment */
-  double sth[3][3][NSIMDVL];    /* stress */
-  double sphi[3][3][NSIMDVL];   /* stress */
-  double mu[NSIMDVL];           /* Chemical potential */
+  double tr_s[NSIMDVL] = {0};         /* Trace of stress */
+  double tr_seq[NSIMDVL] = {0};       /* Equilibrium value thereof */
+  double phi[NSIMDVL] = {0};          /* phi */
+  double jphi[3][NSIMDVL] = {0};      /* phi flux */
+  double jdotc[NSIMDVL] = {0};        /* Contraction jphi_a cv_ia */
+  double sphidotq[NSIMDVL] = {0};     /* phi second moment */
+  double sth[3][3][NSIMDVL] = {0};    /* stress */
+  double sphi[3][3][NSIMDVL] = {0};   /* stress */
+  double mu[NSIMDVL] = {0};           /* Chemical potential */
 
   const double r3 = 1.0/3.0;
   KRONECKER_DELTA_CHAR(d);
@@ -779,7 +778,7 @@ __device__ void lb_collision_mrt2_site(lb_t * lb, hydro_t * hydro,
   /* For convenience, write out the physical modes. */
 
   for_simd_v(iv, NSIMDVL) rho[iv] = mode[0*NSIMDVL+iv];
-  for (ia = 0; ia < 3; ia++) {
+  for (ia = 0; ia < NDIM; ia++) {
     for_simd_v(iv, NSIMDVL) u[ia][iv] = mode[(1 + ia)*NSIMDVL+iv];
   }
 
@@ -801,7 +800,7 @@ __device__ void lb_collision_mrt2_site(lb_t * lb, hydro_t * hydro,
 
   for_simd_v(iv, NSIMDVL) rrho[iv] = 1.0/rho[iv];
 
-  for (ia = 0; ia < 3; ia++) {
+  for (ia = 0; ia < NDIM; ia++) {
     for_simd_v(iv, NSIMDVL) {
       int haddr = addr_rank1(hydro->nsite, 3, index0 + iv, ia);
       force[ia][iv] = _cp.force_global[ia]  + hydro->force->data[haddr];
@@ -809,7 +808,7 @@ __device__ void lb_collision_mrt2_site(lb_t * lb, hydro_t * hydro,
     }
   }
 
-  for (ia = 0; ia < 3; ia++) {
+  for (ia = 0; ia < NDIM; ia++) {
     for_simd_v(iv, NSIMDVL) {
       int haddr = addr_rank1(hydro->nsite, 3, index0 + iv, ia);
       hydro->u->data[haddr] = u[ia][iv];
@@ -827,9 +826,9 @@ __device__ void lb_collision_mrt2_site(lb_t * lb, hydro_t * hydro,
     tr_seq[iv] = 0.0;
   }
 
-  for (ia = 0; ia < 3; ia++) {
+  for (ia = 0; ia < NDIM; ia++) {
     /* Set equilibrium stress, which includes thermodynamic part */
-    for (ib = 0; ib < 3; ib++) {
+    for (ib = 0; ib < NDIM; ib++) {
       for_simd_v(iv, NSIMDVL) {
 	seq[ia][ib][iv] = rho[iv]*u[ia][iv]*u[ib][iv] + sth[ia][ib][iv];
       }
@@ -842,7 +841,7 @@ __device__ void lb_collision_mrt2_site(lb_t * lb, hydro_t * hydro,
   }
 
   /* Form traceless parts */
-  for (ia = 0; ia < 3; ia++) {
+  for (ia = 0; ia < NDIM; ia++) {
     for_simd_v(iv, NSIMDVL) {
       s[ia][ia][iv]   -= r3*tr_s[iv];
       seq[ia][ia][iv] -= r3*tr_seq[iv];
@@ -854,8 +853,8 @@ __device__ void lb_collision_mrt2_site(lb_t * lb, hydro_t * hydro,
   for_simd_v(iv, NSIMDVL)
     tr_s[iv] = tr_s[iv] - _lbp.rtau[LB_TAU_BULK]*(tr_s[iv] - tr_seq[iv]);
 
-  for (ia = 0; ia < 3; ia++) {
-    for (ib = 0; ib < 3; ib++) {
+  for (ia = 0; ia < NDIM; ia++) {
+    for (ib = 0; ib < NDIM; ib++) {
 
       for_simd_v(iv, NSIMDVL) {
 	s[ia][ib][iv] -= _lbp.rtau[LB_TAU_SHEAR]*(s[ia][ib][iv] - seq[ia][ib][iv]);
@@ -880,8 +879,8 @@ __device__ void lb_collision_mrt2_site(lb_t * lb, hydro_t * hydro,
 
       lb_collision_fluctuations(lb, noise, index0 + iv, _cp.kt, shat1, ghat1);
 
-      for (ia = 0; ia < 3; ia++) {
-	for (ib = 0; ib < 3; ib++) {
+      for (ia = 0; ia < NDIM; ia++) {
+	for (ib = 0; ib < NDIM; ib++) {
 	  shat[ia][ib][iv] = shat1[ia][ib];
 	}
       }
@@ -953,7 +952,7 @@ __device__ void lb_collision_mrt2_site(lb_t * lb, hydro_t * hydro,
   }
 
   for (p = 1; p < NVEL; p++) {
-    for (ia = 0; ia < 3; ia++) {
+    for (ia = 0; ia < NDIM; ia++) {
       for_simd_v(iv, NSIMDVL) {
 	jphi[ia][iv] += _lbp.cv[p][ia]*
 	lb->f[ LB_ADDR(_lbp.nsite, _lbp.ndist, NVEL, index0+iv, LB_PHI, p) ];
@@ -963,8 +962,8 @@ __device__ void lb_collision_mrt2_site(lb_t * lb, hydro_t * hydro,
 
   /* Relax order parameter modes. See the comments above. */
 
-  for (ia = 0; ia < 3; ia++) {
-    for (ib = 0; ib < 3; ib++) {
+  for (ia = 0; ia < NDIM; ia++) {
+    for (ib = 0; ib < NDIM; ib++) {
       for_simd_v(iv, NSIMDVL) {
 	sphi[ia][ib][iv] = phi[iv]*u[ia][iv]*u[ib][iv] + mu[iv]*d[ia][ib];
         /* The alternate form would be:
@@ -993,9 +992,9 @@ __device__ void lb_collision_mrt2_site(lb_t * lb, hydro_t * hydro,
       sphidotq[iv] = 0.0;
     }
 
-    for (ia = 0; ia < 3; ia++) {
+    for (ia = 0; ia < NDIM; ia++) {
       for_simd_v(iv, NSIMDVL) jdotc[iv] += jphi[ia][iv]*_lbp.cv[p][ia];
-      for (ib = 0; ib < 3; ib++) {
+      for (ib = 0; ib < NDIM; ib++) {
 	for_simd_v(iv, NSIMDVL) {
 	  sphidotq[iv] += sphi[ia][ib][iv]*(_lbp.cv[p][ia]*_lbp.cv[p][ib] - cs2*d[ia][ib]);
 	}
