@@ -200,19 +200,20 @@ int lb_data_create(pe_t * pe, cs_t * cs, const lb_data_options_t * options,
 	if (obj->model.cv[p][X] == +1) nprop += 1;
       }
 
-      int ncrossdist = ndist*nprop*nlocal[Y]*nlocal[Z];
-      int ndata      = 2*nplane*ncrossdist; /* 2 sides for each plane */
-      obj->sbuff = (double *) malloc(ndata*sizeof(double));
-      obj->rbuff = (double *) malloc(ndata*sizeof(double));
+      /* Lees Edwards buffer for crossing distributions */
+      int nxdist = ndist*nprop*(nlocal[Y] + 1)*nlocal[Z];
+      int nxbuff = 2*nplane*nxdist; /* 2 sides for each plane */
+      obj->sbuff = (double *) malloc(nxbuff*sizeof(double));
+      obj->rbuff = (double *) malloc(nxbuff*sizeof(double));
 
       tdpGetDeviceCount(&ndevice);
 
       if (ndevice > 0) {
 	double * tmp = NULL;
-	tdpAssert( tdpMalloc((void **) &tmp, ndata*sizeof(double)) );
+	tdpAssert( tdpMalloc((void **) &tmp, nxbuff*sizeof(double)) );
 	tdpAssert( tdpMemcpy(&obj->target->sbuff, &tmp, sizeof(double *),
 			     tdpMemcpyHostToDevice) );
-	tdpAssert( tdpMalloc((void **) &tmp, ndata*sizeof(double)) );
+	tdpAssert( tdpMalloc((void **) &tmp, nxbuff*sizeof(double)) );
 	tdpAssert( tdpMemcpy(&obj->target->rbuff, &tmp, sizeof(double *),
 			     tdpMemcpyHostToDevice) );
       }
@@ -251,6 +252,13 @@ __host__ int lb_free(lb_t * lb) {
     tdpAssert( tdpMemcpy(&tmp, &lb->target->fprime, sizeof(double *),
 			 tdpMemcpyDeviceToHost) );
     tdpAssert( tdpFree(tmp) );
+    tdpAssert( tdpMemcpy(&tmp, &lb->target->sbuff, sizeof(double *),
+			 tdpMemcpyDeviceToHost) );
+    tdpAssert( tdpFree(tmp) );
+    tdpAssert( tdpMemcpy(&tmp, &lb->target->rbuff, sizeof(double *),
+			 tdpMemcpyDeviceToHost) );
+    tdpAssert( tdpFree(tmp) );
+
     tdpAssert( tdpFree(lb->target) );
   }
 
@@ -261,7 +269,6 @@ __host__ int lb_free(lb_t * lb) {
   free(lb->f);
   free(lb->fprime);
 
-  /* FIXME: device buffer to be removed */
   free(lb->rbuff);
   free(lb->sbuff);
 
@@ -291,6 +298,8 @@ int lb_data_initialise_device_model(lb_t * lb) {
   if (ndevice > 0) {
 
     int nvel = lb->model.nvel;
+    lb_model_t * hm = &lb->model;
+    lb_model_t * dm = &lb->target->model;
     int8_t (*d_cv)[3] = {0};
     double * d_wv = NULL;
     double * d_na = NULL;
@@ -299,26 +308,26 @@ int lb_data_initialise_device_model(lb_t * lb) {
     tdpAssert( tdpMalloc((void **) &d_wv, nvel*sizeof(double)) );
     tdpAssert( tdpMalloc((void **) &d_na, nvel*sizeof(double)) );
 
-    tdpAssert( tdpMemcpy(d_cv, &(lb->model.cv), nvel*sizeof(int8_t[3]),
+    tdpAssert( tdpMemcpy(d_cv, hm->cv, nvel*sizeof(int8_t[3]),
 			 tdpMemcpyHostToDevice) );
-    tdpAssert( tdpMemcpy(d_wv, &(lb->model.wv), nvel*sizeof(double),
+    tdpAssert( tdpMemcpy(d_wv, hm->wv, nvel*sizeof(double),
 			 tdpMemcpyHostToDevice) );
-    tdpAssert( tdpMemcpy(d_na, &(lb->model.na), nvel*sizeof(double),
-			 tdpMemcpyHostToDevice) );
-
-    tdpAssert( tdpMemcpy(&(lb->target->model.cv), &d_cv, sizeof(int8_t(*)[3]),
-			 tdpMemcpyHostToDevice) );
-    tdpAssert( tdpMemcpy(&(lb->target->model.wv), &d_wv, sizeof(double *),
-			 tdpMemcpyHostToDevice) );
-    tdpAssert( tdpMemcpy(&(lb->target->model.na), &d_na, sizeof(double *),
+    tdpAssert( tdpMemcpy(d_na, hm->na, nvel*sizeof(double),
 			 tdpMemcpyHostToDevice) );
 
-    tdpAssert( tdpMemcpy(&(lb->target->model.ndim), &(lb->model.ndim),
-			 sizeof(int8_t), tdpMemcpyHostToDevice) );
-    tdpAssert( tdpMemcpy(&(lb->target->model.nvel), &(lb->model.nvel),
-			 sizeof(int8_t), tdpMemcpyHostToDevice) );
-    tdpAssert( tdpMemcpy(&(lb->target->model.cs2), &(lb->model.cs2),
-			 sizeof(double), tdpMemcpyHostToDevice) );
+    tdpAssert( tdpMemcpy(&(dm->cv), &d_cv, sizeof(int8_t(*)[3]),
+			 tdpMemcpyHostToDevice) );
+    tdpAssert( tdpMemcpy(&(dm->wv), &d_wv, sizeof(double *),
+			 tdpMemcpyHostToDevice) );
+    tdpAssert( tdpMemcpy(&(dm->na), &d_na, sizeof(double *),
+			 tdpMemcpyHostToDevice) );
+
+    tdpAssert( tdpMemcpy(&(dm->ndim), &(hm->ndim), sizeof(int8_t),
+			 tdpMemcpyHostToDevice) );
+    tdpAssert( tdpMemcpy(&(dm->nvel), &(hm->nvel), sizeof(int8_t),
+			 tdpMemcpyHostToDevice) );
+    tdpAssert( tdpMemcpy(&(dm->cs2), &(hm->cs2), sizeof(double),
+			 tdpMemcpyHostToDevice) );
 
     /* We do not copy the eigenvectors currently. */
   }
@@ -351,9 +360,9 @@ int lb_data_free_device_model(lb_t * lb) {
     tdpAssert( tdpMemcpy(&d_na, &lb->target->model.na, sizeof(double *),
 			 tdpMemcpyDeviceToHost) );
 
-    tdpAssert( tdpFree(&d_cv) );
-    tdpAssert( tdpFree(&d_wv) );
-    tdpAssert( tdpFree(&d_na) );
+    tdpAssert( tdpFree(d_cv) );
+    tdpAssert( tdpFree(d_wv) );
+    tdpAssert( tdpFree(d_na) );
   }
 
   return 0;
