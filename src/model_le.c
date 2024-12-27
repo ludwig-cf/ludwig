@@ -6,7 +6,7 @@
  *
  *  Note that the distributions have displacement u*t
  *  not u*(t-1) returned by le_get_displacement().
- *  This is for reasons of backwards compatability.
+ *  This is for reasons of backwards compatibility.
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -61,7 +61,7 @@ static const int have_gpu_aware_mpi_ = 0;
  *     to take account of the sliding displacement as a function of time.
  *
  *  Note we never deal with the halo regions here, as we assume the
- *  upcoming propagation will be immediately preceeded by a distribution
+ *  upcoming propagation will be immediately preceded by a distribution
  *  halo update.
  *
  *****************************************************************************/
@@ -114,7 +114,7 @@ __host__ int lb_le_apply_boundary_conditions(lb_t * lb, lees_edw_t * le) {
  *     S_ab -> S_ab +/- rho u_a u^le_b +/- rho u_b u^le_a + rho u^le_a u^le_b
  *
  *  with analogous expressions for order parameter moments.
- * 
+ *
  *  The change to the distribution is then computed by a reprojection.
  *  Ghost modes are unchanged.
  *
@@ -403,8 +403,8 @@ int le_displace_and_interpolate(lb_t * lb, lees_edw_t * le) {
  *  appropriate direction.
  *
  *  Likewise, we need to send a total of (nlocal[Y] + 1) points to the
- *  two corresponding recieving processes. Note we never involve the
- *  halo regions here (so a preceeding halo exchange is not required).
+ *  two corresponding receiving processes. Note we never involve the
+ *  halo regions here (so a preceding halo exchange is not required).
  *
  *****************************************************************************/
 
@@ -687,7 +687,7 @@ int lb_le_init_shear_profile(lb_t * lb, lees_edw_t * le) {
 
   lees_edw_shear_rate(le, &gradu[X][Y]);
 
-  /* Loop trough the sites */
+  /* Loop through the sites */
 
   for (ic = 1; ic <= nlocal[X]; ic++) {
 
@@ -1079,7 +1079,6 @@ __global__ void lb_data_displace_kernel(kernel_3d_t k3d,
       int cx     = 1 - 2*iside; /* below going up, or above going down */
 
       /* buffer location; js is the displaced position needed ... */
-      int ic = iside + lees_edw_plane_location(le, iplane);
       int js = -1;
       int dj = -1;
       double dy = 0.0;
@@ -1127,8 +1126,8 @@ static int lb_data_displace_communicate(le_kernel_helper_t lekh,
   int nhalo = 0;
   int ntotal[3]  = {0};
   int offset[3]  = {0};
-  int nrank_s[2] = {0};
-  int nrank_r[2] = {0};
+  int nrank_s[3] = {0};
+  int nrank_r[3] = {0};
   MPI_Comm comm = MPI_COMM_NULL;
   MPI_Request req[8] = {0};
 
