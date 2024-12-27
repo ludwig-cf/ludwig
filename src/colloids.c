@@ -109,8 +109,8 @@ __host__ void colloids_info_free(colloids_info_t * info) {
   colloids_info_cell_list_clean(info);
 
   free(info->clist);
-  if (info->map_old) free(info->map_old);
-  if (info->map_new) free(info->map_new);
+  free(info->map_old);
+  free(info->map_new);
 
   if (info->target != info) tdpAssert(tdpFree(info->target));
 
@@ -191,11 +191,16 @@ __host__ int colloids_memcpy(colloids_info_t * info, int flag) {
     assert((info->target == info));
   }
   else {
-    colloid_t * tmp;
-    tdpAssert(tdpMemcpy(&tmp, &info->target->map_new, sizeof(colloid_t **),
-			tdpMemcpyDeviceToHost));
-    tdpAssert(tdpMemcpy(tmp, info->map_new, info->nsites*sizeof(colloid_t *),
-			tdpMemcpyHostToDevice));
+    if (flag == tdpMemcpyHostToDevice) {
+      colloid_t * tmp;
+      tdpAssert(tdpMemcpy(&tmp, &info->target->map_new, sizeof(colloid_t **),
+			  tdpMemcpyDeviceToHost));
+      tdpAssert(tdpMemcpy(tmp, info->map_new, info->nsites*sizeof(colloid_t *),
+			  tdpMemcpyHostToDevice));
+    }
+    else {
+      pe_exit(info->pe, "Bad flag in colloids_memcpy()\n");
+    }
   }
 
   return 0;

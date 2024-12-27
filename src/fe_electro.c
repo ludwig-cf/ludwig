@@ -66,8 +66,9 @@ static fe_vt_t fe_electro_hvt = {
   (fe_hvector_ft)   NULL,
   (fe_htensor_ft)   NULL,
   (fe_htensor_v_ft) NULL,
-  (fe_htensor_v_ft) NULL,
-  (fe_htensor_v_ft) NULL
+  (fe_stress_v_ft)  NULL,
+  (fe_stress_v_ft)  NULL,
+  (fe_stress_v_ft)  NULL
 };
 
 static  __constant__ fe_vt_t fe_electro_dvt = {
@@ -158,7 +159,7 @@ __host__ int fe_electro_free(fe_electro_t * fe) {
   tdpAssert( tdpGetDeviceCount(&ndevice) );
   if (ndevice > 0) tdpAssert(tdpFree(fe->target));
 
-  if (fe->mu_ref) free(fe->mu_ref);
+  free(fe->mu_ref);
   free(fe);
 
   return 0;
