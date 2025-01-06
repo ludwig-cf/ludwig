@@ -589,9 +589,6 @@ __host__ int lb_halo_swap(lb_t * lb, lb_halo_enum_t flag) {
 
   switch (flag) {
   case LB_HALO_TARGET:
-    //tdpAssert( tdpMemcpy(&data, &lb->target->f, sizeof(double *),
-		//	 tdpMemcpyDeviceToHost) );
-    //halo_swap_packed(lb->halo, data);
     lb_halo_post(lb, &lb->h);
     lb_halo_wait(lb, &lb->h);
     break;
@@ -1319,7 +1316,7 @@ int lb_halo_post(lb_t * lb, lb_halo_t * h) {
 
   int ndevice;
   tdpGetDeviceCount(&ndevice);
-  if (ndevice > 0) {
+  if (ndevice > 0 && lb->haloscheme == LB_HALO_TARGET) {
     copyModelToDevice(&lb->model, &lb->target->model);
     copyModelToDevice(&h->map, &h->target->map);
     for (int ireq = 0; ireq < h->map.nvel; ireq++) {
@@ -1391,7 +1388,7 @@ int lb_halo_wait(lb_t * lb, lb_halo_t * h) {
 
   int ndevice;
   tdpGetDeviceCount(&ndevice);
-  if (ndevice > 0) {
+  if (ndevice > 0 && lb->haloscheme == LB_HALO_TARGET) {
     for (int ireq = 0; ireq < h->map.nvel; ireq++) {
       if (h->count[ireq] > 0) {
         int rcount = h->count[ireq]*lb_halo_size(h->slim[ireq]);
