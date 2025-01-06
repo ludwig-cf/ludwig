@@ -1284,7 +1284,6 @@ int lb_halo_post(lb_t * lb, lb_halo_t * h) {
       double * buf = h->recv[ireq];
       if (have_gpu_aware_mpi_) buf = h->recv_d[ireq];
 
-      //if (h->nbrrank[i][j][k] == h->nbrrank[1][1][1]) mcount = 0;
       if (h->nbrrank[i][j][k] == h->nbrrank[1][1][1]) continue;
       
       MPI_Irecv(buf, mcount, MPI_DOUBLE, h->nbrrank[i][j][k],
@@ -1326,7 +1325,7 @@ int lb_halo_post(lb_t * lb, lb_halo_t * h) {
 
   TIMER_start(TIMER_LB_HALO_ISEND);
 
-  for (int ireq = 1; ireq < h->map.nvel; ireq++) {
+  for (int ireq = 0; ireq < h->map.nvel; ireq++) {
 
     h->request[27+ireq] = MPI_REQUEST_NULL;
 
@@ -1339,7 +1338,6 @@ int lb_halo_post(lb_t * lb, lb_halo_t * h) {
       if (have_gpu_aware_mpi_) buf = h->send_d[ireq];
 
       /* Short circuit messages to self. */
-      //if (h->nbrrank[i][j][k] == h->nbrrank[1][1][1]) mcount = 0;
       if (h->nbrrank[i][j][k] == h->nbrrank[1][1][1]) continue;
 
       MPI_Isend(buf, mcount, MPI_DOUBLE, h->nbrrank[i][j][k],
