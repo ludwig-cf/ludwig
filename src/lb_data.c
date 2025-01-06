@@ -579,8 +579,6 @@ __host__ int lb_halo(lb_t * lb) {
 
 __host__ int lb_halo_swap(lb_t * lb, lb_halo_enum_t flag) {
 
-  double * data;
-
   assert(lb);
 
   switch (flag) {
