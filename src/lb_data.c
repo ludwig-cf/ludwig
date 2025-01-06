@@ -585,17 +585,8 @@ __host__ int lb_halo_swap(lb_t * lb, lb_halo_enum_t flag) {
 
   switch (flag) {
   case LB_HALO_TARGET:
-    lb_halo_post(lb, &lb->h);
-    lb_halo_wait(lb, &lb->h);
-    break;
   case LB_HALO_OPENMP_FULL:
-    lb_halo_post(lb, &lb->h);
-    lb_halo_wait(lb, &lb->h);
-    break;
   case LB_HALO_OPENMP_REDUCED:
-    lb_halo_post(lb, &lb->h);
-    lb_halo_wait(lb, &lb->h);
-    break;
   default:
     lb_halo_post(lb, &lb->h);
     lb_halo_wait(lb, &lb->h);
