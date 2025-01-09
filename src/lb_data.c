@@ -39,6 +39,9 @@ static int lb_data_touch(lb_t * lb);
 int lb_halo_dequeue_recv(lb_t * lb, const lb_halo_t * h, int irreq);
 int lb_halo_enqueue_send(const lb_t * lb, lb_halo_t * h, int irreq);
 
+int lb_data_initialise_device_model(lb_t * lb);
+int lb_data_free_device_model(lb_t *lb);
+
 static __constant__ lb_collide_param_t static_param;
 
 #ifdef HAVE_OPENMPI_
@@ -218,6 +221,43 @@ int lb_data_create(pe_t * pe, cs_t * cs, const lb_data_options_t * options,
     io->impl->free(&io);
   }
 
+  /* Lees Edwards */
+  {
+    int nplane = cs->leopts.nplanes;
+
+    if (nplane > 0) {
+
+      int nprop = 0;
+      int ndist = obj->ndist;
+      int nlocal[3] = {0};
+      int ndevice = 0 ;
+
+      cs_nlocal(cs, nlocal);
+
+      for (int p = 1; p < obj->model.nvel; p++) {
+	if (obj->model.cv[p][X] == +1) nprop += 1;
+      }
+
+      /* Lees Edwards buffer for crossing distributions */
+      int nxdist = ndist*nprop*(nlocal[Y] + 1)*nlocal[Z];
+      int nxbuff = 2*nplane*nxdist; /* 2 sides for each plane */
+      obj->sbuff = (double *) malloc(nxbuff*sizeof(double));
+      obj->rbuff = (double *) malloc(nxbuff*sizeof(double));
+
+      tdpGetDeviceCount(&ndevice);
+
+      if (ndevice > 0) {
+	double * tmp = NULL;
+	tdpAssert( tdpMalloc((void **) &tmp, nxbuff*sizeof(double)) );
+	tdpAssert( tdpMemcpy(&obj->target->sbuff, &tmp, sizeof(double *),
+			     tdpMemcpyHostToDevice) );
+	tdpAssert( tdpMalloc((void **) &tmp, nxbuff*sizeof(double)) );
+	tdpAssert( tdpMemcpy(&obj->target->rbuff, &tmp, sizeof(double *),
+			     tdpMemcpyHostToDevice) );
+      }
+    }
+  }
+
   *lb = obj;
 
   return 0;
@@ -239,6 +279,8 @@ __host__ int lb_free(lb_t * lb) {
 
   tdpAssert( tdpGetDeviceCount(&ndevice) );
 
+  lb_data_free_device_model(lb);
+
   if (ndevice > 0) {
     double * tmp = NULL;
     tdpAssert( tdpMemcpy(&tmp, &lb->target->f, sizeof(double *),
@@ -248,6 +290,13 @@ __host__ int lb_free(lb_t * lb) {
     tdpAssert( tdpMemcpy(&tmp, &lb->target->fprime, sizeof(double *),
 			 tdpMemcpyDeviceToHost) );
     tdpAssert( tdpFree(tmp) );
+    tdpAssert( tdpMemcpy(&tmp, &lb->target->sbuff, sizeof(double *),
+			 tdpMemcpyDeviceToHost) );
+    tdpAssert( tdpFree(tmp) );
+    tdpAssert( tdpMemcpy(&tmp, &lb->target->rbuff, sizeof(double *),
+			 tdpMemcpyDeviceToHost) );
+    tdpAssert( tdpFree(tmp) );
+
     tdpAssert( tdpFree(lb->target) );
   }
 
@@ -255,14 +304,104 @@ __host__ int lb_free(lb_t * lb) {
   io_metadata_finalise(&lb->output);
 
   if (lb->halo) halo_swap_free(lb->halo);
-  if (lb->f) free(lb->f);
-  if (lb->fprime) free(lb->fprime);
+  free(lb->f);
+  free(lb->fprime);
+
+  free(lb->rbuff);
+  free(lb->sbuff);
 
   lb_halo_free(lb, &lb->h);
   lb_model_free(&lb->model);
 
   free(lb->param);
   free(lb);
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  lb_data_initialise_device_model
+ *
+ *  Allocate and copy the lb_model_t on target.
+ *
+ *****************************************************************************/
+
+int lb_data_initialise_device_model(lb_t * lb) {
+
+  int ndevice = 0;
+
+  tdpAssert( tdpGetDeviceCount(&ndevice) );
+
+  if (ndevice > 0) {
+
+    int nvel = lb->model.nvel;
+    lb_model_t * hm = &lb->model;
+    lb_model_t * dm = &lb->target->model;
+    int8_t (*d_cv)[3] = {0};
+    double * d_wv = NULL;
+    double * d_na = NULL;
+
+    tdpAssert( tdpMalloc((void **) &d_cv, nvel*sizeof(int8_t[3])) );
+    tdpAssert( tdpMalloc((void **) &d_wv, nvel*sizeof(double)) );
+    tdpAssert( tdpMalloc((void **) &d_na, nvel*sizeof(double)) );
+
+    tdpAssert( tdpMemcpy(d_cv, hm->cv, nvel*sizeof(int8_t[3]),
+			 tdpMemcpyHostToDevice) );
+    tdpAssert( tdpMemcpy(d_wv, hm->wv, nvel*sizeof(double),
+			 tdpMemcpyHostToDevice) );
+    tdpAssert( tdpMemcpy(d_na, hm->na, nvel*sizeof(double),
+			 tdpMemcpyHostToDevice) );
+
+    tdpAssert( tdpMemcpy(&(dm->cv), &d_cv, sizeof(int8_t(*)[3]),
+			 tdpMemcpyHostToDevice) );
+    tdpAssert( tdpMemcpy(&(dm->wv), &d_wv, sizeof(double *),
+			 tdpMemcpyHostToDevice) );
+    tdpAssert( tdpMemcpy(&(dm->na), &d_na, sizeof(double *),
+			 tdpMemcpyHostToDevice) );
+
+    tdpAssert( tdpMemcpy(&(dm->ndim), &(hm->ndim), sizeof(int8_t),
+			 tdpMemcpyHostToDevice) );
+    tdpAssert( tdpMemcpy(&(dm->nvel), &(hm->nvel), sizeof(int8_t),
+			 tdpMemcpyHostToDevice) );
+    tdpAssert( tdpMemcpy(&(dm->cs2), &(hm->cs2), sizeof(double),
+			 tdpMemcpyHostToDevice) );
+
+    /* We do not copy the eigenvectors currently. */
+  }
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  lb_data_free_device_model
+ *
+ *****************************************************************************/
+
+int lb_data_free_device_model(lb_t * lb) {
+
+  int ndevice = 0;
+
+  tdpAssert( tdpGetDeviceCount(&ndevice) );
+
+  if (ndevice > 0) {
+
+    int8_t (*d_cv)[3] = {0};
+    double * d_wv = NULL;
+    double * d_na = NULL;
+
+    tdpAssert( tdpMemcpy(&d_cv, &lb->target->model.cv, sizeof(int8_t(*)[3]),
+			 tdpMemcpyDeviceToHost) );
+    tdpAssert( tdpMemcpy(&d_wv, &lb->target->model.wv, sizeof(double *),
+			 tdpMemcpyDeviceToHost) );
+    tdpAssert( tdpMemcpy(&d_na, &lb->target->model.na, sizeof(double *),
+			 tdpMemcpyDeviceToHost) );
+
+    tdpAssert( tdpFree(d_cv) );
+    tdpAssert( tdpFree(d_wv) );
+    tdpAssert( tdpFree(d_na) );
+  }
 
   return 0;
 }
@@ -380,6 +519,8 @@ static int lb_init(lb_t * lb) {
 
   lb_mpi_init(lb);
   lb_model_param_init(lb);
+
+  lb_data_initialise_device_model(lb);
   lb_memcpy(lb, tdpMemcpyHostToDevice);
 
   return 0;
@@ -667,7 +808,7 @@ int lb_0th_moment(lb_t * lb, int index, lb_dist_enum_t nd, double * rho) {
   assert(lb);
   assert(rho);
   assert(index >= 0 && index < lb->nsite);
-  assert(nd < lb->ndist);
+  assert((int) nd < lb->ndist);
 
   *rho = 0.0;
 
@@ -686,7 +827,7 @@ int lb_0th_moment(lb_t * lb, int index, lb_dist_enum_t nd, double * rho) {
  *
  *****************************************************************************/
 
-__host__
+__host__ __device__
 int lb_1st_moment(lb_t * lb, int index, lb_dist_enum_t nd, double g[3]) {
 
   int p;
@@ -694,7 +835,7 @@ int lb_1st_moment(lb_t * lb, int index, lb_dist_enum_t nd, double g[3]) {
 
   assert(lb);
   assert(index >= 0 && index < lb->nsite);
-  assert(nd < lb->ndist);
+  assert((int) nd < lb->ndist);
 
   /* Loop to 3 here to cover initialisation in D2Q9 (appears in momentum) */
   for (n = 0; n < 3; n++) {
@@ -1660,7 +1801,7 @@ int lb_io_write(lb_t * lb, int timestep, io_event_t * event) {
       }
 
       io->impl->free(&io);
-      io_event_report(event, meta, "dist");
+      io_event_report_write(event, meta, "dist");
     }
   }
 

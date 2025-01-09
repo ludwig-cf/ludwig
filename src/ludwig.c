@@ -806,7 +806,7 @@ void ludwig_run(const char * inputfile) {
       /* Boundary conditions */
 
       if (ludwig->le) {
-	lb_le_apply_boundary_conditions(ludwig->lb, ludwig->le);
+	lb_data_apply_le_boundary_conditions(ludwig->lb, ludwig->le);
       }
 
       TIMER_start(TIMER_HALO_LATTICE);

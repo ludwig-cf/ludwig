@@ -32,7 +32,6 @@ dim3 blockDim = {1, 1, 1};
 
 static tdpError_t lastError = tdpSuccess;
 static char lastErrorString[BUFSIZ] = "";
-static int staticStream;
 
 /* Utilities */
 
@@ -621,7 +620,7 @@ tdpError_t tdpStreamCreate(tdpStream_t * stream) {
 
   error_return_if(stream == NULL, tdpErrorInvalidValue);
 
-  *stream = &staticStream;
+  *stream = 0;
 
   return tdpSuccess;
 }
@@ -634,7 +633,7 @@ tdpError_t tdpStreamCreate(tdpStream_t * stream) {
 
 tdpError_t tdpStreamDestroy(tdpStream_t stream) {
 
-  error_return_if(stream != &staticStream, tdpErrorInvalidResourceHandle);
+  error_return_if(stream != 0, tdpErrorInvalidResourceHandle);
 
   return tdpSuccess;
 }
@@ -647,7 +646,7 @@ tdpError_t tdpStreamDestroy(tdpStream_t stream) {
 
 tdpError_t tdpStreamSynchronize(tdpStream_t stream) {
 
-  error_return_if(stream != &staticStream, tdpErrorInvalidResourceHandle);
+  error_return_if(stream != 0, tdpErrorInvalidResourceHandle);
 
   /* Success */
 

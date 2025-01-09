@@ -30,6 +30,7 @@ __host__ int lees_edw_free(lees_edw_t * le);
 __host__ int lees_edw_retain(lees_edw_t * le);
 __host__ int lees_edw_commit(lees_edw_t * le);
 __host__ int lees_edw_target(lees_edw_t * le, lees_edw_t ** target);
+__host__ int lees_edw_cs(lees_edw_t * le, cs_t ** cs);
 
 __host__ int lees_edw_info(lees_edw_t * le);
 __host__ int lees_edw_comm(lees_edw_t * le, MPI_Comm * comm);
