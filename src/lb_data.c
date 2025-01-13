@@ -57,33 +57,6 @@ static const int have_gpu_aware_mpi_ = 1;
 static const int have_gpu_aware_mpi_ = 0;
 #endif
 
-//void copyModelToDevice(lb_model_t *h_model, lb_model_t *d_model) {
-//    int nvel = h_model->nvel;
-//    // Allocate memory on the GPU for the arrays in the struct
-//    int8_t (*d_cv)[3];
-//    double *d_wv;
-//    double *d_na;
-//
-//    tdpMalloc((void**)&d_cv, sizeof(int8_t[3]) * nvel);
-//    tdpMalloc((void**)&d_wv, sizeof(double) * nvel);
-//    tdpMalloc((void**)&d_na, sizeof(double) * nvel);
-//
-//    // Copy the data from host to the GPU
-//    tdpMemcpy(d_cv, h_model->cv, sizeof(int8_t[3]) * nvel, tdpMemcpyHostToDevice);
-//    tdpMemcpy(d_wv, h_model->wv, sizeof(double) * nvel, tdpMemcpyHostToDevice);
-//    tdpMemcpy(d_na, h_model->na, sizeof(double) * nvel, tdpMemcpyHostToDevice);
-//
-//    // Set the pointers in the struct to the newly allocated GPU memory
-//    tdpMemcpy(&(d_model->cv), &d_cv, sizeof(int8_t(*)[3]), tdpMemcpyHostToDevice);
-//    tdpMemcpy(&(d_model->wv), &d_wv, sizeof(double*), tdpMemcpyHostToDevice);
-//    tdpMemcpy(&(d_model->na), &d_na, sizeof(double*), tdpMemcpyHostToDevice);
-//
-//    //copy the rest data to gpu
-//    tdpMemcpy(&(d_model->ndim), &(h_model->ndim), sizeof(int8_t), tdpMemcpyHostToDevice);
-//    tdpMemcpy(&(d_model->nvel), &(h_model->nvel), sizeof(int8_t), tdpMemcpyHostToDevice);
-//    tdpMemcpy(&(d_model->cs2), &(h_model->cs2), sizeof(double), tdpMemcpyHostToDevice);
-//}
-
 /*****************************************************************************
  *
  *  lb_data_create
@@ -1459,7 +1432,6 @@ int lb_halo_create(const lb_t * lb, lb_halo_t * h, lb_halo_enum_t scheme) {
 			 tdpMemcpyHostToDevice) );
 
     for (int p = 0; p < h->map.nvel; p++) {         
-      // XXX: don't allocate zero sized arrays (generally when p == 0)
       int scount = send_count[p]*lb_halo_size(h->slim[p]);  
       int rcount = recv_count[p]*lb_halo_size(h->rlim[p]);
       tdpAssert( tdpMalloc((void**) &h->send_d[p], scount * sizeof(double)) );
