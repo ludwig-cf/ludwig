@@ -58,7 +58,7 @@ int map_create(pe_t * pe, cs_t * cs, const map_options_t * options,
 
  err:
 
-  if (obj) free(obj);
+  free(obj);
   return -1;
 }
 
@@ -175,7 +175,7 @@ int map_initialise(pe_t * pe, cs_t * cs, const map_options_t * options,
 
   /* Allocate target copy of structure (or alias) */
 
-  tdpGetDeviceCount(&ndevice);
+  tdpAssert( tdpGetDeviceCount(&ndevice) );
 
   if (ndevice == 0) {
     map->target = map;
@@ -215,8 +215,8 @@ int map_initialise(pe_t * pe, cs_t * cs, const map_options_t * options,
   /* All failures are before any device memory is involved ... */
   if (map->input.cs) io_metadata_finalise(&map->input);
   if (map->output.cs) io_metadata_finalise(&map->output);
-  if (map->data) free(map->data);
-  if (map->status) free(map->status);
+  free(map->data);
+  free(map->status);
 
   *map = (map_t) {0};
 
@@ -236,7 +236,7 @@ int map_finalise(map_t * map) {
 
   int ndevice = 0;
 
-  tdpGetDeviceCount(&ndevice);
+  tdpAssert( tdpGetDeviceCount(&ndevice) );
 
   if (ndevice > 0) {
     char * status = NULL;
@@ -257,8 +257,8 @@ int map_finalise(map_t * map) {
   io_metadata_finalise(&map->input);
   io_metadata_finalise(&map->output);
 
-  if (map->data) free(map->data);
-  if (map->status) free(map->status);
+  free(map->data);
+  free(map->status);
 
   *map = (map_t) {0};
 
@@ -278,22 +278,22 @@ int map_memcpy(map_t * map, tdpMemcpyKind flag) {
 
   assert(map);
 
-  tdpGetDeviceCount(&ndevice);
+  tdpAssert( tdpGetDeviceCount(&ndevice) );
 
   if (ndevice == 0) {
     /* Ensure we alias */
     assert(map->target == map);
   }
   else {
-    tdpMemcpy(&tmp, &map->target->status, sizeof(char *),
-	      tdpMemcpyDeviceToHost);
+    tdpAssert( tdpMemcpy(&tmp, &map->target->status, sizeof(char *),
+			 tdpMemcpyDeviceToHost) );
 
     switch (flag) {
     case tdpMemcpyHostToDevice:
-      tdpMemcpy(tmp, map->status, map->nsite*sizeof(char), flag);
+      tdpAssert( tdpMemcpy(tmp, map->status, map->nsite*sizeof(char), flag) );
       break;
     case tdpMemcpyDeviceToHost:
-      tdpMemcpy(map->status, tmp, map->nsite*sizeof(char), flag);
+      tdpAssert( tdpMemcpy(map->status, tmp, map->nsite*sizeof(char), flag) );
       break;
     default:
       pe_fatal(map->pe, "Bad flag in map_memcpy()\n");

@@ -43,7 +43,7 @@ int test_fe_electro_suite(void) {
   cs_t * cs = NULL;
   physics_t * phys = NULL;
 
-  tdpGetDeviceCount(&ndevice);
+  tdpAssert( tdpGetDeviceCount(&ndevice) );
 
   pe_create(MPI_COMM_WORLD, PE_QUIET, &pe);
 

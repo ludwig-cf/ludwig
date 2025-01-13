@@ -209,7 +209,7 @@ __host__ int cahn_stats_reduce(phi_ch_t * pch, field_t * phi,
   MPI_Reduce(&local.max, &stats->max, 1, MPI_DOUBLE, MPI_MAX, root, comm);
   MPI_Reduce(&local.vol, &stats->vol, 1, MPI_DOUBLE, MPI_SUM, root, comm);
 
-  tdpFree(stats_d);
+  tdpAssert( tdpFree(stats_d) );
 
   return 0;
 }

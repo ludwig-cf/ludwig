@@ -468,7 +468,7 @@ void ludwig_run(const char * inputfile) {
     MPI_Comm_rank(node_comm, &node_rank);
     MPI_Comm_size(node_comm, &node_size);
 
-    tdpGetDeviceCount(&ndevice);
+    tdpAssert( tdpGetDeviceCount(&ndevice) );
 
     if (ndevice > 0 && ndevice < node_size) {
       pe_info(ludwig->pe,  "MPI tasks per node: %d\n", node_size);
@@ -612,7 +612,11 @@ void ludwig_run(const char * inputfile) {
 	TIMER_start(TIMER_HALO_LATTICE);
 	hydro_u_halo(ludwig->hydro);
 	TIMER_stop(TIMER_HALO_LATTICE);
+
+	/* Work-around for gpu regression tests ... */
+	hydro_memcpy(ludwig->hydro, tdpMemcpyDeviceToHost);
       }
+
 
       /* Time splitting for high electrokinetic diffusions in Nernst Planck */
 
@@ -661,6 +665,11 @@ void ludwig_run(const char * inputfile) {
       psi_halo_psijump(ludwig->psi);
       psi_halo_rho(ludwig->psi);
       TIMER_stop(TIMER_HALO_LATTICE);
+
+      if (ludwig->hydro) {
+	/* Workaround for gpu regression tests ... */
+	hydro_memcpy(ludwig->hydro, tdpMemcpyHostToDevice);
+      }
 
       nernst_planck_adjust_multistep(ludwig->psi);
       psi_zero_mean(ludwig->psi);
@@ -797,7 +806,7 @@ void ludwig_run(const char * inputfile) {
       /* Boundary conditions */
 
       if (ludwig->le) {
-	lb_le_apply_boundary_conditions(ludwig->lb, ludwig->le);
+	lb_data_apply_le_boundary_conditions(ludwig->lb, ludwig->le);
       }
 
       TIMER_start(TIMER_HALO_LATTICE);
@@ -2136,7 +2145,7 @@ int ludwig_colloids_update(ludwig_t * ludwig) {
   colloids_info_ntotal(ludwig->collinfo, &ncolloid);
   if (ncolloid == 0) return 0;
 
-  tdpGetDeviceCount(&ndevice);
+  tdpAssert( tdpGetDeviceCount(&ndevice) );
 
   lb_ndist(ludwig->lb, &ndist);
   iconserve = (ludwig->psi || (ludwig->phi && ndist == 1));

@@ -95,10 +95,10 @@ int util_reverse_byte_order(void * arg, void * result, MPI_Datatype type) {
   carg = (char *) arg;
 
   if (type == MPI_INT) {
-    
+
     int iresult;
     p = (char *) &iresult;
-      
+
     for (b = 0; b < sizeof(int); b++) {
       p[b] = carg[sizeof(int) - (b + 1)];
     }
@@ -174,7 +174,7 @@ double modulus(const double a[3]) {
  *
  *  The rotated vector is computed via
  *      v' = (1 - cos \theta)(\hat{w}.v) \hat{w} + cos \theta v +
- *           (\hat{w} x v) sin \theta      
+ *           (\hat{w} x v) sin \theta
  *
  *  For theta positive this gives rotations in the correct sense
  *  in the right-handed coordinate system.
@@ -229,7 +229,7 @@ void rotate_vector(double v[3], const double w[3]) {
 int util_random_unit_vector(int * state, double rhat[3]) {
 
   double r[2];
-  double zeta1, zeta2, zsq;  
+  double zeta1, zeta2, zsq;
 
   do {
     util_ranlcg_reap_uniform(state, r);
@@ -411,7 +411,7 @@ __host__ int util_jacobi(double a[3][3], double vals[3], double vecs[3][3]) {
     }
   }
 
-  /* Exceded maximum iterations: a fail ... */
+  /* Exceeded maximum iterations: a fail ... */
 
   return -1;
 }
@@ -440,6 +440,46 @@ static __host__ void util_swap(int ia, int ib, double a[3], double b[3][3]) {
   }
 
   return;
+}
+
+/*****************************************************************************
+ *
+ *  util_discrete_area_disk
+ *
+ *  For a disk of radius a0 and position r0 in two dimensions, what is
+ *  the discrete area?
+ *
+ *****************************************************************************/
+
+int util_discrete_area_disk(double a0, const double r0[2], double * vn) {
+
+  int ifail = 0;
+
+  if (vn == NULL) {
+    ifail = -1;
+  }
+  else {
+
+    /* Reduce the coordinates to 0 <= x < 1 etc */
+    double x0 = r0[X] - floor(r0[X]);
+    double y0 = r0[Y] - floor(r0[Y]);
+
+    int nr = ceil(a0);
+
+    assert(0.0 <= x0 && x0 < 1.0);
+    assert(0.0 <= y0 && y0 < 1.0);
+
+    *vn = 0.0;
+
+    for (int ic = -nr; ic <= nr; ic++) {
+      for (int jc = -nr; jc <= nr; jc++) {
+	double rsq = pow(1.0*ic - x0, 2) + pow(1.0*jc - y0, 2);
+	if (rsq < a0*a0) *vn += 1.0;
+      }
+    }
+  }
+
+  return ifail;
 }
 
 /*****************************************************************************
@@ -640,7 +680,7 @@ int util_matrix_free(int m, double ***p) {
   }
   free(*p);
   *p = NULL;
- 
+
   return 0;
 }
 
@@ -833,7 +873,7 @@ static __host__ long int util_ranlcg_multiply(long a, long s, long c, long m);
  *
  *  util_ranlcg_reap_gaussian
  *
- *  Box-Mueller. Caller responisble for maintaining state.
+ *  Box-Mueller. Caller responsible for maintaining state.
  *
  *  Returns two Gaussian deviates per call.
  *

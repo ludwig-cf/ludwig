@@ -63,7 +63,7 @@ __host__ int pth_create(pe_t * pe, cs_t * cs, int method, pth_t ** pobj) {
 
   /* Allocate target memory, or alias */
 
-  tdpGetDeviceCount(&ndevice);
+  tdpAssert( tdpGetDeviceCount(&ndevice) );
 
   if (ndevice == 0) {
     obj->target = obj;
@@ -73,15 +73,15 @@ __host__ int pth_create(pe_t * pe, cs_t * cs, int method, pth_t ** pobj) {
     int imem = (method == FE_FORCE_METHOD_STRESS_DIVERGENCE)
             || (method == FE_FORCE_METHOD_RELAXATION_ANTI);
 
-    tdpMalloc((void **) &obj->target, sizeof(pth_t));
-    tdpMemset(obj->target, 0, sizeof(pth_t));
-    tdpMemcpy(&obj->target->nsites, &obj->nsites, sizeof(int),
-	      tdpMemcpyHostToDevice);
+    tdpAssert( tdpMalloc((void **) &obj->target, sizeof(pth_t)) );
+    tdpAssert( tdpMemset(obj->target, 0, sizeof(pth_t)) );
+    tdpAssert( tdpMemcpy(&obj->target->nsites, &obj->nsites, sizeof(int),
+			 tdpMemcpyHostToDevice) );
 
     if (imem) {
-      tdpMalloc((void **) &tmp, 3*3*obj->nsites*sizeof(double));
-      tdpMemcpy(&obj->target->str, &tmp, sizeof(double *),
-		tdpMemcpyHostToDevice);
+      tdpAssert( tdpMalloc((void **) &tmp, 3*3*obj->nsites*sizeof(double)) );
+      tdpAssert( tdpMemcpy(&obj->target->str, &tmp, sizeof(double *),
+			   tdpMemcpyHostToDevice) );
     }
   }
 
@@ -103,16 +103,16 @@ __host__ int pth_free(pth_t * pth) {
 
   assert(pth);
 
-  tdpGetDeviceCount(&ndevice);
+  tdpAssert( tdpGetDeviceCount(&ndevice) );
 
   if (ndevice > 0) {
-    tdpMemcpy(&tmp, &pth->target->str, sizeof(double *),
-	      tdpMemcpyDeviceToHost);
-    if (tmp) tdpFree(tmp);
-    tdpFree(pth->target);
+    tdpAssert( tdpMemcpy(&tmp, &pth->target->str, sizeof(double *),
+			 tdpMemcpyDeviceToHost) );
+    if (tmp) tdpAssert( tdpFree(tmp) );
+    tdpAssert( tdpFree(pth->target) );
   }
 
-  if (pth->str) free(pth->str);
+  free(pth->str);
   free(pth);
 
   return 0;
@@ -131,7 +131,7 @@ __host__ int pth_memcpy(pth_t * pth, tdpMemcpyKind flag) {
 
   assert(pth);
 
-  tdpGetDeviceCount(&ndevice);
+  tdpAssert( tdpGetDeviceCount(&ndevice) );
 
   if (ndevice == 0) {
     /* Ensure we alias */
@@ -141,15 +141,15 @@ __host__ int pth_memcpy(pth_t * pth, tdpMemcpyKind flag) {
     double * tmp = NULL;
 
     nsz = 9*pth->nsites*sizeof(double);
-    tdpMemcpy(&tmp, &pth->target->str, sizeof(double *),
-	      tdpMemcpyDeviceToHost);
+    tdpAssert( tdpMemcpy(&tmp, &pth->target->str, sizeof(double *),
+			 tdpMemcpyDeviceToHost) );
 
     switch (flag) {
     case tdpMemcpyHostToDevice:
-      tdpMemcpy(tmp, pth->str, nsz, flag);
+      tdpAssert( tdpMemcpy(tmp, pth->str, nsz, flag) );
       break;
     case tdpMemcpyDeviceToHost:
-      tdpMemcpy(pth->str, tmp, nsz, flag);
+      tdpAssert( tdpMemcpy(pth->str, tmp, nsz, flag) );
       break;
     default:
       pe_fatal(pth->pe, "Bad flag in pth_memcpy\n");

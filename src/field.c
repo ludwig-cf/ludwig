@@ -48,15 +48,6 @@ __host__ int field_init(field_t * obj, int nhcomm, lees_edw_t * le);
 #include "mpi-ext.h"
 #endif
 
-#ifdef __NVCC__
-/* There are two file-scope switches here, which need to be generalised
- * via some suitable interface; they are separate, but both relate to
- * GPU execution. */
-static const int have_graph_api_ = 1;
-#else
-static const int have_graph_api_ = 0;
-#endif
-
 #if defined (MPIX_CUDA_AWARE_SUPPORT) && MPIX_CUDA_AWARE_SUPPORT
 static const int have_gpu_aware_mpi_ = 1;
 #else
@@ -168,16 +159,16 @@ __host__ int field_free(field_t * obj) {
 
   assert(obj);
 
-  tdpGetDeviceCount(&ndevice);
+  tdpAssert( tdpGetDeviceCount(&ndevice) );
 
   if (ndevice > 0) {
-    tdpMemcpy(&tmp, &obj->target->data, sizeof(double *),
-	      tdpMemcpyDeviceToHost);
-    tdpFree(tmp);
-    tdpFree(obj->target);
+    tdpAssert( tdpMemcpy(&tmp, &obj->target->data, sizeof(double *),
+			 tdpMemcpyDeviceToHost) );
+    tdpAssert( tdpFree(tmp) );
+    tdpAssert( tdpFree(obj->target) );
   }
 
-  if (obj->data) free(obj->data);
+  free(obj->data);
 
   field_halo_free(&obj->h);
 
@@ -239,7 +230,7 @@ __host__ int field_init(field_t * obj, int nhcomm, lees_edw_t * le) {
 
   /* Allocate target copy of structure (or alias) */
 
-  tdpGetDeviceCount(&ndevice);
+  tdpAssert( tdpGetDeviceCount(&ndevice) );
 
   if (ndevice == 0) {
     obj->target = obj;
@@ -247,17 +238,17 @@ __host__ int field_init(field_t * obj, int nhcomm, lees_edw_t * le) {
   else {
     cs_t * cstarget = NULL;
     lees_edw_t * letarget = NULL;
-    tdpMalloc((void **) &obj->target, sizeof(field_t));
-    tdpMalloc((void **) &tmp, nfsz*sizeof(double));
-    tdpMemcpy(&obj->target->data, &tmp, sizeof(double *),
-	      tdpMemcpyHostToDevice);
+    tdpAssert( tdpMalloc((void **) &obj->target, sizeof(field_t)) );
+    tdpAssert( tdpMalloc((void **) &tmp, nfsz*sizeof(double)) );
+    tdpAssert( tdpMemcpy(&obj->target->data, &tmp, sizeof(double *),
+			 tdpMemcpyHostToDevice) );
 
     cs_target(obj->cs, &cstarget);
     if (le) lees_edw_target(obj->le, &letarget);
-    tdpMemcpy(&obj->target->cs, &cstarget, sizeof(cs_t *),
-	      tdpMemcpyHostToDevice);
-    tdpMemcpy(&obj->target->le, &letarget, sizeof(lees_edw_t *),
-	      tdpMemcpyHostToDevice);
+    tdpAssert( tdpMemcpy(&obj->target->cs, &cstarget, sizeof(cs_t *),
+			 tdpMemcpyHostToDevice) );
+    tdpAssert( tdpMemcpy(&obj->target->le, &letarget, sizeof(lees_edw_t *),
+			 tdpMemcpyHostToDevice) );
     field_memcpy(obj, tdpMemcpyHostToDevice);
   }
 
@@ -276,7 +267,7 @@ __host__ int field_memcpy(field_t * obj, tdpMemcpyKind flag) {
   size_t nfsz;
   double * tmp;
 
-  tdpGetDeviceCount(&ndevice);
+  tdpAssert( tdpGetDeviceCount(&ndevice) );
 
   if (ndevice == 0) {
     /* Ensure we alias */
@@ -285,18 +276,18 @@ __host__ int field_memcpy(field_t * obj, tdpMemcpyKind flag) {
   else {
 
     nfsz = (size_t) obj->nf*obj->nsites;
-    tdpMemcpy(&tmp, &obj->target->data, sizeof(double *),
-	      tdpMemcpyDeviceToHost);
+    tdpAssert( tdpMemcpy(&tmp, &obj->target->data, sizeof(double *),
+			 tdpMemcpyDeviceToHost) );
 
     switch (flag) {
     case tdpMemcpyHostToDevice:
-      tdpMemcpy(&obj->target->nf, &obj->nf, sizeof(int), flag);
-      tdpMemcpy(&obj->target->nhcomm, &obj->nhcomm, sizeof(int), flag);
-      tdpMemcpy(&obj->target->nsites, &obj->nsites, sizeof(int), flag);
-      tdpMemcpy(tmp, obj->data, nfsz*sizeof(double), flag);
+      tdpAssert( tdpMemcpy(&obj->target->nf, &obj->nf, sizeof(int), flag) );
+      tdpAssert( tdpMemcpy(&obj->target->nhcomm, &obj->nhcomm, sizeof(int), flag) );
+      tdpAssert( tdpMemcpy(&obj->target->nsites, &obj->nsites, sizeof(int), flag) );
+      tdpAssert( tdpMemcpy(tmp, obj->data, nfsz*sizeof(double), flag) );
       break;
     case tdpMemcpyDeviceToHost:
-      tdpMemcpy(obj->data, tmp, nfsz*sizeof(double), flag);
+      tdpAssert( tdpMemcpy(obj->data, tmp, nfsz*sizeof(double), flag) );
       break;
     default:
       pe_fatal(obj->pe, "Bad flag in field_memcpy\n");
@@ -1393,8 +1384,8 @@ int field_halo_create(const field_t * field, field_halo_t * h) {
 
   /* Device */
 
-  tdpGetDeviceCount(&ndevice);
-  tdpStreamCreate(&h->stream);
+  tdpAssert( tdpGetDeviceCount(&ndevice) );
+  tdpAssert( tdpStreamCreate(&h->stream) );
 
   if (ndevice == 0) {
     h->target = h;
@@ -1416,10 +1407,8 @@ int field_halo_create(const field_t * field, field_halo_t * h) {
     tdpAssert( tdpMemcpy(h->target->recv, h->recv_d, 27*sizeof(double *),
 			 tdpMemcpyHostToDevice) );
 
-    if (have_graph_api_) {
-      field_graph_halo_send_create(field, h);
-      field_graph_halo_recv_create(field, h);
-    }
+    field_graph_halo_send_create(field, h);
+    field_graph_halo_recv_create(field, h);
   }
 
   return 0;
@@ -1433,10 +1422,13 @@ int field_halo_create(const field_t * field, field_halo_t * h) {
 
 int field_halo_post(const field_t * field, field_halo_t * h) {
 
+  int ndevice = 0;
   const int tagbase = 2022;
 
   assert(field);
   assert(h);
+
+  tdpAssert( tdpGetDeviceCount(&ndevice) );
 
   /* Post recvs */
 
@@ -1468,7 +1460,7 @@ int field_halo_post(const field_t * field, field_halo_t * h) {
 
   TIMER_start(TIMER_FIELD_HALO_PACK);
 
-  if (have_graph_api_) {
+  if (ndevice) {
     tdpAssert( tdpGraphLaunch(h->gsend.exec, h->stream) );
     tdpAssert( tdpStreamSynchronize(h->stream) );
   }
@@ -1515,8 +1507,12 @@ int field_halo_post(const field_t * field, field_halo_t * h) {
 
 int field_halo_wait(field_t * field, field_halo_t * h) {
 
+  int ndevice = 0;
+
   assert(field);
   assert(h);
+
+  tdpAssert( tdpGetDeviceCount(&ndevice) );
 
   TIMER_start(TIMER_FIELD_HALO_WAITALL);
 
@@ -1526,7 +1522,7 @@ int field_halo_wait(field_t * field, field_halo_t * h) {
 
   TIMER_start(TIMER_FIELD_HALO_UNPACK);
 
-  if (have_graph_api_) {
+  if (ndevice) {
     tdpAssert( tdpGraphLaunch(h->grecv.exec, h->stream) );
     tdpAssert( tdpStreamSynchronize(h->stream) );
   }
@@ -1608,7 +1604,8 @@ int field_halo_free(field_halo_t * h) {
   assert(h);
 
   int ndevice = 0;
-  tdpGetDeviceCount(&ndevice);
+
+  tdpAssert( tdpGetDeviceCount(&ndevice) );
 
   if (ndevice > 0) {
     tdpAssert( tdpMemcpy(h->send_d, h->target->send, 27*sizeof(double *),
@@ -1616,10 +1613,10 @@ int field_halo_free(field_halo_t * h) {
     tdpAssert( tdpMemcpy(h->recv_d, h->target->recv, 27*sizeof(double *),
 			 tdpMemcpyDeviceToHost) );
     for (int p = 1; p < h->nvel; p++) {
-      tdpFree(h->send_d[p]);
-      tdpFree(h->recv_d[p]);
+      tdpAssert( tdpFree(h->send_d[p]) );
+      tdpAssert( tdpFree(h->recv_d[p]) );
     }
-    tdpFree(h->target);
+    tdpAssert( tdpFree(h->target) );
   }
 
   for (int p = 1; p < h->nvel; p++) {
@@ -1627,7 +1624,7 @@ int field_halo_free(field_halo_t * h) {
     free(h->recv[p]);
   }
 
-  if (have_graph_api_) {
+  if (ndevice > 0) {
     tdpAssert( tdpGraphDestroy(h->gsend.graph) );
     tdpAssert( tdpGraphDestroy(h->grecv.graph) );
   }
@@ -1675,7 +1672,7 @@ int field_io_write(field_t * field, int timestep, io_event_t * event) {
     }
 
     io->impl->free(&io);
-    io_event_report(event, meta, field->name);
+    io_event_report_write(event, meta, field->name);
   }
 
   return ifail;
@@ -1700,9 +1697,16 @@ int field_io_read(field_t * field, int timestep, io_event_t * event) {
   assert(ifail == 0);
 
   if (ifail == 0) {
+    io_event_record(event, IO_EVENT_READ);
     io->impl->read(io, filename);
+    io_event_record(event, IO_EVENT_DISAGGR);
     field_io_aggr_unpack(field, io->aggr);
     io->impl->free(&io);
+
+    if (meta->options.report) {
+      pe_info(field->pe, "MPIIO read from %s\n", filename);
+      io_event_report_read(event, meta, field->name);
+    }
   }
 
   return ifail;
@@ -1710,7 +1714,7 @@ int field_io_read(field_t * field, int timestep, io_event_t * event) {
 
 /*****************************************************************************
  *
- * field_graph_halo_send_create
+ *  field_graph_halo_send_create
  *
  *****************************************************************************/
 
@@ -1755,24 +1759,24 @@ int field_graph_halo_send_create(const field_t * field, field_halo_t * h) {
       int k = 1 + h->cv[h->nvel - ireq][Z];
 
       if (h->nbrrank[i][j][k] != h->nbrrank[1][1][1]) {
-	      tdpGraphNode_t memcpyNode;
+	tdpGraphNode_t memcpyNode;
         tdpMemcpy3DParms memcpyParams = {0};
 
-	      memcpyParams.srcArray = NULL;
-	      memcpyParams.srcPos   = make_tdpPos(0, 0, 0);
-	      memcpyParams.srcPtr   = make_tdpPitchedPtr(h->send_d[ireq],
+	memcpyParams.srcArray = NULL;
+	memcpyParams.srcPos   = make_tdpPos(0, 0, 0);
+	memcpyParams.srcPtr   = make_tdpPitchedPtr(h->send_d[ireq],
 						   sizeof(double)*scount,
 						   scount, 1);
-	      memcpyParams.dstArray = NULL;
-	      memcpyParams.dstPos   = make_tdpPos(0, 0, 0);
-	      memcpyParams.dstPtr   = make_tdpPitchedPtr(h->send[ireq],
+	memcpyParams.dstArray = NULL;
+	memcpyParams.dstPos   = make_tdpPos(0, 0, 0);
+	memcpyParams.dstPtr   = make_tdpPitchedPtr(h->send[ireq],
 						   sizeof(double)*scount,
 						   scount, 1);
-	      memcpyParams.extent   = make_tdpExtent(sizeof(double)*scount, 1, 1);
-	      memcpyParams.kind     = tdpMemcpyDeviceToHost;
+	memcpyParams.extent   = make_tdpExtent(sizeof(double)*scount, 1, 1);
+	memcpyParams.kind     = tdpMemcpyDeviceToHost;
 
-	      tdpAssert( tdpGraphAddMemcpyNode(&memcpyNode, h->gsend.graph,
-	      				 &kernelNode, 1, &memcpyParams) );
+	tdpAssert( tdpGraphAddMemcpyNode(&memcpyNode, h->gsend.graph,
+					 &kernelNode, 1, &memcpyParams) );
       }
     }
   }

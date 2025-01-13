@@ -48,12 +48,6 @@ enum {NDIM = 3, NVEL = 27};
 typedef struct lb_collide_param_s lb_collide_param_t;
 typedef struct lb_halo_s lb_halo_t;
 typedef struct lb_data_s lb_t;
-typedef struct lb_graph_halo_s lb_graph_halo_t;
-
-struct lb_graph_halo_s {
-  tdpGraph_t graph;
-  tdpGraphExec_t exec;
-};
 
 typedef struct lb_graph_halo_s lb_graph_halo_t;
 
@@ -106,9 +100,6 @@ struct lb_halo_s {
   lb_halo_t * target;
   double * send_d[27];            /* halo: device send buffer per direction */
   double * recv_d[27];            /* halo: device recv buffer per direction */
-  
-  lb_graph_halo_t gsend;          /* Graph API halo swap */
-  lb_graph_halo_t grecv;
 };
 
 int lb_halo_create(const lb_t * lb, lb_halo_t * h, lb_halo_enum_t scheme);
@@ -143,6 +134,9 @@ struct lb_data_s {
 
   lb_data_options_t opts;       /* Copy of run time options */
   lb_halo_t h;                  /* halo information/buffers */
+
+  double * sbuff;               /* Lees-Edwards crossing buffer "send" */
+  double * rbuff;               /* Lees-Edwards crossing buffer "recv" */
 
   lb_t * target;                /* copy of this structure on target */
 };
@@ -184,7 +178,7 @@ __host__ __device__ int lb_0th_moment(lb_t * lb, int index, lb_dist_enum_t nd,
 				      double * rho);
 
 __host__ int lb_init_rest_f(lb_t * lb, double rho0);
-__host__ int lb_1st_moment(lb_t * lb, int index, lb_dist_enum_t nd, double g[3]);
+__host__ __device__ int lb_1st_moment(lb_t * lb, int index, lb_dist_enum_t nd, double g[3]);
 __host__ int lb_2nd_moment(lb_t * lb, int index, lb_dist_enum_t nd, double s[3][3]);
 __host__ int lb_1st_moment_equilib_set(lb_t * lb, int index, double rho, double u[3]);
 
@@ -198,8 +192,5 @@ __host__ int lb_io_aggr_unpack(lb_t * lb, const io_aggregator_t * aggr);
 
 __host__ int lb_io_write(lb_t * lb, int timestep, io_event_t * event);
 __host__ int lb_io_read(lb_t * lb, int timestep, io_event_t * event);
-
-int lb_graph_halo_send_create(const lb_t * lb, lb_halo_t * h, int * send_count);
-int lb_graph_halo_recv_create(const lb_t * lb, lb_halo_t * h, int * recv_count);
 
 #endif

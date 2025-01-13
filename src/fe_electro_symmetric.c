@@ -10,7 +10,7 @@
  *
  *    mu_phi = mu^mix + mu^solv + mu^el
  *
- *  with mu^mix the usual symmetric contribution, 
+ *  with mu^mix the usual symmetric contribution,
  *
  *    mu^solv = (1/2) [ rho(+)Delta mu(+) + rho(-)Delta mu(-) ]
  *
@@ -19,7 +19,7 @@
  *    mu^el = - (1/2) gamma epsilonbar E^2
  *
  *  where gamma is the dielectric contrast and epsilonbar is the mean
- *  dielectric contant for the two phases. E is the external electric
+ *  dielectric constant for the two phases. E is the external electric
  *  field.
  *
  *
@@ -30,7 +30,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2013-2018 The University of Edinburgh
+ *  (c) 2013-2024 The University of Edinburgh
  *
  *  Contributing authors:
  *    Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -138,7 +138,7 @@ __host__ int fe_es_create(pe_t * pe, cs_t * cs, fe_symm_t * symm,
   psi_nk(psi, &fe->param->nk);
   fe_es_epsilon_set(fe, psi->epsilon, psi->epsilon2);
 
-  tdpGetDeviceCount(&ndevice);
+  tdpAssert( tdpGetDeviceCount(&ndevice) );
 
   if (ndevice == 0) {
     fe->target = fe;
@@ -147,10 +147,10 @@ __host__ int fe_es_create(pe_t * pe, cs_t * cs, fe_symm_t * symm,
     fe_vt_t * vt;
     fe_es_param_t * tmp;
 
-    tdpMalloc((void **) &fe->target, sizeof(fe_es_t));
+    tdpAssert( tdpMalloc((void **) &fe->target, sizeof(fe_es_t)) );
     tdpGetSymbolAddress((void **) &tmp, tdpSymbol(const_param));
-    tdpMemcpy(&fe->target->param, tmp, sizeof(fe_es_param_t *),
-	      tdpMemcpyHostToDevice);
+    tdpAssert( tdpMemcpy(&fe->target->param, tmp, sizeof(fe_es_param_t *),
+			 tdpMemcpyHostToDevice) );
     tdpGetSymbolAddress((void **) &vt, tdpSymbol(fe_es_dvt));
   }
 
@@ -169,7 +169,7 @@ __host__ int fe_es_free(fe_es_t * fe) {
 
   assert(fe);
 
-  if (fe->target != fe) tdpFree(fe->target);
+  if (fe->target != fe) tdpAssert( tdpFree(fe->target) );
 
   free(fe->param);
   free(fe);
@@ -235,7 +235,7 @@ __host__ int fe_es_fed(fe_es_t * fe, int index, double * fed) {
  *
  *      mu_phi = mu_phi_mix + mu_phi_solv + mu_phi_el
  *
- *  Note: mu_phi_solv needs to be in agreement with 
+ *  Note: mu_phi_solv needs to be in agreement with
  *        the terms in fe_es_mu_ion()
  *
  *****************************************************************************/
@@ -268,10 +268,10 @@ __host__ int fe_es_mu_phi(fe_es_t * fe, int index, double * mu) {
   }
 
   /* Electric field contribution */
- 
+
   e2 = 0.0;
 
-  psi_electric_field(fe->psi, index, e); 
+  psi_electric_field(fe->psi, index, e);
 
   for (ia = 0; ia < 3; ia++) {
     e[ia] *= kt*reunit;
@@ -298,7 +298,7 @@ __host__ int fe_es_mu_phi(fe_es_t * fe, int index, double * mu) {
 __host__ int fe_es_mu_ion_solv(fe_es_t * fe, int index, int n, double * mu) {
 
   double phi;
- 
+
   assert(fe);
   assert(mu);
   assert(n < fe->param->nk);
@@ -396,7 +396,7 @@ __host__ int fe_es_var_epsilon(fe_es_t * fe, int index, double * epsilon) {
  *  The field term comes from
  *
  *  S^elec = - [D_a E_b - (1/2) epsilonbar d_ab E^2]
- * 
+ *
  *    where D_a is the electric displacement. The functional form of
  *    epsilon(r) agrees with fe_es_var_epsilon() above.
  *
@@ -406,7 +406,7 @@ __host__ int fe_es_var_epsilon(fe_es_t * fe, int index, double * epsilon) {
  *  the force calculation.
  *
  *  Finally, the true Maxwell stress includes the total electric
- *  field. 
+ *  field.
  *
  *****************************************************************************/
 
@@ -431,7 +431,7 @@ __host__ int fe_es_stress_ex(fe_es_t * fe, int index, double s[3][3]) {
   psi_unit_charge(fe->psi, &eunit);
   reunit = 1.0/eunit;
 
-  fe_symm_str(fe->fe_symm, index, s); 
+  fe_symm_str(fe->fe_symm, index, s);
 
   /* Coupling part
      requires phi and total electric field */
@@ -445,7 +445,7 @@ __host__ int fe_es_stress_ex(fe_es_t * fe, int index, double s[3][3]) {
     e[ia] *= kt*reunit;
     e2 += e[ia]*e[ia];
   }
-  
+
   /* Dielectric part */
 
   s_couple = 0.5*phi*fe->param->epsilonbar*fe->param->gamma*e2;
@@ -461,7 +461,7 @@ __host__ int fe_es_stress_ex(fe_es_t * fe, int index, double s[3][3]) {
      local permittivity depends implicitly on phi */
 
   fe_es_var_epsilon(fe, index, &epsloc);
- 
+
   for (ia = 0; ia < 3; ia++) {
     for (ib = 0; ib < 3; ib++) {
 

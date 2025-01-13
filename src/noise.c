@@ -67,7 +67,7 @@ int noise_create(pe_t * pe, cs_t * cs, const noise_options_t * options,
   return 0;
 
  err:
-  if (obj) free(obj);
+  free(obj);
 
   return -1;
 }
@@ -206,7 +206,7 @@ int noise_initialise(pe_t * pe, cs_t * cs, const noise_options_t * options,
 
   /* Device allocations */
 
-  tdpGetDeviceCount(&ndevice);
+  tdpAssert( tdpGetDeviceCount(&ndevice) );
 
   if (ndevice == 0) {
     ns->target = ns;
@@ -245,7 +245,7 @@ int noise_finalise(noise_t * ns) {
 
   assert(ns);
 
-  tdpGetDeviceCount(&ndevice);
+  tdpAssert( tdpGetDeviceCount(&ndevice) );
 
   if (ndevice > 0) {
     unsigned int * state = NULL;
@@ -259,7 +259,7 @@ int noise_finalise(noise_t * ns) {
   if (ns->output.cs) io_metadata_finalise(&ns->output);
   if (ns->input.cs)  io_metadata_finalise(&ns->input);
 
-  if (ns->state) free(ns->state);
+  free(ns->state);
 
   *ns = (noise_t) {};
 
@@ -356,7 +356,7 @@ int noise_memcpy(noise_t * ns, tdpMemcpyKind flag) {
 
   assert(ns);
 
-  tdpGetDeviceCount(&ndevice);
+  tdpAssert( tdpGetDeviceCount(&ndevice) );
 
   if (ndevice == 0) {
     assert(ns->target == ns);
@@ -648,7 +648,7 @@ int noise_io_write(noise_t * ns, int timestep, io_event_t * event) {
       if (meta->options.report) {
 	pe_info(ns->pe, "Wrote noise state to file: %s\n", filename);
       }
-      io_event_report(event, meta, ns->options.filestub);
+      io_event_report_write(event, meta, ns->options.filestub);
     }
   }
 

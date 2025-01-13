@@ -15,13 +15,13 @@
  *  Parameters:
  *
  *  One should have b, c > 0 for stability purposes. Then for a < 0
- *  and kappa > 0 one gets two homogenous phases with
+ *  and kappa > 0 one gets two homogeneous phases with
  *  phi = +/- sqrt(-a/b) cf. the symmetric case.
  *
  *  Negative kappa favours the presence of interfaces, and lamellae
  *  can form. Approximately, the lamellar phase can be described by
  *  phi ~= A sin(k_0 x) in the traverse direction, where
- *  A^2 = 4 (1 + kappa^2/4cb)/3 and k_0 = sqrt(-kappa/2c). 
+ *  A^2 = 4 (1 + kappa^2/4cb)/3 and k_0 = sqrt(-kappa/2c).
  *
  *  Edinburgh Soft Matter and Statistical Physics Group
  *  and Edinburgh Parallel Computing Centre
@@ -125,7 +125,7 @@ __host__ int fe_brazovskii_create(pe_t * pe, cs_t * cs, field_t * phi,
 
   /* Allocate device memory, or alias */
 
-  tdpGetDeviceCount(&ndevice);
+  tdpAssert( tdpGetDeviceCount(&ndevice) );
 
   if (ndevice == 0) {
     obj->target = obj;
@@ -133,19 +133,19 @@ __host__ int fe_brazovskii_create(pe_t * pe, cs_t * cs, field_t * phi,
   else {
     fe_brazovskii_param_t * tmp;
     fe_vt_t * vt;
-    tdpMalloc((void **) &obj->target, sizeof(fe_brazovskii_t));
-    tdpMemset(obj->target, 0, sizeof(fe_brazovskii_t));
+    tdpAssert( tdpMalloc((void **) &obj->target, sizeof(fe_brazovskii_t)) );
+    tdpAssert( tdpMemset(obj->target, 0, sizeof(fe_brazovskii_t)) );
     tdpGetSymbolAddress((void **) &tmp, tdpSymbol(const_param));
-    tdpMemcpy(&obj->target->param, &tmp, sizeof(fe_brazovskii_t *),
-	      tdpMemcpyHostToDevice);
+    tdpAssert( tdpMemcpy(&obj->target->param, &tmp, sizeof(fe_brazovskii_t *),
+			 tdpMemcpyHostToDevice) );
     tdpGetSymbolAddress((void **) &vt, tdpSymbol(fe_braz_dvt));
-    tdpMemcpy(&obj->target->super.func, &vt, sizeof(fe_vt_t *),
-	      tdpMemcpyHostToDevice);
+    tdpAssert( tdpMemcpy(&obj->target->super.func, &vt, sizeof(fe_vt_t *),
+			 tdpMemcpyHostToDevice) );
 
-    tdpMemcpy(&obj->target->phi, &phi->target, sizeof(field_t *),
-	      tdpMemcpyHostToDevice);
-    tdpMemcpy(&obj->target->dphi, &dphi->target, sizeof(field_grad_t *),
-	      tdpMemcpyHostToDevice);
+    tdpAssert( tdpMemcpy(&obj->target->phi, &phi->target, sizeof(field_t *),
+			 tdpMemcpyHostToDevice) );
+    tdpAssert( tdpMemcpy(&obj->target->dphi, &dphi->target,
+			 sizeof(field_grad_t *), tdpMemcpyHostToDevice) );
   }
 
   *p = obj;
@@ -165,8 +165,8 @@ __host__ int fe_brazovskii_free(fe_brazovskii_t * fe) {
 
   assert(fe);
 
-  tdpGetDeviceCount(&ndevice);
-  if (ndevice > 0) tdpFree(fe->target);
+  tdpAssert( tdpGetDeviceCount(&ndevice) );
+  if (ndevice > 0) tdpAssert( tdpFree(fe->target) );
 
   free(fe->param);
   free(fe);

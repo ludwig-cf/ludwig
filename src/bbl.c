@@ -66,6 +66,8 @@ __global__ void bbl_pass0_kernel(kernel_3d_t k3d, cs_t * cs, lb_t * lb,
 
 static __constant__ lb_collide_param_t lbp;
 
+int bbl_update_colloid_disk(bbl_t * bbl, colloid_t * pc,
+			    double rho0, double xb[6]);
 int bbl_update_colloid_default(bbl_t * bbl, wall_t * wall, colloid_t * pc,
 			       double rho0, double xb[6]);
 int bbl_update_ellipsoid(bbl_t * bbl, wall_t * wall, colloid_t * pc,
@@ -535,6 +537,38 @@ static int bbl_pass1(bbl_t * bbl, lb_t * lb, colloids_info_t * cinfo) {
 
 
 	/* Squirmer section */
+	/* Some rationalisation may be in order here but prefer
+	* a clear separation of different shapes at the moment ... */
+
+	if (pc->s.active && pc->s.shape == COLLOID_SHAPE_DISK) {
+
+	  /* Both the link vector rb and the direction of motion s.m
+	   * must have z-component = 0 in 2d */
+	  /* If so, vector1 has only a component in z, and tans then
+	   * has only components in (x,y). */
+
+	  mod = modulus(p_link->rb)*modulus(pc->s.m);
+	  rmod = 0.0;
+	  if (mod != 0.0) rmod = 1.0/mod;
+	  cost = rmod*dot_product(p_link->rb, pc->s.m);
+	  if (cost*cost > 1.0) cost = 1.0;
+	  assert(cost*cost <= 1.0);
+	  sint = sqrt(1.0 - cost*cost);
+
+	  cross_product(p_link->rb, pc->s.m, vector1);
+	  cross_product(vector1, p_link->rb, tans);
+
+	  mod = modulus(tans);
+	  rmod = 0.0;
+	  if (mod != 0.0) rmod = 1.0/mod;
+	  plegendre = -sint*(pc->s.b2*cost + pc->s.b1);
+
+	  /* Compute correction to bbl for a sphere: */
+	  dm_a = 0.0;
+	  for (ia = 0; ia < 3; ia++) {
+	    dm_a += -delta*plegendre*rmod*tans[ia]*lb->model.cv[ij][ia];
+	  }
+	}
 
 	if (pc->s.active && pc->s.shape == COLLOID_SHAPE_SPHERE) {
 
@@ -915,6 +949,10 @@ int bbl_update_colloids(bbl_t * bbl, wall_t * wall, colloids_info_t * cinfo) {
 
     if (pc->s.bc != COLLOID_BC_BBL) continue;
 
+    if (pc->s.shape == COLLOID_SHAPE_DISK) {
+      iret = bbl_update_colloid_disk(bbl, pc, rho0, xb);
+    }
+
     if (pc->s.shape == COLLOID_SHAPE_SPHERE) {
       iret = bbl_update_colloid_default(bbl, wall, pc, rho0, xb);
     }
@@ -956,6 +994,103 @@ int bbl_update_colloids(bbl_t * bbl, wall_t * wall, colloids_info_t * cinfo) {
   bbl_wall_lubrication_account(bbl, wall, cinfo);
 
   return 0;
+}
+
+/*****************************************************************************
+ *
+ *  bbl_update_colloids_disk
+ *
+ *  Calculate the update for disks.
+ *
+ *  At the moment we are doing the 3-dimensional problem and just
+ *  setting the z-components to zero. This could be replaced by
+ *  a purely (x, y) implementation.
+ *
+ *****************************************************************************/
+
+int bbl_update_colloid_disk(bbl_t * bbl, colloid_t * pc,
+			    double rho0, double xb[6]) {
+  int iret = 0;
+
+  double mass    = 0.0;    /* Assumes rho pi r^2 */
+  double moment  = 0.0;    /* also assumes (1/4) mass r^2 for sphere */
+  double a[6][6] = {0};
+
+  PI_DOUBLE(pi);
+
+  assert(bbl);
+  assert(pc);
+
+  /* Set up the matrix problem and solve it here. */
+
+  /* Mass and moment of inertia are those of a hard sphere
+   * with the input radius */
+
+  {
+    double a0 = pc->s.a0;
+    mass      = pi*rho0*a0*a0;
+    moment    = (1.0/4.0)*mass*a0*a0;
+  }
+
+  /* Add inertial terms to diagonal elements */
+
+  a[0][0] = mass +   pc->zeta[0];
+  a[0][1] =          pc->zeta[1];
+  a[0][2] =          pc->zeta[2];
+  a[0][3] =          pc->zeta[3];
+  a[0][4] =          pc->zeta[4];
+  a[0][5] =          pc->zeta[5];
+  a[1][1] = mass +   pc->zeta[6];
+  a[1][2] =          pc->zeta[7];
+  a[1][3] =          pc->zeta[8];
+  a[1][4] =          pc->zeta[9];
+  a[1][5] =          pc->zeta[10];
+  a[2][2] = mass +   pc->zeta[11];
+  a[2][3] =          pc->zeta[12];
+  a[2][4] =          pc->zeta[13];
+  a[2][5] =          pc->zeta[14];
+  a[3][3] = moment + pc->zeta[15];
+  a[3][4] =          pc->zeta[16];
+  a[3][5] =          pc->zeta[17];
+  a[4][4] = moment + pc->zeta[18];
+  a[4][5] =          pc->zeta[19];
+  a[5][5] = moment + pc->zeta[20];
+
+  /* Lower triangle */
+
+  a[1][0] = a[0][1];
+  a[2][0] = a[0][2];
+  a[2][1] = a[1][2];
+  a[3][0] = a[0][3];
+  a[3][1] = a[1][3];
+  a[3][2] = a[2][3];
+  a[4][0] = a[0][4];
+  a[4][1] = a[1][4];
+  a[4][2] = a[2][4];
+  a[4][3] = a[3][4];
+  a[5][0] = a[0][5];
+  a[5][1] = a[1][5];
+  a[5][2] = a[2][5];
+  a[5][3] = a[3][5];
+  a[5][4] = a[4][5];
+
+  /* Form the right-hand side */
+
+  for (int ia = 0; ia < 3; ia++) {
+    xb[ia]   = mass*pc->s.v[ia]   + pc->f0[ia] + pc->force[ia];
+    xb[3+ia] = moment*pc->s.w[ia] + pc->t0[ia] + pc->torque[ia];
+  }
+
+  /* Contribution to mass conservation from squirmer */
+
+  for (int ia = 0; ia < 3; ia++) {
+    xb[ia]   += pc->fc0[ia];
+    xb[3+ia] += pc->tc0[ia];
+  }
+
+  iret = bbl_6x6_gaussian_elimination(a, xb);
+
+  return iret;
 }
 
 /*****************************************************************************
@@ -1070,7 +1205,6 @@ int bbl_update_ellipsoid(bbl_t * bbl, wall_t * wall, colloid_t * pc,
   double quaternext[4];
   double owathalf[3];
   double qbar[4];
-  double v1[3]={1.0,0.0,0.0};
 
   assert(bbl);
   assert(wall);
@@ -1091,10 +1225,6 @@ int bbl_update_ellipsoid(bbl_t * bbl, wall_t * wall, colloid_t * pc,
     util_vector_copy(4, pc->s.quat, pc->s.quatold);
     util_vector_copy(4, quaternext, pc->s.quat);
   }
-
-  /* Re-orient swimming direction */
-
-  util_q4_rotate_vector(pc->s.quat, v1, pc->s.m);
 
   return iret;
 }
@@ -1404,8 +1534,11 @@ static int bbl_wall_lubrication_account(bbl_t * bbl, wall_t * wall,
     else if (pc->s.shape == COLLOID_SHAPE_ELLIPSOID) {
       bbl_wall_lubr_correction_ellipsoid(bbl, wall, pc, dwall);
     }
-    else {
-      /* Specifically, no COLLOID_SHAPE_DISK */
+    else if (pc->s.shape == COLLOID_SHAPE_DISK) {
+      /* There is current no correction available; dwall = 0 */
+      ;
+    } else {
+      /* internal error */
       assert(0);
     }
     f[X] -= pc->s.v[X]*dwall[X];
