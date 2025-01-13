@@ -40,7 +40,9 @@ int lb_halo_dequeue_recv(lb_t * lb, const lb_halo_t * h, int irreq);
 int lb_halo_enqueue_send(const lb_t * lb, lb_halo_t * h, int irreq);
 
 int lb_data_initialise_device_model(lb_t * lb);
+int halo_initialise_device_model(lb_halo_t * h);
 int lb_data_free_device_model(lb_t *lb);
+int halo_free_device_model(lb_halo_t *h);
 
 static __constant__ lb_collide_param_t static_param;
 
@@ -375,6 +377,60 @@ int lb_data_initialise_device_model(lb_t * lb) {
 
 /*****************************************************************************
  *
+ *  halo_initialise_device_model
+ *
+ *  Allocate and copy the halo lb_model_t on target.
+ *
+ *****************************************************************************/
+
+int halo_initialise_device_model(lb_halo_t * h) {
+
+  int ndevice = 0;
+
+  tdpAssert( tdpGetDeviceCount(&ndevice) );
+
+  if (ndevice > 0) {
+
+    int nvel = h->map.nvel;
+    lb_model_t * hm = &h->map;
+    lb_model_t * dm = &h->target->map;
+    int8_t (*d_cv)[3] = {0};
+    double * d_wv = NULL;
+    double * d_na = NULL;
+
+    tdpAssert( tdpMalloc((void **) &d_cv, nvel*sizeof(int8_t[3])) );
+    tdpAssert( tdpMalloc((void **) &d_wv, nvel*sizeof(double)) );
+    tdpAssert( tdpMalloc((void **) &d_na, nvel*sizeof(double)) );
+
+    tdpAssert( tdpMemcpy(d_cv, hm->cv, nvel*sizeof(int8_t[3]),
+			 tdpMemcpyHostToDevice) );
+    tdpAssert( tdpMemcpy(d_wv, hm->wv, nvel*sizeof(double),
+			 tdpMemcpyHostToDevice) );
+    tdpAssert( tdpMemcpy(d_na, hm->na, nvel*sizeof(double),
+			 tdpMemcpyHostToDevice) );
+
+    tdpAssert( tdpMemcpy(&(dm->cv), &d_cv, sizeof(int8_t(*)[3]),
+			 tdpMemcpyHostToDevice) );
+    tdpAssert( tdpMemcpy(&(dm->wv), &d_wv, sizeof(double *),
+			 tdpMemcpyHostToDevice) );
+    tdpAssert( tdpMemcpy(&(dm->na), &d_na, sizeof(double *),
+			 tdpMemcpyHostToDevice) );
+
+    tdpAssert( tdpMemcpy(&(dm->ndim), &(hm->ndim), sizeof(int8_t),
+			 tdpMemcpyHostToDevice) );
+    tdpAssert( tdpMemcpy(&(dm->nvel), &(hm->nvel), sizeof(int8_t),
+			 tdpMemcpyHostToDevice) );
+    tdpAssert( tdpMemcpy(&(dm->cs2), &(hm->cs2), sizeof(double),
+			 tdpMemcpyHostToDevice) );
+
+    /* We do not copy the eigenvectors currently. */
+  }
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
  *  lb_data_free_device_model
  *
  *****************************************************************************/
@@ -396,6 +452,39 @@ int lb_data_free_device_model(lb_t * lb) {
     tdpAssert( tdpMemcpy(&d_wv, &lb->target->model.wv, sizeof(double *),
 			 tdpMemcpyDeviceToHost) );
     tdpAssert( tdpMemcpy(&d_na, &lb->target->model.na, sizeof(double *),
+			 tdpMemcpyDeviceToHost) );
+
+    tdpAssert( tdpFree(d_cv) );
+    tdpAssert( tdpFree(d_wv) );
+    tdpAssert( tdpFree(d_na) );
+  }
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  halo_free_device_model
+ *
+ *****************************************************************************/
+
+int halo_free_device_model(lb_halo_t * h) {
+
+  int ndevice = 0;
+
+  tdpAssert( tdpGetDeviceCount(&ndevice) );
+
+  if (ndevice > 0) {
+
+    int8_t (*d_cv)[3] = {0};
+    double * d_wv = NULL;
+    double * d_na = NULL;
+
+    tdpAssert( tdpMemcpy(&d_cv, &h->target->map.cv, sizeof(int8_t(*)[3]),
+			 tdpMemcpyDeviceToHost) );
+    tdpAssert( tdpMemcpy(&d_wv, &h->target->map.wv, sizeof(double *),
+			 tdpMemcpyDeviceToHost) );
+    tdpAssert( tdpMemcpy(&d_na, &h->target->map.na, sizeof(double *),
 			 tdpMemcpyDeviceToHost) );
 
     tdpAssert( tdpFree(d_cv) );
@@ -1386,6 +1475,8 @@ int lb_halo_create(const lb_t * lb, lb_halo_t * h, lb_halo_enum_t scheme) {
   free(send_count);
   free(recv_count);
 
+  halo_initialise_device_model(h);
+
   return 0;
 }
 
@@ -1549,6 +1640,8 @@ int lb_halo_free(lb_t * lb, lb_halo_t * h) {
 
   int ndevice = 0;
   tdpGetDeviceCount(&ndevice);
+
+  halo_free_device_model(h);
 
   if (ndevice > 0) {
     tdpAssert( tdpMemcpy(h->send_d, h->target->send, 27*sizeof(double *),
