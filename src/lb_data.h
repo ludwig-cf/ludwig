@@ -100,6 +100,9 @@ struct lb_halo_s {
   lb_halo_t * target;
   double * send_d[27];            /* halo: device send buffer per direction */
   double * recv_d[27];            /* halo: device recv buffer per direction */
+
+  lb_graph_halo_t gsend;          /* Graph API halo swap */
+  lb_graph_halo_t grecv;
 };
 
 int lb_halo_create(const lb_t * lb, lb_halo_t * h, lb_halo_enum_t scheme);
