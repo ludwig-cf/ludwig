@@ -1456,11 +1456,8 @@ int lb_halo_create(const lb_t * lb, lb_halo_t * h, lb_halo_enum_t scheme) {
 			 tdpMemcpyHostToDevice) );
 
     if (have_graph_api_) {
-      printf("here 1\n");
       lb_graph_halo_send_create(lb, h, send_count);
-      printf("here 2\n");
       lb_graph_halo_recv_create(lb, h, recv_count);
-      printf("here 3\n");
     }
 
   }
@@ -1524,11 +1521,8 @@ int lb_halo_post(lb_t * lb, lb_halo_t * h) {
   tdpGetDeviceCount(&ndevice);
   if (ndevice > 0 && lb->haloscheme == LB_HALO_TARGET) {
     if (have_graph_api_) {
-      printf("here 4\n");
       tdpAssert( tdpGraphLaunch(h->gsend.exec, h->stream) );
-      printf("here 5\n");
       tdpAssert( tdpStreamSynchronize(h->stream) );
-      printf("here 6\n");
     } else {
       for (int ireq = 0; ireq < h->map.nvel; ireq++) {
         if (h->count[ireq] > 0) {
@@ -1601,11 +1595,8 @@ int lb_halo_wait(lb_t * lb, lb_halo_t * h) {
   tdpGetDeviceCount(&ndevice);
   if (ndevice > 0 && lb->haloscheme == LB_HALO_TARGET) {
     if (have_graph_api_) {
-      printf("here 7\n");
       tdpAssert( tdpGraphLaunch(h->grecv.exec, h->stream) );
-      printf("here 8\n");
       tdpAssert( tdpStreamSynchronize(h->stream) );
-      printf("here 9\n");
     } else {
       for (int ireq = 0; ireq < h->map.nvel; ireq++) {
         if (h->count[ireq] > 0) {
@@ -1667,11 +1658,8 @@ int lb_halo_free(lb_t * lb, lb_halo_t * h) {
   }
 
   if (have_graph_api_) {
-    printf("here 10\n");
     tdpAssert( tdpGraphDestroy(h->gsend.graph) );
-    printf("here 11\n");
     tdpAssert( tdpGraphDestroy(h->grecv.graph) );
-    printf("here 12\n");
   }
   
   tdpAssert( tdpStreamDestroy(h->stream) );
