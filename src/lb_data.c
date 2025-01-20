@@ -58,7 +58,7 @@ static __constant__ lb_collide_param_t static_param;
 /* There are two file-scope switches here, which need to be generalised
  * via some suitable interface; they are separate, but both relate to
  * GPU execution. */
-static const int have_graph_api_ = 1;
+static const int have_graph_api_ = 0;
 #else
 static const int have_graph_api_ = 0;
 #endif
