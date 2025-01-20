@@ -779,31 +779,8 @@ __host__ int lb_halo(lb_t * lb) {
 
   assert(lb);
 
-  lb_halo_swap(lb, lb->haloscheme);
-
-  return 0;
-}
-
-/*****************************************************************************
- *
- *  lb_halo_swap
- *
- *  Specify the type of swap wanted.
- *
- *****************************************************************************/
-
-__host__ int lb_halo_swap(lb_t * lb, lb_halo_enum_t flag) {
-
-  assert(lb);
-
-  switch (flag) {
-  case LB_HALO_TARGET:
-  case LB_HALO_OPENMP_FULL:
-  case LB_HALO_OPENMP_REDUCED:
-  default:
-    lb_halo_post(lb, &lb->h);
-    lb_halo_wait(lb, &lb->h);
-  }
+  lb_halo_post(lb, &lb->h);
+  lb_halo_wait(lb, &lb->h);
 
   return 0;
 }

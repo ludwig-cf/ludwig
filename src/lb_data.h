@@ -172,7 +172,6 @@ __host__ int lb_free(lb_t * lb);
 __host__ int lb_memcpy(lb_t * lb, tdpMemcpyKind flag);
 __host__ int lb_collide_param_commit(lb_t * lb);
 __host__ int lb_halo(lb_t * lb);
-__host__ int lb_halo_swap(lb_t * lb, lb_halo_enum_t flag);
 
 __host__ __device__ int lb_ndist(lb_t * lb, int * ndist);
 __host__ __device__ int lb_f(lb_t * lb, int index, int p, int n, double * f);

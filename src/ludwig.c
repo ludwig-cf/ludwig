@@ -2170,7 +2170,8 @@ int ludwig_colloids_update(ludwig_t * ludwig) {
   else {
     /* Pull data back, then full host halo swap */
     lb_memcpy(ludwig->lb, tdpMemcpyDeviceToHost);
-    lb_halo_swap(ludwig->lb, LB_HALO_OPENMP_FULL);
+    ludwig->lb->haloscheme = LB_HALO_OPENMP_FULL;
+    lb_halo(ludwig->lb);
   }
 
   TIMER_stop(TIMER_HALO_LATTICE);
