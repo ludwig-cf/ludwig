@@ -58,7 +58,7 @@ static __constant__ lb_collide_param_t static_param;
 /* There are two file-scope switches here, which need to be generalised
  * via some suitable interface; they are separate, but both relate to
  * GPU execution. */
-static const int have_graph_api_ = 0;
+static const int have_graph_api_ = 1;
 #else
 static const int have_graph_api_ = 0;
 #endif
@@ -1940,7 +1940,7 @@ int lb_graph_halo_send_create(const lb_t * lb, lb_halo_t * h, int * send_count) 
     kernelNodeParams.func = (void *) lb_halo_enqueue_send_kernel;
     dim3 nblk;
     dim3 ntpb;
-    int scount = send_count[ireq]*lb_halo_size(h->slim[ireq]);
+    int scount = lb_halo_size(h->slim[ireq]);
     if (scount == 0) continue;
 
     kernel_launch_param(scount, &nblk, &ntpb);
@@ -2007,7 +2007,7 @@ int lb_graph_halo_recv_create(const lb_t * lb, lb_halo_t * h, int * recv_count) 
   tdpAssert( tdpGraphCreate(&h->grecv.graph, 0) );
 
   for (int ireq = 1; ireq < h->map.nvel; ireq++) {
-    int rcount = recv_count[ireq]*lb_halo_size(h->rlim[ireq]);
+    int rcount = lb_halo_size(h->rlim[ireq]);
     if (rcount == 0) continue;
     tdpGraphNode_t memcpyNode = {0};
 
