@@ -1510,8 +1510,8 @@ int lb_halo_post(lb_t * lb, lb_halo_t * h) {
           int scount = h->count[ireq]*lb_halo_size(h->slim[ireq]);
           dim3 nblk, ntpb;
           kernel_launch_param(scount, &nblk, &ntpb);
-          tdpAssert( tdpLaunchKernel(lb_halo_enqueue_send_kernel, nblk, ntpb, 0, 0, lb->target, h->target, ireq));
-          tdpDeviceSynchronize();
+          tdpLaunchKernel(lb_halo_enqueue_send_kernel, nblk, ntpb, 0, 0, lb->target, h->target, ireq);
+          tdpAssert( tdpDeviceSynchronize());
         }
       }
     }
@@ -1585,7 +1585,7 @@ int lb_halo_wait(lb_t * lb, lb_halo_t * h) {
           dim3 nblk, ntpb;
           kernel_launch_param(rcount, &nblk, &ntpb);
           tdpLaunchKernel(lb_halo_dequeue_recv_kernel, nblk, ntpb, 0, 0, lb->target, h->target, ireq);
-          tdpDeviceSynchronize();
+          tdpAssert( tdpDeviceSynchronize());
         }
       }
     }
@@ -1941,6 +1941,7 @@ int lb_graph_halo_send_create(const lb_t * lb, lb_halo_t * h, int * send_count) 
     dim3 nblk;
     dim3 ntpb;
     int scount = send_count[ireq]*lb_halo_size(h->slim[ireq]);
+    if (scount == 0) continue;
 
     kernel_launch_param(scount, &nblk, &ntpb);
 
@@ -2007,6 +2008,7 @@ int lb_graph_halo_recv_create(const lb_t * lb, lb_halo_t * h, int * recv_count) 
 
   for (int ireq = 1; ireq < h->map.nvel; ireq++) {
     int rcount = recv_count[ireq]*lb_halo_size(h->rlim[ireq]);
+    if (rcount == 0) continue;
     tdpGraphNode_t memcpyNode = {0};
 
     if (have_gpu_aware_mpi_) {
