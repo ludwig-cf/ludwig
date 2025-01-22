@@ -589,12 +589,13 @@ static int lb_init(lb_t * lb) {
     cs_target(lb->cs, &cstarget);
     tdpMemcpy(&lb->target->cs, &cstarget, sizeof(cs_t *),
 	      tdpMemcpyHostToDevice);
+  
+    lb_data_initialise_device_model(lb);
   }
 
   lb_mpi_init(lb);
   lb_model_param_init(lb);
 
-  lb_data_initialise_device_model(lb);
   lb_memcpy(lb, tdpMemcpyHostToDevice);
 
   return 0;
@@ -1435,6 +1436,8 @@ int lb_halo_create(const lb_t * lb, lb_halo_t * h, lb_halo_enum_t scheme) {
     tdpAssert( tdpMemcpy(h->target->recv, h->recv_d, 27*sizeof(double *),
 			 tdpMemcpyHostToDevice) );
 
+    halo_initialise_device_model(h);
+
     if (have_graph_api_) {
       lb_graph_halo_send_create(lb, h, send_count);
       lb_graph_halo_recv_create(lb, h, recv_count);
@@ -1443,8 +1446,6 @@ int lb_halo_create(const lb_t * lb, lb_halo_t * h, lb_halo_enum_t scheme) {
   }
   free(send_count);
   free(recv_count);
-
-  halo_initialise_device_model(h);
 
   return 0;
 }
