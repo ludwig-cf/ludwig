@@ -1510,7 +1510,7 @@ int lb_halo_post(lb_t * lb, lb_halo_t * h) {
           int scount = h->count[ireq]*lb_halo_size(h->slim[ireq]);
           dim3 nblk, ntpb;
           kernel_launch_param(scount, &nblk, &ntpb);
-          tdpLaunchKernel(lb_halo_enqueue_send_kernel, nblk, ntpb, 0, 0, lb->target, h->target, ireq);
+          tdpAssert( tdpLaunchKernel(lb_halo_enqueue_send_kernel, nblk, ntpb, 0, 0, lb->target, h->target, ireq));
           tdpDeviceSynchronize();
         }
       }
