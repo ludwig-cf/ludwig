@@ -1417,6 +1417,7 @@ int lb_halo_create(const lb_t * lb, lb_halo_t * h, lb_halo_enum_t scheme) {
   }
   else {
     tdpAssert( tdpMalloc((void **) &h->target, sizeof(lb_halo_t)) );
+    tdpAssert( tdpMemset(h->target, 0, sizeof(lb_halo_t)));
     tdpAssert( tdpMemcpy(h->target, h, sizeof(lb_halo_t),
 			 tdpMemcpyHostToDevice) );
 
