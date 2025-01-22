@@ -1934,7 +1934,6 @@ int lb_graph_halo_send_create(const lb_t * lb, lb_halo_t * h, int * send_count) 
                             (void *) &h->target,
                             (void *) &ireq};
     kernelNodeParams.func = (void *) lb_halo_enqueue_send_kernel;
-    //kernelNodeParams.func = (void *) lb_null_kernel;
     dim3 nblk;
     dim3 ntpb;
     int scount = send_count[ireq]*lb_halo_size(h->slim[ireq]);
@@ -2045,7 +2044,6 @@ int lb_graph_halo_recv_create(const lb_t * lb, lb_halo_t * h, int * recv_count) 
                             (void *) &h->target,
                             (void *) &ireq};
     kernelNodeParams.func = (void *) lb_halo_dequeue_recv_kernel;
-    //kernelNodeParams.func = (void *) lb_null_kernel;
 
     kernel_launch_param(rcount, &nblk, &ntpb);
 
