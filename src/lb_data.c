@@ -1424,8 +1424,10 @@ int lb_halo_create(const lb_t * lb, lb_halo_t * h, lb_halo_enum_t scheme) {
     for (int p = 0; p < h->map.nvel; p++) {         
       int scount = send_count[p]*lb_halo_size(h->slim[p]);  
       int rcount = recv_count[p]*lb_halo_size(h->rlim[p]);
-      tdpAssert( tdpMalloc((void**) &h->send_d[p], scount * sizeof(double)) );
-      tdpAssert( tdpMalloc((void**) &h->recv_d[p], rcount * sizeof(double)) );
+      if (scount > 0)
+        tdpAssert( tdpMalloc((void**) &h->send_d[p], scount * sizeof(double)) );
+      if (rcount > 0)
+        tdpAssert( tdpMalloc((void**) &h->recv_d[p], rcount * sizeof(double)) );
     }
     /* Slightly tricksy. Could use send_d and recv_d on target copy ...*/
     tdpAssert( tdpMemcpy(h->target->send, h->send_d, 27*sizeof(double *),     
