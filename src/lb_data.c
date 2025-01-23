@@ -58,7 +58,7 @@ static __constant__ lb_collide_param_t static_param;
 /* There are two file-scope switches here, which need to be generalised
  * via some suitable interface; they are separate, but both relate to
  * GPU execution. */
-static const int have_graph_api_ = 0;
+static const int have_graph_api_ = 1;
 #else
 static const int have_graph_api_ = 0;
 #endif
@@ -156,8 +156,8 @@ int lb_data_create(pe_t * pe, cs_t * cs, const lb_data_options_t * options,
     pe_fatal(pe, "calloc(1, lb_collide_param_t) failed\n");
   }
 
-  lb_halo_create(obj, &obj->h, obj->haloscheme);
   lb_init(obj); /* graph node creation should happen after init */
+  lb_halo_create(obj, &obj->h, obj->haloscheme);
 
   /* i/o metadata */
   {
@@ -2014,7 +2014,7 @@ int lb_graph_halo_recv_create(const lb_t * lb, lb_halo_t * h, int * recv_count) 
   tdpAssert( tdpGraphCreate(&h->grecv.graph, 0) );
 
   for (int ireq = 1; ireq < h->map.nvel; ireq++) {
-    int rcount = lb_halo_size(h->rlim[ireq]);
+    size_t rcount = lb_halo_size(h->rlim[ireq]);
     if (h->count[ireq] == 0) continue;
     tdpGraphNode_t memcpyNode = {0};
 
