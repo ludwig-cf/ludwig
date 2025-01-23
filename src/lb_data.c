@@ -1512,6 +1512,10 @@ int lb_halo_post(lb_t * lb, lb_halo_t * h) {
           kernel_launch_param(scount, &nblk, &ntpb);
           tdpLaunchKernel(lb_halo_enqueue_send_kernel, nblk, ntpb, 0, 0, lb->target, h->target, ireq);
           tdpAssert( tdpDeviceSynchronize());
+ 
+          if (!have_gpu_aware_mpi_) {
+            tdpAssert( tdpMemcpy(h->send[ireq], h->send_d[ireq], sizeof(double)*scount, tdpMemcpyDeviceToHost));
+          }
         }
       }
     }
@@ -1582,6 +1586,9 @@ int lb_halo_wait(lb_t * lb, lb_halo_t * h) {
       for (int ireq = 0; ireq < h->map.nvel; ireq++) {
         if (h->count[ireq] > 0) {
           int rcount = h->count[ireq]*lb_halo_size(h->slim[ireq]);
+          if (!have_gpu_aware_mpi_) {
+            tdpAssert( tdpMemcpy(h->recv[ireq], h->recv_d[ireq], sizeof(double)*rcount, tdpMemcpyDeviceToHost));
+          }
           dim3 nblk, ntpb;
           kernel_launch_param(rcount, &nblk, &ntpb);
           tdpLaunchKernel(lb_halo_dequeue_recv_kernel, nblk, ntpb, 0, 0, lb->target, h->target, ireq);
@@ -2025,14 +2032,14 @@ int lb_graph_halo_recv_create(const lb_t * lb, lb_halo_t * h, int * recv_count) 
 	      memcpyParams.srcArray = NULL;
 	      memcpyParams.srcPos   = make_tdpPos(0, 0, 0);
 	      memcpyParams.srcPtr   = make_tdpPitchedPtr(h->recv[ireq],
-						   sizeof(double)*rcount,
-						   rcount, 1);
+						   sizeof(double)*h->count[ireq]*rcount,
+						   h->count[ireq]*rcount, 1);
 	      memcpyParams.dstArray = NULL;
 	      memcpyParams.dstPos   = make_tdpPos(0, 0, 0);
 	      memcpyParams.dstPtr   = make_tdpPitchedPtr(h->recv_d[ireq],
-						   sizeof(double)*rcount,
-						   rcount, 1);
-        memcpyParams.extent   = make_tdpExtent(sizeof(double)*rcount, 1, 1);
+						   sizeof(double)*h->count[ireq]*rcount,
+						   h->count[ireq]*rcount, 1);
+        memcpyParams.extent   = make_tdpExtent(sizeof(double)*h->count[ireq]*rcount, 1, 1);
         memcpyParams.kind     = tdpMemcpyHostToDevice;
 
 	      tdpAssert( tdpGraphAddMemcpyNode(&memcpyNode, h->grecv.graph, NULL,
