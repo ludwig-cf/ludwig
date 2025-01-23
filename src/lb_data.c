@@ -58,7 +58,7 @@ static __constant__ lb_collide_param_t static_param;
 /* There are two file-scope switches here, which need to be generalised
  * via some suitable interface; they are separate, but both relate to
  * GPU execution. */
-static const int have_graph_api_ = 0;
+static const int have_graph_api_ = 1;
 #else
 static const int have_graph_api_ = 0;
 #endif
@@ -157,7 +157,7 @@ int lb_data_create(pe_t * pe, cs_t * cs, const lb_data_options_t * options,
   }
 
   lb_halo_create(obj, &obj->h, obj->haloscheme);
-  lb_init(obj);
+  lb_init(obj); /* graph node creation should happen after init */
 
   /* i/o metadata */
   {
@@ -1500,7 +1500,7 @@ int lb_halo_post(lb_t * lb, lb_halo_t * h) {
 
   int ndevice;
   tdpGetDeviceCount(&ndevice);
-  if (ndevice > 0 && lb->haloscheme == LB_HALO_TARGET) {
+  if (ndevice > 0) {
     if (have_graph_api_) {
       tdpAssert( tdpGraphLaunch(h->gsend.exec, h->stream) );
       tdpAssert( tdpStreamSynchronize(h->stream) );
@@ -1941,6 +1941,7 @@ int lb_graph_halo_send_create(const lb_t * lb, lb_halo_t * h, int * send_count) 
   for (int ireq = 1; ireq < h->map.nvel; ireq++) {
     tdpGraphNode_t kernelNode;
     tdpKernelNodeParams kernelNodeParams = {0};
+    printf("lb nvel %d\n", lb->nvel);
     void * kernelArgs[3] = {(void *) &lb->target,
                             (void *) &h->target,
                             (void *) &ireq};
