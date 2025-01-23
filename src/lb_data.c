@@ -1941,7 +1941,6 @@ int lb_graph_halo_send_create(const lb_t * lb, lb_halo_t * h, int * send_count) 
   for (int ireq = 1; ireq < h->map.nvel; ireq++) {
     tdpGraphNode_t kernelNode;
     tdpKernelNodeParams kernelNodeParams = {0};
-    printf("lb nvel %d\n", lb->nvel);
     void * kernelArgs[3] = {(void *) &lb->target,
                             (void *) &h->target,
                             (void *) &ireq};
