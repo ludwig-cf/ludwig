@@ -2,14 +2,10 @@
  *
  *  colloid_link.h
  *
- *  The implementation is exposed for the time being.
- *
- *  $Id: colloid_link.h,v 1.2 2010-10-15 12:40:02 kevin Exp $
- *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2010-2017 The University of Edinburgh
+ *  (c) 2010-2025 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -23,7 +19,7 @@ typedef struct colloid_link_type colloid_link_t;
 
 struct colloid_link_type {
 
-  int    i;               /* Index of lattice site outside colloid */ 
+  int    i;               /* Index of lattice site outside colloid */
   int    j;               /* Index of lattice site inside */
   int    p;               /* Index of velocity connecting i -> j */
   int    status;          /* What is at site i (fluid, solid, etc) */
@@ -34,11 +30,14 @@ struct colloid_link_type {
   colloid_link_t * next;  /* Linked list */
 };
 
-enum link_status {LINK_FLUID, LINK_COLLOID, LINK_BOUNDARY, LINK_UNUSED}; 
+enum link_status {LINK_FLUID, LINK_COLLOID, LINK_BOUNDARY, LINK_UNUSED};
 
 colloid_link_t * colloid_link_allocate(void);
 void             colloid_link_free_list(colloid_link_t * link);
 int              colloid_link_count(colloid_link_t * link);
 int              colloid_link_total(void);
+
+int colloid_link_max_2d(double a, int nvel);
+int colloid_link_max_3d(double a, int nvel);
 
 #endif

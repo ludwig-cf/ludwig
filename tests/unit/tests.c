@@ -7,7 +7,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2010-2024 The University of Edinburgh
+ *  (c) 2010-2025 The University of Edinburgh
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *
@@ -81,6 +81,8 @@ __host__ int tests_create(int argc, char ** argv) {
   test_build_suite();
   test_ch_suite();
   test_colloid_suite();
+  test_colloid_link_suite();
+  test_colloid_state_io_suite();
   test_colloid_sums_suite();
   test_colloids_info_suite();
   test_colloids_halo_suite();
