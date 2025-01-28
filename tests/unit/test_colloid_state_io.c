@@ -2,9 +2,16 @@
  *
  *  test_colloid_state_io.c
  *
+ *  Edinburgh Soft Matter and Statistical Physics Group and
+ *  Edinburgh Parallel Computing Centre
+ *
+ *  (c) 2025 The University of Edinburgh
+ *
  *****************************************************************************/
 
 #include <assert.h>
+#include <float.h>
+#include <math.h>
 #include <string.h>
 
 #include "pe.h"
@@ -260,54 +267,54 @@ int util_test_colloid_state_same(const colloid_state_t * s1,
   sum += (s1->intpad[5]      == s2->intpad[5]);
   sum += (s1->intpad[6]      == s2->intpad[6]);
 
-  sum += (s1->a0             == s2->a0);
-  sum += (s1->ah             == s2->ah);
-  sum += (s1->r[0]           == s2->r[0]);
-  sum += (s1->r[1]           == s2->r[1]);
-  sum += (s1->r[2]           == s2->r[2]);
-  sum += (s1->v[0]           == s2->v[0]);
-  sum += (s1->v[1]           == s2->v[1]);
-  sum += (s1->v[2]           == s2->v[2]);
-  sum += (s1->w[0]           == s2->w[0]);
-  sum += (s1->w[1]           == s2->w[1]);
-  sum += (s1->w[2]           == s2->w[2]);
-  sum += (s1->s[0]           == s2->s[0]);
-  sum += (s1->s[1]           == s2->s[1]);
-  sum += (s1->s[2]           == s2->s[2]);
-  sum += (s1->m[0]           == s2->m[0]);
-  sum += (s1->m[1]           == s2->m[1]);
-  sum += (s1->m[2]           == s2->m[2]);
-  sum += (s1->b1             == s2->b1);
-  sum += (s1->b2             == s2->b2);
-  sum += (s1->c              == s2->c);
-  sum += (s1->h              == s2->h);
-  sum += (s1->dr[0]          == s2->dr[0]);
-  sum += (s1->dr[1]          == s2->dr[1]);
-  sum += (s1->dr[2]          == s2->dr[2]);
-  sum += (s1->deltaphi       == s2->deltaphi);
-  sum += (s1->q0             == s2->q0);
-  sum += (s1->q1             == s2->q1);
-  sum += (s1->epsilon        == s2->epsilon);
-  sum += (s1->deltaq0        == s2->deltaq0);
-  sum += (s1->deltaq1        == s2->deltaq1);
-  sum += (s1->sa             == s2->sa);
-  sum += (s1->saf            == s2->saf);
-  sum += (s1->al             == s2->al);
-  sum += (s1->elabc[0]       == s2->elabc[0]);
-  sum += (s1->elabc[1]       == s2->elabc[1]);
-  sum += (s1->elabc[2]       == s2->elabc[2]);
-  sum += (s1->quat[0]        == s2->quat[0]);
-  sum += (s1->quat[1]        == s2->quat[1]);
-  sum += (s1->quat[2]        == s2->quat[2]);
-  sum += (s1->quat[3]        == s2->quat[3]);
-  sum += (s1->quatold[0]     == s2->quatold[0]);
-  sum += (s1->quatold[1]     == s2->quatold[1]);
-  sum += (s1->quatold[2]     == s2->quatold[2]);
-  sum += (s1->quatold[3]     == s2->quatold[3]);
-  sum += (s1->dpad[0]        == s2->dpad[0]);
-  sum += (s1->dpad[1]        == s2->dpad[1]);
-  sum += (s1->dpad[2]        == s2->dpad[2]);
-  sum += (s1->dpad[3]        == s2->dpad[3]);
+  sum += (fabs(s1->a0         - s2->a0)         < DBL_EPSILON);
+  sum += (fabs(s1->ah         - s2->ah)         < DBL_EPSILON);
+  sum += (fabs(s1->r[0]       - s2->r[0])       < DBL_EPSILON);
+  sum += (fabs(s1->r[1]       - s2->r[1])       < DBL_EPSILON);
+  sum += (fabs(s1->r[2]       - s2->r[2])       < DBL_EPSILON);
+  sum += (fabs(s1->v[0]       - s2->v[0])       < DBL_EPSILON);
+  sum += (fabs(s1->v[1]       - s2->v[1])       < DBL_EPSILON);
+  sum += (fabs(s1->v[2]       - s2->v[2])       < DBL_EPSILON);
+  sum += (fabs(s1->w[0]       - s2->w[0])       < DBL_EPSILON);
+  sum += (fabs(s1->w[1]       - s2->w[1])       < DBL_EPSILON);
+  sum += (fabs(s1->w[2]       - s2->w[2])       < DBL_EPSILON);
+  sum += (fabs(s1->s[0]       - s2->s[0])       < DBL_EPSILON);
+  sum += (fabs(s1->s[1]       - s2->s[1])       < DBL_EPSILON);
+  sum += (fabs(s1->s[2]       - s2->s[2])       < DBL_EPSILON);
+  sum += (fabs(s1->m[0]       - s2->m[0])       < DBL_EPSILON);
+  sum += (fabs(s1->m[1]       - s2->m[1])       < DBL_EPSILON);
+  sum += (fabs(s1->m[2]       - s2->m[2])       < DBL_EPSILON);
+  sum += (fabs(s1->b1         - s2->b1)         < DBL_EPSILON);
+  sum += (fabs(s1->b2         - s2->b2)         < DBL_EPSILON);
+  sum += (fabs(s1->c          - s2->c)          < DBL_EPSILON);
+  sum += (fabs(s1->h          - s2->h)          < DBL_EPSILON);
+  sum += (fabs(s1->dr[0]      - s2->dr[0])      < DBL_EPSILON);
+  sum += (fabs(s1->dr[1]      - s2->dr[1])      < DBL_EPSILON);
+  sum += (fabs(s1->dr[2]      - s2->dr[2])      < DBL_EPSILON);
+  sum += (fabs(s1->deltaphi   - s2->deltaphi)   < DBL_EPSILON);
+  sum += (fabs(s1->q0         - s2->q0)         < DBL_EPSILON);
+  sum += (fabs(s1->q1         - s2->q1)         < DBL_EPSILON);
+  sum += (fabs(s1->epsilon    - s2->epsilon)    < DBL_EPSILON);
+  sum += (fabs(s1->deltaq0    - s2->deltaq0)    < DBL_EPSILON);
+  sum += (fabs(s1->deltaq1    - s2->deltaq1)    < DBL_EPSILON);
+  sum += (fabs(s1->sa         - s2->sa)         < DBL_EPSILON);
+  sum += (fabs(s1->saf        - s2->saf)        < DBL_EPSILON);
+  sum += (fabs(s1->al         - s2->al)         < DBL_EPSILON);
+  sum += (fabs(s1->elabc[0]   - s2->elabc[0])   < DBL_EPSILON);
+  sum += (fabs(s1->elabc[1]   - s2->elabc[1])   < DBL_EPSILON);
+  sum += (fabs(s1->elabc[2]   - s2->elabc[2])   < DBL_EPSILON);
+  sum += (fabs(s1->quat[0]    - s2->quat[0])    < DBL_EPSILON);
+  sum += (fabs(s1->quat[1]    - s2->quat[1])    < DBL_EPSILON);
+  sum += (fabs(s1->quat[2]    - s2->quat[2])    < DBL_EPSILON);
+  sum += (fabs(s1->quat[3]    - s2->quat[3])    < DBL_EPSILON);
+  sum += (fabs(s1->quatold[0] - s2->quatold[0]) < DBL_EPSILON);
+  sum += (fabs(s1->quatold[1] - s2->quatold[1]) < DBL_EPSILON);
+  sum += (fabs(s1->quatold[2] - s2->quatold[2]) < DBL_EPSILON);
+  sum += (fabs(s1->quatold[3] - s2->quatold[3]) < DBL_EPSILON);
+  sum += (fabs(s1->dpad[0]    - s2->dpad[0])    < DBL_EPSILON);
+  sum += (fabs(s1->dpad[1]    - s2->dpad[1])    < DBL_EPSILON);
+  sum += (fabs(s1->dpad[2]    - s2->dpad[2])    < DBL_EPSILON);
+  sum += (fabs(s1->dpad[3]    - s2->dpad[3])    < DBL_EPSILON);
 
   if (sum == 80) same = 1;
 
