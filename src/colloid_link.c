@@ -119,8 +119,8 @@ int colloid_link_total(void) {
 
 int colloid_link_max_2d(double a, int nvel) {
 
-  int pi = 4;                            /* This is approximate */
-  int ai = fmax(4.0, ceil(a));           /* A minimum reasonable a ~ 4 */
+  int    pi = 4;                        /* This is approximate */
+  double ai = fmax(4.0, ceil(a));       /* A minimum reasonable a ~ 4 */
 
   return 2*pi*ai*(nvel - 1)/2;
 }
@@ -138,8 +138,8 @@ int colloid_link_max_2d(double a, int nvel) {
 
 int colloid_link_max_3d(double a, int nvel) {
 
-  int pi = 4;                             /* This is approximate */
-  int ai = fmax(1.0, ceil(a));            /* A minimum reasonable a ~ 1.0 */
+  int    pi = 4;                          /* This is approximate */
+  double ai = fmax(1.0, ceil(a));         /* A minimum reasonable a ~ 1.0 */
 
   return 4*pi*ai*ai*(nvel - 1)/2;
 }
