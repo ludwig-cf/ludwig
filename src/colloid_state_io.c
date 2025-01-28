@@ -10,6 +10,9 @@
 
 #include "colloid_state_io.h"
 
+/* Override COLLOID_IO_VERSION here: */
+#define IO_VERSION 240
+
 /*****************************************************************************
  *
  *  colloid_state_io_write_buf
@@ -78,8 +81,8 @@ int colloid_state_io_write_buf_ascii(const colloid_state_t * s, char * buf) {
     nwrite += snprintf(cbuf + 16*item, 1 + item, i1format, s->isfixedvxyz[1]);
     nwrite += snprintf(cbuf + 17*item, 1 + item, i1format, s->isfixedvxyz[2]);
     nwrite += snprintf(cbuf + 18*item, 1 + item, i1format, s->inter_type);
-    /* FIXME: the ioversion needs to be correct ... */
-    nwrite += snprintf(cbuf + 19*item, 1 + item, i1format, s->ioversion);
+    /* This is the i/o version; we ignore s->ioversion: */
+    nwrite += snprintf(cbuf + 19*item, 1 + item, i1format, IO_VERSION);
     nwrite += snprintf(cbuf + 20*item, 1 + item, i1format, s->bc);
     nwrite += snprintf(cbuf + 21*item, 1 + item, i1format, s->shape);
     nwrite += snprintf(cbuf + 22*item, 1 + item, i1format, s->active);
