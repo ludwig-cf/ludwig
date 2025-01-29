@@ -14,7 +14,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2012-2024 The University of Edinburgh
+ *  (c) 2012-2025 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -42,17 +42,6 @@ static int field_data_touch(field_t * field);
 static int field_leesedwards_parallel(field_t * obj);
 
 __host__ int field_init(field_t * obj, int nhcomm, lees_edw_t * le);
-
-#ifdef HAVE_OPENMPI_
-/* This provides MPIX_CUDA_AWARE_SUPPORT .. */
-#include "mpi-ext.h"
-#endif
-
-#if defined (MPIX_CUDA_AWARE_SUPPORT) && MPIX_CUDA_AWARE_SUPPORT
-static const int have_gpu_aware_mpi_ = 1;
-#else
-static const int have_gpu_aware_mpi_ = 0;
-#endif
 
 /*****************************************************************************
  *
@@ -1443,7 +1432,7 @@ int field_halo_post(const field_t * field, field_halo_t * h) {
     int k = 1 + h->cv[h->nvel - ireq][Z];
     int mcount = field->nf*field_halo_size(h->rlim[ireq]);
     double * buf = h->recv[ireq];
-    if (have_gpu_aware_mpi_) buf = h->recv_d[ireq];
+    if (have_gpu_aware_mpi_()) buf = h->recv_d[ireq];
 
     h->request[ireq] = MPI_REQUEST_NULL;
 
@@ -1485,7 +1474,7 @@ int field_halo_post(const field_t * field, field_halo_t * h) {
     int k = 1 + h->cv[ireq][Z];
     int mcount = field->nf*field_halo_size(h->slim[ireq]);
     double * buf = h->send[ireq];
-    if (have_gpu_aware_mpi_) buf = h->send_d[ireq];
+    if (have_gpu_aware_mpi_()) buf = h->send_d[ireq];
 
     /* Skip messages to self ... */
     if (h->nbrrank[i][j][k] == h->nbrrank[1][1][1]) continue;
@@ -1747,7 +1736,7 @@ int field_graph_halo_send_create(const field_t * field, field_halo_t * h) {
     tdpAssert( tdpGraphAddKernelNode(&kernelNode, h->gsend.graph, NULL, 0,
 				     &kernelNodeParams) );
 
-    if (have_gpu_aware_mpi_) {
+    if (have_gpu_aware_mpi_()) {
       /* Don't need explicit device -> host copy */
     }
     else {
@@ -1803,7 +1792,7 @@ int field_graph_halo_recv_create(const field_t * field, field_halo_t * h) {
     int rcount = field->nf*field_halo_size(h->rlim[ireq]);
     tdpGraphNode_t memcpyNode = {0};
 
-    if (have_gpu_aware_mpi_) {
+    if (have_gpu_aware_mpi_()) {
       /* Don't need explicit copies */
     }
     else {
@@ -1851,7 +1840,7 @@ int field_graph_halo_recv_create(const field_t * field, field_halo_t * h) {
     kernelNodeParams.kernelParams   = (void **) kernelArgs;
     kernelNodeParams.extra          = NULL;
 
-    if (have_gpu_aware_mpi_) {
+    if (have_gpu_aware_mpi_()) {
       tdpAssert( tdpGraphAddKernelNode(&node, h->grecv.graph, NULL,
 				       0, &kernelNodeParams) );
     }

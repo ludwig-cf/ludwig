@@ -11,7 +11,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2010-2022 The University of Edinburgh
+ *  (c) 2010-2025 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -35,17 +35,6 @@
 static int le_reproject(lb_t * lb, lees_edw_t * le);
 static int le_displace_and_interpolate(lb_t * lb, lees_edw_t * le);
 static int le_displace_and_interpolate_parallel(lb_t * lb, lees_edw_t * le);
-
-#ifdef HAVE_OPENMPI_
-/* This provides MPIX_CUDA_AWARE_SUPPORT .. */
-#include "mpi-ext.h"
-#endif
-
-#if defined (MPIX_CUDA_AWARE_SUPPORT) && MPIX_CUDA_AWARE_SUPPORT
-static const int have_gpu_aware_mpi_ = 1;
-#else
-static const int have_gpu_aware_mpi_ = 0;
-#endif
 
 /*****************************************************************************
  *
@@ -825,7 +814,7 @@ int lb_data_apply_le_boundary_conditions(lb_t * lb, lees_edw_t * le) {
 
 
     /* Second, displacement. */
-    if (have_gpu_aware_mpi_ || mpi_cartsz[Y] > 1) {
+    if (have_gpu_aware_mpi_() || mpi_cartsz[Y] > 1) {
       lb_data_displace_communicate(lekh, lb, le, t);
     }
     else {
@@ -1139,7 +1128,7 @@ static int lb_data_displace_communicate(le_kernel_helper_t lekh,
   /* If there is GPU-aware MPI just communicate the GPU buffers; if
    * not, copy in relevant direction at the start and finish */
 
-  if (have_gpu_aware_mpi_) {
+  if (have_gpu_aware_mpi_()) {
     tdpAssert( tdpMemcpy(&sbuff, &lb->target->sbuff, sizeof(double *),
 			 tdpMemcpyDeviceToHost) );
     tdpAssert( tdpMemcpy(&rbuff, &lb->target->rbuff, sizeof(double *),
@@ -1253,7 +1242,7 @@ static int lb_data_displace_communicate(le_kernel_helper_t lekh,
   /* Complete */
   MPI_Waitall(8, req, MPI_STATUSES_IGNORE);
 
-  if (have_gpu_aware_mpi_) {
+  if (have_gpu_aware_mpi_()) {
     /* No further action */
   }
   else {
