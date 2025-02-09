@@ -34,6 +34,8 @@ int test_bond_fene_suite(void);
 int test_bonds_suite(void);
 int test_build_suite(void);
 int test_ch_suite(void);
+int test_colloid_link_suite(void);
+int test_colloid_state_io_suite(void);
 int test_colloid_sums_suite(void);
 int test_colloid_suite(void);
 int test_colloids_info_suite(void);
