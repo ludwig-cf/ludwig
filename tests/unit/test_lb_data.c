@@ -196,8 +196,6 @@ int test_lb_data_create(pe_t * pe, cs_t * cs, const lb_data_options_t * opts) {
   assert(lb->nrelax     == LB_RELAXATION_M10); /* Default */
   assert(lb->haloscheme == LB_HALO_FULL);      /* Default */
 
-  /* FIXME: It looks like the total number of planes are allocated on
-     all ranks. Should be planetotal/cartsz[X] */
   if (cs->leopts.nplanes > 0) {
     assert(lb->sbuff);
     assert(lb->rbuff);

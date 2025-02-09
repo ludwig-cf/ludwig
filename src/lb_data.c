@@ -47,32 +47,16 @@ int halo_free_device_model(lb_halo_t *h);
 int lb_graph_halo_recv_create(const lb_t * lb, lb_halo_t * h);
 int lb_graph_halo_send_create(const lb_t * lb, lb_halo_t * h);
 
-static __constant__ lb_collide_param_t static_param;
-
-#ifdef HAVE_OPENMPI_
-/* This provides MPIX_CUDA_AWARE_SUPPORT .. */
-#include "mpi-ext.h"
-#endif
-
-#ifdef __NVCC__
-/* There are two file-scope switches here, which need to be generalised
- * via some suitable interface; they are separate, but both relate to
- * GPU execution. */
-static const int have_graph_api_ = 1;
-#else
-static const int have_graph_api_ = 0;
-#endif
-
-#if defined (MPIX_CUDA_AWARE_SUPPORT) && MPIX_CUDA_AWARE_SUPPORT
-static const int have_gpu_aware_mpi_ = 1;
-#else
-static const int have_gpu_aware_mpi_ = 0;
-#endif
-
 int lb_halo_create(const lb_t * lb, lb_halo_t * h, lb_halo_enum_t scheme);
 int lb_halo_post(lb_t * lb, lb_halo_t * h);
 int lb_halo_wait(lb_t * lb, lb_halo_t * h);
 int lb_halo_free(lb_t * lb, lb_halo_t * h);
+
+static __constant__ lb_collide_param_t static_param;
+
+/* We have a switch to CUDA graph API, which is going to get switched
+ * on if ndvice > 0. We may remove the non-graph option in furture. */
+static int use_graph_api_ = 0;
 
 /*****************************************************************************
  *
@@ -215,7 +199,8 @@ int lb_data_create(pe_t * pe, cs_t * cs, const lb_data_options_t * options,
 
   /* Lees Edwards */
   {
-    int nplane = cs->leopts.nplanes;
+    /* Local number of planes */
+    int nplane = cs->leopts.nplanes/cs->param->mpi_cartsz[X];
 
     if (nplane > 0) {
 
@@ -1401,6 +1386,7 @@ int lb_halo_create(const lb_t * lb, lb_halo_t * h, lb_halo_enum_t scheme) {
     h->target = h;
   }
   else {
+    use_graph_api_ = 1; /* Always */
     tdpAssert( tdpMalloc((void **) &h->target, sizeof(lb_halo_t)) );
     tdpAssert( tdpMemset(h->target, 0, sizeof(lb_halo_t)));
     tdpAssert( tdpMemcpy(h->target, h, sizeof(lb_halo_t),
@@ -1422,7 +1408,7 @@ int lb_halo_create(const lb_t * lb, lb_halo_t * h, lb_halo_enum_t scheme) {
 
     halo_initialise_device_model(h);
 
-    if (have_graph_api_) {
+    if (use_graph_api_) {
       lb_graph_halo_send_create(lb, h);
       lb_graph_halo_recv_create(lb, h);
     }
@@ -1466,7 +1452,7 @@ int lb_halo_post(lb_t * lb, lb_halo_t * h) {
       int k = 1 + h->map.cv[h->map.nvel-ireq][Z];
       int mcount = h->count[ireq]*lb_halo_size(h->rlim[ireq]);
       double * buf = h->recv[ireq];
-      if (have_gpu_aware_mpi_) buf = h->recv_d[ireq];
+      if (have_gpu_aware_mpi_()) buf = h->recv_d[ireq];
 
       if (h->nbrrank[i][j][k] == h->nbrrank[1][1][1]) continue;
       
@@ -1485,7 +1471,7 @@ int lb_halo_post(lb_t * lb, lb_halo_t * h) {
   int ndevice;
   tdpGetDeviceCount(&ndevice);
   if (ndevice > 0) {
-    if (have_graph_api_) {
+    if (use_graph_api_) {
       tdpAssert( tdpGraphLaunch(h->gsend.exec, h->stream) );
       tdpAssert( tdpStreamSynchronize(h->stream) );
     } else {
@@ -1497,7 +1483,7 @@ int lb_halo_post(lb_t * lb, lb_halo_t * h) {
           tdpLaunchKernel(lb_halo_enqueue_send_kernel, nblk, ntpb, 0, 0, lb->target, h->target, ireq);
           tdpAssert( tdpDeviceSynchronize());
  
-          if (!have_gpu_aware_mpi_) {
+          if (!have_gpu_aware_mpi_()) {
             tdpAssert( tdpMemcpy(h->send[ireq], h->send_d[ireq], sizeof(double)*scount, tdpMemcpyDeviceToHost));
           }
         }
@@ -1526,7 +1512,7 @@ int lb_halo_post(lb_t * lb, lb_halo_t * h) {
       int k = 1 + h->map.cv[ireq][Z];
       int mcount = h->count[ireq]*lb_halo_size(h->slim[ireq]);
       double * buf = h->send[ireq];
-      if (have_gpu_aware_mpi_) buf = h->send_d[ireq];
+      if (have_gpu_aware_mpi_()) buf = h->send_d[ireq];
 
       /* Short circuit messages to self. */
       if (h->nbrrank[i][j][k] == h->nbrrank[1][1][1]) continue;
@@ -1563,14 +1549,14 @@ int lb_halo_wait(lb_t * lb, lb_halo_t * h) {
   int ndevice;
   tdpGetDeviceCount(&ndevice);
   if (ndevice > 0) {
-    if (have_graph_api_) {
+    if (use_graph_api_) {
       tdpAssert( tdpGraphLaunch(h->grecv.exec, h->stream) );
       tdpAssert( tdpStreamSynchronize(h->stream) );
     } else {
       for (int ireq = 0; ireq < h->map.nvel; ireq++) {
         if (h->count[ireq] > 0) {
           int rcount = h->count[ireq]*lb_halo_size(h->slim[ireq]);
-          if (!have_gpu_aware_mpi_) {
+          if (!have_gpu_aware_mpi_()) {
             tdpAssert( tdpMemcpy(h->recv[ireq], h->recv_d[ireq], sizeof(double)*rcount, tdpMemcpyDeviceToHost));
           }
           dim3 nblk, ntpb;
@@ -1629,7 +1615,7 @@ int lb_halo_free(lb_t * lb, lb_halo_t * h) {
     free(h->recv[ireq]);
   }
 
-  if (have_graph_api_) {
+  if (use_graph_api_) {
     tdpAssert( tdpGraphDestroy(h->gsend.graph) );
     tdpAssert( tdpGraphDestroy(h->grecv.graph) );
   }
@@ -1945,7 +1931,7 @@ int lb_graph_halo_send_create(const lb_t * lb, lb_halo_t * h) {
     tdpAssert( tdpGraphAddKernelNode(&kernelNode, h->gsend.graph, NULL, 0,
 				     &kernelNodeParams) );
 
-    if (have_gpu_aware_mpi_) {
+    if (have_gpu_aware_mpi_()) {
       /* Don't need explicit device -> host copy */
     }
     else {
@@ -2002,7 +1988,7 @@ int lb_graph_halo_recv_create(const lb_t * lb, lb_halo_t * h) {
     if (h->count[ireq] == 0) continue;
     tdpGraphNode_t memcpyNode = {0};
 
-    if (have_gpu_aware_mpi_) {
+    if (have_gpu_aware_mpi_()) {
       /* Don't need explicit copies */
     }
     else {
@@ -2050,7 +2036,7 @@ int lb_graph_halo_recv_create(const lb_t * lb, lb_halo_t * h) {
     kernelNodeParams.kernelParams   = (void **) kernelArgs;
     kernelNodeParams.extra          = NULL;
 
-    if (have_gpu_aware_mpi_) {
+    if (have_gpu_aware_mpi_()) {
       tdpAssert( tdpGraphAddKernelNode(&node, h->grecv.graph, NULL,
 				       0, &kernelNodeParams) );
     }
