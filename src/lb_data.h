@@ -7,7 +7,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2014-2024 The University of Edinburgh
+ *  (c) 2014-2025 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -26,7 +26,6 @@
 
 #include "io_impl.h"
 #include "io_event.h"
-#include "halo_swap.h"
 
 /* Residual compile-time switches scheduled for removal */
 #ifdef _D2Q9_
@@ -105,11 +104,6 @@ struct lb_halo_s {
   lb_graph_halo_t grecv;
 };
 
-int lb_halo_create(const lb_t * lb, lb_halo_t * h, lb_halo_enum_t scheme);
-int lb_halo_post(lb_t * lb, lb_halo_t * h);
-int lb_halo_wait(lb_t * lb, lb_halo_t * h);
-int lb_halo_free(lb_t * lb, lb_halo_t * h);
-
 struct lb_data_s {
 
   int ndim;
@@ -121,7 +115,6 @@ struct lb_data_s {
   cs_t * cs;             /* coordinate system */
 
   lb_model_t model;      /* Current LB model information */
-  halo_swap_t * halo;    /* halo swap driver */
 
   io_element_t ascii;    /* Per site ASCII information. */
   io_element_t binary;   /* Per site binary information. */

@@ -5,7 +5,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2022 The University of Edinburgh
+ *  (c) 2022-2025 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -22,9 +22,10 @@ typedef enum lb_relaxation_enum {LB_RELAXATION_M10,
 				 LB_RELAXATION_TRT}
   lb_relaxation_enum_t;
 
-typedef enum lb_halo_enum {LB_HALO_TARGET,
-                           LB_HALO_OPENMP_FULL,
-                           LB_HALO_OPENMP_REDUCED} lb_halo_enum_t;
+typedef enum lb_halo_enum {
+  LB_HALO_FULL    = 1,
+  LB_HALO_REDUCED = 2
+} lb_halo_enum_t;
 
 typedef struct lb_data_options_s lb_data_options_t;
 

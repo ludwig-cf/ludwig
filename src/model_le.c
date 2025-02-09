@@ -27,6 +27,7 @@
 #include "coords.h"
 #include "cs_limits.h"
 #include "control.h"
+#include "kernel.h"
 #include "physics.h"
 #include "model_le.h"
 #include "timer.h"

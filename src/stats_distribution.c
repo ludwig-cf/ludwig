@@ -11,7 +11,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2010-2024 The University of Edinburgh
+ *  (c) 2010-2025 The University of Edinburgh
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *
@@ -23,6 +23,7 @@
 
 #include "pe.h"
 #include "coords.h"
+#include "kernel.h"
 #include "util.h"
 #include "util_sum.h"
 #include "stats_distribution.h"

@@ -10,7 +10,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2010-2024 The University of Edinburgh
+ *  (c) 2010-2025 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -26,12 +26,12 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "kernel.h"
 #include "lb_data.h"
 
 #include "timer.h"
 #include "util.h"
 
-static int lb_mpi_init(lb_t * lb);
 static int lb_model_param_init(lb_t * lb);
 static int lb_init(lb_t * lb);
 static int lb_data_touch(lb_t * lb);
@@ -44,8 +44,8 @@ int halo_initialise_device_model(lb_halo_t * h);
 int lb_data_free_device_model(lb_t *lb);
 int halo_free_device_model(lb_halo_t *h);
 
-int lb_graph_halo_recv_create(const lb_t * lb, lb_halo_t * h, int * recv_count);
-int lb_graph_halo_send_create(const lb_t * lb, lb_halo_t * h, int * send_count);
+int lb_graph_halo_recv_create(const lb_t * lb, lb_halo_t * h);
+int lb_graph_halo_send_create(const lb_t * lb, lb_halo_t * h);
 
 static __constant__ lb_collide_param_t static_param;
 
@@ -68,6 +68,11 @@ static const int have_gpu_aware_mpi_ = 1;
 #else
 static const int have_gpu_aware_mpi_ = 0;
 #endif
+
+int lb_halo_create(const lb_t * lb, lb_halo_t * h, lb_halo_enum_t scheme);
+int lb_halo_post(lb_t * lb, lb_halo_t * h);
+int lb_halo_wait(lb_t * lb, lb_halo_t * h);
+int lb_halo_free(lb_t * lb, lb_halo_t * h);
 
 /*****************************************************************************
  *
@@ -290,7 +295,6 @@ __host__ int lb_free(lb_t * lb) {
   io_metadata_finalise(&lb->input);
   io_metadata_finalise(&lb->output);
 
-  if (lb->halo) halo_swap_free(lb->halo);
   free(lb->f);
   free(lb->fprime);
 
@@ -593,7 +597,6 @@ static int lb_init(lb_t * lb) {
     lb_data_initialise_device_model(lb);
   }
 
-  lb_mpi_init(lb);
   lb_model_param_init(lb);
 
   lb_memcpy(lb, tdpMemcpyHostToDevice);
@@ -693,25 +696,6 @@ __host__ int lb_init_rest_f(lb_t * lb, double rho0) {
 
 /*****************************************************************************
  *
- *  lb_mpi_init
- *
- *  Commit the various datatypes required for halo swaps.
- *
- *****************************************************************************/
-
-static int lb_mpi_init(lb_t * lb) {
-
-  assert(lb);
-
-  halo_swap_create_r2(lb->pe, lb->cs, 1, lb->nsite, lb->ndist, lb->nvel,
-		      &lb->halo);
-  halo_swap_handlers_set(lb->halo, halo_swap_pack_rank1, halo_swap_unpack_rank1);
-
-  return 0;
-}
-
-/*****************************************************************************
- *
  *  lb_data_touch
  *
  *  Kernel driver to initialise data.
@@ -772,7 +756,7 @@ __host__ int lb_data_touch(lb_t * lb) {
  *  lb_halo
  *
  *  Swap the distributions at the periodic/processor boundaries
- *  in each direction. Default target swap.
+ *  in each direction.
  *
  *****************************************************************************/
 
@@ -1285,7 +1269,7 @@ int lb_halo_create(const lb_t * lb, lb_halo_t * h, lb_halo_enum_t scheme) {
   /* Default to full swap unless reduced is requested. */
 
   h->full = 1;
-  if (scheme == LB_HALO_OPENMP_REDUCED) h->full = 0;
+  if (scheme == LB_HALO_REDUCED) h->full = 0;
 
   /* Determine look-up table of ranks of neighbouring processes */
   {
@@ -1439,8 +1423,8 @@ int lb_halo_create(const lb_t * lb, lb_halo_t * h, lb_halo_enum_t scheme) {
     halo_initialise_device_model(h);
 
     if (have_graph_api_) {
-      lb_graph_halo_send_create(lb, h, send_count);
-      lb_graph_halo_recv_create(lb, h, recv_count);
+      lb_graph_halo_send_create(lb, h);
+      lb_graph_halo_recv_create(lb, h);
     }
 
   }
@@ -1578,7 +1562,7 @@ int lb_halo_wait(lb_t * lb, lb_halo_t * h) {
 
   int ndevice;
   tdpGetDeviceCount(&ndevice);
-  if (ndevice > 0 && lb->haloscheme == LB_HALO_TARGET) {
+  if (ndevice > 0) {
     if (have_graph_api_) {
       tdpAssert( tdpGraphLaunch(h->grecv.exec, h->stream) );
       tdpAssert( tdpStreamSynchronize(h->stream) );
@@ -1931,7 +1915,7 @@ int lb_io_read(lb_t * lb, int timestep, io_event_t * event) {
  *
  *****************************************************************************/
 
-int lb_graph_halo_send_create(const lb_t * lb, lb_halo_t * h, int * send_count) {
+int lb_graph_halo_send_create(const lb_t * lb, lb_halo_t * h) {
 
   assert(lb);
   assert(h);
@@ -2006,7 +1990,7 @@ int lb_graph_halo_send_create(const lb_t * lb, lb_halo_t * h, int * send_count) 
  *
  *****************************************************************************/
 
-int lb_graph_halo_recv_create(const lb_t * lb, lb_halo_t * h, int * recv_count) {
+int lb_graph_halo_recv_create(const lb_t * lb, lb_halo_t * h) {
 
   assert(lb);
   assert(h);
