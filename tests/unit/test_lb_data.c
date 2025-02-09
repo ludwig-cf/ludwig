@@ -277,7 +277,7 @@ int test_lb_f_set(pe_t * pe, cs_t * cs, const lb_data_options_t * opts) {
       for (int p = 0; p < lb->nvel; p++) {
 	int iaddr = LB_ADDR(lb->nsite, lb->ndist, lb->nvel, index, n, p);
 	double f = 1.0*((1 + n)*lb->nvel + 1 + p);
-	if (fabs(lb->f[iaddr] - f) < DBL_EPSILON) ifail = -1;
+	ifail = !(fabs(lb->f[iaddr] - f) < DBL_EPSILON);
 	assert(ifail == 0);
       }
     }
