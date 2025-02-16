@@ -13,7 +13,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2011-2024 The University of Edinburgh
+ *  (c) 2011-2025 The University of Edinburgh
  *
  *  Contributing authors:
  *    Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -54,7 +54,7 @@ static __host__ __device__
 void lb_collision_fluctuations(lb_t * lb, noise_t * noise, int index,
 			       double kt,
 			       double shat[3][3], double ghat[NVEL]);
-int lb_collision_noise_var_set(lb_t * lb, noise_t * noise);
+int lb_collision_noise_var_set(lb_t * lb);
 static __host__ int lb_collision_parameters_commit(lb_t * lb, visc_t * visc);
 
 static __device__
@@ -144,20 +144,19 @@ __host__
 int lb_collide(lb_t * lb, hydro_t * hydro, map_t * map, noise_t * noise,
 	       fe_t * fe, visc_t * visc) {
 
-  int ndist;
-
   if (hydro == NULL) return 0;
 
   assert(lb);
   assert(map);
 
-  lb_ndist(lb, &ndist);
   lb_collision_relaxation_times_set(lb);
-  lb_collision_noise_var_set(lb, noise);
+  lb_collision_noise_var_set(lb);
   lb_collide_param_commit(lb);
 
-  if (ndist == 1) lb_collision_mrt(lb, hydro, map, noise, fe, visc);
-  if (ndist == 2) lb_collision_binary(lb, hydro, noise, (fe_symm_t *) fe, visc);
+  if (lb->ndist == 1) lb_collision_mrt(lb, hydro, map, noise, fe, visc);
+  if (lb->ndist == 2) {
+    lb_collision_binary(lb, hydro, noise, (fe_symm_t *) fe, visc);
+  }
 
   return 0;
 }
@@ -1552,7 +1551,7 @@ __host__ __device__ int lb_nrelax_valid(lb_relaxation_enum_t nrelax) {
  *
  *****************************************************************************/
 
-__host__ int lb_collision_noise_var_set(lb_t * lb, noise_t * noise) {
+__host__ int lb_collision_noise_var_set(lb_t * lb) {
 
   int p;
   double kt;

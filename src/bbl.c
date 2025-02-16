@@ -108,7 +108,7 @@ int bbl_create(pe_t * pe, cs_t * cs, lb_t * lb, bbl_t ** pobj) {
   bbl->pe = pe;
   bbl->cs = cs;
   bbl->ellipsoid_didt = BBL_ELLIPSOID_UPDATE_QUATERNION;
-  lb_ndist(lb, &bbl->ndist);
+  bbl->ndist = lb->ndist;
 
   /* I would like to obtain the viscosity from the lb data structure;
    * but it's not present at initialisation, so ... */

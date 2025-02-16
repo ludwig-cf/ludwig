@@ -9,7 +9,7 @@
  *  Edinburgh Soft Matter and Statisitical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2006-2023 The University of Edinburgh
+ *  (c) 2006-2025 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -797,7 +797,6 @@ static int build_remove_fluid(lb_t * lb, int index, colloid_t * p_colloid) {
 
 static int build_remove_order_parameter(lb_t * lb, field_t * f, int index,
 					colloid_t * pc) {
-  int ndist;
   double phi;
   double phi0;
   physics_t * phys = NULL;
@@ -808,9 +807,8 @@ static int build_remove_order_parameter(lb_t * lb, field_t * f, int index,
 
   physics_ref(&phys);
   physics_phi0(phys, &phi0);
-  lb_ndist(lb, &ndist);
 
-  if (ndist == 2) {
+  if (lb->ndist == 2) {
     lb_0th_moment(lb, index, LB_PHI, &phi);
   }
   else {
@@ -1029,7 +1027,6 @@ static int build_replace_order_parameter(fe_t * fe, lb_t * lb,
   int status;
   int ri[3];
   int nf;
-  int ndist;
   int nweight;
 
   double g;
@@ -1044,7 +1041,6 @@ static int build_replace_order_parameter(fe_t * fe, lb_t * lb,
 
   assert(map);
   assert(lb);
-  lb_ndist(lb, &ndist);
 
   field_nf(f, &nf);
   assert(nf <= NQAB);
@@ -1060,7 +1056,7 @@ static int build_replace_order_parameter(fe_t * fe, lb_t * lb,
     newg[p] = 0.0;
   }
 
-  if (ndist == 2) {
+  if (lb->ndist == 2) {
 
     /* Reset the distribution (distribution index 1) */
 
