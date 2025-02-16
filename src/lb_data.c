@@ -248,9 +248,9 @@ int lb_data_create(pe_t * pe, cs_t * cs, const lb_data_options_t * options,
  *
  *****************************************************************************/
 
-__host__ int lb_free(lb_t * lb) {
+int lb_free(lb_t * lb) {
 
-  int ndevice;
+  int ndevice = 0;
 
   assert(lb);
 
@@ -475,7 +475,7 @@ int halo_free_device_model(lb_halo_t * h) {
  *
  *****************************************************************************/
 
-__host__ int lb_memcpy(lb_t * lb, tdpMemcpyKind flag) {
+int lb_memcpy(lb_t * lb, tdpMemcpyKind flag) {
 
   int ndevice;
   double * tmpf = NULL;
@@ -598,7 +598,7 @@ static int lb_init(lb_t * lb) {
  *
  *****************************************************************************/
 
-__host__ int lb_collide_param_commit(lb_t * lb) {
+int lb_collide_param_commit(lb_t * lb) {
 
   assert(lb);
 
@@ -656,7 +656,7 @@ static int lb_model_param_init(lb_t * lb) {
  *
  *****************************************************************************/
 
-__host__ int lb_init_rest_f(lb_t * lb, double rho0) {
+int lb_init_rest_f(lb_t * lb, double rho0) {
 
   int nlocal[3];
   int ic, jc, kc, index;
@@ -688,7 +688,7 @@ __host__ int lb_init_rest_f(lb_t * lb, double rho0) {
  *
  *****************************************************************************/
 
-__host__ void lb_data_touch_kernel(cs_limits_t lim, lb_t * lb) {
+void lb_data_touch_kernel(cs_limits_t lim, lb_t * lb) {
 
   int nx = 1 + lim.imax - lim.imin;
   int ny = 1 + lim.jmax - lim.jmin;
@@ -716,7 +716,13 @@ __host__ void lb_data_touch_kernel(cs_limits_t lim, lb_t * lb) {
   return;
 }
 
-__host__ int lb_data_touch(lb_t * lb) {
+/*****************************************************************************
+ *
+ *  lb_data_touch
+ *
+ *****************************************************************************/
+
+int lb_data_touch(lb_t * lb) {
 
   int nlocal[3] = {0};
 
@@ -745,130 +751,12 @@ __host__ int lb_data_touch(lb_t * lb) {
  *
  *****************************************************************************/
 
-__host__ int lb_halo(lb_t * lb) {
+int lb_halo(lb_t * lb) {
 
   assert(lb);
 
   lb_halo_post(lb, &lb->h);
   lb_halo_wait(lb, &lb->h);
-
-  return 0;
-}
-
-/*****************************************************************************
- *
- *  lb_ndist
- *
- *  Return the number of distribution functions.
- *
- *****************************************************************************/
-
-__host__ __device__ int lb_ndist(lb_t * lb, int * ndist) {
-
-  assert(lb);
-  assert(ndist);
-
-  *ndist = lb->ndist;
-
-  return 0;
-}
-
-/*****************************************************************************
- *
- *  lb_f
- *
- *  Get the distribution at site index, velocity p, distribution n.
- *
- *****************************************************************************/
-
-__host__ __device__
-int lb_f(lb_t * lb, int index, int p, int n, double * f) {
-
-  assert(lb);
-  assert(index >= 0 && index < lb->nsite);
-  assert(p >= 0 && p < lb->nvel);
-  assert(n >= 0 && n < lb->ndist);
-
-  *f = lb->f[LB_ADDR(lb->nsite, lb->ndist, lb->nvel, index, n, p)];
-
-  return 0;
-}
-
-/*****************************************************************************
- *
- *  lb_f_set
- *
- *  Set the distribution for site index, velocity p, distribution n.
- *
- *****************************************************************************/
-
-__host__ __device__
-int lb_f_set(lb_t * lb, int index, int p, int n, double fvalue) {
-
-  assert(lb);
-  assert(index >= 0 && index < lb->nsite);
-  assert(p >= 0 && p < lb->nvel);
-  assert(n >= 0 && n < lb->ndist);
-
-  lb->f[LB_ADDR(lb->nsite, lb->ndist, lb->nvel, index, n, p)] = fvalue;
-
-  return 0;
-}
-
-/*****************************************************************************
- *
- *  lb_0th_moment
- *
- *  Return the zeroth moment of the distribution (rho for n = 0).
- *
- *****************************************************************************/
-
-__host__ __device__
-int lb_0th_moment(lb_t * lb, int index, lb_dist_enum_t nd, double * rho) {
-
-  assert(lb);
-  assert(rho);
-  assert(index >= 0 && index < lb->nsite);
-  assert((int) nd < lb->ndist);
-
-  *rho = 0.0;
-
-  for (int p = 0; p < lb->nvel; p++) {
-    *rho += lb->f[LB_ADDR(lb->nsite, lb->ndist, lb->nvel, index, nd, p)];
-  }
-
-  return 0;
-}
-
-/*****************************************************************************
- *
- *  lb_1st_moment
- *
- *  Return the first moment of the distribution p.
- *
- *****************************************************************************/
-
-__host__ __device__
-int lb_1st_moment(lb_t * lb, int index, lb_dist_enum_t nd, double g[3]) {
-
-  int p;
-  int n;
-
-  assert(lb);
-  assert(index >= 0 && index < lb->nsite);
-  assert((int) nd < lb->ndist);
-
-  /* Loop to 3 here to cover initialisation in D2Q9 (appears in momentum) */
-  for (n = 0; n < 3; n++) {
-    g[n] = 0.0;
-  }
-
-  for (p = 0; p < lb->model.nvel; p++) {
-    for (n = 0; n < lb->model.ndim; n++) {
-      g[n] += lb->model.cv[p][n]
-	*lb->f[LB_ADDR(lb->nsite, lb->ndist, lb->nvel, index, nd, p)];
-    }
-  }
 
   return 0;
 }
@@ -881,7 +769,6 @@ int lb_1st_moment(lb_t * lb, int index, lb_dist_enum_t nd, double g[3]) {
  *
  *****************************************************************************/
 
-__host__
 int lb_2nd_moment(lb_t * lb, int index, lb_dist_enum_t nd, double s[3][3]) {
 
   int p, ia, ib;
@@ -919,7 +806,6 @@ int lb_2nd_moment(lb_t * lb, int index, lb_dist_enum_t nd, double s[3][3]) {
  *
  *****************************************************************************/
 
-__host__
 int lb_1st_moment_equilib_set(lb_t * lb, int index, double rho, double u[3]) {
 
   int ia, ib, p;
@@ -1747,7 +1633,7 @@ int lb_read_buf_ascii(lb_t * lb, int index, const char * buf) {
  *
  *****************************************************************************/
 
-__host__ int lb_io_aggr_pack(const lb_t * lb, io_aggregator_t * aggr) {
+int lb_io_aggr_pack(const lb_t * lb, io_aggregator_t * aggr) {
 
   assert(lb);
   assert(aggr);
@@ -1782,7 +1668,7 @@ __host__ int lb_io_aggr_pack(const lb_t * lb, io_aggregator_t * aggr) {
  *
  *****************************************************************************/
 
-__host__ int lb_io_aggr_unpack(lb_t * lb, const io_aggregator_t * aggr) {
+int lb_io_aggr_unpack(lb_t * lb, const io_aggregator_t * aggr) {
 
   assert(lb);
   assert(aggr);
