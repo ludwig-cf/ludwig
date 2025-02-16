@@ -238,7 +238,7 @@ int test_lb_f(pe_t * pe, cs_t * cs, const lb_data_options_t * opts) {
       for (int p = 0; p < lb->nvel; p++) {
 	double f = 0.0;
 	lb_f(lb, index, p, (n == 0) ? LB_RHO : LB_PHI, &f);
-	assert(fabs(f - 1.0*((1 + n)*lb->nvel + 1 + p) < DBL_EPSILON));
+	assert(fabs(f - 1.0*((1 + n)*lb->nvel + 1 + p)) < DBL_EPSILON);
       }
     }
   }
