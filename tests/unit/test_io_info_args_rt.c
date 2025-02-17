@@ -6,7 +6,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Groups and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2022-2024 The University of Edinburgh
+ *  (c) 2022-2025 The University of Edinburgh
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *
@@ -20,6 +20,7 @@ int test_io_info_args_rt(pe_t * pe);
 int test_io_info_args_rt_input(pe_t * pe);
 int test_io_info_args_rt_output(pe_t * pe);
 int test_io_info_args_rt_iogrid(pe_t * pe);
+int test_io_info_args_rt_iofreq(pe_t * pe);
 
 /*****************************************************************************
  *
@@ -34,6 +35,8 @@ int test_io_info_args_rt_suite(void) {
   pe_create(MPI_COMM_WORLD, PE_QUIET, &pe);
 
   test_io_info_args_rt_iogrid(pe);
+  test_io_info_args_rt_iofreq(pe);
+
   test_io_info_args_rt_output(pe);
   test_io_info_args_rt_input(pe);
   test_io_info_args_rt(pe);
@@ -253,4 +256,42 @@ int test_io_info_args_rt_iogrid(pe_t * pe) {
   rt_free(rt);
 
   return ierr;
+}
+
+/*****************************************************************************
+ *
+ *  test_io_info_args_rt_iofreq
+ *
+ *****************************************************************************/
+
+int test_io_info_args_rt_iofreq(pe_t * pe) {
+
+  int ifail = 0;
+  rt_t * rt = NULL;
+
+  rt_create(pe, &rt);
+
+  {
+    /* Wrong */
+    const char * wrong = "wrong_iofreq";
+    int iofreq = 0;
+    rt_add_key_value(rt, wrong, "-1");
+    ifail = io_info_args_rt_iofreq(rt, RT_NONE, wrong, &iofreq);
+    assert(ifail != 0);
+    assert(iofreq == 0); /* Unchanged */
+  }
+
+  {
+    /* Right */
+    const char * right = "right_iofreq";
+    int iofreq = 0;
+    rt_add_key_value(rt, right, " 100");
+    ifail = io_info_args_rt_iofreq(rt, RT_FATAL, right, &iofreq);
+    assert(ifail == 0);
+    assert(iofreq == 100);
+  }
+
+  rt_free(rt);
+
+  return ifail;
 }

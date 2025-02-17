@@ -2,11 +2,13 @@
  *
  *  io_info_args_rt.c
  *
+ *  Initialisation of the container for i/o information.
+ *
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2020-2022 The University of Edinburgh
+ *  (c) 2020-2025 The University of Edinburgh
  *
  *  Contribuiting authors:
  *  Kevin Stratford
@@ -28,8 +30,8 @@
  *
  *****************************************************************************/
 
-__host__ int io_info_args_rt(rt_t * rt, rt_enum_t lv, const char * stub,
-			     io_info_rw_enum_t rw, io_info_args_t * args) {
+int io_info_args_rt(rt_t * rt, rt_enum_t lv, const char * stub,
+		    io_info_rw_enum_t rw, io_info_args_t * args) {
 
   assert(rt);
   assert(stub);
@@ -64,6 +66,16 @@ __host__ int io_info_args_rt(rt_t * rt, rt_enum_t lv, const char * stub,
   args->output.iogrid[1] = args->grid[1];
   args->output.iogrid[2] = args->grid[2];
 
+  /* i/o frequency (output only) */
+
+  {
+    char key[BUFSIZ] = {0};
+
+    sprintf(key, "%s_io_freq", stub);
+    io_info_args_rt_iofreq(rt, lv, "default_io_freq", &args->iofreq);
+    io_info_args_rt_iofreq(rt, lv, key, &args->iofreq);
+  }
+
   return 0;
 }
 
@@ -73,8 +85,8 @@ __host__ int io_info_args_rt(rt_t * rt, rt_enum_t lv, const char * stub,
  *
  *****************************************************************************/
 
-__host__ int io_info_args_rt_input(rt_t * rt, rt_enum_t lv, const char * stub,
-				   io_info_args_t * args) {
+int io_info_args_rt_input(rt_t * rt, rt_enum_t lv, const char * stub,
+			  io_info_args_t * args) {
 
   char stub_input[BUFSIZ] = {0};
 
@@ -101,8 +113,8 @@ __host__ int io_info_args_rt_input(rt_t * rt, rt_enum_t lv, const char * stub,
  *
  *****************************************************************************/
 
-__host__ int io_info_args_rt_output(rt_t * rt, rt_enum_t lv, const char * stub,
-				    io_info_args_t * args) {
+int io_info_args_rt_output(rt_t * rt, rt_enum_t lv, const char * stub,
+			   io_info_args_t * args) {
 
   char stub_output[BUFSIZ] = {0};
 
@@ -129,8 +141,8 @@ __host__ int io_info_args_rt_output(rt_t * rt, rt_enum_t lv, const char * stub,
  *
  *****************************************************************************/
 
-__host__ int io_info_args_rt_iogrid(rt_t * rt, rt_enum_t lv, const char * key,
-				    int grid[3]) {
+int io_info_args_rt_iogrid(rt_t * rt, rt_enum_t lv, const char * key,
+			   int grid[3]) {
 
   int key_present = 0;
   int iogrid[3] = {0};   /* invalid */
@@ -155,6 +167,40 @@ __host__ int io_info_args_rt_iogrid(rt_t * rt, rt_enum_t lv, const char * key,
       rt_vinfo(rt, lv, "Must be greater than zero in each dimension\n");
       rt_fatal(rt, lv, "Please check the input file and try again!\n");
       ifail = +1;
+    }
+  }
+
+  return ifail;
+}
+
+/*****************************************************************************
+ *
+ *  io_info_args_rt_iofreq
+ *
+ *  Obtain a valid i/o frequency, if present.
+ *
+ *****************************************************************************/
+
+int io_info_args_rt_iofreq(rt_t * rt, rt_enum_t lv, const char * key,
+			   int * iofreq) {
+
+  int ifail = -1;      /* -1 for no key; 0 for valid key; +1 if invalid */
+  int ival  =  0;
+  int key_present = 0;
+
+  key_present = rt_int_parameter(rt, key, &ival);
+
+  if (key_present) {
+    if (ival >= 0) {
+      *iofreq = ival;
+      ifail = 0;
+    }
+    else {
+      rt_vinfo(rt, lv, "I/O freq key present but is invalid\n");
+      rt_vinfo(rt, lv, "key: %s\n", key);
+      rt_fatal(rt, lv, "The value must be a non-negative integer.\n");
+      rt_fatal(rt, lv, "Please check the input file and try again!\n");
+      ifail = 1;
     }
   }
 

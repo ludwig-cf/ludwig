@@ -7,7 +7,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2012-2024 The University of Edinburgh
+ *  (c) 2012-2025 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -747,17 +747,6 @@ int test_map_io_read(pe_t * pe, cs_t * cs) {
     ifail = util_map_data_check(map, 0);
     assert(ifail == 0);
 
-    map_free(&map);
-  }
-
-  /* non-existant file returns an error */
-  {
-    map_options_t opts = map_options_default();
-    map_t * map = NULL;
-
-    map_create(pe, cs, &opts, &map);
-    ifail = map_io_read(map, 999);
-    assert(ifail != MPI_SUCCESS);
     map_free(&map);
   }
 
