@@ -889,7 +889,7 @@ void ludwig_run(const char * inputfile) {
     }
 
     if (ludwig->phi) {
-      int output = (0 == (step % ludwig->phi->opts.iodata.iofreq));
+      int output = (0 == util_mod(step, ludwig->phi->opts.iodata.iofreq));
       if (output || is_config_step()) {
 	io_event_t event = {0};
 	pe_info(ludwig->pe, "Writing phi file at step %d!\n", step);
@@ -898,7 +898,7 @@ void ludwig_run(const char * inputfile) {
     }
 
     if (ludwig->p) {
-      int output = (0 == (step % ludwig->p->opts.iodata.iofreq));
+      int output = (0 == util_mod(step, ludwig->p->opts.iodata.iofreq));
       if (output || is_config_step()) {
 	io_event_t event = {0};
 	pe_info(ludwig->pe, "Writing p file at step %d!\n", step);
@@ -907,7 +907,7 @@ void ludwig_run(const char * inputfile) {
     }
 
     if (ludwig->q) {
-      int output = (0 == (step % ludwig->q->opts.iodata.iofreq));
+      int output = (0 == util_mod(step, ludwig->q->opts.iodata.iofreq));
       if (output || is_config_step()) {
 	io_event_t event = {0};
 	pe_info(ludwig->pe, "Writing q file at step %d!\n", step);
@@ -919,7 +919,7 @@ void ludwig_run(const char * inputfile) {
 
     if (ludwig->psi) {
       /* The potential and the charge densities (both controlled by "psi") */
-      int output = (0 == (step % ludwig->psi->psi->opts.iodata.iofreq));
+      int output = (0 == util_mod(step, ludwig->psi->psi->opts.iodata.iofreq));
       if (output || is_config_step()) {
 	pe_info(ludwig->pe, "Writing electrokinetic data at step %d!\n", step);
 	psi_io_write(ludwig->psi, step);
@@ -954,12 +954,12 @@ void ludwig_run(const char * inputfile) {
       }
       else {
 	/* Individual requests */
-	if (0 == (step % ludwig->hydro->rho->opts.iodata.iofreq)) {
+	if (0 == util_mod(step, ludwig->hydro->rho->opts.iodata.iofreq)) {
 	  io_event_t event = {0};
 	  pe_info(ludwig->pe, "Writing rho output at step %d!\n", step);
 	  field_io_write(ludwig->hydro->rho, step, &event);
 	}
-	if (0 == (step % ludwig->hydro->u->opts.iodata.iofreq)) {
+	if (0 == util_mod(step, ludwig->hydro->u->opts.iodata.iofreq)) {
 	  io_event_t event = {0};
 	  pe_info(ludwig->pe, "Writing velocity output at step %d!\n", step);
 	  field_io_write(ludwig->hydro->u, step, &event);

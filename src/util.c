@@ -10,7 +10,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2010-2024 The University of Edinburgh
+ *  (c) 2010-2025 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -1066,4 +1066,20 @@ __host__ int util_rectangle_conductance(double w, double h, double * q) {
   }
 
   return ierr;
+}
+
+/*****************************************************************************
+ *
+ *  util_mod
+ *
+ *  A standard remainder after division, except this allows the second
+ *  argument to be zero.
+ *
+ *  The return value if b = 0 is zero for any value of a.
+ *
+ *****************************************************************************/
+
+int util_mod(int a, int b) {
+
+  return (b == 0) ? 0 : a % b;
 }

@@ -5,7 +5,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2012-2023 The University of Edinburgh
+ *  (c) 2012-2025 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -33,6 +33,7 @@ int util_jacobi_check(void);
 int util_dpythag_check(void);
 int util_str_tolower_check(void);
 int util_rectangle_conductance_check(void);
+int util_mod_check(void);
 
 /*****************************************************************************
  *
@@ -52,6 +53,7 @@ int test_util_suite(void) {
   util_dpythag_check();
   util_str_tolower_check();
   util_rectangle_conductance_check();
+  util_mod_check();
 
   pe_info(pe, "PASS     ./unit/test_util\n");
   pe_free(pe);
@@ -245,4 +247,24 @@ int util_rectangle_conductance_check(void) {
   }
 
   return ierr;
+}
+
+/*****************************************************************************
+ *
+ *  util_mod_check
+ *
+ *****************************************************************************/
+
+int util_mod_check(void) {
+
+  int ifail = 0;
+
+  ifail = util_mod(2, 1);
+  assert(ifail == 0);
+  ifail = util_mod(3, 2);
+  assert(ifail == 1);
+  ifail = util_mod(3, 0);
+  assert(ifail == 0);
+
+  return ifail;
 }
