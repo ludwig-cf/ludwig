@@ -264,6 +264,8 @@ int util_mod_check(void) {
   ifail = util_mod(3, 2);
   assert(ifail == 1);
   ifail = util_mod(3, 0);
+  assert(ifail == 3);
+  ifail = util_mod(0, 0);
   assert(ifail == 0);
 
   return ifail;

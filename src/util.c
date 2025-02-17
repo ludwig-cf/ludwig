@@ -1075,11 +1075,11 @@ __host__ int util_rectangle_conductance(double w, double h, double * q) {
  *  A standard remainder after division, except this allows the second
  *  argument to be zero.
  *
- *  The return value if b = 0 is zero for any value of a.
+ *  The return value if b = 0 is a for any value of a.
  *
  *****************************************************************************/
 
 int util_mod(int a, int b) {
 
-  return (b == 0) ? 0 : a % b;
+  return (b == 0) ? a : a % b;
 }
