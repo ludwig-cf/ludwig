@@ -1649,12 +1649,26 @@ int field_io_write(field_t * field, int timestep, io_event_t * event) {
   assert(ifail == 0);
 
   if (ifail == 0) {
+    /* The device -> host transfer occurs here, if relevant. */
+    /* Errors return is standard */
+    int ierr = MPI_SUCCESS;
     io_event_record(event, IO_EVENT_AGGR);
     field_memcpy(field, tdpMemcpyDeviceToHost);
     field_io_aggr_pack(field, io->aggr);
 
     io_event_record(event, IO_EVENT_WRITE);
-    io->impl->write(io, filename);
+    ierr = io->impl->write(io, filename);
+
+    if (ierr != MPI_SUCCESS) {
+      /* We could try to continue here, but fail at the moment */
+      pe_t * pe = field->pe;
+      int len = 0;
+      char msg[MPI_MAX_ERROR_STRING] = {0};
+      MPI_Error_string(ierr, msg, &len);
+      pe_info(pe, "Error: Could not write field data file: %s\n", filename);
+      pe_info(pe, "Error; %s\n", msg);
+      pe_exit(pe, "Will not continue. Stopping.\n");
+    }
 
     if (meta->options.report) {
       pe_info(field->pe, "MPIIO wrote to %s\n", filename);
@@ -1686,11 +1700,26 @@ int field_io_read(field_t * field, int timestep, io_event_t * event) {
   assert(ifail == 0);
 
   if (ifail == 0) {
+    /* Errors return, so we check for success here. */
+    int ierr = MPI_SUCCESS;
     io_event_record(event, IO_EVENT_READ);
-    io->impl->read(io, filename);
+    ierr = io->impl->read(io, filename);
     io_event_record(event, IO_EVENT_DISAGGR);
     field_io_aggr_unpack(field, io->aggr);
     io->impl->free(&io);
+
+    if (ierr != MPI_SUCCESS) {
+      pe_t * pe = field->pe;
+      int len = 0;
+      char msg[MPI_MAX_ERROR_STRING] = {0};
+      MPI_Error_string(ierr, msg, &len);
+      pe_info(pe, "Error: Could not read field data file: %s\n", filename);
+      pe_info(pe, "Error; %s\n", msg);
+      pe_exit(pe, "Please check and try again. Cannot recover. Stopping.\n");
+    }
+
+    /* The host -> device transfer occurs here, if relevant */
+    field_memcpy(field, tdpMemcpyHostToDevice);
 
     if (meta->options.report) {
       pe_info(field->pe, "MPIIO read from %s\n", filename);
