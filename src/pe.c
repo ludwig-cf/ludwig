@@ -443,21 +443,16 @@ __host__ int pe_time(char * str, int bufsiz) {
  *
  *  have_gpu_aware_mpi_
  *
- *  This is awkward; it might belong elsewhere on its own.
+ *  This must be a configuration time option at the moment, as there
+ *  is no portable way to tell at run time.
  *
  *****************************************************************************/
-
-#ifdef HAVE_OPENMPI_
-/* This provides MPIX_CUDA_AWARE_SUPPORT .. */
-#include "mpi-ext.h"
-#endif
 
 int have_gpu_aware_mpi_(void) {
 
   int have_gpu_aware_mpi = 0;
 
-  /* OpenMPI */
-#if defined (MPIX_CUDA_AWARE_SUPPORT) && MPIX_CUDA_AWARE_SUPPORT
+#ifdef HAVE_GPU_AWARE_MPI
   have_gpu_aware_mpi = 1;
 #endif
 
