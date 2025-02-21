@@ -2198,7 +2198,7 @@ int ludwig_colloids_update(ludwig_t * ludwig) {
     lb_halo(ludwig->lb);
   }
   else {
-    /* Pull data back, then full host halo swap */
+    /* Run the halo on the target, and copy back the data */
     lb_halo(ludwig->lb);
     lb_memcpy(ludwig->lb, tdpMemcpyDeviceToHost);
   }
