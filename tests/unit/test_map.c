@@ -868,6 +868,9 @@ static int util_map_data_check_set(map_t * map) {
     }
   }
 
+  /* Get the device up-to-date; required for e.g. io_write operations */
+  map_memcpy(map, tdpMemcpyHostToDevice);
+
   return 0;
 }
 
