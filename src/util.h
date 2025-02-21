@@ -68,4 +68,6 @@ __host__ int util_ranlcg_reap_gaussian(int * state, double r[2]);
 __host__ int util_str_tolower(char * str, size_t maxlen);
 __host__ int util_rectangle_conductance(double h, double w, double * c);
 
+int util_mod(int a, int b);
+
 #endif

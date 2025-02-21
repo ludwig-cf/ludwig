@@ -8,7 +8,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2020 The University of Edinburgh
+ *  (c) 2020-2025 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -25,12 +25,12 @@
  *
  *****************************************************************************/
 
-__host__ io_info_args_t io_info_args_default(void) {
+io_info_args_t io_info_args_default(void) {
 
   io_info_args_t args = {.input  = io_options_default(),
 			 .output = io_options_default(),
 			 .grid   = {1, 1, 1},
-			 .nfreq  = 100000};
+			 .iofreq = 0};
   return args;
 }
 
@@ -42,7 +42,7 @@ __host__ io_info_args_t io_info_args_default(void) {
  *
  *****************************************************************************/
 
-__host__ int io_info_args_iogrid_valid(int iogrid[3]) {
+int io_info_args_iogrid_valid(int iogrid[3]) {
 
   int valid = 1;
 

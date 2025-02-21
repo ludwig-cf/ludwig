@@ -8,7 +8,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2012-2024 The University of Edinburgh
+ *  (c) 2012-2025 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -636,6 +636,18 @@ int map_io_read(map_t * map, int timestep) {
       map_io_aggr_unpack(map, io->aggr);
       io->impl->free(&io);
     }
+
+    if (ifail != MPI_SUCCESS) {
+      int len = 0;
+      char msg[MPI_MAX_ERROR_STRING] = {0};
+      MPI_Error_string(ifail, msg, &len);
+      pe_info(map->pe, "Error: could not read data file: %s\n", filename);
+      pe_info(map->pe, "Error: %s\n", msg);
+      pe_exit(map->pe, "Cannot continue. Stopping.\n");
+    }
+
+    /* Some sanitisation of input data may be appropriate */
+    map_memcpy(map, tdpMemcpyHostToDevice);
   }
 
   return ifail;
@@ -663,9 +675,19 @@ int map_io_write(map_t * map, int timestep) {
     ifail = io_impl_create(meta, &io);
 
     if (ifail == 0) {
+      map_memcpy(map, tdpMemcpyDeviceToHost);
       map_io_aggr_pack(map, io->aggr);
       ifail = io->impl->write(io, filename);
       io->impl->free(&io);
+    }
+
+    if (ifail != MPI_SUCCESS) {
+      int len = 0;
+      char msg[MPI_MAX_ERROR_STRING] = {0};
+      MPI_Error_string(ifail, msg, &len);
+      pe_info(map->pe, "Error: could not write data file: %s\n", filename);
+      pe_info(map->pe, "Error: %s\n", msg);
+      pe_exit(map->pe, "Will not continue. Stopping.\n");
     }
   }
 

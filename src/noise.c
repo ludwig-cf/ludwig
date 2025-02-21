@@ -25,7 +25,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2013-2024 The University of Edinburgh
+ *  (c) 2013-2025 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -638,12 +638,24 @@ int noise_io_write(noise_t * ns, int timestep, io_event_t * event) {
     ifail = io_impl_create(meta, &io);
 
     if (ifail == 0) {
+      int ierr = MPI_SUCCESS;
       io_event_record(event, IO_EVENT_AGGR);
+      /* Include device->host copy if reelevant */
+      noise_memcpy(ns, tdpMemcpyDeviceToHost);
       noise_io_aggr_pack(ns, io->aggr);
 
       io_event_record(event, IO_EVENT_WRITE);
-      io->impl->write(io, filename);
+      ierr = io->impl->write(io, filename);
       io->impl->free(&io);
+
+      if (ierr != MPI_SUCCESS) {
+	int len = 0;
+	char msg[MPI_MAX_ERROR_STRING] = {0};
+	MPI_Error_string(ierr, msg, &len);
+	pe_info(ns->pe, "Error: could not write noise state %s\n", filename);
+	pe_info(ns->pe, "Error: %s\n", msg);
+	pe_exit(ns->pe, "Will not continue. Stopping\n");
+      }
 
       if (meta->options.report) {
 	pe_info(ns->pe, "Wrote noise state to file: %s\n", filename);
@@ -673,9 +685,20 @@ int noise_io_read(noise_t * ns, int timestep, io_event_t * event) {
   ifail = io_impl_create(meta, &io);
 
   if (ifail == 0) {
-    io->impl->read(io, filename);
+    int ierr = io->impl->read(io, filename);
+
+    if (ierr != MPI_SUCCESS) {
+      int len = 0;
+      char msg[MPI_MAX_ERROR_STRING] = {0};
+      MPI_Error_string(ierr, msg, &len);
+      pe_info(ns->pe, "Error: could not read noise state %s\n", filename);
+      pe_info(ns->pe, "Error: %s\n", msg);
+      pe_exit(ns->pe, "Cannot not continue. Stopping\n");
+    }
+
     io_event_record(event, IO_EVENT_AGGR);
     noise_io_aggr_unpack(ns, io->aggr);
+    noise_memcpy(ns, tdpMemcpyHostToDevice);
     io->impl->free(&io);
     if (meta->options.report) pe_info(ns->pe, "Read %s\n", filename);
   }

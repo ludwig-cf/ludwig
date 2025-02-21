@@ -1739,19 +1739,31 @@ int lb_io_write(lb_t * lb, int timestep, io_event_t * event) {
     assert(ifail == 0);
 
     if (ifail == 0) {
+      int ierr = MPI_SUCCESS;
       io_event_record(event, IO_EVENT_AGGR);
       lb_memcpy(lb, tdpMemcpyDeviceToHost);
       lb_io_aggr_pack(lb, io->aggr);
 
       io_event_record(event, IO_EVENT_WRITE);
-      io->impl->write(io, filename);
+      ierr = io->impl->write(io, filename);
+
+      if (ierr != MPI_SUCCESS) {
+	/* An error has occurred */
+	pe_t * pe = lb->pe;
+	int len = 0;
+	char msg[MPI_MAX_ERROR_STRING] ={0};
+	MPI_Error_string(ierr, msg, &len);
+	pe_info(pe, "Error: write distribuiion file failed: %s\n", filename);
+	pe_info(pe, "Error: %s\n", msg);
+	pe_exit(pe, "Will not continue, Stopping.\n");
+      }
 
       if (meta->options.report) {
 	pe_info(lb->pe, "MPIIO wrote to %s\n", filename);
+	io_event_report_write(event, meta, "dist");
       }
 
       io->impl->free(&io);
-      io_event_report_write(event, meta, "dist");
     }
   }
 
@@ -1782,9 +1794,28 @@ int lb_io_read(lb_t * lb, int timestep, io_event_t * event) {
     assert(ifail == 0);
 
     if (ifail == 0) {
-      io->impl->read(io, filename);
+      int ierr = MPI_SUCCESS;
+      io_event_record(event, IO_EVENT_READ);
+      ierr = io->impl->read(io, filename);
+
+      if (ierr != MPI_SUCCESS) {
+	pe_t * pe = lb->pe;
+	int len = 0;
+	char msg[MPI_MAX_ERROR_STRING] ={0};
+	MPI_Error_string(ierr, msg, &len);
+	pe_info(pe, "Error: could not read distribuiion file: %s\n", filename);
+	pe_info(pe, "Error: %s\n", msg);
+	pe_exit(pe, "Cannot recover. Please check and try again. Stopping.\n");
+      }
+
+      io_event_record(event, IO_EVENT_DISAGGR);
       lb_io_aggr_unpack(lb, io->aggr);
       io->impl->free(&io);
+
+      if (meta->options.report) {
+	pe_info(lb->pe, "MPI read from %s\n", filename);
+	io_event_report_read(event, meta, "distributions");
+      }
     }
   }
 
