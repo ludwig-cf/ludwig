@@ -399,8 +399,7 @@ static int ludwig_rt(ludwig_t * ludwig) {
   if (ntstep == 0) {
     if (nstat) stats_sigma_create(pe, cs, ludwig->fe_symm, ludwig->phi,
 				  &ludwig->stat_sigma);
-    lb_ndist(ludwig->lb, &n);
-    if (n == 2) phi_lb_from_field(ludwig->phi, ludwig->lb);
+    if (ludwig->lb->ndist == 2) phi_lb_from_field(ludwig->phi, ludwig->lb);
   }
 
   /* Initial Q_ab field required */
@@ -549,10 +548,7 @@ void ludwig_run(const char * inputfile) {
 
     /* if symmetric_lb store phi to field */
 
-
-    lb_ndist(ludwig->lb, &im);
-
-    if (im == 2) phi_lb_to_field(ludwig->phi, ludwig->lb);
+    if (ludwig->lb->ndist == 2) phi_lb_to_field(ludwig->phi, ludwig->lb);
 
     if (ludwig->phi) {
 
@@ -684,8 +680,7 @@ void ludwig_run(const char * inputfile) {
 
     /* order parameter dynamics (not if symmetric_lb) */
 
-    lb_ndist(ludwig->lb, &im);
-    if (im == 2) {
+    if (ludwig->lb->ndist == 2) {
       /* dynamics are dealt with at the collision stage (below) */
     }
     else {
@@ -2172,7 +2167,6 @@ static int ludwig_colloids_update_low_freq(ludwig_t * ludwig) {
 
 int ludwig_colloids_update(ludwig_t * ludwig) {
 
-  int ndist;
   int ndevice;
   int ncolloid;
   int iconserve;         /* switch for finite-difference conservation */
@@ -2184,8 +2178,7 @@ int ludwig_colloids_update(ludwig_t * ludwig) {
 
   tdpAssert( tdpGetDeviceCount(&ndevice) );
 
-  lb_ndist(ludwig->lb, &ndist);
-  iconserve = (ludwig->psi || (ludwig->phi && ndist == 1));
+  iconserve = (ludwig->psi || (ludwig->phi && ludwig->lb->ndist == 1));
 
   TIMER_start(TIMER_PARTICLE_HALO);
 
@@ -2205,9 +2198,9 @@ int ludwig_colloids_update(ludwig_t * ludwig) {
     lb_halo(ludwig->lb);
   }
   else {
-    /* Pull data back, then full host halo swap */
+    /* Run the halo on the target, and copy back the data */
+    lb_halo(ludwig->lb);
     lb_memcpy(ludwig->lb, tdpMemcpyDeviceToHost);
-    lb_halo_swap(ludwig->lb, LB_HALO_OPENMP_FULL);
   }
 
   TIMER_stop(TIMER_HALO_LATTICE);

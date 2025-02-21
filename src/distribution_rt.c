@@ -8,7 +8,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2010-2024 The University of Edinburgh
+ *  (c) 2010-2025 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -158,29 +158,27 @@ int lb_run_time_prev(pe_t * pe, cs_t * cs, rt_t * rt, lb_t ** lb) {
   options.ndist = ndist;
 
   /* Halo options */
+  /* Some old names are retained with a warning ... */
   {
     char htype[BUFSIZ] = {0};
     int havetype = rt_string_parameter(rt, "lb_halo_scheme", htype, BUFSIZ);
     if (strcmp(htype, "lb_halo_target") == 0) {
-      options.halo = LB_HALO_TARGET;
+      options.halo = LB_HALO_FULL;
     }
     else if (strcmp(htype, "lb_halo_openmp_full") == 0) {
-      options.halo = LB_HALO_OPENMP_FULL;
+      options.halo = LB_HALO_FULL;
     }
     else if (strcmp(htype, "lb_halo_openmp_reduced") == 0) {
-      options.halo = LB_HALO_OPENMP_REDUCED;
+      options.halo = LB_HALO_REDUCED;
+    }
+    else if (strcmp(htype, "lb_halo_full") == 0) {
+      options.halo = LB_HALO_FULL;
+    }
+    else if (strcmp(htype, "lb_halo_reduced") == 0) {
+      options.halo = LB_HALO_REDUCED;
     }
     else if (havetype) {
       pe_fatal(pe, "lb_halo_scheme not recognised\n");
-    }
-
-    /* I'm going to trap this silently here - which is slightly
-     * better than having the wrong halo. I avoid a message so
-     * not as to disrupt the regression tests. */
-    {
-      int ndevice = 0;
-      tdpAssert( tdpGetDeviceCount(&ndevice) );
-      if (ndevice > 0) options.halo = LB_HALO_TARGET;
     }
 
     options.reportimbalance = rt_switch(rt, "lb_halo_report_imbalance");
@@ -215,14 +213,11 @@ int lb_run_time_prev(pe_t * pe, cs_t * cs, rt_t * rt, lb_t ** lb) {
   pe_info(pe, "SIMD vector len:  %d\n", NSIMDVL);
   pe_info(pe, "Number of sets:   %d\n", ndist);
 
-  if (options.halo == LB_HALO_TARGET) {
-    pe_info(pe, "Halo type:        %s\n", "lb_halo_target (full halo)");
+  if (options.halo == LB_HALO_FULL) {
+    pe_info(pe, "Halo type:        %s\n", "full halo");
   }
-  if (options.halo == LB_HALO_OPENMP_FULL) {
-    pe_info(pe, "Halo type:        %s\n", "lb_halo_openmp_full (host)");
-  }
-  if (options.halo == LB_HALO_OPENMP_REDUCED) {
-    pe_info(pe, "Halo type:        %s\n", "lb_halo_openmp_reduced (host)");
+  if (options.halo == LB_HALO_REDUCED) {
+    pe_info(pe, "Halo type:        %s\n", "reduced halo");
   }
   if (options.reportimbalance) {
     pe_info(pe, "Imbalance time:   %s\n", "reported");

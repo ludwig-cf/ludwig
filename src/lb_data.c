@@ -10,7 +10,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2010-2024 The University of Edinburgh
+ *  (c) 2010-2025 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -26,12 +26,12 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "kernel.h"
 #include "lb_data.h"
 
 #include "timer.h"
 #include "util.h"
 
-static int lb_mpi_init(lb_t * lb);
 static int lb_model_param_init(lb_t * lb);
 static int lb_init(lb_t * lb);
 static int lb_data_touch(lb_t * lb);
@@ -40,9 +40,23 @@ int lb_halo_dequeue_recv(lb_t * lb, const lb_halo_t * h, int irreq);
 int lb_halo_enqueue_send(const lb_t * lb, lb_halo_t * h, int irreq);
 
 int lb_data_initialise_device_model(lb_t * lb);
+int halo_initialise_device_model(lb_halo_t * h);
 int lb_data_free_device_model(lb_t *lb);
+int halo_free_device_model(lb_halo_t *h);
+
+int lb_graph_halo_recv_create(const lb_t * lb, lb_halo_t * h);
+int lb_graph_halo_send_create(const lb_t * lb, lb_halo_t * h);
+
+int lb_halo_create(const lb_t * lb, lb_halo_t * h, lb_halo_enum_t scheme);
+int lb_halo_post(lb_t * lb, lb_halo_t * h);
+int lb_halo_wait(lb_t * lb, lb_halo_t * h);
+int lb_halo_free(lb_t * lb, lb_halo_t * h);
 
 static __constant__ lb_collide_param_t static_param;
+
+/* We have a switch to CUDA graph API, which is going to get switched
+ * on if ndvice > 0. We may remove the non-graph option in furture. */
+static int use_graph_api_ = 0;
 
 /*****************************************************************************
  *
@@ -131,8 +145,8 @@ int lb_data_create(pe_t * pe, cs_t * cs, const lb_data_options_t * options,
     pe_fatal(pe, "calloc(1, lb_collide_param_t) failed\n");
   }
 
+  lb_init(obj); /* graph node creation should happen after init */
   lb_halo_create(obj, &obj->h, obj->haloscheme);
-  lb_init(obj);
 
   /* i/o metadata */
   {
@@ -185,7 +199,8 @@ int lb_data_create(pe_t * pe, cs_t * cs, const lb_data_options_t * options,
 
   /* Lees Edwards */
   {
-    int nplane = cs->leopts.nplanes;
+    /* Local number of planes */
+    int nplane = cs->leopts.nplanes/cs->param->mpi_cartsz[X];
 
     if (nplane > 0) {
 
@@ -233,9 +248,9 @@ int lb_data_create(pe_t * pe, cs_t * cs, const lb_data_options_t * options,
  *
  *****************************************************************************/
 
-__host__ int lb_free(lb_t * lb) {
+int lb_free(lb_t * lb) {
 
-  int ndevice;
+  int ndevice = 0;
 
   assert(lb);
 
@@ -265,7 +280,6 @@ __host__ int lb_free(lb_t * lb) {
   io_metadata_finalise(&lb->input);
   io_metadata_finalise(&lb->output);
 
-  if (lb->halo) halo_swap_free(lb->halo);
   free(lb->f);
   free(lb->fprime);
 
@@ -337,6 +351,60 @@ int lb_data_initialise_device_model(lb_t * lb) {
 
 /*****************************************************************************
  *
+ *  halo_initialise_device_model
+ *
+ *  Allocate and copy the halo lb_model_t on target.
+ *
+ *****************************************************************************/
+
+int halo_initialise_device_model(lb_halo_t * h) {
+
+  int ndevice = 0;
+
+  tdpAssert( tdpGetDeviceCount(&ndevice) );
+
+  if (ndevice > 0) {
+
+    int nvel = h->map.nvel;
+    lb_model_t * hm = &h->map;
+    lb_model_t * dm = &h->target->map;
+    int8_t (*d_cv)[3] = {0};
+    double * d_wv = NULL;
+    double * d_na = NULL;
+
+    tdpAssert( tdpMalloc((void **) &d_cv, nvel*sizeof(int8_t[3])) );
+    tdpAssert( tdpMalloc((void **) &d_wv, nvel*sizeof(double)) );
+    tdpAssert( tdpMalloc((void **) &d_na, nvel*sizeof(double)) );
+
+    tdpAssert( tdpMemcpy(d_cv, hm->cv, nvel*sizeof(int8_t[3]),
+			 tdpMemcpyHostToDevice) );
+    tdpAssert( tdpMemcpy(d_wv, hm->wv, nvel*sizeof(double),
+			 tdpMemcpyHostToDevice) );
+    tdpAssert( tdpMemcpy(d_na, hm->na, nvel*sizeof(double),
+			 tdpMemcpyHostToDevice) );
+
+    tdpAssert( tdpMemcpy(&(dm->cv), &d_cv, sizeof(int8_t(*)[3]),
+			 tdpMemcpyHostToDevice) );
+    tdpAssert( tdpMemcpy(&(dm->wv), &d_wv, sizeof(double *),
+			 tdpMemcpyHostToDevice) );
+    tdpAssert( tdpMemcpy(&(dm->na), &d_na, sizeof(double *),
+			 tdpMemcpyHostToDevice) );
+
+    tdpAssert( tdpMemcpy(&(dm->ndim), &(hm->ndim), sizeof(int8_t),
+			 tdpMemcpyHostToDevice) );
+    tdpAssert( tdpMemcpy(&(dm->nvel), &(hm->nvel), sizeof(int8_t),
+			 tdpMemcpyHostToDevice) );
+    tdpAssert( tdpMemcpy(&(dm->cs2), &(hm->cs2), sizeof(double),
+			 tdpMemcpyHostToDevice) );
+
+    /* We do not copy the eigenvectors currently. */
+  }
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
  *  lb_data_free_device_model
  *
  *****************************************************************************/
@@ -370,11 +438,44 @@ int lb_data_free_device_model(lb_t * lb) {
 
 /*****************************************************************************
  *
+ *  halo_free_device_model
+ *
+ *****************************************************************************/
+
+int halo_free_device_model(lb_halo_t * h) {
+
+  int ndevice = 0;
+
+  tdpAssert( tdpGetDeviceCount(&ndevice) );
+
+  if (ndevice > 0) {
+
+    int8_t (*d_cv)[3] = {0};
+    double * d_wv = NULL;
+    double * d_na = NULL;
+
+    tdpAssert( tdpMemcpy(&d_cv, &h->target->map.cv, sizeof(int8_t(*)[3]),
+			 tdpMemcpyDeviceToHost) );
+    tdpAssert( tdpMemcpy(&d_wv, &h->target->map.wv, sizeof(double *),
+			 tdpMemcpyDeviceToHost) );
+    tdpAssert( tdpMemcpy(&d_na, &h->target->map.na, sizeof(double *),
+			 tdpMemcpyDeviceToHost) );
+
+    tdpAssert( tdpFree(d_cv) );
+    tdpAssert( tdpFree(d_wv) );
+    tdpAssert( tdpFree(d_na) );
+  }
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
  *  lb_memcpy
  *
  *****************************************************************************/
 
-__host__ int lb_memcpy(lb_t * lb, tdpMemcpyKind flag) {
+int lb_memcpy(lb_t * lb, tdpMemcpyKind flag) {
 
   int ndevice;
   double * tmpf = NULL;
@@ -455,6 +556,7 @@ static int lb_init(lb_t * lb) {
   }
   else {
     lb_collide_param_t * ptmp  = NULL;
+    cs_t * cstarget = NULL;
 
     tdpAssert( tdpMalloc((void **) &lb->target, sizeof(lb_t)) );
     tdpAssert( tdpMemset(lb->target, 0, sizeof(lb_t)) );
@@ -472,12 +574,16 @@ static int lb_init(lb_t * lb) {
     tdpGetSymbolAddress((void **) &ptmp, tdpSymbol(static_param));
     tdpAssert( tdpMemcpy(&lb->target->param, &ptmp,
 			 sizeof(lb_collide_param_t *), tdpMemcpyHostToDevice));
+
+    cs_target(lb->cs, &cstarget);
+    tdpMemcpy(&lb->target->cs, &cstarget, sizeof(cs_t *),
+	      tdpMemcpyHostToDevice);
+  
+    lb_data_initialise_device_model(lb);
   }
 
-  lb_mpi_init(lb);
   lb_model_param_init(lb);
 
-  lb_data_initialise_device_model(lb);
   lb_memcpy(lb, tdpMemcpyHostToDevice);
 
   return 0;
@@ -492,7 +598,7 @@ static int lb_init(lb_t * lb) {
  *
  *****************************************************************************/
 
-__host__ int lb_collide_param_commit(lb_t * lb) {
+int lb_collide_param_commit(lb_t * lb) {
 
   assert(lb);
 
@@ -550,7 +656,7 @@ static int lb_model_param_init(lb_t * lb) {
  *
  *****************************************************************************/
 
-__host__ int lb_init_rest_f(lb_t * lb, double rho0) {
+int lb_init_rest_f(lb_t * lb, double rho0) {
 
   int nlocal[3];
   int ic, jc, kc, index;
@@ -575,25 +681,6 @@ __host__ int lb_init_rest_f(lb_t * lb, double rho0) {
 
 /*****************************************************************************
  *
- *  lb_mpi_init
- *
- *  Commit the various datatypes required for halo swaps.
- *
- *****************************************************************************/
-
-static int lb_mpi_init(lb_t * lb) {
-
-  assert(lb);
-
-  halo_swap_create_r2(lb->pe, lb->cs, 1, lb->nsite, lb->ndist, lb->nvel,
-		      &lb->halo);
-  halo_swap_handlers_set(lb->halo, halo_swap_pack_rank1, halo_swap_unpack_rank1);
-
-  return 0;
-}
-
-/*****************************************************************************
- *
  *  lb_data_touch
  *
  *  Kernel driver to initialise data.
@@ -601,7 +688,7 @@ static int lb_mpi_init(lb_t * lb) {
  *
  *****************************************************************************/
 
-__host__ void lb_data_touch_kernel(cs_limits_t lim, lb_t * lb) {
+void lb_data_touch_kernel(cs_limits_t lim, lb_t * lb) {
 
   int nx = 1 + lim.imax - lim.imin;
   int ny = 1 + lim.jmax - lim.jmin;
@@ -629,7 +716,13 @@ __host__ void lb_data_touch_kernel(cs_limits_t lim, lb_t * lb) {
   return;
 }
 
-__host__ int lb_data_touch(lb_t * lb) {
+/*****************************************************************************
+ *
+ *  lb_data_touch
+ *
+ *****************************************************************************/
+
+int lb_data_touch(lb_t * lb) {
 
   int nlocal[3] = {0};
 
@@ -654,169 +747,16 @@ __host__ int lb_data_touch(lb_t * lb) {
  *  lb_halo
  *
  *  Swap the distributions at the periodic/processor boundaries
- *  in each direction. Default target swap.
+ *  in each direction.
  *
  *****************************************************************************/
 
-__host__ int lb_halo(lb_t * lb) {
+int lb_halo(lb_t * lb) {
 
   assert(lb);
 
-  lb_halo_swap(lb, lb->haloscheme);
-
-  return 0;
-}
-
-/*****************************************************************************
- *
- *  lb_halo_swap
- *
- *  Specify the type of swap wanted.
- *
- *****************************************************************************/
-
-__host__ int lb_halo_swap(lb_t * lb, lb_halo_enum_t flag) {
-
-  double * data;
-
-  assert(lb);
-
-  switch (flag) {
-  case LB_HALO_TARGET:
-    tdpAssert( tdpMemcpy(&data, &lb->target->f, sizeof(double *),
-			 tdpMemcpyDeviceToHost) );
-    halo_swap_packed(lb->halo, data);
-    break;
-  case LB_HALO_OPENMP_FULL:
-    lb_halo_post(lb, &lb->h);
-    lb_halo_wait(lb, &lb->h);
-    break;
-  case LB_HALO_OPENMP_REDUCED:
-    lb_halo_post(lb, &lb->h);
-    lb_halo_wait(lb, &lb->h);
-    break;
-  default:
-    lb_halo_post(lb, &lb->h);
-    lb_halo_wait(lb, &lb->h);
-  }
-
-  return 0;
-}
-
-/*****************************************************************************
- *
- *  lb_ndist
- *
- *  Return the number of distribution functions.
- *
- *****************************************************************************/
-
-__host__ __device__ int lb_ndist(lb_t * lb, int * ndist) {
-
-  assert(lb);
-  assert(ndist);
-
-  *ndist = lb->ndist;
-
-  return 0;
-}
-
-/*****************************************************************************
- *
- *  lb_f
- *
- *  Get the distribution at site index, velocity p, distribution n.
- *
- *****************************************************************************/
-
-__host__ __device__
-int lb_f(lb_t * lb, int index, int p, int n, double * f) {
-
-  assert(lb);
-  assert(index >= 0 && index < lb->nsite);
-  assert(p >= 0 && p < lb->nvel);
-  assert(n >= 0 && n < lb->ndist);
-
-  *f = lb->f[LB_ADDR(lb->nsite, lb->ndist, lb->nvel, index, n, p)];
-
-  return 0;
-}
-
-/*****************************************************************************
- *
- *  lb_f_set
- *
- *  Set the distribution for site index, velocity p, distribution n.
- *
- *****************************************************************************/
-
-__host__ __device__
-int lb_f_set(lb_t * lb, int index, int p, int n, double fvalue) {
-
-  assert(lb);
-  assert(index >= 0 && index < lb->nsite);
-  assert(p >= 0 && p < lb->nvel);
-  assert(n >= 0 && n < lb->ndist);
-
-  lb->f[LB_ADDR(lb->nsite, lb->ndist, lb->nvel, index, n, p)] = fvalue;
-
-  return 0;
-}
-
-/*****************************************************************************
- *
- *  lb_0th_moment
- *
- *  Return the zeroth moment of the distribution (rho for n = 0).
- *
- *****************************************************************************/
-
-__host__ __device__
-int lb_0th_moment(lb_t * lb, int index, lb_dist_enum_t nd, double * rho) {
-
-  assert(lb);
-  assert(rho);
-  assert(index >= 0 && index < lb->nsite);
-  assert((int) nd < lb->ndist);
-
-  *rho = 0.0;
-
-  for (int p = 0; p < lb->nvel; p++) {
-    *rho += lb->f[LB_ADDR(lb->nsite, lb->ndist, lb->nvel, index, nd, p)];
-  }
-
-  return 0;
-}
-
-/*****************************************************************************
- *
- *  lb_1st_moment
- *
- *  Return the first moment of the distribution p.
- *
- *****************************************************************************/
-
-__host__ __device__
-int lb_1st_moment(lb_t * lb, int index, lb_dist_enum_t nd, double g[3]) {
-
-  int p;
-  int n;
-
-  assert(lb);
-  assert(index >= 0 && index < lb->nsite);
-  assert((int) nd < lb->ndist);
-
-  /* Loop to 3 here to cover initialisation in D2Q9 (appears in momentum) */
-  for (n = 0; n < 3; n++) {
-    g[n] = 0.0;
-  }
-
-  for (p = 0; p < lb->model.nvel; p++) {
-    for (n = 0; n < lb->model.ndim; n++) {
-      g[n] += lb->model.cv[p][n]
-	*lb->f[LB_ADDR(lb->nsite, lb->ndist, lb->nvel, index, nd, p)];
-    }
-  }
+  lb_halo_post(lb, &lb->h);
+  lb_halo_wait(lb, &lb->h);
 
   return 0;
 }
@@ -829,7 +769,6 @@ int lb_1st_moment(lb_t * lb, int index, lb_dist_enum_t nd, double g[3]) {
  *
  *****************************************************************************/
 
-__host__
 int lb_2nd_moment(lb_t * lb, int index, lb_dist_enum_t nd, double s[3][3]) {
 
   int p, ia, ib;
@@ -867,7 +806,6 @@ int lb_2nd_moment(lb_t * lb, int index, lb_dist_enum_t nd, double s[3][3]) {
  *
  *****************************************************************************/
 
-__host__
 int lb_1st_moment_equilib_set(lb_t * lb, int index, double rho, double u[3]) {
 
   int ia, ib, p;
@@ -976,6 +914,64 @@ int lb_halo_enqueue_send(const lb_t * lb, lb_halo_t * h, int ireq) {
 
 /*****************************************************************************
  *
+ *  lb_halo_enqueue_send_kernel
+ *
+ *  Pack the send buffer. The ireq determines the direction of the
+ *  communication. Target version.
+ *
+ *****************************************************************************/
+
+__global__ void lb_halo_enqueue_send_kernel(const lb_t * lb, lb_halo_t * h,
+					    int ireq) {
+
+  assert(0 <= ireq && ireq < h->map.nvel);
+
+  if (h->count[ireq] > 0) {
+
+    int8_t mx = h->map.cv[ireq][X];
+    int8_t my = h->map.cv[ireq][Y];
+    int8_t mz = h->map.cv[ireq][Z];
+    int8_t mm = mx*mx + my*my + mz*mz;
+
+    int nx = 1 + h->slim[ireq].imax - h->slim[ireq].imin;
+    int ny = 1 + h->slim[ireq].jmax - h->slim[ireq].jmin;
+    int nz = 1 + h->slim[ireq].kmax - h->slim[ireq].kmin;
+
+    int strz = 1;
+    int stry = strz*nz;
+    int strx = stry*ny;
+
+    assert(mm == 1 || mm == 2 || mm == 3);
+
+	  int ih = 0;
+    for_simt_parallel (ih, nx*ny*nz, 1) {
+      int ic = h->slim[ireq].imin + ih/strx;
+      int jc = h->slim[ireq].jmin + (ih % strx)/stry;
+      int kc = h->slim[ireq].kmin + (ih % stry)/strz;
+      int ib = 0; /* Buffer index */
+
+      for (int n = 0; n < lb->ndist; n++) {
+	for (int p = 0; p < lb->nvel; p++) {
+	  /* Recall, if full, we need p = 0 */
+	  int8_t px = lb->model.cv[p][X];
+	  int8_t py = lb->model.cv[p][Y];
+	  int8_t pz = lb->model.cv[p][Z];
+	  int dot = mx*px + my*py + mz*pz;
+	  if (h->full || dot == mm) {
+	    int index = cs_index(lb->cs, ic, jc, kc);
+	    int laddr = LB_ADDR(lb->nsite, lb->ndist, lb->nvel, index, n, p);
+	    h->send[ireq][ih*h->count[ireq] + ib] = lb->f[laddr];
+	    ib++;
+	  }
+	}
+      }
+      assert(ib == h->count[ireq]);
+    }
+  }
+}
+
+/*****************************************************************************
+ *
  *  lb_halo_dequeue_recv
  *
  *  Unpack the recv buffer into place in the distributions.
@@ -1048,6 +1044,77 @@ int lb_halo_dequeue_recv(lb_t * lb, const lb_halo_t * h, int ireq) {
 
 /*****************************************************************************
  *
+ *  lb_halo_dequeue_recv_kernel
+ *
+ *  Unpack the recv buffer into place in the distributions. Target version.
+ *
+ *****************************************************************************/
+
+__global__ void lb_halo_dequeue_recv_kernel(lb_t * lb, const lb_halo_t * h,
+					    int ireq) {
+
+  assert(lb);
+  assert(h);
+  assert(0 <= ireq && ireq < h->map.nvel);
+
+  if (h->count[ireq] > 0) {
+
+    /* The communication direction is reversed cf. the send... */
+    int8_t mx = h->map.cv[h->map.nvel-ireq][X];
+    int8_t my = h->map.cv[h->map.nvel-ireq][Y];
+    int8_t mz = h->map.cv[h->map.nvel-ireq][Z];
+    int8_t mm = mx*mx + my*my + mz*mz;
+
+    int nx = 1 + h->rlim[ireq].imax - h->rlim[ireq].imin;
+    int ny = 1 + h->rlim[ireq].jmax - h->rlim[ireq].jmin;
+    int nz = 1 + h->rlim[ireq].kmax - h->rlim[ireq].kmin;
+
+    int strz = 1;
+    int stry = strz*nz;
+    int strx = stry*ny;
+
+    double * recv = h->recv[ireq];
+
+    {
+      int i = 1 + mx;
+      int j = 1 + my;
+      int k = 1 + mz;
+      /* If Cartesian neighbour is self, just copy out of send buffer. */
+      if (h->nbrrank[i][j][k] == h->nbrrank[1][1][1]) recv = h->send[ireq]; 
+    }
+
+    assert(mm == 1 || mm == 2 || mm == 3);
+
+	  int ih = 0;
+    for_simt_parallel (ih, nx*ny*nz, 1) {
+      int ic = h->rlim[ireq].imin + ih/strx;
+      int jc = h->rlim[ireq].jmin + (ih % strx)/stry;
+      int kc = h->rlim[ireq].kmin + (ih % stry)/strz;
+      int ib = 0; /* Buffer index */
+
+      for (int n = 0; n < lb->ndist; n++) {
+	for (int p = 0; p < lb->nvel; p++) {
+	  /* For reduced swap, we must have -cv[p] here... */
+	  int8_t px = lb->model.cv[lb->nvel-p][X];
+	  int8_t py = lb->model.cv[lb->nvel-p][Y];
+	  int8_t pz = lb->model.cv[lb->nvel-p][Z];
+	  int dot = mx*px + my*py + mz*pz;
+
+	  if (h->full || dot == mm) {
+	    int index = cs_index(lb->cs, ic, jc, kc);
+	    int laddr = LB_ADDR(lb->nsite, lb->ndist, lb->nvel, index, n, p);
+	    lb->f[laddr] = recv[ih*h->count[ireq] + ib];
+	    ib++;
+	  }
+	}
+      }
+      assert(ib == h->count[ireq]);
+    }
+  }
+}
+
+/*****************************************************************************
+ *
  *  lb_halo_create
  *
  *  Currently: generate all send and receive requests.
@@ -1075,7 +1142,7 @@ int lb_halo_create(const lb_t * lb, lb_halo_t * h, lb_halo_enum_t scheme) {
   /* Default to full swap unless reduced is requested. */
 
   h->full = 1;
-  if (scheme == LB_HALO_OPENMP_REDUCED) h->full = 0;
+  if (scheme == LB_HALO_REDUCED) h->full = 0;
 
   /* Determine look-up table of ranks of neighbouring processes */
   {
@@ -1144,7 +1211,9 @@ int lb_halo_create(const lb_t * lb, lb_halo_t * h, lb_halo_enum_t scheme) {
 
   /* Message count (velocities) for each communication direction */
 
-  for (int p = 1; p < h->map.nvel; p++) {
+   int *send_count = (int *) calloc(h->map.nvel, sizeof(int));
+   int *recv_count = (int *) calloc(h->map.nvel, sizeof(int));
+   for (int p = 1; p < h->map.nvel; p++) {
 
     int count = 0;
 
@@ -1175,12 +1244,14 @@ int lb_halo_create(const lb_t * lb, lb_halo_t * h, lb_halo_enum_t scheme) {
     /* Allocate send buffer for send region */
     if (count > 0) {
       int scount = count*lb_halo_size(h->slim[p]);
+      send_count[p] = count;
       h->send[p] = (double *) calloc(scount, sizeof(double));
       assert(h->send[p]);
     }
     /* Allocate recv buffer */
     if (count > 0) {
       int rcount = count*lb_halo_size(h->rlim[p]);
+      recv_count[p] = count;
       h->recv[p] = (double *) calloc(rcount, sizeof(double));
       assert(h->recv[p]);
     }
@@ -1192,6 +1263,48 @@ int lb_halo_create(const lb_t * lb, lb_halo_t * h, lb_halo_enum_t scheme) {
     h->request[ireq] = MPI_REQUEST_NULL;
   }
 
+
+  /* Device */
+
+  int ndevice;
+  tdpGetDeviceCount(&ndevice);
+  tdpStreamCreate(&h->stream);
+
+  if (ndevice == 0) {
+    h->target = h;
+  }
+  else {
+    use_graph_api_ = 1; /* Always */
+    tdpAssert( tdpMalloc((void **) &h->target, sizeof(lb_halo_t)) );
+    tdpAssert( tdpMemset(h->target, 0, sizeof(lb_halo_t)));
+    tdpAssert( tdpMemcpy(h->target, h, sizeof(lb_halo_t),
+			 tdpMemcpyHostToDevice) );
+
+    for (int p = 0; p < h->map.nvel; p++) {         
+      int scount = send_count[p]*lb_halo_size(h->slim[p]);  
+      int rcount = recv_count[p]*lb_halo_size(h->rlim[p]);
+      if (scount > 0)
+        tdpAssert( tdpMalloc((void**) &h->send_d[p], scount * sizeof(double)) );
+      if (rcount > 0)
+        tdpAssert( tdpMalloc((void**) &h->recv_d[p], rcount * sizeof(double)) );
+    }
+    /* Slightly tricksy. Could use send_d and recv_d on target copy ...*/
+    tdpAssert( tdpMemcpy(h->target->send, h->send_d, 27*sizeof(double *),     
+			 tdpMemcpyHostToDevice) );
+    tdpAssert( tdpMemcpy(h->target->recv, h->recv_d, 27*sizeof(double *),
+			 tdpMemcpyHostToDevice) );
+
+    halo_initialise_device_model(h);
+
+    if (use_graph_api_) {
+      lb_graph_halo_send_create(lb, h);
+      lb_graph_halo_recv_create(lb, h);
+    }
+
+  }
+  free(send_count);
+  free(recv_count);
+
   return 0;
 }
 
@@ -1201,7 +1314,7 @@ int lb_halo_create(const lb_t * lb, lb_halo_t * h, lb_halo_enum_t scheme) {
  *
  *****************************************************************************/
 
-int lb_halo_post(const lb_t * lb, lb_halo_t * h) {
+int lb_halo_post(lb_t * lb, lb_halo_t * h) {
 
   assert(lb);
   assert(h);
@@ -1226,10 +1339,12 @@ int lb_halo_post(const lb_t * lb, lb_halo_t * h) {
       int j = 1 + h->map.cv[h->map.nvel-ireq][Y];
       int k = 1 + h->map.cv[h->map.nvel-ireq][Z];
       int mcount = h->count[ireq]*lb_halo_size(h->rlim[ireq]);
+      double * buf = h->recv[ireq];
+      if (have_gpu_aware_mpi_()) buf = h->recv_d[ireq];
 
-      if (h->nbrrank[i][j][k] == h->nbrrank[1][1][1]) mcount = 0;
-
-      MPI_Irecv(h->recv[ireq], mcount, MPI_DOUBLE, h->nbrrank[i][j][k],
+      if (h->nbrrank[i][j][k] == h->nbrrank[1][1][1]) continue;
+      
+      MPI_Irecv(buf, mcount, MPI_DOUBLE, h->nbrrank[i][j][k],
 		h->tagbase + ireq, h->comm, h->request + ireq);
     }
   }
@@ -1241,10 +1356,37 @@ int lb_halo_post(const lb_t * lb, lb_halo_t * h) {
 
   TIMER_start(TIMER_LB_HALO_PACK);
 
-  #pragma omp parallel
-  {
-    for (int ireq = 0; ireq < h->map.nvel; ireq++) {
-      lb_halo_enqueue_send(lb, h, ireq);
+  int ndevice;
+  tdpGetDeviceCount(&ndevice);
+  if (ndevice > 0) {
+    if (use_graph_api_) {
+      tdpAssert( tdpGraphLaunch(h->gsend.exec, h->stream) );
+      tdpAssert( tdpStreamSynchronize(h->stream) );
+    }
+    else {
+      for (int ireq = 0; ireq < h->map.nvel; ireq++) {
+        if (h->count[ireq] > 0) {
+          int scount = h->count[ireq]*lb_halo_size(h->slim[ireq]);
+          dim3 nblk, ntpb;
+          kernel_launch_param(scount, &nblk, &ntpb);
+          tdpLaunchKernel(lb_halo_enqueue_send_kernel, nblk, ntpb, 0, 0,
+			  lb->target, h->target, ireq);
+          tdpAssert( tdpDeviceSynchronize());
+ 
+          if (!have_gpu_aware_mpi_()) {
+            tdpAssert( tdpMemcpy(h->send[ireq], h->send_d[ireq],
+				 sizeof(double)*scount, tdpMemcpyDeviceToHost));
+          }
+        }
+      }
+    }
+  }
+  else {
+    #pragma omp parallel
+    {
+      for (int ireq = 0; ireq < h->map.nvel; ireq++) {
+        lb_halo_enqueue_send(lb, h, ireq);
+      }
     }
   }
 
@@ -1261,15 +1403,17 @@ int lb_halo_post(const lb_t * lb, lb_halo_t * h) {
       int j = 1 + h->map.cv[ireq][Y];
       int k = 1 + h->map.cv[ireq][Z];
       int mcount = h->count[ireq]*lb_halo_size(h->slim[ireq]);
+      double * buf = h->send[ireq];
+      if (have_gpu_aware_mpi_()) buf = h->send_d[ireq];
 
       /* Short circuit messages to self. */
-      if (h->nbrrank[i][j][k] == h->nbrrank[1][1][1]) mcount = 0;
+      if (h->nbrrank[i][j][k] == h->nbrrank[1][1][1]) continue;
 
-      MPI_Isend(h->send[ireq], mcount, MPI_DOUBLE, h->nbrrank[i][j][k],
+      MPI_Isend(buf, mcount, MPI_DOUBLE, h->nbrrank[i][j][k],
 		h->tagbase + ireq, h->comm, h->request + 27 + ireq);
     }
   }
-
+  
   TIMER_stop(TIMER_LB_HALO_ISEND);
 
   return 0;
@@ -1294,10 +1438,36 @@ int lb_halo_wait(lb_t * lb, lb_halo_t * h) {
 
   TIMER_start(TIMER_LB_HALO_UNPACK);
 
-  #pragma omp parallel
-  {
-    for (int ireq = 0; ireq < h->map.nvel; ireq++) {
-      lb_halo_dequeue_recv(lb, h, ireq);
+  int ndevice;
+  tdpGetDeviceCount(&ndevice);
+  if (ndevice > 0) {
+    if (use_graph_api_) {
+      tdpAssert( tdpGraphLaunch(h->grecv.exec, h->stream) );
+      tdpAssert( tdpStreamSynchronize(h->stream) );
+    }
+    else {
+      for (int ireq = 0; ireq < h->map.nvel; ireq++) {
+        if (h->count[ireq] > 0) {
+          int rcount = h->count[ireq]*lb_halo_size(h->slim[ireq]);
+          if (!have_gpu_aware_mpi_()) {
+            tdpAssert( tdpMemcpy(h->recv[ireq], h->recv_d[ireq],
+				 sizeof(double)*rcount, tdpMemcpyDeviceToHost));
+          }
+          dim3 nblk, ntpb;
+          kernel_launch_param(rcount, &nblk, &ntpb);
+          tdpLaunchKernel(lb_halo_dequeue_recv_kernel, nblk, ntpb, 0, 0,
+			  lb->target, h->target, ireq);
+          tdpAssert( tdpDeviceSynchronize());
+        }
+      }
+    }
+  }
+  else {
+    #pragma omp parallel
+    {
+      for (int ireq = 0; ireq < h->map.nvel; ireq++) {
+        lb_halo_dequeue_recv(lb, h, ireq);
+      }
     }
   }
 
@@ -1319,11 +1489,34 @@ int lb_halo_free(lb_t * lb, lb_halo_t * h) {
   assert(lb);
   assert(h);
 
+  int ndevice = 0;
+  tdpGetDeviceCount(&ndevice);
+
+  halo_free_device_model(h);
+
+  if (ndevice > 0) {
+    tdpAssert( tdpMemcpy(h->send_d, h->target->send, 27*sizeof(double *),
+			 tdpMemcpyDeviceToHost) );
+    tdpAssert( tdpMemcpy(h->recv_d, h->target->recv, 27*sizeof(double *),
+			 tdpMemcpyDeviceToHost) );
+    for (int p = 1; p < h->map.nvel; p++) {
+      tdpFree(h->send_d[p]);
+      tdpFree(h->recv_d[p]);
+    }
+    tdpFree(h->target);
+  }
+
   for (int ireq = 0; ireq < 27; ireq++) {
     free(h->send[ireq]);
     free(h->recv[ireq]);
   }
 
+  if (use_graph_api_) {
+    tdpAssert( tdpGraphDestroy(h->gsend.graph) );
+    tdpAssert( tdpGraphDestroy(h->grecv.graph) );
+  }
+  
+  tdpAssert( tdpStreamDestroy(h->stream) );
   lb_model_free(&h->map);
 
   return 0;
@@ -1450,7 +1643,7 @@ int lb_read_buf_ascii(lb_t * lb, int index, const char * buf) {
  *
  *****************************************************************************/
 
-__host__ int lb_io_aggr_pack(const lb_t * lb, io_aggregator_t * aggr) {
+int lb_io_aggr_pack(const lb_t * lb, io_aggregator_t * aggr) {
 
   assert(lb);
   assert(aggr);
@@ -1485,7 +1678,7 @@ __host__ int lb_io_aggr_pack(const lb_t * lb, io_aggregator_t * aggr) {
  *
  *****************************************************************************/
 
-__host__ int lb_io_aggr_unpack(lb_t * lb, const io_aggregator_t * aggr) {
+int lb_io_aggr_unpack(lb_t * lb, const io_aggregator_t * aggr) {
 
   assert(lb);
   assert(aggr);
@@ -1627,4 +1820,169 @@ int lb_io_read(lb_t * lb, int timestep, io_event_t * event) {
   }
 
   return ifail;
+}
+
+/*****************************************************************************
+ *
+ * lb_graph_halo_send_create
+ *
+ *****************************************************************************/
+
+int lb_graph_halo_send_create(const lb_t * lb, lb_halo_t * h) {
+
+  assert(lb);
+  assert(h);
+
+  tdpAssert( tdpGraphCreate(&h->gsend.graph, 0) );
+
+  for (int ireq = 1; ireq < h->map.nvel; ireq++) {
+    tdpGraphNode_t kernelNode;
+    tdpKernelNodeParams kernelNodeParams = {0};
+    void * kernelArgs[3] = {(void *) &lb->target,
+                            (void *) &h->target,
+                            (void *) &ireq};
+    kernelNodeParams.func = (void *) lb_halo_enqueue_send_kernel;
+    dim3 nblk;
+    dim3 ntpb;
+    size_t scount = lb_halo_size(h->slim[ireq]);
+    if (h->count[ireq] == 0) continue;
+
+    kernel_launch_param(scount, &nblk, &ntpb);
+
+    kernelNodeParams.gridDim        = nblk;
+    kernelNodeParams.blockDim       = ntpb;
+    kernelNodeParams.sharedMemBytes = 0;
+    kernelNodeParams.kernelParams   = (void **) kernelArgs;
+    kernelNodeParams.extra          = NULL;
+
+    tdpAssert( tdpGraphAddKernelNode(&kernelNode, h->gsend.graph, NULL, 0,
+				     &kernelNodeParams) );
+
+    if (have_gpu_aware_mpi_()) {
+      /* Don't need explicit device -> host copy */
+    }
+    else {
+      /* We do need to add the memcpys to the graph definition
+       * (except messages to self... ) */
+
+      int i = 1 + h->map.cv[h->map.nvel - ireq][X];
+      int j = 1 + h->map.cv[h->map.nvel - ireq][Y];
+      int k = 1 + h->map.cv[h->map.nvel - ireq][Z];
+
+      if (h->nbrrank[i][j][k] != h->nbrrank[1][1][1]) {
+	tdpGraphNode_t memcpyNode;
+        tdpMemcpy3DParms memcpyParams = {0};
+
+	memcpyParams.srcArray = NULL;
+	memcpyParams.srcPos   = make_tdpPos(0, 0, 0);
+	memcpyParams.srcPtr   = make_tdpPitchedPtr(h->send_d[ireq],
+						   sizeof(double)*h->count[ireq]*scount,
+						   h->count[ireq]*scount, 1);
+	memcpyParams.dstArray = NULL;
+	memcpyParams.dstPos   = make_tdpPos(0, 0, 0);
+	memcpyParams.dstPtr   = make_tdpPitchedPtr(h->send[ireq],
+						   sizeof(double)*h->count[ireq]*scount,
+						   h->count[ireq]*scount, 1);
+	memcpyParams.extent   = make_tdpExtent(sizeof(double)*h->count[ireq]*scount, 1, 1);
+	memcpyParams.kind     = tdpMemcpyDeviceToHost;
+
+	tdpAssert( tdpGraphAddMemcpyNode(&memcpyNode, h->gsend.graph,
+					 &kernelNode, 1, &memcpyParams) );
+      }
+    }
+  }
+
+  tdpAssert( tdpGraphInstantiate(&h->gsend.exec, h->gsend.graph, 0) );
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  lb_graph_halo_recv_create
+ *
+ *****************************************************************************/
+
+int lb_graph_halo_recv_create(const lb_t * lb, lb_halo_t * h) {
+
+  assert(lb);
+  assert(h);
+
+  tdpAssert( tdpGraphCreate(&h->grecv.graph, 0) );
+
+  for (int ireq = 1; ireq < h->map.nvel; ireq++) {
+    size_t rcount = lb_halo_size(h->rlim[ireq]);
+    if (h->count[ireq] == 0) continue;
+    tdpGraphNode_t memcpyNode = {0};
+
+    if (have_gpu_aware_mpi_()) {
+      /* Don't need explicit copies */
+    }
+    else {
+      int i = 1 + h->map.cv[h->map.nvel - ireq][X];
+      int j = 1 + h->map.cv[h->map.nvel - ireq][Y];
+      int k = 1 + h->map.cv[h->map.nvel - ireq][Z];
+
+      if (h->nbrrank[i][j][k] != h->nbrrank[1][1][1]) {
+	tdpMemcpy3DParms memcpyParams = {0};
+
+	memcpyParams.srcArray = NULL;
+	memcpyParams.srcPos   = make_tdpPos(0, 0, 0);
+	memcpyParams.srcPtr   = make_tdpPitchedPtr(h->recv[ireq],
+						   sizeof(double)*h->count[ireq]*rcount,
+						   h->count[ireq]*rcount, 1);
+	memcpyParams.dstArray = NULL;
+	memcpyParams.dstPos   = make_tdpPos(0, 0, 0);
+	memcpyParams.dstPtr   = make_tdpPitchedPtr(h->recv_d[ireq],
+						   sizeof(double)*h->count[ireq]*rcount,
+						   h->count[ireq]*rcount, 1);
+        memcpyParams.extent   = make_tdpExtent(sizeof(double)*h->count[ireq]*rcount, 1, 1);
+        memcpyParams.kind     = tdpMemcpyHostToDevice;
+
+	tdpAssert( tdpGraphAddMemcpyNode(&memcpyNode, h->grecv.graph, NULL,
+					 0, &memcpyParams) );
+      }
+    }
+
+    /* Always need the dis-aggregateion kernel */
+
+    dim3 nblk;
+    dim3 ntpb;
+    tdpGraphNode_t node;
+    tdpKernelNodeParams kernelNodeParams = {0};
+    void * kernelArgs[3] = {(void *) &lb->target,
+                            (void *) &h->target,
+                            (void *) &ireq};
+    kernelNodeParams.func = (void *) lb_halo_dequeue_recv_kernel;
+
+    kernel_launch_param(rcount, &nblk, &ntpb);
+
+    kernelNodeParams.gridDim        = nblk;
+    kernelNodeParams.blockDim       = ntpb;
+    kernelNodeParams.sharedMemBytes = 0;
+    kernelNodeParams.kernelParams   = (void **) kernelArgs;
+    kernelNodeParams.extra          = NULL;
+
+    if (have_gpu_aware_mpi_()) {
+      tdpAssert( tdpGraphAddKernelNode(&node, h->grecv.graph, NULL,
+				       0, &kernelNodeParams) );
+    }
+    else {
+      int i = 1 + h->map.cv[h->map.nvel - ireq][X];
+      int j = 1 + h->map.cv[h->map.nvel - ireq][Y];
+      int k = 1 + h->map.cv[h->map.nvel - ireq][Z];
+      if (h->nbrrank[i][j][k] != h->nbrrank[1][1][1]) {
+	      tdpAssert( tdpGraphAddKernelNode(&node, h->grecv.graph, &memcpyNode,
+					 1, &kernelNodeParams) );
+      }
+      else {
+	      tdpAssert( tdpGraphAddKernelNode(&node, h->grecv.graph, NULL, 0,
+					 &kernelNodeParams) );
+      }
+    }
+  }
+
+  tdpAssert( tdpGraphInstantiate(&h->grecv.exec, h->grecv.graph, 0) );
+
+  return 0;
 }

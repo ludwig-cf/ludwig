@@ -7,7 +7,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2010-2024 The University of Edinburgh
+ *  (c) 2010-2025 The University of Edinburgh
  *
  *  Contributing Authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -23,6 +23,7 @@
 
 #include "pe.h"
 #include "coords.h"
+#include "kernel.h"
 #include "physics.h"
 #include "colloid_sums.h"
 #include "util.h"
@@ -107,7 +108,7 @@ int bbl_create(pe_t * pe, cs_t * cs, lb_t * lb, bbl_t ** pobj) {
   bbl->pe = pe;
   bbl->cs = cs;
   bbl->ellipsoid_didt = BBL_ELLIPSOID_UPDATE_QUATERNION;
-  lb_ndist(lb, &bbl->ndist);
+  bbl->ndist = lb->ndist;
 
   /* I would like to obtain the viscosity from the lb data structure;
    * but it's not present at initialisation, so ... */
