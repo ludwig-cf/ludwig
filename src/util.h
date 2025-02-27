@@ -10,8 +10,8 @@
  *  (c) 2010-2024 The University of Edinburgh
  *
  *  Contributing authors:
- *  Kevin Stratford (kevin@epcc.ed.ac.uk) 
- *  
+ *  Kevin Stratford (kevin@epcc.ed.ac.uk)
+ *
  ****************************************************************************/
 
 #include <stdint.h>
@@ -51,6 +51,8 @@ __host__ __device__ double dmax(const double a, const double b);
 
 __host__ int util_jacobi(double a[3][3], double vals[3], double vecs[3][3]);
 __host__ int util_jacobi_sort(double a[3][3], double vals[3], double vecs[3][3]);
+
+int util_discrete_area_disk(double a0, const double r0[2], double * area);
 __host__ int util_discrete_volume_sphere(const double r0[3], double a0,
 					 double * vn);
 __host__ int util_gauss_jordan(const int n, double * a, double * b);
@@ -65,5 +67,7 @@ __host__ int util_ranlcg_reap_gaussian(int * state, double r[2]);
 
 __host__ int util_str_tolower(char * str, size_t maxlen);
 __host__ int util_rectangle_conductance(double h, double w, double * c);
+
+int util_mod(int a, int b);
 
 #endif

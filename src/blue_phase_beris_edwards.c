@@ -144,7 +144,7 @@ __host__ int beris_edw_create(pe_t * pe, cs_t * cs, lees_edw_t * le,
 
   /* Allocate a target copy, or alias */
 
-  tdpGetDeviceCount(&ndevice);
+  tdpAssert( tdpGetDeviceCount(&ndevice) );
 
   if (ndevice == 0) {
     obj->target = obj;
@@ -190,7 +190,7 @@ __host__ int beris_edw_free(beris_edw_t * be) {
 
   assert(be);
 
-  tdpGetDeviceCount(&ndevice);
+  tdpAssert( tdpGetDeviceCount(&ndevice) );
 
   if (ndevice > 0) {
     double * htmp;

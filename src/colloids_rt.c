@@ -7,7 +7,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2014-2023 The University of Edinburgh
+ *  (c) 2014-2024 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -67,7 +67,9 @@ int colloids_rt_init_random(pe_t * pe, cs_t * cs, rt_t * rt, wall_t * wall,
 int colloids_rt_state_stub(pe_t * pe, rt_t * rt, colloids_info_t * cinfo,
 			   const char * stub,
 			   colloid_state_t * state);
-int colloids_rt_cell_list_checks(pe_t * pe, cs_t * cs, colloids_info_t ** pinfo,
+int colloids_rt_cell_list_checks(pe_t * pe, cs_t * cs,
+				 const lb_model_t * model,
+				 colloids_info_t ** pinfo,
 				 interact_t * interact);
 
 /*****************************************************************************
@@ -154,7 +156,7 @@ int colloids_init_rt(pe_t * pe, rt_t * rt, cs_t * cs, colloids_info_t ** pinfo,
 
   wall_ss_cut_init(pe, cs, rt, wall, *interact);
 
-  colloids_rt_cell_list_checks(pe, cs, pinfo, *interact);
+  colloids_rt_cell_list_checks(pe, cs, model, pinfo, *interact);
   colloids_init_halo_range_check(pe, cs, *pinfo);
   if (nc > 1) interact_range_check(*interact, *pinfo);
 
@@ -777,12 +779,17 @@ int colloids_rt_gravity(pe_t * pe, rt_t * rt, colloids_info_t * cinfo) {
  *  For given set of colloids in the default cell list, and given
  *  interactions, work out what the best cell list size is.
  *
+ *  The lb_model_t is included here to get the dimensionsality;
+ *  in principle one could have an entirely separate procedure for
+ *  two-dimensional systems of disks.
+ *
  *  The cell width should be as small as possible to prevent
  *  unnecessary halo transfers.
  *
  *****************************************************************************/
 
 int colloids_rt_cell_list_checks(pe_t * pe, cs_t * cs,
+				 const lb_model_t * model,
 				 colloids_info_t ** pinfo,
 				 interact_t * interact) {
   int nc;
@@ -842,6 +849,9 @@ int colloids_rt_cell_list_checks(pe_t * pe, cs_t * cs,
     pe_info(pe, "Surface-surface interaction: %14.7e\n", hcmax);
     pe_info(pe, "Centre-centre interaction:   %14.7e\n", rcmax);
   }
+
+  /* If we have 2d disks, then prevent nbest[Z] going to zero... */
+  if (model->ndim == 2) nbest[Z] = imax(1, nbest[Z]);
 
   /* Transfer colloids to new cell list if required */
 
@@ -1202,16 +1212,25 @@ int angle_cosine_init(pe_t * pe, cs_t * cs, rt_t * rt, interact_t * interact) {
  *  3) ncell >= 2       must have at least two cells to separate
  *                      'left-going' and 'right-going' communications.
  *
+ *  There are some edge cases where we can relax these constraints:
+ *
+ *  a) A direction which is non-periodic (eg., has walls)
+ *     and is not decomposed (mpisz == 1) will have no message passing.
+ *     In such a case,  (1) and (2) may be ignored, and (3) is relaxed to
+ *     ncell >= 1. This may be useful for systems which are "narrow" (cf. a0).
+ *
  *****************************************************************************/
 
 int colloids_init_halo_range_check(pe_t * pe, cs_t * cs,
 				   colloids_info_t * cinfo) {
 
   int ifail = 0;
-  int ncolloid;
-  int ncell[3];
-  int nlocal[3];
+  int ncolloid = 0;
+  int ncell[3] = {0};
+  int nlocal[3] = {0};
   int nhalo = 1;       /* Always, for purpose of BBL. */
+
+  int nar[3] = {0};    /* See point (a) above */
 
   double a0max = 0.0;  /* Maximum colloid a0 present */
   double lcell[3];
@@ -1228,23 +1247,27 @@ int colloids_init_halo_range_check(pe_t * pe, cs_t * cs,
 
   colloids_info_a0max(cinfo, &a0max);
 
-  if (2.0*a0max >= 1.0*(nlocal[X] - nhalo)) ifail = 1;
-  if (2.0*a0max >= 1.0*(nlocal[Y] - nhalo)) ifail = 1;
-  if (2.0*a0max >= 1.0*(nlocal[Z] - nhalo)) ifail = 1;
+  if (cs->param->periodic[X] == 0 && cs->param->mpi_cartsz[X] == 1) nar[X] = 1;
+  if (cs->param->periodic[Y] == 0 && cs->param->mpi_cartsz[Y] == 1) nar[Y] = 1;
+  if (cs->param->periodic[Z] == 0 && cs->param->mpi_cartsz[Z] == 1) nar[Z] = 1;
+
+  if (nar[X] == 0 && (2.0*a0max >= 1.0*(nlocal[X] - nhalo))) ifail = 1;
+  if (nar[Y] == 0 && (2.0*a0max >= 1.0*(nlocal[Y] - nhalo))) ifail = 1;
+  if (nar[Z] == 0 && (2.0*a0max >= 1.0*(nlocal[Z] - nhalo))) ifail = 1;
   if (ifail == 1) {
     pe_fatal(pe, "Particle diameter larger than (nlocal - 1) domain size\n");
   }
 
-  if (lcell[X] <= a0max) ifail = 1;
-  if (lcell[Y] <= a0max) ifail = 1;
-  if (lcell[Z] <= a0max) ifail = 1;
+  if (nar[X] == 0 && (lcell[X] <= a0max)) ifail = 1;
+  if (nar[Y] == 0 && (lcell[Y] <= a0max)) ifail = 1;
+  if (nar[Z] == 0 && (lcell[Z] <= a0max)) ifail = 1;
   if (ifail == 1) {
     pe_fatal(pe, "Particle a0 > cell width breaks BBL message passing\n");
   }
 
-  if (ncell[X] < 2) ifail = 1;
-  if (ncell[Y] < 2) ifail = 1;
-  if (ncell[Z] < 2) ifail = 1;
+  if (ncell[X] < (2 - nar[X])) ifail = 1;
+  if (ncell[Y] < (2 - nar[Y])) ifail = 1;
+  if (ncell[Z] < (2 - nar[Z])) ifail = 1;
 
   if (ifail == 1) {
     pe_fatal(pe, "Must have two cells minimum\n");
@@ -1254,9 +1277,9 @@ int colloids_init_halo_range_check(pe_t * pe, cs_t * cs,
 
   cs_nhalo(cs, &nhalo);
 
-  if (lcell[X] < (a0max + nhalo - 0.5)) ifail = 1;
-  if (lcell[Y] < (a0max + nhalo - 0.5)) ifail = 1;
-  if (lcell[Z] < (a0max + nhalo - 0.5)) ifail = 1;
+  if (nar[X] == 0 && (lcell[X] < (a0max + nhalo - 0.5))) ifail = 1;
+  if (nar[Y] == 0 && (lcell[Y] < (a0max + nhalo - 0.5))) ifail = 1;
+  if (nar[Z] == 0 && (lcell[Z] < (a0max + nhalo - 0.5))) ifail = 1;
 
   if (ifail == 1) {
     pe_fatal(pe, "Must have cell width > a0_max + nhalo\n");

@@ -7,7 +7,7 @@
  *  Edinburgh Soft Matter and Statistics Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2019 The University of Edinburgh
+ *  (c) 2019-2024 The University of Edinburgh
  *
  *****************************************************************************/
 
@@ -33,7 +33,7 @@ int test_ch_suite(void) {
   int ndevice;
   pe_t * pe = NULL;
 
-  tdpGetDeviceCount(&ndevice);
+  tdpAssert( tdpGetDeviceCount(&ndevice) );
 
   pe_create(MPI_COMM_WORLD, PE_QUIET, &pe);
 
@@ -59,7 +59,7 @@ int test_ch_suite(void) {
 
 int test_ch_create(pe_t * pe) {
 
-  const int nfield = 2;  /* phi, psi   */ 
+  const int nfield = 2;  /* phi, psi   */
   const double m1 = 1.0; /* mobility 1 */
   const double m2 = 2.0; /* mobility 2 */
 

@@ -15,7 +15,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2010-2023 The University of Edinburgh
+ *  (c) 2010-2025 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -185,7 +185,7 @@ __host__ int pe_message(pe_t * pe) {
     assert(printf("Note assertions via standard C assert() are on.\n\n"));
 
     /* Thread model */
-    tdpThreadModelInfo(stdout);
+    tdpAssert( tdpThreadModelInfo(stdout) );
     printf("\n");
   }
 
@@ -437,4 +437,24 @@ __host__ int pe_time(char * str, int bufsiz) {
   }
 
   return ierr;
+}
+
+/*****************************************************************************
+ *
+ *  have_gpu_aware_mpi_
+ *
+ *  This must be a configuration time option at the moment, as there
+ *  is no portable way to tell at run time.
+ *
+ *****************************************************************************/
+
+int have_gpu_aware_mpi_(void) {
+
+  int have_gpu_aware_mpi = 0;
+
+#ifdef HAVE_GPU_AWARE_MPI
+  have_gpu_aware_mpi = 1;
+#endif
+
+  return have_gpu_aware_mpi;
 }

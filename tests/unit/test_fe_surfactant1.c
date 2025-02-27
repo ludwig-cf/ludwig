@@ -7,7 +7,7 @@
  *  Edinburgh Soft Matter and Statistical Phsyics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2019-2023 The University of Edinburgh
+ *  (c) 2019-2024 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -37,7 +37,7 @@ static fe_surf_param_t pref = {-0.0208333,    /* a */
 			       +0.0208333,    /* b */
 			       0.12,          /* kappa */
 			       0.00056587,    /* kT */
-			       0.03,          /* epsilon */ 
+			       0.03,          /* epsilon */
 			       0.0,           /* beta */
 			       0.0};          /* W */
 
@@ -57,7 +57,7 @@ __host__ int test_fe_surfactant1_suite(void) {
   cs_t * cs = NULL;
   field_t * phi = NULL;
 
-  tdpGetDeviceCount(&ndevice);
+  tdpAssert( tdpGetDeviceCount(&ndevice) );
 
   pe_create(MPI_COMM_WORLD, PE_QUIET, &pe);
 

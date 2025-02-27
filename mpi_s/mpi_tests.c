@@ -4,7 +4,10 @@
  *
  *  Tests for the serial stubs
  *
- *  (c) 2022 The University of Edinburgh
+ *  Edinburgh Soft Matter and Statistical Physics Group and
+ *  Edinburgh Parallel Computing Centre
+ *
+ *  (c) 2022-2024 The University of Edinburgh
  *
  *****************************************************************************/
 
@@ -27,12 +30,20 @@ static int test_mpi_reduce(void);
 static int test_mpi_allgather(void);
 static int test_mpi_type_contiguous(void);
 static int test_mpi_type_create_struct(void);
+static int test_mpi_type_size(void);
+static int test_mpi_type_get_extent(void);
 static int test_mpi_op_create(void);
 static int test_mpi_file_open(void);
 static int test_mpi_file_get_view(void);
 static int test_mpi_file_set_view(void);
 static int test_mpi_type_create_subarray(void);
 static int test_mpi_file_write_all(void);
+
+static int test_mpi_comm_split_type(void);
+static int test_mpi_cart_create(void);
+static int test_mpi_cart_get(void);
+static int test_mpi_dims_create(void);
+
 
 /* Utilities */
 
@@ -104,7 +115,12 @@ int util_double_same(double d1, double d2) {
   return util_bits_same(sizeof(double), &a, &b);
 }
 
-static int test_mpi_comm_split_type(void);
+
+/*****************************************************************************
+ *
+ *  main
+ *
+ *****************************************************************************/
 
 int main (int argc, char ** argv) {
 
@@ -123,8 +139,13 @@ int main (int argc, char ** argv) {
 
   test_mpi_type_contiguous();
   test_mpi_type_create_struct();
+  test_mpi_type_size();
+  test_mpi_type_get_extent();
   test_mpi_op_create();
   test_mpi_comm_split_type();
+  test_mpi_cart_create();
+  test_mpi_cart_get();
+  test_mpi_dims_create();
 
   test_mpi_file_open();
   test_mpi_file_get_view();
@@ -184,30 +205,48 @@ static int test_mpi_comm_size(void) {
 
 static int test_mpi_allreduce(void) {
 
-  int ireturn;
-  double dsend, drecv;
-  int isend[3], irecv[3];
+  int ifail = 0;
+  MPI_Comm comm = MPI_COMM_WORLD;
 
-  dsend = 1.0; drecv = 0.0;
-  ireturn = MPI_Allreduce(&dsend, &drecv, 1, MPI_DOUBLE, MPI_SUM, comm_);
-  assert(ireturn == MPI_SUCCESS);
-  assert(util_double_same(dsend, 1.0));   /* Exactly */
-  assert(util_double_same(drecv, dsend)); /* Exactly */
+  {
+    double dsend = 1.0;
+    double drecv = 0.0;
+    int ireturn = MPI_Allreduce(&dsend, &drecv, 1, MPI_DOUBLE, MPI_SUM, comm);
+    if (ireturn != MPI_SUCCESS) ifail = 1;
+    assert(ifail == 0);
+    if (util_double_same(dsend, 1.0) == 0) ifail = 1;   /* Exactly */
+    assert(ifail == 0);
+    if (util_double_same(drecv, dsend) == 0) ifail = 1; /* Exactly */
+    assert(ifail == 0);
+  }
 
-  isend[0] = -1;
-  isend[1] = 0;
-  isend[2] = +1;
+  {
+    int isend[3] = {1, 2, 3};
+    int irecv[3] = {0, 0, 0};
 
-  ireturn = MPI_Allreduce(isend, irecv, 3, MPI_INT, MPI_SUM, comm_);
-  assert(ireturn == MPI_SUCCESS);
-  assert(isend[0] == -1);
-  assert(isend[1] == 0);
-  assert(isend[2] == +1);
-  assert(irecv[0] == -1);
-  assert(irecv[1] == 0);
-  assert(irecv[2] == +1);
+    int ireturn = MPI_Allreduce(isend, irecv, 3, MPI_INT, MPI_SUM, comm);
+    if (ireturn != MPI_SUCCESS) ifail = 0;
+    assert(ifail == 0);
+    if (isend[0] != 1) ifail += 1;
+    if (isend[1] != 2) ifail += 1;
+    if (isend[2] != 3) ifail += 1;
+    assert(ifail == 0);
+    if (irecv[0] != isend[0]) ifail += 1;
+    if (irecv[1] != isend[1]) ifail += 1;
+    if (irecv[2] != isend[2]) ifail += 1;
+    assert(ifail == 0);
+  }
 
-  return ireturn;
+  {
+    int irecv = 1;
+    int iret  = MPI_Allreduce(MPI_IN_PLACE, &irecv, 1, MPI_INT, MPI_SUM, comm);
+    if (iret != MPI_SUCCESS) ifail = 1;
+    assert(ifail == 0);
+    if (irecv != 1) ifail = 1;
+    assert(ifail == 0);
+  }
+
+  return ifail;
 }
 
 /*****************************************************************************
@@ -390,6 +429,7 @@ int test_mpi_type_create_struct(void) {
 
 /*****************************************************************************
  *
+ *  test_mpi_op_create_function
  *  test_mpi_op_create
  *
  *****************************************************************************/
@@ -402,6 +442,14 @@ void test_op_create_function(void * invec, void * inoutvec, int * len,
   assert(len);
   assert(dt);
 
+  if (*dt == MPI_INT) { /* see comments below */
+    int * myinoutvec = (int *) inoutvec;
+    int * myinvec    = (int *) invec;
+    for (int n = 0; n < *len; n++) {
+      myinoutvec[n] = 2*myinvec[n];
+    }
+  }
+
   return;
 }
 
@@ -413,7 +461,8 @@ static int test_mpi_op_create(void) {
   assert(op != MPI_OP_NULL);
 
   {
-    /* Smoke test */
+    /* Smoke test; the implementation only ever copies; the function
+     * is not called ... */
     int send = 1;
     int recv = 0;
 
@@ -435,24 +484,30 @@ static int test_mpi_op_create(void) {
 
 int test_mpi_file_open(void) {
 
+  int ifail = MPI_SUCCESS;
   MPI_Comm comm = MPI_COMM_WORLD;
   MPI_Info info = MPI_INFO_NULL;
 
   {
     /* fopen "r". We must have an existing file. */
     MPI_File fh = MPI_FILE_NULL;
-    MPI_File_open(comm, "/dev/null", MPI_MODE_RDONLY, info, &fh);
+    ifail = MPI_File_open(comm, "/dev/null", MPI_MODE_RDONLY, info, &fh);
+    assert(ifail == MPI_SUCCESS);
     assert(fh != MPI_FILE_NULL);
-    MPI_File_close(&fh);
+    ifail = MPI_File_close(&fh);
+    assert(ifail == MPI_SUCCESS);
     assert(fh == MPI_FILE_NULL);
   }
 
   {
     /* fopen "w" */
     MPI_File fh = MPI_FILE_NULL;
-    MPI_File_open(comm, "zw.dat", MPI_MODE_WRONLY+MPI_MODE_CREATE, info, &fh);
+    ifail = MPI_File_open(comm, "zw.dat", MPI_MODE_WRONLY+MPI_MODE_CREATE,
+			  info, &fh);
+    assert(ifail == MPI_SUCCESS);
     assert(fh != MPI_FILE_NULL);
-    MPI_File_close(&fh);
+    ifail = MPI_File_close(&fh);
+    assert(ifail == MPI_SUCCESS);
     assert(fh == MPI_FILE_NULL);
     unlink("zw.dat");
   }
@@ -460,23 +515,51 @@ int test_mpi_file_open(void) {
   {
     /* fopen "a" */
     MPI_File fh = MPI_FILE_NULL;
-    MPI_File_open(comm, "z.dat",  MPI_MODE_WRONLY+MPI_MODE_APPEND, info, &fh);
+    ifail = MPI_File_open(comm, "z.dat",  MPI_MODE_WRONLY+MPI_MODE_APPEND,
+			  info, &fh);
+    assert(ifail == MPI_SUCCESS);
     assert(fh != MPI_FILE_NULL);
-    MPI_File_close(&fh);
+    ifail = MPI_File_close(&fh);
+    assert(ifail == MPI_SUCCESS);
     assert(fh == MPI_FILE_NULL);
   }
 
   {
     /* fopen "r+" */
     MPI_File fh = MPI_FILE_NULL;
-    MPI_File_open(comm, "z.dat", MPI_MODE_RDWR, info, &fh);
+    ifail = MPI_File_open(comm, "z.dat", MPI_MODE_RDWR, info, &fh);
+    assert(ifail == MPI_SUCCESS);
     assert(fh != MPI_FILE_NULL);
-    MPI_File_close(&fh);
+    ifail = MPI_File_close(&fh);
+    assert(ifail == MPI_SUCCESS);
     assert(fh == MPI_FILE_NULL);
     unlink("z.dat");
   }
 
-  return 0;
+  /* Errors return when bad communicator */
+  {
+    MPI_File fh = MPI_FILE_NULL;
+    ifail = MPI_File_open(MPI_COMM_NULL, "/dev/null", MPI_MODE_RDWR, info,
+			  &fh);
+    assert(ifail == MPI_ERR_COMM);
+  }
+
+  /* Errors return when bad amode */
+  {
+    int amode = 0;
+    MPI_File fh = MPI_FILE_NULL;
+    ifail = MPI_File_open(comm, "/dev/null", amode, info, &fh);
+    assert(ifail == MPI_ERR_AMODE);
+  }
+
+  /* Errors return when no such file */
+  {
+    MPI_File fh = MPI_FILE_NULL;
+    ifail = MPI_File_open(comm, "none-such", MPI_MODE_RDONLY, info, &fh);
+    assert(ifail == MPI_ERR_NO_SUCH_FILE);
+  }
+
+  return ifail;
 }
 
 /*****************************************************************************
@@ -611,7 +694,7 @@ int test_mpi_file_write_all(void) {
 #define NX 23
 #define NY 12
 
-  int ifail = 0; /* return value */
+  int ifail = MPI_SUCCESS; /* return value */
 
   const char * filename = "mpi-file-write-all.dat";
   MPI_Comm comm = MPI_COMM_WORLD;
@@ -631,11 +714,11 @@ int test_mpi_file_write_all(void) {
   MPI_Type_create_subarray(ndims, sizes, subsizes, starts, MPI_ORDER_C,
 			     etype, &filetype);
   MPI_Type_commit(&filetype);
-  
+
   {
     /* Write */
 
-    MPI_File fh = MPI_FILE_NULL; 
+    MPI_File fh = MPI_FILE_NULL;
     MPI_Offset disp = 0;
 
     int count = 1;
@@ -646,15 +729,21 @@ int test_mpi_file_write_all(void) {
       wbuf[id] = 1.0*id;
     }
 
-    MPI_File_open(comm, filename, MPI_MODE_WRONLY+MPI_MODE_CREATE, info, &fh);
+    ifail = MPI_File_open(comm, filename, MPI_MODE_WRONLY + MPI_MODE_CREATE,
+			  info, &fh);
+    assert(ifail == MPI_SUCCESS);
 
     /* Set the view */
     /* As this is serial the datetype is the filetype */
 
-    MPI_File_set_view(fh, disp, etype, filetype, "native", info);
+    ifail = MPI_File_set_view(fh, disp, etype, filetype, "native", info);
+    assert(ifail == MPI_SUCCESS);
 
-    MPI_File_write_all(fh, wbuf, count, filetype, MPI_STATUS_IGNORE);
-    MPI_File_close(&fh);
+    ifail = MPI_File_write_all(fh, wbuf, count, filetype, MPI_STATUS_IGNORE);
+    assert(ifail == MPI_SUCCESS);
+
+    ifail = MPI_File_close(&fh);
+    assert(ifail == MPI_SUCCESS);
   }
 
 
@@ -666,13 +755,18 @@ int test_mpi_file_write_all(void) {
     int count = 1;
     double rbuf[NX*NY] = {0};
 
-    MPI_File_open(comm, filename, MPI_MODE_RDONLY, info, &fh);
+    ifail = MPI_File_open(comm, filename, MPI_MODE_RDONLY, info, &fh);
+    assert(ifail == MPI_SUCCESS);
 
     /* Set the view */
-    MPI_File_set_view(fh, disp, etype, filetype, "native", info);
+    ifail = MPI_File_set_view(fh, disp, etype, filetype, "native", info);
+    assert(ifail == MPI_SUCCESS);
 
-    MPI_File_read_all(fh, rbuf, count, filetype, MPI_STATUS_IGNORE);
-    MPI_File_close(&fh);
+    ifail = MPI_File_read_all(fh, rbuf, count, filetype, MPI_STATUS_IGNORE);
+    assert(ifail == MPI_SUCCESS);
+
+    ifail = MPI_File_close(&fh);
+    assert(ifail == MPI_SUCCESS);
 
     for (int id = 0; id < NX*NY; id++) {
       assert(fabs(rbuf[id] - 1.0*id) < DBL_EPSILON);
@@ -704,3 +798,171 @@ int test_mpi_comm_split_type(void) {
   return 0;
 }
 
+/*****************************************************************************
+ *
+ *  test_mpi_cart_create
+ *
+ *****************************************************************************/
+
+static int test_mpi_cart_create(void) {
+
+  int ifail = 0;
+
+  {
+    int ndims = 2;
+    int dims[2]  = {1, 1};
+    int periods[2] = {0, 0};
+    int reorder = 0;
+    MPI_Comm comm = MPI_COMM_NULL;
+
+    MPI_Cart_create(MPI_COMM_WORLD, ndims, dims, periods, reorder, &comm);
+
+    assert(comm != MPI_COMM_NULL);
+    assert(comm != MPI_COMM_SELF);
+
+    MPI_Comm_free(&comm);
+  }
+
+  {
+    int ndims = 3;
+    int dims[3] = {1, 1, 1};
+    int periods[3] = {1, 0, 1};
+    int reorder = 1;
+    MPI_Comm comm = MPI_COMM_NULL;
+
+    MPI_Cart_create(MPI_COMM_WORLD, ndims, dims, periods, reorder, &comm);
+
+    assert(comm != MPI_COMM_NULL);
+    assert(comm != MPI_COMM_SELF);
+
+    MPI_Comm_free(&comm);
+  }
+
+  return ifail;
+}
+
+/*****************************************************************************
+ *
+ *  test_mpi_cart_get
+ *
+ *****************************************************************************/
+
+static int test_mpi_cart_get(void) {
+
+  int ifail = 0;
+
+  {
+    int ndims = 2;
+    int dims[2]  = {1, 1};
+    int periods[2] = {0, 0};
+    int reorder = 0;
+    MPI_Comm comm = MPI_COMM_NULL;
+
+    MPI_Cart_create(MPI_COMM_WORLD, ndims, dims, periods, reorder, &comm);
+
+    {
+      int xdims[2] = {0};
+      int xperiods[2] = {-1, -1};
+      int coords[2]   = {-1, -1};
+      MPI_Cart_get(comm, ndims, xdims, xperiods, coords);
+
+      assert(xdims[0]    == dims[0]);
+      assert(xdims[1]    == dims[1]);
+      assert(xperiods[0] == periods[0]);
+      assert(xperiods[1] == periods[1]);
+      assert(coords[0]   == 0);
+      assert(coords[1]   == 0);
+    }
+
+    MPI_Comm_free(&comm);
+  }
+
+  return ifail;
+}
+
+/*****************************************************************************
+ *
+ *  test_mpi_dims_create
+ *
+ *****************************************************************************/
+
+static int test_mpi_dims_create(void) {
+
+  int ifail = 0;
+
+  {
+    int nnodes = 1;
+    int ndims  = 2;
+    int dims[2] = {0, 0};
+
+    MPI_Dims_create(nnodes, ndims, dims);
+
+    assert(dims[0] == 1);
+    assert(dims[1] == 1);
+  }
+
+  return ifail;
+}
+
+/*****************************************************************************
+ *
+ *  test_mpi_type_size
+ *
+ *****************************************************************************/
+
+static int test_mpi_type_size(void) {
+
+  /* Intrinsic */
+  {
+    int sz = -1;
+    MPI_Type_size(MPI_DOUBLE, &sz);
+    assert(sz == sizeof(double));
+  }
+
+  /* User */
+  {
+    int sz = -1;
+    MPI_Datatype dt = MPI_DATATYPE_NULL;
+    MPI_Type_vector(2, 3, 0, MPI_INT, &dt);
+    MPI_Type_commit(&dt);
+    MPI_Type_size(dt, &sz);
+    assert(sz == 2*3*sizeof(int));
+    MPI_Type_free(&dt);
+  }
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  test_mpi_type_get_extent
+ *
+ *****************************************************************************/
+
+static int test_mpi_type_get_extent(void) {
+
+  /* Intrinsic */
+  {
+    MPI_Aint lb = 999;
+    MPI_Aint extent = 999;
+    MPI_Type_get_extent(MPI_INT, &lb, &extent);
+    assert(lb == 0);
+    assert(extent == sizeof(int));
+  }
+
+  /* User */
+  {
+    MPI_Datatype udt = MPI_DATATYPE_NULL;
+    MPI_Aint lb = 999;
+    MPI_Aint extent = 999;
+
+    MPI_Type_contiguous(3, MPI_INT, &udt);
+    MPI_Type_commit(&udt);
+    MPI_Type_get_extent(udt, &lb, &extent);
+    assert(lb == 0);
+    assert(extent == 3*sizeof(int));
+    MPI_Type_free(&udt);
+  }
+
+  return 0;
+}

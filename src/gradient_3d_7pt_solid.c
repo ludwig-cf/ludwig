@@ -43,7 +43,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2011-2023 The University of Edinburgh
+ *  (c) 2011-2024 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -132,7 +132,7 @@ __host__ int grad_lc_anch_create(pe_t * pe, cs_t * cs, map_t * map,
     lc_anchoring_matrices(fep.kappa0, fep.kappa1, &obj->bc);
   }
 
-  tdpGetDeviceCount(&ndevice);
+  tdpAssert( tdpGetDeviceCount(&ndevice) );
 
   if (ndevice == 0) {
     obj->target = obj;
@@ -140,7 +140,7 @@ __host__ int grad_lc_anch_create(pe_t * pe, cs_t * cs, map_t * map,
   else {
     /* Copy required entities over ... */
     cs_t * tcs = NULL;
-    tdpMalloc((void **) &obj->target, sizeof(grad_lc_anch_t));
+    tdpAssert( tdpMalloc((void **) &obj->target, sizeof(grad_lc_anch_t)) );
 
     cs_target(obj->cs, &tcs);
     tdpAssert(tdpMemcpy(&obj->target->cs, &tcs, sizeof(cs_t *),
@@ -172,7 +172,7 @@ __host__ int grad_lc_anch_free(grad_lc_anch_t * grad) {
 
   assert(grad);
 
-  if (grad->target != grad) tdpFree(grad->target);
+  if (grad->target != grad) tdpAssert( tdpFree(grad->target) );
   free(grad);
 
   return 0;
@@ -194,7 +194,7 @@ __host__ int grad_3d_7pt_solid_set(map_t * map, colloids_info_t * cinfo) {
   static_grad->map = map;
   static_grad->cinfo = cinfo;
 
-  tdpGetDeviceCount(&ndevice);
+  tdpAssert( tdpGetDeviceCount(&ndevice) );
   if (ndevice) {
     tdpAssert(tdpMemcpy(&static_grad->target->cinfo, &cinfo->target,
 			sizeof(colloids_info_t *), tdpMemcpyHostToDevice));
@@ -271,7 +271,7 @@ int gradient_6x6(grad_lc_anch_t * anch, field_grad_t * fg, int nextra) {
 		    k3d, cstarget,
 		    anch->target, anch->fe->target, fg->target,
 		    anch->map->target);
-    tdpDeviceSynchronize();
+    tdpAssert( tdpDeviceSynchronize() );
   }
 
   return 0;

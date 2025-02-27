@@ -39,7 +39,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2022 The University of Edinburgh
+ *  (c) 2022-2024 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -121,19 +121,19 @@ __host__ int grad_s7_anchoring_create(pe_t * pe, cs_t * cs, map_t * map,
     lc_anchoring_matrices(fep.kappa0, fep.kappa1, &obj->bc);
   }
 
-  tdpGetDeviceCount(&ndevice);
+  tdpAssert( tdpGetDeviceCount(&ndevice) );
 
   if (ndevice == 0) {
     obj->target = obj;
   }
   else {
     cs_t * cstarget = NULL;
-    tdpMalloc((void **) &obj->target, sizeof(grad_s7_anch_t));
-    tdpMemset(obj->target, 0, sizeof(grad_s7_anch_t));
+    tdpAssert( tdpMalloc((void **) &obj->target, sizeof(grad_s7_anch_t)) );
+    tdpAssert( tdpMemset(obj->target, 0, sizeof(grad_s7_anch_t)) );
 
     cs_target(obj->cs, &cstarget);
-    tdpMemcpy(&obj->target->cs, &cstarget, sizeof(cs_t *),
-              tdpMemcpyHostToDevice);
+    tdpAssert( tdpMemcpy(&obj->target->cs, &cstarget, sizeof(cs_t *),
+			 tdpMemcpyHostToDevice) );
 
     tdpAssert(tdpMemcpy(&obj->target->bc, &obj->bc,
 			sizeof(lc_anchoring_matrices_t),
@@ -160,7 +160,7 @@ __host__ int grad_s7_anchoring_cinfo_set(colloids_info_t * cinfo) {
 
   static_grad->cinfo = cinfo;
 
-  tdpGetDeviceCount(&ndevice);
+  tdpAssert( tdpGetDeviceCount(&ndevice) );
 
   if (ndevice > 0) {
     tdpAssert(tdpMemcpy(&static_grad->target->cinfo, &cinfo->target,
@@ -212,7 +212,7 @@ __host__ int grad_s7_anchoring_free(grad_s7_anch_t * grad) {
 
   assert(grad);
 
-  if (grad->target != grad) tdpFree(grad->target);
+  if (grad->target != grad) tdpAssert( tdpFree(grad->target) );
 
   free(grad);
 

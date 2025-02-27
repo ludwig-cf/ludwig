@@ -8,7 +8,7 @@
  *  end Edinburgh Parallel Computing Centre
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
- *  (c) 2008-2023 The University of Edinburgh
+ *  (c) 2008-2025 The University of Edinburgh
  *
  *****************************************************************************/
 
@@ -21,14 +21,9 @@
 #include "physics.h"
 #include "control.h"
 
-
 static int freq_statistics = 100;
 static int freq_measure    = 100000000;
 static int freq_config     = 100000000;
-static int freq_phi        = 100000000;
-static int freq_psi        = 100000000;
-static int freq_vel        = 100000000;
-static int freq_fed        = 100000000;
 static int freq_shear_io   = 100000000;
 static int freq_shear_meas = 100000000;
 static int freq_colloid_io = 100000000;
@@ -69,10 +64,6 @@ int init_control(pe_t * pe, rt_t * rt) {
 
   rt_int_parameter(rt, "freq_measure", &freq_measure);
   rt_int_parameter(rt, "freq_config", &freq_config);
-  rt_int_parameter(rt, "freq_phi", &freq_phi);
-  rt_int_parameter(rt, "freq_psi", &freq_psi);
-  rt_int_parameter(rt, "freq_vel", &freq_vel);
-  rt_int_parameter(rt, "freq_fed", &freq_fed);
   rt_int_parameter(rt, "freq_shear_measurement", &freq_shear_meas);
   rt_int_parameter(rt, "freq_shear_output", &freq_shear_io);
   rt_int_parameter(rt, "colloid_io_freq", &freq_colloid_io);
@@ -93,6 +84,35 @@ int init_control(pe_t * pe, rt_t * rt) {
 
   /* This is a record of the last time step for "config_at_end" */
   nsteps_ = t_start + t_steps;
+
+  /* All these keys are schemed for replacement by a more
+   * flexible mechanism. In particular ...*/
+
+  if (rt_key_present(rt, "freq_phi")) {
+    pe_info(pe, "Input file contains key: freq_phi\n");
+    pe_info(pe, "Please use phi_io_freq instead for order parameter output\n");
+    pe_info(pe, "See https://ludwig.epcc.ed.ac.uk/outputs/fluid.html\n");
+    pe_exit(pe, "Please check and try again\n");
+  }
+
+  if (rt_key_present(rt, "freq_psi")) {
+    pe_info(pe, "Input file contains key: freq_psi\n");
+    pe_info(pe, "Please use psi_io_freq instead for electrokinectic output\n");
+    pe_info(pe, "See https://ludwig.epcc.ed.ac.uk/outputs/fluid.html\n");
+    pe_exit(pe, "Please check and try again\n");
+  }
+
+  if (rt_key_present(rt, "freq_vel")) {
+    pe_info(pe, "Input file contains key: freq_vel\n");
+    pe_info(pe, "Please use vel_io_freq instead for velocity field output\n");
+    pe_info(pe, "See https://ludwig.epcc.ed.ac.uk/outputs/fluid.html\n");
+    pe_exit(pe, "Please check and try again\n");
+  }
+
+  if (rt_key_present(rt, "freq_fed")) {
+    pe_info(pe, "Input file contains key: freq_fed\n");
+    pe_info(pe, "Lattice free enegy density output is not implemented\n");
+  }
 
   return 0;
 }
@@ -130,54 +150,6 @@ int is_colloid_io_step() {
   physics_t * phys = NULL;
   physics_ref(&phys);
   return ((physics_control_timestep(phys) % freq_colloid_io) == 0);
-}
-
-/*****************************************************************************
- *
- *  is_phi_output_step
- *
- *****************************************************************************/
-
-int is_phi_output_step() {
-  physics_t * phys = NULL;
-  physics_ref(&phys);
-  return ((physics_control_timestep(phys) % freq_phi) == 0);
-}
-
-/*****************************************************************************
- *
- *  is_vel_output_step
- *
- *****************************************************************************/
-
-int is_vel_output_step() {
-  physics_t * phys = NULL;
-  physics_ref(&phys);
-  return ((physics_control_timestep(phys) % freq_vel) == 0);
-}
-
-/*****************************************************************************
- *
- *  is_psi_output_step
- *
- *****************************************************************************/
-
-int is_psi_output_step() {
-  physics_t * phys = NULL;
-  physics_ref(&phys);
-  return ((physics_control_timestep(phys) % freq_psi) == 0);
-}
-
-/*****************************************************************************
- *
- *  is_fed_output_step
- *
- *****************************************************************************/
-
-int is_fed_output_step() {
-  physics_t * phys = NULL;
-  physics_ref(&phys);
-  return ((physics_control_timestep(phys) % freq_fed) == 0);
 }
 
 /*****************************************************************************
@@ -227,16 +199,4 @@ int control_freq_set(int freq) {
   freq_statistics = freq;
 
   return 0;
-}
-
-/*****************************************************************************
- *
- *  is_rho_output_step
- *
- *****************************************************************************/
-
-int is_rho_output_step(void) {
-  physics_t * phys = NULL;
-  physics_ref(&phys);
-  return ((physics_control_timestep(phys) % rho_nfreq) == 0);
 }

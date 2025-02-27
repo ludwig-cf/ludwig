@@ -5,7 +5,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2010-2024 The University of Edinburgh
+ *  (c) 2010-2025 The University of Edinburgh
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *
@@ -34,6 +34,8 @@ int test_bond_fene_suite(void);
 int test_bonds_suite(void);
 int test_build_suite(void);
 int test_ch_suite(void);
+int test_colloid_link_suite(void);
+int test_colloid_state_io_suite(void);
 int test_colloid_sums_suite(void);
 int test_colloid_suite(void);
 int test_colloids_info_suite(void);
@@ -53,7 +55,6 @@ int test_fe_force_method_rt_suite(void);
 int test_field_suite(void);
 int test_field_grad_suite(void);
 int test_gradient_d3q27_suite(void);
-int test_halo_suite(void);
 int test_hydro_options_suite(void);
 int test_hydro_suite(void);
 int test_interaction_suite(void);
@@ -72,6 +73,7 @@ int test_lb_d3q15_suite(void);
 int test_lb_d3q19_suite(void);
 int test_lb_d3q27_suite(void);
 int test_lb_model_suite(void);
+int test_lb_data_suite(void);
 int test_lb_bc_inflow_opts_suite(void);
 int test_lb_bc_inflow_rhou_suite(void);
 int test_lb_bc_outflow_opts_suite(void);
@@ -85,7 +87,6 @@ int test_lubrication_suite(void);
 int test_map_options_suite(void);
 int test_map_suite(void);
 int test_map_init_suite(void);
-int test_model_suite(void);
 int test_nernst_planck_suite(void);
 
 int test_noise_options_suite(void);

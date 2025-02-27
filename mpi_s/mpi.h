@@ -39,6 +39,7 @@ typedef MPI_Handle MPI_Info;
 typedef struct {
   int MPI_SOURCE;
   int MPI_TAG;
+  int MPI_ERROR;
 } MPI_Status;
 
 #define MPI_STATUS_IGNORE   ((MPI_Status *) 0)
@@ -57,8 +58,23 @@ typedef intmax_t MPI_Offset;
 
 enum return_codes {
   MPI_SUCCESS = 0,               /* Success */
+  MPI_ERR_ACCESS,                /* Permission denied */
+  MPI_ERR_AMODE,                 /* Invalid mode argument */
+  MPI_ERR_ARG,                   /* Invalid argument of other kind */
+  MPI_ERR_BUFFER,                /* Invalid buffer pointer argument */
+  MPI_ERR_COMM,                  /* Invalid communicator argument */
+  MPI_ERR_COUNT,                 /* Invalid count argument */
+  MPI_ERR_DATATYPE,              /* Invalid datatype */
+  MPI_ERR_INFO,                  /* Invalid info argument */
+  MPI_ERR_ERRHANDLER,            /* Invalid errhandler handle */
+  MPI_ERR_INTERN,                /* Internal (implementation) error */
+  MPI_ERR_IO,                    /* Other i/o error */
   MPI_ERR_FILE,                  /* Bad file handle */
   MPI_ERR_NO_SUCH_FILE,          /* File does not exist */
+  MPI_ERR_OP,                    /* Invalid operation argument */
+  MPI_ERR_RANK,                  /* Invalid rank argument */
+  MPI_ERR_ROOT,                  /* Invalid root argument */
+  MPI_ERR_TAG,                   /* Invalid tag */
   MPI_ERR_LASTCODE               /* Must be last */
 };
 
@@ -70,7 +86,10 @@ enum return_codes {
 #define MPI_BOTTOM         0x0000
 #define MPI_UNDEFINED     -999
 
+
 /* Error-handling specifiers */
+
+#define MPI_MAX_ERROR_STRING 256
 
 enum error_specifiers {MPI_ERRORS_ARE_FATAL, MPI_ERRORS_RETURN};
 
@@ -249,6 +268,8 @@ int MPI_Cart_sub(MPI_Comm comm, int * remain_dims, MPI_Comm * new_comm);
 /* Bindings for environmental inquiry */
 
 int MPI_Errhandler_set(MPI_Comm comm, MPI_Errhandler errhandler);
+int MPI_Error_string(int ierr, char * str, int * lenresult);
+int MPI_Error_class(int ierrcode, int * ierrclass);
 
 double MPI_Wtime(void);
 double MPI_Wtick(void);

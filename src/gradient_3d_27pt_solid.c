@@ -27,7 +27,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2010-2024 The University of Edinburgh
+ *  (c) 2010-2025 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -80,24 +80,25 @@ __global__ void grad_3d_27pt_solid_kernel(kernel_3d_t k3d,
 
 __host__ int grad_3d_27pt_solid_map_set(map_t * map) {
 
-  int ndata;
   assert(map);
 
   static_solid.map = map;
 
-  /* We expect at most two wetting parameters; if present
+  /* We expect either zero or two wetting parameters; if present
    * first should be C, second H. Default to zero. */
 
-  ndata = map->ndata;
-
-  if (ndata == 0) {
+  if (map->ndata == 0) {
     /* Assume we are uniform from free energy */
     static_solid.uniform = 1;
   }
-  else if (ndata != 2) {
-    /* We should have exactly 2 */
+  else if (map->ndata == 2) {
+    /* Assume we have colloid non-uniform wetting */
+    static_solid.uniform = 0;
+  }
+  else {
+    /* We don't handle the case */
     pe_fatal(map->pe, "Wrong number of wetting parameters in map data %d\n",
-	     ndata);
+	     map->ndata);
   }
 
   return 0;
@@ -113,11 +114,13 @@ __host__ int grad_3d_27pt_solid_fe_set(fe_symm_t * fe) {
 
   assert(fe);
 
+  /* Always assume this means uniform wetting */
+
   static_solid.fe_symm = fe;
   static_solid.rkappa = 1.0/fe->param->kappa;
   static_solid.c = fe->param->c;
   static_solid.h = fe->param->h;
-  if (static_solid.map == NULL) static_solid.uniform = 1;
+  static_solid.uniform = 1;
 
   return 0;
 }

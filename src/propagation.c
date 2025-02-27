@@ -217,7 +217,7 @@ __host__ int lb_model_swapf(lb_t * lb) {
   assert(lb);
   assert(lb->target);
 
-  tdpGetDeviceCount(&ndevice);
+  tdpAssert( tdpGetDeviceCount(&ndevice) );
 
   if (ndevice == 0) {
     tmp1 = lb->f;

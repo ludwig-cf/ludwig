@@ -8,7 +8,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2020-2024 The University of Edinburgh
+ *  (c) 2020-2025 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -132,6 +132,7 @@ __host__ int test_io_options_record_format_valid(void) {
 
 __host__ int test_io_options_metadata_version_valid(void) {
 
+  int ifail = 0;
   io_options_t opts = io_options_default();
   int isvalid = 0;
 
@@ -139,9 +140,11 @@ __host__ int test_io_options_metadata_version_valid(void) {
   opts.mode             = IO_MODE_MPIIO;
   opts.metadata_version = IO_METADATA_V2;
 
-  assert(io_options_metadata_version_valid(&opts));
+  isvalid = io_options_metadata_version_valid(&opts);
+  if (isvalid == 0) ifail = -1;
+  assert(ifail == 0);
 
-  return isvalid;
+  return ifail;
 }
 
 

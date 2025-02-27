@@ -7,7 +7,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2010-2024 The University of Edinburgh
+ *  (c) 2010-2025 The University of Edinburgh
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *
@@ -81,6 +81,8 @@ __host__ int tests_create(int argc, char ** argv) {
   test_build_suite();
   test_ch_suite();
   test_colloid_suite();
+  test_colloid_link_suite();
+  test_colloid_state_io_suite();
   test_colloid_sums_suite();
   test_colloids_info_suite();
   test_colloids_halo_suite();
@@ -93,7 +95,6 @@ __host__ int tests_create(int argc, char ** argv) {
   test_fe_force_method_rt_suite();
   test_field_suite();
   test_field_grad_suite();
-  test_halo_suite();
   test_hydro_options_suite();
   test_hydro_suite();
   test_interaction_suite();
@@ -103,6 +104,9 @@ __host__ int tests_create(int argc, char ** argv) {
   test_lb_d3q19_suite();
   test_lb_d3q27_suite();
   test_lb_model_suite();
+
+  test_lb_data_suite();
+
   test_lb_bc_inflow_opts_suite();
   test_lb_bc_inflow_rhou_suite();
   test_lb_bc_outflow_opts_suite();
@@ -114,8 +118,6 @@ __host__ int tests_create(int argc, char ** argv) {
   test_map_options_suite();
   test_map_suite();
   test_map_init_suite();
-
-  test_model_suite();
 
   /* Noise tests */
   test_noise_options_suite();
