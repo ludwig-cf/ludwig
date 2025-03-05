@@ -5,7 +5,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2018-2024 The University of Edinburgh
+ *  (c) 2018-2025 The University of Edinburgh
  *
  *  Contributing authors:
  *  Alan Gray (alang@epcc.ed.ac.uk)
@@ -250,11 +250,19 @@ void  tdp_x86_postlaunch(void);
 #define __threadfence() /* only __syncthreads() is a barrier */
 
 /* Kernel launch is a __VA_ARGS__ macro, thus: */
+
 #define tdpLaunchKernel(kernel, nblocks, nthreads, shmem, stream, ...) \
   _Pragma("omp parallel")					       \
   {								       \
     tdp_x86_prelaunch(nblocks, nthreads);			       \
-    kernel(__VA_ARGS__);					       \
+    for (int blockidx_ = 0; blockidx_ < gridDim.x; ++blockidx_) {      \
+      _Pragma("omp barrier")                                           \
+      _Pragma("omp single")                                            \
+      {                                                                \
+        blockIdx.x = blockidx_;                                        \
+      }                                                                \
+      kernel(__VA_ARGS__);					       \
+    }                                                                  \
     tdp_x86_postlaunch();					       \
   }
 
@@ -288,7 +296,9 @@ void  tdp_x86_postlaunch(void);
 /* Kernel launch is a __VA_ARGS__ macro, thus: */
 #define tdpLaunchKernel(kernel, nblocks, nthreads, shmem, stream, ...) \
   tdp_x86_prelaunch(nblocks, nthreads);				       \
-  kernel(__VA_ARGS__);						       \
+  for (int blockIdx.x = 0; blockIdx.x < gridDim.x; ++blockIdx.x) {     \
+    kernel(__VA_ARGS__);					       \
+  }                                                                    \
   tdp_x86_postlaunch();
 
 /* "Worksharing" is provided by a loop */
