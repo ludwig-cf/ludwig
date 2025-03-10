@@ -7,7 +7,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2018-2024 The University of Edinburgh
+ *  (c) 2018-2025 The University of Edinburgh
  *
  *  Contributing authors:
  *  Alan Gray (Late of this parish)
@@ -99,21 +99,25 @@ __host__ tdpError_t tdpThreadModelInfo(FILE * fp) {
 
 __host__ void tdp_x86_prelaunch(dim3 nblocks, dim3 nthreads) {
 
-  gridDim = nblocks;
+  gridDim  = nblocks;
   blockDim = nthreads;
 
   /* sanity checks on user settings here... */
-
-  gridDim.x = 1; /* Assert this for host implementation */
 
   /* In case we request fewer threads than are available: */
 
   omp_set_num_threads(blockDim.x*blockDim.y*blockDim.z);
 
-  /* Check blockDim, blockIdx ? */
+  /* A serial loop in the block index is implemented as part of the
+   * kernel launch. Typically only one block. */
+
+  blockIdx.x = 0;
+  blockIdx.y = 0;
+  blockIdx.z = 0;
+
   threadIdx.x = omp_get_thread_num();
-  threadIdx.y = 1;
-  threadIdx.z = 1;
+  threadIdx.y = 0;
+  threadIdx.z = 0;
 
   return;
 }
