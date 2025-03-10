@@ -109,7 +109,7 @@ __host__ void tdp_x86_prelaunch(dim3 nblocks, dim3 nthreads) {
   omp_set_num_threads(blockDim.x*blockDim.y*blockDim.z);
 
   /* A serial loop in the block index is implemented as part of the
-   * kernel launch. Typicalluy only one block. */
+   * kernel launch. Typically only one block. */
 
   blockIdx.x = 0;
   blockIdx.y = 0;

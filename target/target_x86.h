@@ -255,14 +255,9 @@ void  tdp_x86_postlaunch(void);
   _Pragma("omp parallel")					       \
   {								       \
     tdp_x86_prelaunch(nblocks, nthreads);			       \
-    for (int blockidx_ = 0; blockidx_ < gridDim.x; ++blockidx_) {      \
-      _Pragma("omp barrier")                                           \
-      _Pragma("omp single")                                            \
-      {                                                                \
-        blockIdx.x = blockidx_;                                        \
-      }                                                                \
+    for (blockIdx.x = 0; blockIdx.x < gridDim.x; ++blockIdx.x) {       \
       kernel(__VA_ARGS__);					       \
-    }                                                                  \
+    }								       \
     tdp_x86_postlaunch();					       \
   }
 
@@ -296,7 +291,7 @@ void  tdp_x86_postlaunch(void);
 /* Kernel launch is a __VA_ARGS__ macro, thus: */
 #define tdpLaunchKernel(kernel, nblocks, nthreads, shmem, stream, ...) \
   tdp_x86_prelaunch(nblocks, nthreads);				       \
-  for (int blockIdx.x = 0; blockIdx.x < gridDim.x; ++blockIdx.x) {     \
+  for (blockIdx.x = 0; blockIdx.x < gridDim.x; ++blockIdx.x) {     \
     kernel(__VA_ARGS__);					       \
   }                                                                    \
   tdp_x86_postlaunch();

@@ -5,7 +5,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2019-2021 The University of Edinburgh
+ *  (c) 2019-2025 The University of Edinburgh
  *
  *  Contributing authors:
  *  Alan Gray (alang@epcc.ed.ac.uk)
@@ -50,11 +50,34 @@ __host__ int test0(void) {
   return 0;
 }
 
+/* Count the number of blocks */
+
+__global__ void kerneltest1() {
+
+  if (threadIdx.x == 0) {
+    printf("blockidx.x %2d griddim %2d %2d %2d\n", blockIdx.x,
+	   gridDim.x, gridDim.y, gridDim.z);
+  }
+
+  return;
+}
+  
+int test1(void) {
+
+  dim3 ntpb = {1, 1, 1};
+  dim3 nblk = {4, 1, 1};
+
+  tdpLaunchKernel(kerneltest1, nblk, ntpb, 0, 0);
+  tdpAssert( tdpStreamSynchronize(0) );
+
+  return 0;
+}
+
 /* Test 1: scale by constant */
 
-__global__ void kerneltest1(int * n) {
+__global__ void kerneltest2(int * n) {
 
-  int p;
+  int p = 0;
 
   for_simt_parallel(p, NARRAY, 1) {
     n[p] = 2*n[p];
@@ -65,6 +88,8 @@ __global__ void kerneltest1(int * n) {
 
 int main(int argc, char * argv[]) {
 
+  int ndevice = 0;
+
   dim3 nblk, ntpb;
   int p;
   int bufsz;
@@ -72,6 +97,9 @@ int main(int argc, char * argv[]) {
   int * n_d; /* device */
 
   test0();
+  test1();
+
+  tdpAssert( tdpGetDeviceCount(&ndevice) );
 
   bufsz = NARRAY*sizeof(int);
 
@@ -87,7 +115,9 @@ int main(int argc, char * argv[]) {
   ntpb.x = tdp_get_max_threads(); ntpb.y = 1; ntpb.z = 1;
   nblk.x = (NARRAY + ntpb.x - 1)/ntpb.x; nblk.y = 1; nblk.z = 1;
 
-  tdpLaunchKernel(kerneltest1, nblk, ntpb, 0, 0, n_d);
+  if (ndevice == 0) nblk.x = 1; /* OpenMP */
+
+  tdpLaunchKernel(kerneltest2, nblk, ntpb, 0, 0, n_d);
   tdpAssert(tdpPeekAtLastError());
   tdpAssert(tdpDeviceSynchronize());
 

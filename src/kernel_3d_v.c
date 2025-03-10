@@ -7,7 +7,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2024 The University of Edinburgh
+ *  (c) 2024-2025 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -81,13 +81,24 @@ kernel_3d_v_t kernel_3d_v(cs_t * cs, cs_limits_t lim, int nsimdvl) {
 
 int kernel_3d_v_exec_conf(const kernel_3d_v_t * k3v, dim3 * nblk, dim3 * ntpb) {
 
+  int ndevice = 0;
+
+  tdpAssert( tdpGetDeviceCount(&ndevice) );
+
   ntpb->x = tdp_get_max_threads();
   ntpb->y = 1;
   ntpb->z = 1;
 
-  nblk->x = (k3v->kiterations + ntpb->x - 1)/ntpb->x;
-  nblk->y = 1;
-  nblk->z = 1;
+  if (ndevice == 0) {
+    nblk->x = 1;
+    nblk->y = 1;
+    nblk->z = 1;
+  }
+  else {
+    nblk->x = (k3v->kiterations + ntpb->x - 1)/ntpb->x;
+    nblk->y = 1;
+    nblk->z = 1;
+  }
 
   return 0;
 }
