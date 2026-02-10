@@ -1648,8 +1648,8 @@ int build_conservation_phi(colloids_info_t * cinfo, field_t * phi,
  *
  *****************************************************************************/
 
-__global__ void build_update_map_kernel(kernel_3d_t k3d, map_t * map,
-					double c, double h) {
+__global__ void build_update_map_kernel(kernel_3d_t k3d, map_t * map, double c,
+                                        double h) {
   int kindex = 0;
 
   for_simt_parallel(kindex, k3d.kiterations, 1) {
@@ -1687,6 +1687,7 @@ __global__ void build_update_map_kernel(kernel_3d_t k3d, map_t * map,
 int build_update_map_driver(map_t * map) {
 
   int ifail = 0;
+
   const double c = 0.0;
   const double h = 0.0;
 
@@ -1697,22 +1698,22 @@ int build_update_map_driver(map_t * map) {
   }
   else {
 
-    int nhalo = map->cs->param->nhalo;
-    dim3 nblk = {};
-    dim3 ntpb = {};
+    int  nhalo = map->cs->param->nhalo;
+    dim3 nblk  = {};
+    dim3 ntpb  = {};
 
     cs_limits_t lim = {1 - nhalo, map->cs->param->nlocal[X] + nhalo,
-		       1 - nhalo, map->cs->param->nlocal[Y] + nhalo,
-		       1 - nhalo, map->cs->param->nlocal[Z] + nhalo};
+                       1 - nhalo, map->cs->param->nlocal[Y] + nhalo,
+                       1 - nhalo, map->cs->param->nlocal[Z] + nhalo};
     kernel_3d_t k3d = kernel_3d(map->cs, lim);
 
     kernel_3d_launch_param(k3d.kiterations, &nblk, &ntpb);
 
     tdpLaunchKernel(build_update_map_kernel, nblk, ntpb, 0, 0,
-		    k3d, map->target, c, h);
+                    k3d, map->target, c, h);
 
-    tdpAssert( tdpPeekAtLastError() );
-    tdpAssert( tdpStreamSynchronize(0) );
+    tdpAssert(tdpPeekAtLastError());
+    tdpAssert(tdpStreamSynchronize(0));
   }
 
   return ifail;
