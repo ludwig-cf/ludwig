@@ -64,6 +64,8 @@ int build_conservation_phi(colloids_info_t * cinfo, field_t * phi,
 int build_conservation_psi(colloids_info_t * cinfo, psi_t * psi,
 			   const lb_model_t * model);
 
+int build_update_map_driver(map_t * map);
+
 /*****************************************************************************
  *
  *  build_update_map
@@ -85,7 +87,6 @@ int build_update_map(cs_t * cs, colloids_info_t * cinfo, map_t * map) {
   int i_min, i_max, j_min, j_max, k_min, k_max;
   int index;
   int nhalo;
-  int status;
 
   colloid_t * p_colloid = NULL;
 
@@ -111,26 +112,8 @@ int build_update_map(cs_t * cs, colloids_info_t * cinfo, map_t * map) {
 
   colloids_info_ncell(cinfo, ncell);
 
-  /* First, set any existing colloid sites to fluid */
-
-  for (ic = 1 - nhalo; ic <= nlocal[X] + nhalo; ic++) {
-    for (jc = 1 - nhalo; jc <= nlocal[Y] + nhalo; jc++) {
-      for (kc = 1 - nhalo; kc <= nlocal[Z] + nhalo; kc++) {
-
-	/* This avoids setting BOUNDARY to FLUID */
-	index = cs_index(cs, ic, jc, kc);
-	map_status(map, index, &status);
-	if (status == MAP_COLLOID) {
-	  /* Set wetting properties to zero. */
-	  map_status_set(map, index, MAP_FLUID);
-	  wet[0] = 0.0;
-	  wet[1] = 0.0;
-	  map_data_set(map, index, wet);
-	}
-
-      }
-    }
-  }
+  /* Reset the map so that old status information is removed */
+  build_update_map_driver(map);
 
   colloids_info_map_update(cinfo);
 
@@ -1657,4 +1640,81 @@ int build_conservation_phi(colloids_info_t * cinfo, field_t * phi,
   }
 
   return 0;
+}
+
+/*****************************************************************************
+ *
+ *  build_update_map_kernel
+ *
+ *****************************************************************************/
+
+__global__ void build_update_map_kernel(kernel_3d_t k3d, map_t * map, double c,
+                                        double h) {
+  int kindex = 0;
+
+  for_simt_parallel(kindex, k3d.kiterations, 1) {
+
+    int ic = kernel_3d_ic(&k3d, kindex);
+    int jc = kernel_3d_jc(&k3d, kindex);
+    int kc = kernel_3d_kc(&k3d, kindex);
+
+    int index  = cs_index(map->cs, ic, jc, kc);
+    int status = MAP_FLUID;
+
+    /* A check is required to ensure we do not, e.g., update boundary
+     * sites */
+
+    map_status(map, index, &status);
+
+    if (status == MAP_COLLOID) {
+      double wet[2] = {c, h};
+      map_status_set(map, index, MAP_FLUID);
+      map_data_set(map, index, wet);
+    }
+  }
+
+  return;
+}
+
+/*****************************************************************************
+ *
+ *  build_update_map_driver
+ *
+ *  We will set both wetting constants {c, h} equal zero.
+ *
+ *****************************************************************************/
+
+int build_update_map_driver(map_t * map) {
+
+  int ifail = 0;
+
+  const double c = 0.0;
+  const double h = 0.0;
+
+  assert(map);
+
+  if (map->ndata == 0) {
+    ifail = -1;
+  }
+  else {
+
+    int  nhalo = map->cs->param->nhalo;
+    dim3 nblk  = {};
+    dim3 ntpb  = {};
+
+    cs_limits_t lim = {1 - nhalo, map->cs->param->nlocal[X] + nhalo,
+                       1 - nhalo, map->cs->param->nlocal[Y] + nhalo,
+                       1 - nhalo, map->cs->param->nlocal[Z] + nhalo};
+    kernel_3d_t k3d = kernel_3d(map->cs, lim);
+
+    kernel_3d_launch_param(k3d.kiterations, &nblk, &ntpb);
+
+    tdpLaunchKernel(build_update_map_kernel, nblk, ntpb, 0, 0,
+                    k3d, map->target, c, h);
+
+    tdpAssert(tdpPeekAtLastError());
+    tdpAssert(tdpStreamSynchronize(0));
+  }
+
+  return ifail;
 }
