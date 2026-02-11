@@ -535,26 +535,6 @@ __host__ int colloids_info_map_old(colloids_info_t * info, int index, colloid_t 
 
 /*****************************************************************************
  *
- *  colloids_info_map_set
- *
- *  Colloid pc may be NULL.
- *
- *****************************************************************************/
-
-__host__ int colloids_info_map_set(colloids_info_t * cinfo, int index, colloid_t * pc) {
-
-  assert(cinfo);
-  assert(cinfo->map_new);
-  assert(index >= 0);
-  assert(index < cinfo->nsites);
-
-  cinfo->map_new[index] = pc;
-
-  return 0;
-}
-
-/*****************************************************************************
- *
  *  colloids_info_map_update
  *
  *****************************************************************************/

@@ -1623,17 +1623,13 @@ __global__ void build_update_map_colloids_kernel(kernel_3d_t       k3d,
     int    index = cs_index(map->cs, ic, jc, kc);
     double r0[3] = {1.0 * ic, 1.0 * jc, 1.0 * kc};
 
-    colloid_t * pc = NULL;
-
     /* All sites are by default to be fluid ... */
 
     colloids_info_map_set(info, index, NULL);
 
     /* Loop through all copies locally ... */
 
-    colloids_info_all_head(info, &pc);
-
-    for (; pc; pc = pc->nextall) {
+    for (colloid_t * pc = info->headall; pc; pc = pc->nextall) {
 
       double dr[3] = {0}; /* cclloid centre -> site */
 

@@ -138,8 +138,47 @@ int colloid_state_write_ascii(const colloid_state_t * ps, FILE * fp);
 int colloid_state_write_binary(const colloid_state_t * ps, FILE * fp);
 int colloid_state_mass(const colloid_state_t * s, double rho0, double * mass);
 int colloid_type_check(colloid_state_t * s);
-int colloid_r_inside(const colloid_state_t * s, const double r[3]);
 
 double colloid_principal_radius(const colloid_state_t * s);
+
+/* Inline */
+
+#include "cartesian.h"
+#include "util_ellipsoid.h"
+
+/*****************************************************************************
+ *
+ *  colloid_r_inside
+ *
+ *  Is r inside the colloid? The vector r is a displacement from the centre.
+ *  For details of the ellipsoid case, see util_4_is_inside_ellipsoid().
+ *
+ *  Return value of -1 is an error.
+ *
+ *****************************************************************************/
+
+__host__ __device__
+static inline int colloid_r_inside(const colloid_state_t * s,
+				   const double r[3]) {
+  int inside = 0;
+
+  if (s->shape == COLLOID_SHAPE_SPHERE) {
+    double rdot = r[X]*r[X] + r[Y]*r[Y] + r[Z]*r[Z];
+    if (rdot < s->a0*s->a0) inside = 1;
+  }
+  else if (s->shape == COLLOID_SHAPE_ELLIPSOID) {
+    inside = util_q4_is_inside_ellipsoid(s->quat, s->elabc, r);
+  }
+  else if (s->shape == COLLOID_SHAPE_DISK) {
+    double rdot = r[X]*r[X] + r[Y]*r[Y];
+    if (rdot < s->a0*s->a0) inside = 1;
+  }
+  else {
+    /* This should have been trapped at input. */
+    inside = -1;
+  }
+
+  return inside;
+}
 
 #endif
