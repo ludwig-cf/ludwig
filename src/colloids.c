@@ -561,14 +561,9 @@ __host__ int colloids_info_map_set(colloids_info_t * cinfo, int index, colloid_t
 
 __host__ int colloids_info_map_update(colloids_info_t * cinfo) {
 
-  int n;
-  colloid_t ** maptmp;
+  colloid_t ** maptmp = NULL;
 
   assert(cinfo);
-
-  for (n = 0; n < cinfo->nsites; n++) {
-    cinfo->map_old[n] = NULL;
-  }
 
   maptmp = cinfo->map_old;
   cinfo->map_old = cinfo->map_new;

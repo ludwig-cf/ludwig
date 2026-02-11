@@ -9,7 +9,7 @@
  *  Edinburgh Soft Matter and Statisitical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2006-2025 The University of Edinburgh
+ *  (c) 2006-2026 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -65,6 +65,7 @@ int build_conservation_psi(colloids_info_t * cinfo, psi_t * psi,
 			   const lb_model_t * model);
 
 int build_update_map_driver(map_t * map);
+int build_update_map_colloids_driver(colloids_info_t * info, map_t * map);
 
 /*****************************************************************************
  *
@@ -78,135 +79,13 @@ int build_update_map_driver(map_t * map);
 
 int build_update_map(cs_t * cs, colloids_info_t * cinfo, map_t * map) {
 
-  int nlocal[3];
-  int noffset[3];
-  int ncell[3];
-  int ic, jc, kc;
-
-  int i, j, k;
-  int i_min, i_max, j_min, j_max, k_min, k_max;
-  int index;
-  int nhalo;
-
-  colloid_t * p_colloid = NULL;
-
-  double  r0[3];
-  double  rsite0[3];
-  double  rsep[3];
-
-  double   largestdimn;
-  double   cosine, mod;
-
-  /* To set the wetting data in the map, we assume C, H zero at moment */
-  double wet[2];
-
-  assert(cs);
-  assert(cinfo);
-  assert(map);
-
-  assert(map->ndata <= 2);
-
-  cs_nlocal(cs, nlocal);
-  cs_nlocal_offset(cs, noffset);
-  cs_nhalo(cs, &nhalo);
-
-  colloids_info_ncell(cinfo, ncell);
-
-  /* Reset the map so that old status information is removed */
+  /* Reset the solid/fluid status map */
   build_update_map_driver(map);
-
   colloids_info_map_update(cinfo);
 
-  /* Loop through all cells (including the halo cells) */
-
-  for (ic = 0; ic <= ncell[X] + 1; ic++) {
-    for (jc = 0; jc <= ncell[Y] + 1; jc++) {
-      for (kc = 0; kc <= ncell[Z] + 1; kc++) {
-
-	/* Set the cell index */
-
-	colloids_info_cell_list_head(cinfo, ic, jc, kc, &p_colloid);
-
-	/* For each colloid in this cell, check solid/fluid status */
-
-	for ( ; p_colloid; p_colloid = p_colloid->next) {
-
-	  if (p_colloid->s.bc != COLLOID_BC_BBL) continue;
-
-	  /* Set actual position and size of the cube to be checked */
-
-	  largestdimn = colloid_principal_radius(&p_colloid->s);
-
-	  /* Need to translate the colloid position to "local"
-	   * coordinates, so that the correct range of lattice
-	   * nodes is found */
-
-	  r0[X] = p_colloid->s.r[X] - 1.0*noffset[X];
-	  r0[Y] = p_colloid->s.r[Y] - 1.0*noffset[Y];
-	  r0[Z] = p_colloid->s.r[Z] - 1.0*noffset[Z];
-
-	  /* Compute appropriate range of sites that require checks, i.e.,
-	   * a cubic box around the centre of the colloid. However, this
-	   * should not extend beyond the boundary of the current domain
-	   * (but include halos). */
-
-	  i_min = imax(1 - nhalo,         (int) floor(r0[X] - largestdimn));
-	  i_max = imin(nlocal[X] + nhalo, (int) ceil (r0[X] + largestdimn));
-	  j_min = imax(1 - nhalo,         (int) floor(r0[Y] - largestdimn));
-	  j_max = imin(nlocal[Y] + nhalo, (int) ceil (r0[Y] + largestdimn));
-	  k_min = imax(1 - nhalo,         (int) floor(r0[Z] - largestdimn));
-	  k_max = imin(nlocal[Z] + nhalo, (int) ceil (r0[Z] + largestdimn));
-
-	  /* Check each site to see whether it is inside or not */
-
-	  for (i = i_min; i <= i_max; i++)
-	    for (j = j_min; j <= j_max; j++)
-	      for (k = k_min; k <= k_max; k++) {
-
-		/* rsite0 is the coordinate position of the site */
-
-		rsite0[X] = 1.0*i;
-		rsite0[Y] = 1.0*j;
-		rsite0[Z] = 1.0*k;
-		cs_minimum_distance(cs, rsite0, r0, rsep);
-
-		/* Are we inside? */
-
-		if (colloid_r_inside(&p_colloid->s, rsep)) {
-
-		  /* Set index */
-		  index = cs_index(cs, i, j, k);
-
-		  colloids_info_map_set(cinfo, index, p_colloid);
-		  map_status_set(map, index, MAP_COLLOID);
-
-		  /* Janus particles have h = h_0 cos (theta)
-		   * with s[3] pointing to the 'north pole' */
-
-		  cosine = 1.0;
-
-		  if (p_colloid->s.attr & COLLOID_ATTR_JANUS) {
-		    mod = modulus(rsep);
-		    if (mod > 0.0) {
-		      cosine = dot_product(p_colloid->s.s, rsep)/mod;
-		    }
-		  }
-
-		  wet[0] = p_colloid->s.c;
-		  wet[1] = cosine*p_colloid->s.h;
-
-		  map_data_set(map, index, wet);
-		}
-		/* Next site */
-	      }
-
-	  /* Next colloid */
-	}
-
-	/* Next cell */
-      }
-    }
-  }
+  /* Update the current colloid map */
+  colloids_info_list_all_build(cinfo);
+  build_update_map_colloids_driver(cinfo, map);
 
   return 0;
 }
@@ -1711,6 +1590,122 @@ int build_update_map_driver(map_t * map) {
 
     tdpLaunchKernel(build_update_map_kernel, nblk, ntpb, 0, 0,
                     k3d, map->target, c, h);
+
+    tdpAssert(tdpPeekAtLastError());
+    tdpAssert(tdpStreamSynchronize(0));
+  }
+
+  return ifail;
+}
+
+/*****************************************************************************
+ *
+ *  build_update_map_colloids_kernel
+ *
+ *  At each lattice site, we check all possible colloids. There must
+ *  be at most one particle at each site, or else something has
+ *  failed earlier in "collision avoidance". Hence thread safe.
+ *
+ *****************************************************************************/
+
+__global__ void build_update_map_colloids_kernel(kernel_3d_t       k3d,
+                                                 colloids_info_t * info,
+                                                 map_t *           map) {
+  int kindex = 0;
+
+  for_simt_parallel(kindex, k3d.kiterations, 1) {
+
+    int ic = kernel_3d_ic(&k3d, kindex);
+    int jc = kernel_3d_jc(&k3d, kindex);
+    int kc = kernel_3d_kc(&k3d, kindex);
+
+    /* Fluid site index and position (local) */
+    int    index = cs_index(map->cs, ic, jc, kc);
+    double r0[3] = {1.0 * ic, 1.0 * jc, 1.0 * kc};
+
+    colloid_t * pc = NULL;
+
+    /* All sites are by default to be fluid ... */
+
+    colloids_info_map_set(info, index, NULL);
+
+    /* Loop through all copies locally ... */
+
+    colloids_info_all_head(info, &pc);
+
+    for (; pc; pc = pc->nextall) {
+
+      double dr[3] = {0}; /* cclloid centre -> site */
+
+      if (pc->s.bc != COLLOID_BC_BBL) continue;
+
+      /* Not a minimum image separation as we are potentially checking more
+       * than one copy and need to get the right pointer for this site ... */
+
+      dr[X] = r0[X] - (pc->s.r[X] - 1.0*map->cs->param->noffset[X]);
+      dr[Y] = r0[Y] - (pc->s.r[Y] - 1.0*map->cs->param->noffset[Y]);
+      dr[Z] = r0[Z] - (pc->s.r[Z] - 1.0*map->cs->param->noffset[Z]);
+
+      /* Are we inside? Set status and wetting constants */
+
+      if (colloid_r_inside(&pc->s, dr)) {
+
+        double wet[2] = {pc->s.c, pc->s.h}; /* Wetting c, h */
+
+        colloids_info_map_set(info, index, pc);
+        map_status_set(map, index, MAP_COLLOID);
+
+        /* Janus particles have h = h_0 cos (theta)
+         * with s[3] pointing to the 'north pole' */
+
+        if (pc->s.attr & COLLOID_ATTR_JANUS) {
+          double mod = modulus(dr);
+          if (mod > 0.0) {
+            double cosine = dot_product(pc->s.s, dr) / mod;
+            wet[1]        = cosine*wet[1]; /* h */
+          }
+        }
+
+        map_data_set(map, index, wet);
+
+        break; /* Can skip any further colloids in pc->nextall loop */
+      }
+    }
+  }
+
+  return;
+}
+
+/*****************************************************************************
+ *
+ *  build_update_map_colloids_driver
+ *
+ *****************************************************************************/
+
+int build_update_map_colloids_driver(colloids_info_t * info, map_t * map) {
+
+  int ifail = 0;
+
+  assert(map);
+
+  if (map->ndata == 0) {
+    ifail = -1;
+  }
+  else {
+
+    int  nhalo = map->cs->param->nhalo;
+    dim3 nblk  = {};
+    dim3 ntpb  = {};
+
+    cs_limits_t lim = {1 - nhalo, map->cs->param->nlocal[X] + nhalo,
+                       1 - nhalo, map->cs->param->nlocal[Y] + nhalo,
+                       1 - nhalo, map->cs->param->nlocal[Z] + nhalo};
+    kernel_3d_t k3d = kernel_3d(map->cs, lim);
+
+    kernel_3d_launch_param(k3d.kiterations, &nblk, &ntpb);
+
+    tdpLaunchKernel(build_update_map_colloids_kernel, nblk, ntpb, 0, 0, k3d,
+                    info->target, map->target);
 
     tdpAssert(tdpPeekAtLastError());
     tdpAssert(tdpStreamSynchronize(0));
