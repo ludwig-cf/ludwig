@@ -21,45 +21,7 @@
 #include <math.h>
 
 #include "util.h"
-#include "util_vector.h"
 #include "util_ellipsoid.h"
-
-/*****************************************************************************
- *
- *  matrix_product
- *
- *****************************************************************************/
-
-void matrix_product(const double a[3][3], const double b[3][3],
-		    double result[3][3]) {
-
-  for (int i = 0; i < 3; i++) {
-    for (int j = 0; j < 3; j++) {
-      result[i][j] = 0.0;
-      for (int k = 0; k < 3; k++) {
-        result[i][j] += a[i][k]*b[k][j];
-      }
-    }
-  }
-
-  return;
-}
-
-/*****************************************************************************
- *
- *  matrix_transpose
- *
- *****************************************************************************/
-
-void matrix_transpose(const double a[3][3], double result[3][3]) {
-
-  for (int i = 0; i < 3; i++) {
-    for (int j = 0; j < 3; j++) {
-      result[i][j] = a[j][i];
-    }
-  }
-  return;
-}
 
 /*****************************************************************************
  *
@@ -87,32 +49,6 @@ void util_q4_from_omega(const double omega[3], double dt, double q[4]) {
     for (int i = 0; i < 3; i++) {
       q[i+1] = sin(ww*dt)*omega[i]/ww;
     }
-  }
-
-  return;
-}
-
-/*****************************************************************************
- *
- *  util_q4_rotate_vector
- *
- *  Rotate vector a[3] by the quaternion to give vector b.
- *
- *  E.g., Rapaport Eq 8.2.8 with q = [q_0, q = (q_1, q_2, q_3)]
- *  that is, b = (2q_0^2 - 1)a + 2(q.a)q + 2q_0 q x a
- *
- ****************************************************************************/
-
-void util_q4_rotate_vector(const double q[4], const double a[3], double b[3]) {
-
-  double q0    = q[0];
-  double qdota = dot_product(q + 1, a);
-  double qxa[3] = {0};
-
-  cross_product(q + 1, a, qxa);
-
-  for (int i = 0; i < 3; i++) {
-    b[i] = (2.0*q0*q0 - 1.0)*a[i] + 2.0*qdota*q[i+1] + 2.0*q0*qxa[i];
   }
 
   return;
@@ -216,77 +152,6 @@ void util_q4_product(const double a[4], const double b[4], double c[4]) {
   c[3] = a[0]*b[3] + a[3]*b[0] + a[1]*b[2] - a[2]*b[1];
 
   return;
-}
-
-/*****************************************************************************
- *
- *  util_q4_is_inside_ellispoid
- *
- *  Is position r inside the ellpsoid (a,b,c) with orientation described by
- *  unit quaternion q4 (in the body frame)?
- *
- *  Position r is relative to the centre of the ellipsoid in the lab
- *  or world frame.
- *
- *  Returns 0 if r is outside.
- *
- *  NEEDS REFERENCE TO PROVIDE MEANING TO COMMENTS
- *
- *****************************************************************************/
-
-int util_q4_is_inside_ellipsoid(const double q[4], const double elabc[3],
-				const double r[3]) {
-  int inside = 0;
-
-  double elev1[3] = {0};
-  double elev2[3] = {0};
-  double elev3[3] = {0};
-
-  double worldv1[3] = {1.0, 0.0, 0.0};
-  double worldv2[3] = {0.0, 1.0, 0.0};
-
-  double elL[3][3] = {0};
-  double elA[3][3] = {0};
-  double elQ[3][3] = {0};
-
-  /* Construct Lambda matrix */
-  for (int i = 0; i < 3; i++) {
-    elL[i][i] = 1.0/(elabc[i]*elabc[i]);
-  }
-
-  /* Construct Q matrix */
-  util_q4_rotate_vector(q, worldv1, elev1);
-  util_q4_rotate_vector(q, worldv2, elev2);
-
-  cross_product(elev1, elev2, elev3);
-  util_vector_normalise(3, elev3);
-
-  for (int i = 0; i < 3; i++) {
-    elQ[i][0] = elev1[i];
-    elQ[i][1] = elev2[i];
-    elQ[i][2] = elev3[i];
-  }
-
-  /* Construct A matrix */
-  {
-    double elAp[3][3] = {0};
-    double elQT[3][3] = {0};
-    matrix_product(elQ, elL, elAp);
-    matrix_transpose(elQ, elQT);
-    matrix_product(elAp, elQT, elA);
-  }
-
-  /* Evaluate quadratic equation */
-  {
-    double x = elA[0][0]*r[X]*r[X] + elA[1][1]*r[Y]*r[Y] + elA[2][2]*r[Z]*r[Z]
-      + (elA[0][1] + elA[1][0])*r[X]*r[Y]
-      + (elA[0][2] + elA[2][0])*r[X]*r[Z]
-      + (elA[1][2] + elA[2][1])*r[Y]*r[Z];
-
-    inside = (x < 1.0);
-  }
-
-  return inside;
 }
 
 /*****************************************************************************

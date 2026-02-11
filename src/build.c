@@ -1655,9 +1655,9 @@ __global__ void build_update_map_colloids_kernel(kernel_3d_t       k3d,
          * with s[3] pointing to the 'north pole' */
 
         if (pc->s.attr & COLLOID_ATTR_JANUS) {
-          double mod = modulus(dr);
+          double mod = util_vector_modulus(dr);
           if (mod > 0.0) {
-            double cosine = dot_product(pc->s.s, dr) / mod;
+            double cosine = util_vector_dot_product(pc->s.s, dr) / mod;
             wet[1]        = cosine*wet[1]; /* h */
           }
         }
