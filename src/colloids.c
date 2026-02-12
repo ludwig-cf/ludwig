@@ -20,6 +20,7 @@
 #include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 #include "util.h"
 #include "util_vector.h"
@@ -158,8 +159,9 @@ int colloids_info_initialise(pe_t * pe, cs_t * cs,
 				  sizeof(colloids_info_t),
 				  tdpMemAttachGlobal) );
 
-      /* Colloid list pointers */
-      /* ALWAYS use the target pointer for host operations. */
+      memcpy(info->target, info, sizeof(colloids_info_t));
+      info->target->map_new = NULL;
+      info->target->map_old = NULL;
 
       /* Lattice quantities */
 
@@ -177,7 +179,6 @@ int colloids_info_initialise(pe_t * pe, cs_t * cs,
       }
 
       /* Finally ... */
-      info->target->pe = info->pe;             /* Not to be use on device */
       info->target->cs = info->cs->target;
     }
   }
@@ -331,6 +332,17 @@ __host__ int colloids_memcpy(colloids_info_t * info, int flag) {
 			  tdpMemcpyDeviceToHost));
       tdpAssert(tdpMemcpy(tmp, info->map_new, info->nsites*sizeof(colloid_t *),
 			  tdpMemcpyHostToDevice));
+    }
+    else if (flag == tdpMemcpyDeviceToHost) {
+      colloid_t * tmp = NULL;
+      tdpAssert(tdpMemcpy(&tmp, &info->target->map_new, sizeof(colloid_t **),
+			  tdpMemcpyDeviceToHost));
+      tdpAssert(tdpMemcpy(info->map_new, tmp, info->nsites*sizeof(colloid_t *),
+			  tdpMemcpyDeviceToHost));
+      tdpAssert(tdpMemcpy(&tmp, &info->target->map_old, sizeof(colloid_t **),
+			  tdpMemcpyDeviceToHost));
+      tdpAssert(tdpMemcpy(info->map_old, tmp, info->nsites*sizeof(colloid_t *),
+			  tdpMemcpyDeviceToHost));
     }
     else {
       pe_exit(info->pe, "Bad flag in colloids_memcpy()\n");
@@ -535,44 +547,21 @@ __host__ int colloids_info_map_old(colloids_info_t * info, int index, colloid_t 
 
 /*****************************************************************************
  *
- *  colloids_info_map_set
- *
- *  Colloid pc may be NULL.
- *
- *****************************************************************************/
-
-__host__ int colloids_info_map_set(colloids_info_t * cinfo, int index, colloid_t * pc) {
-
-  assert(cinfo);
-  assert(cinfo->map_new);
-  assert(index >= 0);
-  assert(index < cinfo->nsites);
-
-  cinfo->map_new[index] = pc;
-
-  return 0;
-}
-
-/*****************************************************************************
- *
  *  colloids_info_map_update
  *
  *****************************************************************************/
 
-__host__ int colloids_info_map_update(colloids_info_t * cinfo) {
+__host__ int colloids_info_map_update(colloids_info_t * info) {
 
-  int n;
-  colloid_t ** maptmp;
+  /* Rotate the target pointers */
 
-  assert(cinfo);
+  assert(info);
 
-  for (n = 0; n < cinfo->nsites; n++) {
-    cinfo->map_old[n] = NULL;
-  }
+  colloid_t ** tmp1 = info->target->map_old;
+  colloid_t ** tmp2 = info->target->map_new;
 
-  maptmp = cinfo->map_old;
-  cinfo->map_old = cinfo->map_new;
-  cinfo->map_new = maptmp;
+  info->target->map_old = tmp2;
+  info->target->map_new = tmp1;
 
   return 0;
 }

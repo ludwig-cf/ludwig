@@ -5,7 +5,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2023-2024 The University of Edinburgh
+ *  (c) 2023-2026 The University of Edinburgh
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *
@@ -14,8 +14,6 @@
 #ifndef LUDWIG_UTIL_VECTOR_H
 #define LUDWIG_UTIL_VECTOR_H
 
-double util_vector_l2_norm(int n, const double * a);
-void   util_vector_normalise(int n, double * a);
 int    util_vector_orthonormalise(const double a[3], double b[3]);
 void   util_vector_basis_to_dcm(const double a[3], const double b[3],
 				const double c[3], double r[3][3]);
@@ -88,6 +86,55 @@ static inline void util_vector_copy(int n, const double * a, double * b) {
 
   for (int ia = 0; ia < n; ia++) {
     b[ia] = a[ia];
+  }
+
+  return;
+}
+
+/*****************************************************************************
+ *
+ *  util_vector_l2_norm
+ *
+ *  For vector of length n, compute l2 = sqrt(sum_i a_i^2).
+ *
+ *****************************************************************************/
+
+__host__ __device__
+static inline double util_vector_l2_norm(int n, const double * a) {
+
+  double l2 = 0.0;
+
+  assert(n > 0);
+  assert(a);
+
+  for (int ia = 0; ia < n; ia++) {
+    l2 += a[ia]*a[ia];
+  }
+
+  return sqrt(l2);
+}
+
+/*****************************************************************************
+ *
+ *  util_vector_normalise
+ *
+ *  For the given vector of length n, compute norm = sum_i a_i^2
+ *  and divide each element by sqrt(norm) to normalise.
+ *
+ *****************************************************************************/
+
+__host__ __device__
+static inline void util_vector_normalise(int n, double * a) {
+
+  assert(n > 0);
+  assert(a);
+
+  double anorm = util_vector_l2_norm(n, a);
+
+  if (anorm > 0.0) anorm = 1.0/anorm;
+
+  for (int ia = 0; ia < n; ia++) {
+    a[ia] = anorm*a[ia];
   }
 
   return;

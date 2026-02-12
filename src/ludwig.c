@@ -2222,8 +2222,6 @@ int ludwig_colloids_update(ludwig_t * ludwig) {
 
   /* __NVCC__ TODO: remove */
 
-  colloids_memcpy(ludwig->collinfo, tdpMemcpyHostToDevice);
-  map_memcpy(ludwig->map, tdpMemcpyHostToDevice);
   lb_memcpy(ludwig->lb, tdpMemcpyHostToDevice);
 
   return 0;

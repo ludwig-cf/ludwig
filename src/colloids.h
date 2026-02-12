@@ -165,8 +165,6 @@ __host__ int colloids_info_cell_count(colloids_info_t * cinfo, int ic, int jc, i
 			     int * ncount);
 __host__ int colloids_info_map_update(colloids_info_t * cinfo);
 __host__ int colloids_info_position_update(colloids_info_t * cinfo);
-__host__ int colloids_info_map_set(colloids_info_t * cinfo, int index,
-			      colloid_t * pc);
 __host__ int colloids_info_update_lists(colloids_info_t * cinfo);
 __host__ int colloids_info_list_all_build(colloids_info_t * cinfo);
 __host__ int colloids_info_list_local_build(colloids_info_t * cinfo);
@@ -197,5 +195,28 @@ int colloids_info_initialise(pe_t * pe, cs_t * cs,
 			     const colloid_options_t * options,
 			     colloids_info_t * info);
 int colloids_info_finalise(colloids_info_t * info);
+
+/* Inline */
+
+#include <assert.h>
+
+/*****************************************************************************
+ *
+ *  colloids_info_map_set
+ *
+ *****************************************************************************/
+
+__host__ __device__
+static inline int colloids_info_map_set(colloids_info_t * info, int index,
+					colloid_t * pc) {
+  assert(info);
+  assert(info->map_new);
+  assert(index >= 0);
+  assert(index < info->nsites);
+
+  info->map_new[index] = pc;
+
+  return 0;
+}
 
 #endif
