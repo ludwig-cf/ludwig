@@ -87,6 +87,12 @@ int build_update_map(cs_t * cs, colloids_info_t * cinfo, map_t * map) {
   colloids_info_list_all_build(cinfo);
   build_update_map_colloids_driver(cinfo, map);
 
+  /* __NVCC__ temporary, we need to return the map status etc to host */
+  /* ... before the link construction on the host can occur */
+
+  map_memcpy(map, tdpMemcpyDeviceToHost);
+  colloids_memcpy(cinfo, tdpMemcpyDeviceToHost);
+
   return 0;
 }
 
@@ -1699,6 +1705,9 @@ int build_update_map_colloids_driver(colloids_info_t * info, map_t * map) {
     kernel_3d_t k3d = kernel_3d(map->cs, lim);
 
     kernel_3d_launch_param(k3d.kiterations, &nblk, &ntpb);
+
+    /* Make sure the target copy is up-to-date ... */
+    info->target->headall = info->headall;
 
     tdpLaunchKernel(build_update_map_colloids_kernel, nblk, ntpb, 0, 0, k3d,
                     info->target, map->target);

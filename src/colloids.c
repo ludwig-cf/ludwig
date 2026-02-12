@@ -158,8 +158,9 @@ int colloids_info_initialise(pe_t * pe, cs_t * cs,
 				  sizeof(colloids_info_t),
 				  tdpMemAttachGlobal) );
 
-      /* Colloid list pointers */
-      /* ALWAYS use the target pointer for host operations. */
+      memcpy(info->target, info, sizeof(colloids_info_t));
+      info->target->map_new = NULL;
+      info->target->map_old = NULL;
 
       /* Lattice quantities */
 
@@ -177,7 +178,6 @@ int colloids_info_initialise(pe_t * pe, cs_t * cs,
       }
 
       /* Finally ... */
-      info->target->pe = info->pe;             /* Not to be use on device */
       info->target->cs = info->cs->target;
     }
   }
@@ -331,6 +331,17 @@ __host__ int colloids_memcpy(colloids_info_t * info, int flag) {
 			  tdpMemcpyDeviceToHost));
       tdpAssert(tdpMemcpy(tmp, info->map_new, info->nsites*sizeof(colloid_t *),
 			  tdpMemcpyHostToDevice));
+    }
+    else if (flag == tdpMemcpyDeviceToHost) {
+      colloid_t * tmp = NULL;
+      tdpAssert(tdpMemcpy(&tmp, &info->target->map_new, sizeof(colloid_t **),
+			  tdpMemcpyDeviceToHost));
+      tdpAssert(tdpMemcpy(info->map_new, tmp, info->nsites*sizeof(colloid_t *),
+			  tdpMemcpyDeviceToHost));
+      tdpAssert(tdpMemcpy(&tmp, &info->target->map_old, sizeof(colloid_t **),
+			  tdpMemcpyDeviceToHost));
+      tdpAssert(tdpMemcpy(info->map_old, tmp, info->nsites*sizeof(colloid_t *),
+			  tdpMemcpyDeviceToHost));
     }
     else {
       pe_exit(info->pe, "Bad flag in colloids_memcpy()\n");
@@ -539,15 +550,17 @@ __host__ int colloids_info_map_old(colloids_info_t * info, int index, colloid_t 
  *
  *****************************************************************************/
 
-__host__ int colloids_info_map_update(colloids_info_t * cinfo) {
+__host__ int colloids_info_map_update(colloids_info_t * info) {
 
-  colloid_t ** maptmp = NULL;
+  /* Rotate the target pointers */
 
-  assert(cinfo);
+  assert(info);
 
-  maptmp = cinfo->map_old;
-  cinfo->map_old = cinfo->map_new;
-  cinfo->map_new = maptmp;
+  colloid_t ** tmp1 = info->target->map_old;
+  colloid_t ** tmp2 = info->target->map_new;
+
+  info->target->map_old = tmp2;
+  info->target->map_new = tmp1;
 
   return 0;
 }
