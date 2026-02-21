@@ -219,4 +219,24 @@ static inline int colloids_info_map_set(colloids_info_t * info, int index,
   return 0;
 }
 
+/*****************************************************************************
+ *
+ *  colloid_ub
+ *
+ *  u_b = v + omega x r_b
+ *
+ *****************************************************************************/
+
+__host__ __device__
+static inline void colloid_ub(const colloid_t * pc, const double rb[3],
+			      double ub[3]) {
+  assert(pc);
+
+  ub[X] = pc->s.v[X] + pc->s.w[Y]*rb[Z] - pc->s.w[Z]*rb[Y];
+  ub[Y] = pc->s.v[Y] + pc->s.w[Z]*rb[X] - pc->s.w[X]*rb[Z];
+  ub[Z] = pc->s.v[Z] + pc->s.w[X]*rb[Y] - pc->s.w[Y]*rb[X];
+
+  return;
+}
+
 #endif
