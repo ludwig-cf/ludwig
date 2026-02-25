@@ -4,12 +4,12 @@
  *
  *  Static solid objects (porous media).
  *
- *  Special case: boundary walls. The two issues might be sepatated.
+ *  Special case: boundary walls. The two issues might be separated.
  *
  *  Edinburgh Soft Matter and Statistical Physics and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2011-2024 The University of Edinburgh
+ *  (c) 2011-2026 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -1009,13 +1009,15 @@ __global__ void wall_bbl_kernel(wall_t * wall, lb_t * lb, map_t * map) {
 
   int n;
   int ib;
-  int tid;
-  double fxb, fyb, fzb;
+
+  int tid = threadIdx.x;
+  int pid = TARGET_PAD*tid;
+
   double uw[WALL_UWMAX][3];
 
-  __shared__ double fx[TARGET_MAX_THREADS_PER_BLOCK];
-  __shared__ double fy[TARGET_MAX_THREADS_PER_BLOCK];
-  __shared__ double fz[TARGET_MAX_THREADS_PER_BLOCK];
+  __shared__ double fx[TARGET_PAD*TARGET_MAX_THREADS_PER_BLOCK];
+  __shared__ double fy[TARGET_PAD*TARGET_MAX_THREADS_PER_BLOCK];
+  __shared__ double fz[TARGET_PAD*TARGET_MAX_THREADS_PER_BLOCK];
 
   LB_RCS2_DOUBLE(rcs2);
 
@@ -1031,11 +1033,9 @@ __global__ void wall_bbl_kernel(wall_t * wall, lb_t * lb, map_t * map) {
     uw[WALL_UWBOT][ib] = wall->param->ubot[ib];
   }
 
-  tid = threadIdx.x;
-
-  fx[tid] = 0.0;
-  fy[tid] = 0.0;
-  fz[tid] = 0.0;
+  fx[pid] = 0.0;
+  fy[pid] = 0.0;
+  fz[pid] = 0.0;
 
   for_simt_parallel(n, wall->nlink, 1) {
 
@@ -1066,9 +1066,9 @@ __global__ void wall_bbl_kernel(wall_t * wall, lb_t * lb, map_t * map) {
       lb_f(lb, j, ji, LB_RHO, &fp1);
       fp = fp0 + fp1;
 
-      fx[tid] += (fp - 2.0*lb->param->wv[ij])*lb->param->cv[ij][X];
-      fy[tid] += (fp - 2.0*lb->param->wv[ij])*lb->param->cv[ij][Y];
-      fz[tid] += (fp - 2.0*lb->param->wv[ij])*lb->param->cv[ij][Z];
+      fx[pid] += (fp - 2.0*lb->param->wv[ij])*lb->param->cv[ij][X];
+      fy[pid] += (fp - 2.0*lb->param->wv[ij])*lb->param->cv[ij][Y];
+      fz[pid] += (fp - 2.0*lb->param->wv[ij])*lb->param->cv[ij][Z];
     }
     else {
 
@@ -1082,9 +1082,9 @@ __global__ void wall_bbl_kernel(wall_t * wall, lb_t * lb, map_t * map) {
 
       force = 2.0*fp - 2.0*rcs2*lb->param->wv[ij]*lb->param->rho0*cdotu;
 
-      fx[tid] += (force - 2.0*lb->param->wv[ij])*lb->param->cv[ij][X];
-      fy[tid] += (force - 2.0*lb->param->wv[ij])*lb->param->cv[ij][Y];
-      fz[tid] += (force - 2.0*lb->param->wv[ij])*lb->param->cv[ij][Z];
+      fx[pid] += (force - 2.0*lb->param->wv[ij])*lb->param->cv[ij][X];
+      fy[pid] += (force - 2.0*lb->param->wv[ij])*lb->param->cv[ij][Y];
+      fz[pid] += (force - 2.0*lb->param->wv[ij])*lb->param->cv[ij][Z];
 
       fp = fp - 2.0*rcs2*lb->param->wv[ij]*lb->param->rho0*cdotu;
       lb_f_set(lb, j, ji, LB_RHO, fp);
@@ -1101,16 +1101,25 @@ __global__ void wall_bbl_kernel(wall_t * wall, lb_t * lb, map_t * map) {
     /* Next link */
   }
 
+  __syncthreads();
+
   /* Reduction for momentum transfer */
 
-  fxb = tdpAtomicBlockAddDouble(fx);
-  fyb = tdpAtomicBlockAddDouble(fy);
-  fzb = tdpAtomicBlockAddDouble(fz);
-
   if (tid == 0) {
-    tdpAtomicAddDouble(&wall->fnet[X], fxb);
-    tdpAtomicAddDouble(&wall->fnet[Y], fyb);
-    tdpAtomicAddDouble(&wall->fnet[Z], fzb);
+    double fxb = 0.0;
+    double fyb = 0.0;
+    double fzb = 0.0;
+
+    for (int it = 0; it < blockDim.x; it++) {
+      pid = TARGET_PAD*it;
+      fxb += fx[pid];
+      fyb += fy[pid];
+      fzb += fz[pid];
+    }
+
+    atomicAdd(&wall->fnet[X], fxb);
+    atomicAdd(&wall->fnet[Y], fyb);
+    atomicAdd(&wall->fnet[Z], fzb);
   }
 
   return;
@@ -1128,23 +1137,22 @@ __global__ void wall_bbl_kernel(wall_t * wall, lb_t * lb, map_t * map) {
 
 __global__ void wall_bbl_slip_kernel(wall_t * wall, lb_t * lb, map_t * map) {
 
-  int n;
-  int tid;
-  double fxb, fyb, fzb;
+  int n = 0;
 
-  __shared__ double fx[TARGET_MAX_THREADS_PER_BLOCK];
-  __shared__ double fy[TARGET_MAX_THREADS_PER_BLOCK];
-  __shared__ double fz[TARGET_MAX_THREADS_PER_BLOCK];
+  int tid = threadIdx.x;
+  int pid = TARGET_PAD*tid;
+
+  __shared__ double fx[TARGET_PAD*TARGET_MAX_THREADS_PER_BLOCK];
+  __shared__ double fy[TARGET_PAD*TARGET_MAX_THREADS_PER_BLOCK];
+  __shared__ double fz[TARGET_PAD*TARGET_MAX_THREADS_PER_BLOCK];
 
   assert(wall);
   assert(lb);
   assert(map);
 
-  tid = threadIdx.x;
-
-  fx[tid] = 0.0;
-  fy[tid] = 0.0;
-  fz[tid] = 0.0;
+  fx[pid] = 0.0;
+  fy[pid] = 0.0;
+  fz[pid] = 0.0;
 
   for_simt_parallel(n, wall->nlink, 1) {
 
@@ -1168,9 +1176,9 @@ __global__ void wall_bbl_slip_kernel(wall_t * wall, lb_t * lb, map_t * map) {
       lb_f(lb, j, ji, LB_RHO, &fp1);
       fp = fp0 + fp1;
 
-      fx[tid] += (fp - 2.0*lb->param->wv[ij])*lb->param->cv[ij][X];
-      fy[tid] += (fp - 2.0*lb->param->wv[ij])*lb->param->cv[ij][Y];
-      fz[tid] += (fp - 2.0*lb->param->wv[ij])*lb->param->cv[ij][Z];
+      fx[pid] += (fp - 2.0*lb->param->wv[ij])*lb->param->cv[ij][X];
+      fy[pid] += (fp - 2.0*lb->param->wv[ij])*lb->param->cv[ij][Y];
+      fz[pid] += (fp - 2.0*lb->param->wv[ij])*lb->param->cv[ij][Z];
     }
     else {
 
@@ -1192,30 +1200,39 @@ __global__ void wall_bbl_slip_kernel(wall_t * wall, lb_t * lb, map_t * map) {
        * slip only contributes in wall normal direction
        * (wx, wy, wz) and we need |normal| to get sign. */
 
-      fx[tid] += 2.0*(1.0-s)*(fi-lb->param->wv[ij])*lb->param->cv[ij][X];
-      fy[tid] += 2.0*(1.0-s)*(fi-lb->param->wv[ij])*lb->param->cv[ij][Y];
-      fz[tid] += 2.0*(1.0-s)*(fi-lb->param->wv[ij])*lb->param->cv[ij][Z];
+      fx[pid] += 2.0*(1.0-s)*(fi-lb->param->wv[ij])*lb->param->cv[ij][X];
+      fy[pid] += 2.0*(1.0-s)*(fi-lb->param->wv[ij])*lb->param->cv[ij][Y];
+      fz[pid] += 2.0*(1.0-s)*(fi-lb->param->wv[ij])*lb->param->cv[ij][Z];
 
       wx = -(lb->param->cv[ij][X] + lb->param->cv[q][X])/2;
       wy = -(lb->param->cv[ij][Y] + lb->param->cv[q][Y])/2;
       wz = -(lb->param->cv[ij][Z] + lb->param->cv[q][Z])/2;
-      fx[tid] += 2.0*wx*wx*s*(fk-lb->param->wv[q])*lb->param->cv[q][X];
-      fy[tid] += 2.0*wy*wy*s*(fk-lb->param->wv[q])*lb->param->cv[q][Y];
-      fz[tid] += 2.0*wz*wz*s*(fk-lb->param->wv[q])*lb->param->cv[q][Z];
+      fx[pid] += 2.0*wx*wx*s*(fk-lb->param->wv[q])*lb->param->cv[q][X];
+      fy[pid] += 2.0*wy*wy*s*(fk-lb->param->wv[q])*lb->param->cv[q][Y];
+      fz[pid] += 2.0*wz*wz*s*(fk-lb->param->wv[q])*lb->param->cv[q][Z];
     }
     /* Next link */
   }
 
+  __syncthreads();
+
   /* Reduction for momentum transfer */
 
-  fxb = tdpAtomicBlockAddDouble(fx);
-  fyb = tdpAtomicBlockAddDouble(fy);
-  fzb = tdpAtomicBlockAddDouble(fz);
-
   if (tid == 0) {
-    tdpAtomicAddDouble(&wall->fnet[X], fxb);
-    tdpAtomicAddDouble(&wall->fnet[Y], fyb);
-    tdpAtomicAddDouble(&wall->fnet[Z], fzb);
+    double fxb = 0.0;
+    double fyb = 0.0;
+    double fzb = 0.0;
+
+    for (int it = 0; it < blockDim.x; it++) {
+      pid = TARGET_PAD*it;
+      fxb += fx[pid];
+      fyb += fy[pid];
+      fzb += fz[pid];
+    }
+
+    atomicAdd(&wall->fnet[X], fxb);
+    atomicAdd(&wall->fnet[Y], fyb);
+    atomicAdd(&wall->fnet[Z], fzb);
   }
 
   return;

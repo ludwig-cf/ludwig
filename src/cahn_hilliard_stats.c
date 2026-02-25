@@ -5,7 +5,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2021-2024 The University of Edinburgh
+ *  (c) 2021-2026 The University of Edinburgh
  *
  *  Contributions:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -390,7 +390,7 @@ __global__ void cahn_stats_var_kernel(kernel_3d_t k3d, field_t * phi,
     }
 
     /* Final result */
-    tdpAtomicAddDouble(&stats->var, var);
+    atomicAdd(&stats->var, var);
   }
 
   return;
@@ -450,8 +450,8 @@ __global__ void cahn_stats_min_kernel(kernel_3d_t k3d, field_t * phi,
 
     /* Final result */
 
-    tdpAtomicMinDouble(&stats->min, min);
-    tdpAtomicMaxDouble(&stats->max, max);
+    atomicMin(&stats->min, min);
+    atomicMax(&stats->max, max);
   }
 
   return;

@@ -8,7 +8,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2017-2025 The University of Edinburgh
+ *  (c) 2017-2026 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -135,7 +135,7 @@ int fe_lc_stats_info(pe_t * pe, cs_t * cs, fe_lc_t * fe,
     MPI_Reduce(fe_local, fe_total, NFE_STAT, MPI_DOUBLE, MPI_SUM, 0, comm);
 
     pe_info(pe, "\nFree energies - timestep f v f/v f_bulk/v f_grad/v redshift\n");
-    pe_info(pe, "[fe] %14d %17.10e %17.10e %17.10e %17.10e %17.10e %17.10e\n", step, 
+    pe_info(pe, "[fe] %14d %17.10e %17.10e %17.10e %17.10e %17.10e %17.10e\n", step,
 	fe_total[1], fe_total[2], fe_total[1]/fe_total[2], fe_total[3]/fe_total[2], fe_total[4]/fe_total[2], fe->param->redshift);
   }
 
@@ -553,7 +553,7 @@ static int fe_lc_colloid(fe_lc_t * fe, cs_t * cs, colloids_info_t * cinfo,
 	nhat[X] = 0;
 	nhat[Y] = 0;
 
-	/* Suface in direction of (ic,jc,kc+1) */
+	/* Surface in direction of (ic,jc,kc+1) */
 	index1 = cs_index(cs, ic, jc, kc+1);
 	map_status(map, index1, &status);
 
@@ -576,7 +576,7 @@ static int fe_lc_colloid(fe_lc_t * fe, cs_t * cs, colloids_info_t * cinfo,
 	  fs[0] += fes;
 	  fs[1] += 1.0;
         }
-	
+
       }
     }
   }
@@ -586,7 +586,7 @@ static int fe_lc_colloid(fe_lc_t * fe, cs_t * cs, colloids_info_t * cinfo,
 
 /*
  * Normal anchoring free energy
- * f_s = (1/2) w_1 ( Q_ab - Q^0_ab )^2  with Q^0_ab prefered orientation.
+ * f_s = (1/2) w_1 ( Q_ab - Q^0_ab )^2  with Q^0_ab preferred orientation.
  *
  * Planar anchoring free energy (Fournier and Galatola EPL (2005).
  * f_s = (1/2) w_1 ( Q^tilde_ab - Q^tidle_perp_ab )^2
@@ -742,8 +742,8 @@ __global__ void fe_lc_stats_fluid_total_kernel(kernel_3d_t k3d, fe_lc_t * fe,
       bvol += tvol[TARGET_PAD*it];
     }
 
-    tdpAtomicAddDouble(sum + 0, bfed);
-    tdpAtomicAddDouble(sum + 1, bvol);
+    atomicAdd(sum + 0, bfed);
+    atomicAdd(sum + 1, bvol);
   }
 
   return;
@@ -850,8 +850,8 @@ __global__ void fe_lc_stats_bulk_grad_kernel(kernel_3d_t k3d, fe_lc_t * fe,
       bgrad += tgrad[TARGET_PAD*it];
     }
 
-    tdpAtomicAddDouble(sum + 0, bbulk);
-    tdpAtomicAddDouble(sum + 1, bgrad);
+    atomicAdd(sum + 0, bbulk);
+    atomicAdd(sum + 1, bgrad);
   }
 
   return;

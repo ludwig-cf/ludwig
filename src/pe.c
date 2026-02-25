@@ -15,7 +15,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2010-2025 The University of Edinburgh
+ *  (c) 2010-2026 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -185,8 +185,27 @@ __host__ int pe_message(pe_t * pe) {
     /* Compilation */
     assert(printf("Note assertions via standard C assert() are on.\n\n"));
 
-    /* Thread model */
-    tdpAssert( tdpThreadModelInfo(stdout) );
+    /* Thread model information depends on TARGET */
+
+    /* Not quite, if GPU and OpenMP; could try to separate host
+     * model and target model ... */
+#ifdef _OPENMP
+    /* Report OMP_NUM_THREADS, and hardware cores */
+    pe_info(pe, "Target thread model: %s\n", "OpenMP");
+    pe_info(pe, "OpenMP threads: %d; maximum number of threads %d\n",
+                 omp_get_max_threads(), omp_get_num_procs());
+#endif
+#ifdef __NVCC__
+    pe_info(pe, "Target thread model: %s\n", "CUDA");
+    pe_info(pe, "Default threads per block: %d; max. threads per block: %d\n",
+	    TARGET_THREADS_PER_BLOCK, 1024);
+#endif
+#ifdef __HIPCC__
+    pe_info(pe, "Target thread model: %s\n", "HIP");
+    pe_info(pe, "Default threads per block: %d; max. threads per block: %d\n",
+	    TARGET_THREADS_PER_BLOCK, 1024);
+#endif
+
     printf("\n");
   }
 

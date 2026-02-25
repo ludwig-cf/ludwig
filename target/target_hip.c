@@ -7,7 +7,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2020-2025 The University of Edinburgh
+ *  (c) 2020-2026 The University of Edinburgh
  *
  *  Contributing authors:
  *    Nikola Vasilev: did the original implementation in 2020.
@@ -22,25 +22,6 @@
 
 #include <math.h>
 #include "target.h"
-
-/*****************************************************************************
- *
- *  tdpThreadModelInfo
- *
- *  Provide some information on the model, usually to stdout.
- *
- ****************************************************************************/
-
-__host__ tdpError_t tdpThreadModelInfo(FILE * fp) {
-
-  assert(fp);
-
-  fprintf(fp, "Target thread model: HIP.\n");
-  fprintf(fp, "Default threads per block: %d; max. threads per block: %d.\n",
-	  tdp_get_max_threads(), 1024);
-
-  return tdpSuccess;
-}
 
 /*****************************************************************************
  *
@@ -144,61 +125,6 @@ __device__ double tdpAtomicMaxDouble(double * address, double val) {
     return __longlong_as_double(old);
   }
 #endif
-}
-
-/*****************************************************************************
- *
- *  tdpAtomicBlockAddInt
- *
- *  partsum is per-thread contribution on input
- *  Returns on thread 0 the sum for block (other elements destroyed).
- *
- *****************************************************************************/
-
-__device__ int tdpAtomicBlockAddInt(int * partsum) {
-
-  int istr;
-  int nblock;
-  int nthread = TARGET_MAX_THREADS_PER_BLOCK;
-  int idx = threadIdx.x;
-
-  nblock = pow(2.0, ceil(log(1.0*nthread)/log(2.0)));
-
-  for (istr = nblock/2; istr > 0; istr /= 2) {
-    __syncthreads();
-    if (idx < istr && idx + istr < nthread) {
-      partsum[idx] += partsum[idx + istr];
-    }
-  }
-
-  return partsum[0];
-}
-
-/*****************************************************************************
- *
- *  tdpAtomicBlockAddDouble
- *
- *  Type-specfic version for double
- *
- *****************************************************************************/
-
-__device__ double tdpAtomicBlockAddDouble(double * partsum) {
-
-  int istr;
-  int nblock;
-  int nthread = TARGET_MAX_THREADS_PER_BLOCK;
-  int idx = threadIdx.x;
-
-  nblock = pow(2.0, ceil(log(1.0*nthread)/log(2.0)));
-
-  for (istr = nblock/2; istr > 0; istr /= 2) {
-    __syncthreads();
-    if (idx < istr && idx + istr < nthread) {
-      partsum[idx] += partsum[idx + istr];
-    }
-  }
-
-  return partsum[0];
 }
 
 /*****************************************************************************

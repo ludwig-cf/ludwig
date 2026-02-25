@@ -7,7 +7,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2012-2024 The University of Edinburgh
+ *  (c) 2012-2026 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -797,9 +797,9 @@ __global__ void hydro_accumulate_kernel(kernel_3d_t k3d, hydro_t * hydro,
       fyb += fy[TARGET_PAD*it];
       fzb += fz[TARGET_PAD*it];
     }
-    tdpAtomicAddDouble(fnet + X, fxb);
-    tdpAtomicAddDouble(fnet + Y, fyb);
-    tdpAtomicAddDouble(fnet + Z, fzb);
+    atomicAdd(fnet + X, fxb);
+    atomicAdd(fnet + Y, fyb);
+    atomicAdd(fnet + Z, fzb);
   }
 
   return;
@@ -862,9 +862,9 @@ __global__ void hydro_accumulate_kernel_v(kernel_3d_v_t k3v, hydro_t * hydro,
       fyb += fy[TARGET_PAD*it];
       fzb += fz[TARGET_PAD*it];
     }
-    tdpAtomicAddDouble(fnet + X, fxb);
-    tdpAtomicAddDouble(fnet + Y, fyb);
-    tdpAtomicAddDouble(fnet + Z, fzb);
+    atomicAdd(fnet + X, fxb);
+    atomicAdd(fnet + Y, fyb);
+    atomicAdd(fnet + Z, fzb);
   }
 
   return;

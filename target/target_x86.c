@@ -7,7 +7,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2018-2025 The University of Edinburgh
+ *  (c) 2018-2026 The University of Edinburgh
  *
  *  Contributing authors:
  *  Alan Gray (Late of this parish)
@@ -64,29 +64,6 @@ void tdpErrorHandler(tdpError_t ifail, const char * file, int line, int fatal) {
   }
 
   return;
-}
-
-/*****************************************************************************
- *
- *  tdpThreadModelInfo
- *
- *  Provide spme information on the thread model.
- *
- *****************************************************************************/
-
-__host__ tdpError_t tdpThreadModelInfo(FILE * fp) {
-
-  assert(fp);
-
-#ifndef _OPENMP
-  fprintf(fp, "Target thread model: None.\n");
-#else
-  fprintf(fp, "Target thread model: OpenMP.\n");
-  fprintf(fp, "OpenMP threads: %d; maximum number of threads: %d.\n",
-	  omp_get_max_threads(), omp_get_num_procs());
-#endif
-
-  return tdpSuccess;
 }
 
 /*****************************************************************************
@@ -151,7 +128,23 @@ tdpError_t tdpDeviceGetCacheConfig(tdpFuncCache * cacheConfig) {
 
 tdpError_t tdpDeviceGetP2PAttribute(int * value, tdpDeviceP2PAttr attr,
 				    int srcDevice, int peerDevice) {
-  *value = 0;
+
+  error_return_if(value == NULL, tdpErrorInvalidValue);
+  error_return_if(srcDevice != 0, tdpErrorInvalidDevice);
+  error_return_if(peerDevice != 0, tdpErrorInvalidDevice);
+
+  /* Do something with the attr argument to avoid compiler warning (only). */
+
+  switch (attr) {
+  case tdpDevP2PAttrPerformanceRank:
+  case tdpDevP2PAttrAccessSupported:
+  case tdpDevP2PAttrNativeAtomicSupported:
+  case tdpDevP2PAttrArrayAccessSupported:
+    *value = 0;
+    break;
+  default:
+    *value = -1;
+  }
 
   return tdpSuccess;
 }
@@ -164,8 +157,21 @@ tdpError_t tdpDeviceGetP2PAttribute(int * value, tdpDeviceP2PAttr attr,
 
 tdpError_t tdpDeviceSetCacheConfig(tdpFuncCache cacheConfig) {
 
-  /* No op. */
-  return tdpSuccess;
+  tdpError_t ifail = tdpSuccess;
+
+  /* Do something with the argument to avoid compiler warning (only). */
+
+  switch (cacheConfig) {
+  case tdpFuncCachePreferNone:
+  case tdpFuncCachePreferShared:
+  case tdpFuncCachePreferL1:
+  case tdpFuncCachePreferEqual:
+    break;
+  default:
+    ifail = tdpErrorInitializationError;
+  }
+
+  return ifail;
 }
 
 
@@ -221,8 +227,18 @@ tdpError_t tdpFreeHost(void * ptr) {
 
 tdpError_t tdpDeviceGetAttribute(int * value, tdpDeviceAttr attr, int device) {
 
-  assert(value);
-  assert(0); /* Return some useful information please */
+  error_return_if(value == NULL, tdpErrorInvalidValue);
+  error_return_if(device != 0, tdpErrorInvalidDevice);
+
+  /* One could assign some more attributes ... */
+
+  switch (attr) {
+  case tdpDevAttrMaxThreadsPerBlock:
+    *value = omp_get_max_threads();
+    break;
+  default:
+    *value = -1;
+  }
 
   return tdpSuccess;
 }
@@ -267,6 +283,11 @@ tdpError_t tdpGetDeviceCount(int * device) {
 
 tdpError_t tdpGetDeviceProperties(struct tdpDeviceProp * prop, int device) {
 
+  error_return_if(prop == NULL, tdpErrorInvalidValue);
+  error_return_if(device != 0, tdpErrorInvalidDevice);
+
+  *prop = (struct tdpDeviceProp) {0};
+
   prop->maxThreadsPerBlock = TARGET_MAX_THREADS_PER_BLOCK;
   prop->maxThreadsDim[0]   = TARGET_MAX_THREADS_PER_BLOCK;
   prop->maxThreadsDim[1]   = 1;
@@ -285,6 +306,7 @@ tdpError_t tdpGetDeviceProperties(struct tdpDeviceProp * prop, int device) {
 tdpError_t tdpSetDevice(int device) {
 
   error_return_if(device < 0, tdpErrorInvalidDevice);
+
   return tdpSuccess;
 }
 
@@ -325,7 +347,22 @@ const char *  tdpGetErrorName(tdpError_t error) {
 
 const char * tdpGetErrorString(tdpError_t ifail) {
 
-  return "";
+  const char * str = NULL;
+
+  /* Not all are handled ... */
+
+  switch (ifail) {
+  case tdpSuccess:
+    str = "Success";
+    break;
+  case tdpErrorInvalidValue:
+    str = "Invalid argument value";
+    break;
+  default:
+    str = "unrecognised error code";
+  }
+
+  return str;
 }
 
 /*****************************************************************************
@@ -528,15 +565,14 @@ tdpError_t tdpMemcpyFromSymbol(void * dst, const void * symbol,
 __host__ tdpError_t tdpMemcpyPeer(void * dst, int dstDevice, const void * src,
 				  int srcDevice, size_t count) {
 
-
   error_return_if(dst == NULL, tdpErrorInvalidValue);
   error_return_if(src == NULL, tdpErrorInvalidValue);
+  error_return_if(dstDevice != 0, tdpErrorInvalidDevice);
+  error_return_if(srcDevice != 0, tdpErrorInvalidDevice);
 
   /* Probably to be avoided. */
 
-  error_return(tdpErrorInvalidDevice);
-
-  return tdpSuccess;
+  return tdpMemcpy(dst, src, count, tdpMemcpyDeviceToDevice);
 }
 
 /*****************************************************************************
@@ -551,12 +587,13 @@ __host__ tdpError_t tdpMemcpyPeerAsync(void * dst, int dstDevice,
 
   error_return_if(dst == NULL, tdpErrorInvalidValue);
   error_return_if(src == NULL, tdpErrorInvalidValue);
+  error_return_if(dstDevice != 0, tdpErrorInvalidDevice);
+  error_return_if(srcDevice != 0, tdpErrorInvalidDevice);
+  error_return_if(stream != 0, tdpErrorInvalidValue);
 
-  /* Probably to be avoided as well. */
+  /* Probably to be avoided. */
 
-  error_return(tdpErrorInvalidDevice);
-
-  return tdpSuccess;
+  return tdpMemcpy(dst, src, count, tdpMemcpyDeviceToDevice);
 }
 
 
@@ -668,6 +705,8 @@ tdpError_t tdpMemcpyAsync(void * dst, const void * src, size_t count,
 
   /* Just ignore the stream argument and copy immediately */
 
+  error_return_if(stream != 0, tdpErrorInvalidValue);
+
   return tdpMemcpy(dst, src, count, kind);
 }
 
@@ -679,6 +718,11 @@ tdpError_t tdpMemcpyAsync(void * dst, const void * src, size_t count,
 
 tdpError_t tdpDeviceCanAccessPeer(int * canAccessPeer, int device,
 				  int peerDevice) {
+
+  /* cudaSuccess, cudaErrorInvalidDevice */
+
+  error_return_if(device != 0, tdpErrorInvalidDevice);
+  error_return_if(peerDevice != 0, tdpErrorInvalidDevice);
 
   *canAccessPeer = 0;
 
@@ -693,6 +737,10 @@ tdpError_t tdpDeviceCanAccessPeer(int * canAccessPeer, int device,
 
 tdpError_t tdpDeviceDisablePeerAccess(int peerDevice) {
 
+  /* cudaSuccess, cudaErrorPeerAccessNotEnabled, cudaErrorInvalidDevice */
+
+  error_return_if(peerDevice != 0, tdpErrorInvalidDevice);
+
   return tdpSuccess;
 }
 
@@ -704,7 +752,12 @@ tdpError_t tdpDeviceDisablePeerAccess(int peerDevice) {
 
 tdpError_t tdpDeviceEnablePeerAccess(int peerDevice, unsigned int flags) {
 
-  assert(flags == 0);
+  /* cudaSuccess, cudaErrorInvalidDevice, cudaErrorPeerAccessAlreadyEnabled,
+   * cudaErrorInvalidValue */
+  /* flags reserved for future use, and must be zero */
+
+  error_return_if(peerDevice != 0, tdpErrorInvalidDevice);
+  error_return_if(flags != 0, tdpErrorInvalidValue);
 
   return tdpSuccess;
 }
@@ -714,11 +767,11 @@ static int int_min(int a, int b) {return (a < b) ?a :b;}
 
 /*****************************************************************************
  *
- *  tdpAtomicAddInt
+ *  atomicAddInt
  *
  *****************************************************************************/
 
-__device__ int tdpAtomicAddInt(int * sum, int val) {
+__device__ int atomicAddInt(int * sum, int val) {
 
   int old;
 
@@ -740,13 +793,13 @@ __device__ int tdpAtomicAddInt(int * sum, int val) {
 
 /*****************************************************************************
  *
- *  tdpAtomicMaxInt
+ *  atomicMaxInt
  *
  *  maxval expected to be __shared__
  *
  *****************************************************************************/
 
-__device__ int tdpAtomicMaxInt(int * maxval, int val) {
+__device__ int atomicMaxInt(int * maxval, int val) {
 
   int old;
 
@@ -769,11 +822,11 @@ __device__ int tdpAtomicMaxInt(int * maxval, int val) {
 
 /*****************************************************************************
  *
- *  tdpAtomicMinInt
+ *  atomicMinInt
  *
  *****************************************************************************/
 
-__device__ int tdpAtomicMinInt(int * minval, int val) {
+__device__ int atomicMinInt(int * minval, int val) {
 
   int old;
 
@@ -795,11 +848,11 @@ __device__ int tdpAtomicMinInt(int * minval, int val) {
 
 /*****************************************************************************
  *
- *  tdpAtomicAddDouble
+ *  atomicAddDouble
  *
  *****************************************************************************/
 
-__device__ double tdpAtomicAddDouble(double * sum, double val) {
+__device__ double atomicAddDouble(double * sum, double val) {
 
   double old;
 
@@ -825,11 +878,11 @@ static double double_min(double a, double b) {return (a < b) ?a :b;}
 
 /*****************************************************************************
  *
- *  tdpAtomicMaxDouble
+ *  atomicMaxDouble
  *
  *****************************************************************************/
 
-__device__ double tdpAtomicMaxDouble(double * maxval, double val) {
+__device__ double atomicMaxDouble(double * maxval, double val) {
 
   double old;
 
@@ -851,11 +904,11 @@ __device__ double tdpAtomicMaxDouble(double * maxval, double val) {
 
 /*****************************************************************************
  *
- *  tdpAtomicMinDouble
+ *  atomicMinDouble
  *
  *****************************************************************************/
 
-__device__ double tdpAtomicMinDouble(double * minval, double val) {
+__device__ double atomicMinDouble(double * minval, double val) {
 
   double old;
 
@@ -877,68 +930,6 @@ __device__ double tdpAtomicMinDouble(double * minval, double val) {
 
 /*****************************************************************************
  *
- *  tdpAtomicBlockAddInt
- *
- *  See, e.g.,
- *  https://devblogs.nvidia.com/parallelforall/
- *                              faster-parallel-reductions-kepler/
- *
- *  The partial sums partsum must be __shared__; they are destroyed
- *  on exit.
- *  The result is only significant at thread zero.
- *
- *****************************************************************************/
-
-__device__ int tdpAtomicBlockAddInt(int * partsum) {
-
-#ifdef _OPENMP
-  int istr;
-  int nblock;
-  int nthread = omp_get_num_threads();
-  int idx = omp_get_thread_num();
-
-  nblock = pow(2, ceil(log(1.0*nthread)/log(2)));
-
-  for (istr = nblock/2; istr > 0; istr /= 2) {
-    #pragma omp barrier
-    if (idx < istr && idx + istr < nthread) {
-      partsum[idx] += partsum[idx + istr];
-    }
-  }
-#endif
-
-  return partsum[0];
-}
-
-/*****************************************************************************
- *
- *  tdpAtomicBlockAddDouble
- *
- *****************************************************************************/
-
-__device__ double tdpAtomicBlockAddDouble(double * partsum) {
-
-#ifdef _OPENMP
-  int istr;
-  int nblock;
-  int nthread = omp_get_num_threads();
-  int idx = omp_get_thread_num();
-
-  nblock = pow(2, ceil(log(1.0*nthread)/log(2)));
-
-  for (istr = nblock/2; istr > 0; istr /= 2) {
-    #pragma omp barrier
-    if (idx < istr && idx + istr < nthread) {
-      partsum[idx] += partsum[idx + istr];
-    }
-  }
-#endif
-
-  return partsum[0];
-}
-
-/*****************************************************************************
- *
  *  tdpGraphAddKernelNode
  *
  *****************************************************************************/
@@ -949,6 +940,13 @@ __host__ tdpError_t tdpGraphAddKernelNode(tdpGraphNode_t * pGraphNode,
 					  size_t numDependencies,
 					  const tdpKernelNodeParams * nParams) {
   /* tdpSuccess, tdpErrorInvalidValue, tdpErrorInvalidDeviceFunction */
+
+  error_return_if(pGraphNode == NULL, tdpErrorInvalidValue);
+  error_return_if(graph == NULL, tdpErrorInvalidValue);
+  error_return_if(numDependencies > 0 && pDependencies == NULL,
+		  tdpErrorInvalidValue);
+  error_return_if(nParams == NULL, tdpErrorInvalidValue);
+
   return tdpErrorInvalidValue;
 }
 
@@ -964,6 +962,13 @@ __host__ tdpError_t tdpGraphAddMemcpyNode(tdpGraphNode_t * pGraphNode,
 					  size_t numDependencies,
 					  const tdpMemcpy3DParms * copyParams) {
   /* tdpSuccess or tdpErrorInvalidValue */
+
+  error_return_if(pGraphNode == NULL, tdpErrorInvalidValue);
+  error_return_if(graph == NULL, tdpErrorInvalidValue);
+  error_return_if(numDependencies > 0 && pDependencies == NULL,
+		  tdpErrorInvalidValue);
+  error_return_if(copyParams == NULL, tdpErrorInvalidValue);
+
   return tdpErrorInvalidValue;
 }
 
@@ -976,7 +981,11 @@ __host__ tdpError_t tdpGraphAddMemcpyNode(tdpGraphNode_t * pGraphNode,
 __host__ tdpError_t tdpGraphCreate(tdpGraph_t * pGraph, unsigned int flags) {
 
   /* tdpSuccess, tdpErrorInvalidValue, or tdpErrorMemoryAllocation */
-  assert(flags == 0);
+  /* flags must be zero. */
+
+  error_return_if(pGraph == NULL, tdpErrorInvalidValue);
+  error_return_if(flags != 0, tdpErrorInvalidValue);
+
   return tdpErrorInvalidValue;
 }
 
@@ -989,6 +998,9 @@ __host__ tdpError_t tdpGraphCreate(tdpGraph_t * pGraph, unsigned int flags) {
 __host__ tdpError_t tdpGraphDestroy(tdpGraph_t graph) {
 
   /* tdpSuccess or tdpErrorInvalidValue */
+
+  error_return_if(graph == NULL, tdpErrorInvalidValue);
+
   return tdpSuccess;
 }
 
@@ -1003,6 +1015,12 @@ __host__ tdpError_t tdpGraphInstantiate(tdpGraphExec_t * pGraphExec,
 					unsigned long long flags) {
 
   /* tdpSuccess or tdpErrorInvalidValue */
+  /* flags is enum CUgraphinstantiate_flags */
+
+  error_return_if(pGraphExec == NULL, tdpErrorInvalidValue);
+  error_return_if(graph == NULL, tdpErrorInvalidValue);
+  error_return_if(flags != 0, tdpErrorInvalidValue);
+
   return tdpErrorInvalidValue;
 }
 
@@ -1015,6 +1033,10 @@ __host__ tdpError_t tdpGraphInstantiate(tdpGraphExec_t * pGraphExec,
 __host__ tdpError_t tdpGraphLaunch(tdpGraphExec_t exec, tdpStream_t stream) {
 
   /* tdpSuccess or tdpErrorInvalidValue */
+
+  error_return_if(exec == NULL, tdpErrorInvalidValue);
+  error_return_if(stream != 0, tdpErrorInvalidValue);
+
   return tdpErrorInvalidValue;
 }
 

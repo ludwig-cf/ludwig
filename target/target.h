@@ -7,7 +7,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2018-2022 The University of Edinburgh
+ *  (c) 2018-2026 The University of Edinburgh
  *
  *  Contributing authors:
  *  Alan Gray (alang@epcc.ed.ac.uk)
@@ -114,22 +114,6 @@ __host__ tdpError_t tdpDeviceEnablePeerAccess(int peerDevice,
 					      unsigned int flags);
 
 /* Additional API */
-
-__host__ tdpError_t tdpThreadModelInfo(FILE * fp);
-
-/* Type-specific atomic operations */
-
-__device__ int tdpAtomicAddInt(int * sum, int val);
-__device__ int tdpAtomicMaxInt(int * maxval, int val);
-__device__ int tdpAtomicMinInt(int * minval, int val);
-__device__ double tdpAtomicAddDouble(double * sum, double val);
-__device__ double tdpAtomicMaxDouble(double * maxval, double val);
-__device__ double tdpAtomicMinDouble(double * minval, double val);
-
-/* Type-specific intra-block reductions. */
-
-__device__ int tdpAtomicBlockAddInt(int * partsum);
-__device__ double tdpAtomicBlockAddDouble(double * partsum);
 
 /* Help for error checking */
 

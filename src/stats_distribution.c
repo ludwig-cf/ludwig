@@ -11,7 +11,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2010-2025 The University of Edinburgh
+ *  (c) 2010-2026 The University of Edinburgh
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *
@@ -316,11 +316,11 @@ __global__ void stats_distribution_float_kernel(kernel_3d_t k3d, double rho0,
       bmax  = double_max(bmax, tmax[TARGET_PAD*it]);
     }
 
-    tdpAtomicAddDouble(stat_local + 0, bvol);
-    tdpAtomicAddDouble(stat_local + 1, brho);
-    tdpAtomicAddDouble(stat_local + 2, bvar);
-    tdpAtomicMinDouble(stat_local + 3, bmin);
-    tdpAtomicMaxDouble(stat_local + 4, bmax);
+    atomicAdd(stat_local + 0, bvol);
+    atomicAdd(stat_local + 1, brho);
+    atomicAdd(stat_local + 2, bvar);
+    atomicMin(stat_local + 3, bmin);
+    atomicMax(stat_local + 4, bmax);
   }
 
   return;
@@ -525,9 +525,9 @@ __global__ void stats_distribution_momentum_float_t_kernel(kernel_3d_t k3d,
       bgz += gz[TARGET_PAD*it];
     }
 
-    tdpAtomicAddDouble(sum + X, bgx);
-    tdpAtomicAddDouble(sum + Y, bgy);
-    tdpAtomicAddDouble(sum + Z, bgz);
+    atomicAdd(sum + X, bgx);
+    atomicAdd(sum + Y, bgy);
+    atomicAdd(sum + Z, bgz);
   }
 
   return;

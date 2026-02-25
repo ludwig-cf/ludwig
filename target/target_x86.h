@@ -5,7 +5,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2018-2025 The University of Edinburgh
+ *  (c) 2018-2026 The University of Edinburgh
  *
  *  Contributing authors:
  *  Alan Gray (alang@epcc.ed.ac.uk)
@@ -34,7 +34,7 @@ typedef enum tdpMemcpyKind_enum {
 typedef enum tdpDeviceP2PAttr {
   tdpDevP2PAttrPerformanceRank = 1,
   tdpDevP2PAttrAccessSupported = 2,
-  tdpDevP2pAttrNativeAtomicSupported = 3,
+  tdpDevP2PAttrNativeAtomicSupported = 3,
   tdpDevP2PAttrArrayAccessSupported = 4
 } tdpDeviceP2PAttr;
 
@@ -151,9 +151,16 @@ typedef int  tdpStream_t;             /* an opaque handle */
 
 /* Incomplete. */
 struct tdpDeviceProp {
-  int maxThreadsPerBlock;
   int maxThreadsDim[3];
+  int maxThreadsPerBlock;
   char name[256];
+  int regsPerBlock;
+  int regsPerMultiProcessor;
+  size_t sharedMemPerBlock;               /* bytes */
+  size_t sharedMemPerMultiprocessor;      /* bytes */
+  size_t totalConstMem;                   /* bytes */
+  size_t totalGlobalMem;                  /* bytes */
+  int warpSize;
 };
 
 /* Graph API and related ... */
@@ -315,5 +322,57 @@ void  tdp_x86_postlaunch(void);
 
 #define atomicCAS(address, old, new) (old)
 #define atomicExch(address, val)
+
+/* Atomics */
+/* Please use the generic versions */
+
+__device__ int atomicAddInt(int * sum, int val);
+__device__ int atomicMaxInt(int * maxval, int val);
+__device__ int atomicMinInt(int * minval, int val);
+__device__ double atomicAddDouble(double * sum, double val);
+__device__ double atomicMaxDouble(double * maxval, double val);
+__device__ double atomicMinDouble(double * minval, double val);
+
+#ifdef __cplusplus
+
+static inline int atomicAdd(int * sum, int val) {
+  return atomicAddInt(sum, val);
+}
+static inline double atomicAdd(double * sum, double val) {
+  return atomicAddDouble(sum, val);
+}
+static inline int atomicMax(int * a, int b) {
+  return atomicMaxInt(a, b);
+}
+static inline double atomicMax(double * a, double b) {
+  return atomicMaxDouble(a, b);
+}
+static inline int atomicMin(int * a, int b) {
+  return atomicMinInt(a, b);
+}
+static inline double atomicMin(double * a, double b) {
+  return atomicMinDouble(a, b);
+}
+#else
+
+/* C generic */
+
+#define atomicAdd(sum, val)		 \
+  _Generic((val),                        \
+           int: atomicAddInt,            \
+           double: atomicAddDouble       \
+           )(sum, val)
+#define atomicMax(maxval, val)		 \
+  _Generic((val),                        \
+           int: atomicMaxInt,            \
+           double: atomicMaxDouble       \
+           )(maxval, val)
+#define atomicMin(minval, val)		 \
+  _Generic((val),                        \
+           int: atomicMinInt,            \
+           double: atomicMinDouble       \
+           )(minval, val)
+
+#endif
 
 #endif
