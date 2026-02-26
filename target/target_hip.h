@@ -5,7 +5,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- * (c) 2020-2024 The University of Edinburgh
+ * (c) 2020-2026 The University of Edinburgh
  *
  *  Contributing authors:
  *    Nikola Vasilev did the original implementation in 2020.
@@ -98,8 +98,11 @@ __host__ struct tdpPos    make_tdpPos(size_t x, size_t y, size_t z);
 __host__ struct tdpPitchedPtr make_tdpPitchedPtr(void * d, size_t p,
                                                  size_t xsz, size_t ysz);
 
-
+#if defined TARGET_MAX_THREADS_PER_BLOCK
+/* Set via -DTARGET_MAX_THREADS_PER_BLOCK */
+#else
 #define TARGET_MAX_THREADS_PER_BLOCK 128
+#endif
 #define TARGET_PAD                     1
 
 /* Macros for calls involing device symbols */
