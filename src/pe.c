@@ -198,12 +198,12 @@ __host__ int pe_message(pe_t * pe) {
 #ifdef __NVCC__
     pe_info(pe, "Target thread model: %s\n", "CUDA");
     pe_info(pe, "Default threads per block: %d; max. threads per block: %d\n",
-	    TARGET_THREADS_PER_BLOCK, 1024);
+	    TARGET_MAX_THREADS_PER_BLOCK, 1024);
 #endif
 #ifdef __HIPCC__
     pe_info(pe, "Target thread model: %s\n", "HIP");
     pe_info(pe, "Default threads per block: %d; max. threads per block: %d\n",
-	    TARGET_THREADS_PER_BLOCK, 1024);
+	    TARGET_MAX_THREADS_PER_BLOCK, 1024);
 #endif
 
     printf("\n");

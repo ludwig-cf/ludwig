@@ -5,7 +5,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- * (c) 2018-2023 The University of Edinburgh
+ * (c) 2018-2026 The University of Edinburgh
  *
  *  Contributing authors:
  *  Alan Gray (alang@epcc.ed.ac.uk)
@@ -98,8 +98,17 @@ __host__ struct tdpPitchedPtr make_tdpPitchedPtr(void * d, size_t p,
                                                  size_t xsz, size_t ysz);
 
 
+#if defined TARGET_MAX_THREADS_PER_BLOCK
+/* Can be set at compile time */
+#else
 #define TARGET_MAX_THREADS_PER_BLOCK 128
+#endif
 #define TARGET_PAD                     1
+
+/* Additional atomic functions */
+
+__device__ double atomicMin(double *, double);
+__device__ double atomicMax(double *, double);
 
 /* Macros for calls involing device symbols */
 

@@ -72,11 +72,11 @@ __device__ double tdpAtomicAddDouble(double * sum, double val) {
 
 /*****************************************************************************
  *
- *  tdpAtomicMaxDouble
+ *  atomicMax
  *
  *****************************************************************************/
 
-__device__ double tdpAtomicMaxDouble(double * address, double val) {
+__device__ double atomicMax(double * address, double val) {
 
   assert(address);
 
@@ -99,11 +99,11 @@ __device__ double tdpAtomicMaxDouble(double * address, double val) {
 
 /*****************************************************************************
  *
- *  tdpAtomicMinDouble
+ *  atomicMin
  *
  *****************************************************************************/
 
-__device__ double tdpAtomicMinDouble(double * minval, double val) {
+__device__ double atomicMin(double * minval, double val) {
 
   unsigned long long int * address_as_ull = (unsigned long long int *) minval;
   unsigned long long int old = *address_as_ull;

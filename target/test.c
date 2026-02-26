@@ -32,7 +32,7 @@ __host__ int test0(void) {
 
   ifail = tdpGetDeviceCount(&ndevice);
   if (ifail == tdpSuccess) {
-    printf("Number of devices avail: %d\n", ndevice);
+    printf("Number of devices avail:  %d\n", ndevice);
   }
   else {
     printf("No GPU device detected\n");
@@ -95,26 +95,27 @@ __global__ void kerneltest2(int * n) {
  *
  *****************************************************************************/
 
-__device__ void test_atomicAdd(void) {
+__device__ void test_atomicAdd(int * sumint, double * sumdouble) {
+
+  *sumint = 1;
+  *sumdouble = 2.0;
 
   /* int */
   {
     int val = 2;
-    int sum = 1;
-    int old = atomicAdd(&sum, val);
+    int old = atomicAdd(sumint, val);
 
     assert(old == 1);
-    assert(sum == 3);
+    assert(*sumint == 3);
   }
 
   /* double */
   {
     double val = 1.0;
-    double sum = 2.0;
-    double old = atomicAdd(&sum, val);
+    double old = atomicAdd(sumdouble, val);
 
-    assert(fabs(old - 2.0) < DBL_EPSILON);
-    assert(fabs(sum - 3.0) < DBL_EPSILON);
+    assert(fabs(old - 2.0)        < DBL_EPSILON);
+    assert(fabs(*sumdouble - 3.0) < DBL_EPSILON);
   }
 
   return;
@@ -126,26 +127,27 @@ __device__ void test_atomicAdd(void) {
  *
  *****************************************************************************/
 
-__device__ void test_atomicMax(void) {
+__device__ void test_atomicMax(int * sumint, double * sumdouble) {
+
+  *sumint = -2;
+  *sumdouble = 1.0;
 
   /* int */
   {
-    int a = -2;
     int b = -1;
-    int c = atomicMax(&a, b);
+    int c = atomicMax(sumint, b);
 
     assert(c == -2);
-    assert(a == -1);
+    assert(*sumint == -1);
   }
 
   /* double */
   {
-    double a = 1.0;
     double b = 2.0;
-    double c = atomicMax(&a, b);
+    double c = atomicMax(sumdouble, b);
 
-    assert(fabs(c - 1.0) < DBL_EPSILON);
-    assert(fabs(a - 2.0) < DBL_EPSILON);
+    assert(fabs(c          - 1.0) < DBL_EPSILON);
+    assert(fabs(*sumdouble - 2.0) < DBL_EPSILON);
   }
 
   return;
@@ -157,26 +159,27 @@ __device__ void test_atomicMax(void) {
  *
  *****************************************************************************/
 
-__device__ void test_atomicMin(void) {
+__device__ void test_atomicMin(int * sumint, double * sumdouble) {
+
+  *sumint = -1;
+  *sumdouble = 2.0;
 
   /* int */
   {
-    int a = -1;
     int b = -2;
-    int c = atomicMin(&a, b);
+    int c = atomicMin(sumint, b);
 
     assert(c == -1);
-    assert(a == -2);
+    assert(*sumint == -2);
   }
 
   /* double */
   {
-    double a = 2.0;
     double b = 1.0;
-    double c = atomicMin(&a, b);
+    double c = atomicMin(sumdouble, b);
 
-    assert(fabs(c - 2.0) < DBL_EPSILON);
-    assert(fabs(a - 1.0) < DBL_EPSILON);
+    assert(fabs(c          - 2.0) < DBL_EPSILON);
+    assert(fabs(*sumdouble - 1.0) < DBL_EPSILON);
   }
 
   return;
@@ -188,11 +191,18 @@ __device__ void test_atomicMin(void) {
  *
  *****************************************************************************/
 
-__global__ void test_kernel(void) {
+__global__ void test_kernel(int * sumint, double * sumdouble) {
 
-  test_atomicAdd();
-  test_atomicMax();
-  test_atomicMin();
+  /* This only makes sense in serial */
+  /* Atomic updates cannot take place in local memory, hence
+   * have to pass some variables in ... */
+
+  assert(threadIdx.x == 0);
+  assert(blockIdx.x  == 0);
+
+  test_atomicAdd(sumint, sumdouble);
+  test_atomicMax(sumint, sumdouble);
+  test_atomicMin(sumint, sumdouble);
 
   return;
 }
@@ -246,9 +256,18 @@ int main(int argc, char * argv[]) {
     dim3 nsblk = {1, 1, 1};
     dim3 nstpb = {1, 1, 1};
 
-    tdpLaunchKernel(test_kernel, nsblk, nstpb, 0, 0);
+    int * sumint = NULL;
+    double * sumdouble = NULL;
+
+    tdpAssert(tdpMalloc((void **) &sumint, sizeof(int)));
+    tdpAssert(tdpMalloc((void **) &sumdouble, sizeof(double)));
+
+    tdpLaunchKernel(test_kernel, nsblk, nstpb, 0, 0, sumint, sumdouble);
     tdpAssert(tdpPeekAtLastError());
     tdpAssert(tdpDeviceSynchronize());
+
+    tdpAssert(tdpFree(sumdouble));
+    tdpAssert(tdpFree(sumint));
   }
 
   return 0;
