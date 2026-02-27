@@ -20,10 +20,9 @@
 #include "fe_lc_stats.h"
 #include "util.h"
 
-
 static int fe_lc_wall(cs_t * cs, wall_t * wall, fe_lc_t * fe, double * fs);
 static int fe_lc_colloid(fe_lc_t * fe, cs_t * cs, colloids_info_t * cinfo,
-			 map_t * map, double * fs);
+                         map_t * map, double * fs);
 
 /* additional forward declarations */
 
@@ -31,23 +30,20 @@ int fe_lc_wallx(cs_t * cs, fe_lc_t * fe, double * fs);
 int fe_lc_wally(cs_t * cs, fe_lc_t * fe, double * fs);
 int fe_lc_wallz(cs_t * cs, fe_lc_t * fe, double * fs);
 
-int colloids_q_boundary(fe_lc_param_t * param,
-			const double nhat[3], double qs[3][3],
-			  double q0[3][3], int map_status);
+int colloids_q_boundary(fe_lc_param_t * param, const double nhat[3],
+                        double qs[3][3], double q0[3][3], int map_status);
 
 __host__ int blue_phase_fs(fe_lc_param_t * feparam, const double dn[3],
-			   double qs[3][3], char status, double * fs);
+                           double qs[3][3], char status, double * fs);
 
-__host__ __device__ int blue_phase_fbg(fe_lc_param_t * feparam,
-				       double q[3][3],
-				       double dq[3][3][3], double * fbg);
+__host__ __device__ int blue_phase_fbg(fe_lc_param_t * feparam, double q[3][3],
+                                       double dq[3][3][3], double * fbg);
 
 int fe_lc_stats_fluid_total(fe_lc_t * fe, map_t * map, double sum[2]);
 __global__ void fe_lc_stats_fluid_total_kernel(kernel_3d_t k3d, fe_lc_t * fe,
-					       map_t * map, double * sum);
+                                               map_t * map, double * sum);
 
 int fe_lc_stats_bulk_grad(fe_lc_t * fe, map_t * map, double sum[2]);
-
 
 #define NFE_STAT 5
 
@@ -57,13 +53,14 @@ int fe_lc_stats_bulk_grad(fe_lc_t * fe, map_t * map, double sum[2]);
  *
  ****************************************************************************/
 
-int fe_lc_stats_info(pe_t * pe, cs_t * cs, fe_lc_t * fe,
-		     wall_t * wall, map_t * map,
-		     colloids_info_t * cinfo, int step) {
+int fe_lc_stats_info(pe_t * pe, cs_t * cs, fe_lc_t * fe, wall_t * wall,
+                     map_t * map, colloids_info_t * cinfo, int step) {
 
   int ncolloid = 0;
+
   double fe_local[NFE_STAT] = {0};
   double fe_total[NFE_STAT] = {0};
+
   MPI_Comm comm = MPI_COMM_NULL;
 
   assert(pe);
@@ -101,8 +98,8 @@ int fe_lc_stats_info(pe_t * pe, cs_t * cs, fe_lc_t * fe,
 
     pe_info(pe, "\nFree energies - timestep f v f/v f_s1 fs_s2 redshift\n");
     pe_info(pe, "[fe] %14d %17.10e %17.10e %17.10e %17.10e %17.10e %17.10e\n",
-	    step, fe_total[1], fe_total[2], fe_total[1]/fe_total[2],
-	    fe_total[3], fe_total[4], fe->param->redshift);
+            step, fe_total[1], fe_total[2], fe_total[1] / fe_total[2],
+            fe_total[3], fe_total[4], fe->param->redshift);
   }
   else if (ncolloid > 0) {
 
@@ -118,14 +115,15 @@ int fe_lc_stats_info(pe_t * pe, cs_t * cs, fe_lc_t * fe,
 
     if (fe_total[4] > 0.0) {
       /* Area > 0 means the free energy is available */
-      pe_info(pe, "[fe] %14d %17.10e %17.10e %17.10e %17.10e %17.10e %17.10e\n",
-	      step, fe_total[1], fe_total[2], fe_total[1]/fe_total[2],
-	      fe_total[3], fe_total[4], fe_total[3]/fe_total[4]);
+      pe_info(pe,
+              "[fe] %14d %17.10e %17.10e %17.10e %17.10e %17.10e %17.10e\n",
+              step, fe_total[1], fe_total[2], fe_total[1] / fe_total[2],
+              fe_total[3], fe_total[4], fe_total[3] / fe_total[4]);
     }
     else {
-      pe_info(pe, "[fe] %14d %17.10e %17.10e %17.10e %17.10e\n",
-	      step, fe_total[1], fe_total[2], fe_total[1]/fe_total[2],
-	      fe_total[3]);
+      pe_info(pe, "[fe] %14d %17.10e %17.10e %17.10e %17.10e\n", step,
+              fe_total[1], fe_total[2], fe_total[1] / fe_total[2],
+              fe_total[3]);
     }
   }
   else {
@@ -134,9 +132,12 @@ int fe_lc_stats_info(pe_t * pe, cs_t * cs, fe_lc_t * fe,
 
     MPI_Reduce(fe_local, fe_total, NFE_STAT, MPI_DOUBLE, MPI_SUM, 0, comm);
 
-    pe_info(pe, "\nFree energies - timestep f v f/v f_bulk/v f_grad/v redshift\n");
-    pe_info(pe, "[fe] %14d %17.10e %17.10e %17.10e %17.10e %17.10e %17.10e\n", step,
-	fe_total[1], fe_total[2], fe_total[1]/fe_total[2], fe_total[3]/fe_total[2], fe_total[4]/fe_total[2], fe->param->redshift);
+    pe_info(pe,
+            "\nFree energies - timestep f v f/v f_bulk/v f_grad/v redshift\n");
+    pe_info(pe, "[fe] %14d %17.10e %17.10e %17.10e %17.10e %17.10e %17.10e\n",
+            step, fe_total[1], fe_total[2], fe_total[1] / fe_total[2],
+            fe_total[3] / fe_total[2], fe_total[4] / fe_total[2],
+            fe->param->redshift);
   }
 
   return 0;
@@ -160,9 +161,15 @@ static int fe_lc_wall(cs_t * cs, wall_t * wall, fe_lc_t * fe, double * fs) {
 
   wall_present_dim(wall, iswall);
 
-  if (iswall[X]) fe_lc_wallx(cs, fe, fs);
-  if (iswall[Y]) fe_lc_wally(cs, fe, fs);
-  if (iswall[Z]) fe_lc_wallz(cs, fe, fs);
+  if (iswall[X]) {
+    fe_lc_wallx(cs, fe, fs);
+  }
+  if (iswall[Y]) {
+    fe_lc_wally(cs, fe, fs);
+  }
+  if (iswall[Z]) {
+    fe_lc_wallz(cs, fe, fs);
+  }
 
   return 0;
 }
@@ -202,32 +209,32 @@ int fe_lc_wallx(cs_t * cs, fe_lc_t * fe, double * fs) {
 
   if (mpicoords[X] == 0) {
 
-    ic = 1;
+    ic    = 1;
     dn[X] = +1.0;
 
     for (jc = 1; jc <= nlocal[Y]; jc++) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 
         index = cs_index(cs, ic, jc, kc);
-	field_tensor(fe->q, index, qs);
-	blue_phase_fs(fe->param, dn, qs, MAP_BOUNDARY, &fes);
-	fs[0] += fes;
+        field_tensor(fe->q, index, qs);
+        blue_phase_fs(fe->param, dn, qs, MAP_BOUNDARY, &fes);
+        fs[0] += fes;
       }
     }
   }
 
   if (mpicoords[X] == mpisz[X] - 1) {
 
-    ic = nlocal[X];
+    ic    = nlocal[X];
     dn[X] = -1;
 
     for (jc = 1; jc <= nlocal[Y]; jc++) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 
         index = cs_index(cs, ic, jc, kc);
-	field_tensor(fe->q, index, qs);
-	blue_phase_fs(fe->param, dn, qs, MAP_BOUNDARY, &fes);
-	fs[1] += fes;
+        field_tensor(fe->q, index, qs);
+        blue_phase_fs(fe->param, dn, qs, MAP_BOUNDARY, &fes);
+        fs[1] += fes;
       }
     }
   }
@@ -270,32 +277,32 @@ int fe_lc_wally(cs_t * cs, fe_lc_t * fe, double * fs) {
 
   if (mpicoords[Y] == 0) {
 
-    jc = 1;
+    jc    = 1;
     dn[Y] = +1.0;
 
     for (ic = 1; ic <= nlocal[X]; ic++) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 
         index = cs_index(cs, ic, jc, kc);
-	field_tensor(fe->q, index, qs);
-	blue_phase_fs(fe->param, dn, qs, MAP_BOUNDARY, &fes);
-	fs[0] += fes;
+        field_tensor(fe->q, index, qs);
+        blue_phase_fs(fe->param, dn, qs, MAP_BOUNDARY, &fes);
+        fs[0] += fes;
       }
     }
   }
 
   if (mpicoords[Y] == mpisz[Y] - 1) {
 
-    jc = nlocal[Y];
+    jc    = nlocal[Y];
     dn[Y] = -1;
 
     for (ic = 1; ic <= nlocal[X]; ic++) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 
         index = cs_index(cs, ic, jc, kc);
-	field_tensor(fe->q, index, qs);
-	blue_phase_fs(fe->param, dn, qs, MAP_BOUNDARY, &fes);
-	fs[1] += fes;
+        field_tensor(fe->q, index, qs);
+        blue_phase_fs(fe->param, dn, qs, MAP_BOUNDARY, &fes);
+        fs[1] += fes;
       }
     }
   }
@@ -338,32 +345,32 @@ int fe_lc_wallz(cs_t * cs, fe_lc_t * fe, double * fs) {
 
   if (mpicoords[Z] == 0) {
 
-    kc = 1;
+    kc    = 1;
     dn[Z] = +1.0;
 
     for (ic = 1; ic <= nlocal[X]; ic++) {
       for (jc = 1; jc <= nlocal[Y]; jc++) {
 
         index = cs_index(cs, ic, jc, kc);
-	field_tensor(fe->q, index, qs);
-	blue_phase_fs(fe->param, dn, qs, MAP_BOUNDARY, &fes);
-	fs[0] += fes;
+        field_tensor(fe->q, index, qs);
+        blue_phase_fs(fe->param, dn, qs, MAP_BOUNDARY, &fes);
+        fs[0] += fes;
       }
     }
   }
 
   if (mpicoords[Z] == mpisz[Z] - 1) {
 
-    kc = nlocal[Z];
+    kc    = nlocal[Z];
     dn[Z] = -1;
 
     for (ic = 1; ic <= nlocal[X]; ic++) {
       for (jc = 1; jc <= nlocal[Y]; jc++) {
 
         index = cs_index(cs, ic, jc, kc);
-	field_tensor(fe->q, index, qs);
-	blue_phase_fs(fe->param, dn, qs, MAP_BOUNDARY, &fes);
-	fs[1] += fes;
+        field_tensor(fe->q, index, qs);
+        blue_phase_fs(fe->param, dn, qs, MAP_BOUNDARY, &fes);
+        fs[1] += fes;
       }
     }
   }
@@ -387,9 +394,8 @@ int fe_lc_wallz(cs_t * cs, fe_lc_t * fe, double * fs) {
  *
  *****************************************************************************/
 
-int colloids_q_boundary(fe_lc_param_t * param,
-			const double nhat[3], double qs[3][3],
-			double q0[3][3], int map_status) {
+int colloids_q_boundary(fe_lc_param_t * param, const double nhat[3],
+                        double qs[3][3], double q0[3][3], int map_status) {
   int ia, ib, ic, id;
   int anchoring;
 
@@ -400,7 +406,9 @@ int colloids_q_boundary(fe_lc_param_t * param,
   assert(map_status == MAP_COLLOID || map_status == MAP_BOUNDARY);
 
   anchoring = param->coll.type;
-  if (map_status == MAP_BOUNDARY) anchoring = param->wall.type;
+  if (map_status == MAP_BOUNDARY) {
+    anchoring = param->wall.type;
+  }
 
   fe_lc_amplitude_compute(param, &amp);
 
@@ -409,8 +417,8 @@ int colloids_q_boundary(fe_lc_param_t * param,
     for (ia = 0; ia < 3; ia++) {
       double na = param->wall.nfix[ia];
       for (ib = 0; ib < 3; ib++) {
-	double nb = param->wall.nfix[ib];
-	q0[ia][ib] = 0.5*amp*(3.0*na*nb - d[ia][ib]);
+        double nb  = param->wall.nfix[ib];
+        q0[ia][ib] = 0.5 * amp * (3.0 * na * nb - d[ia][ib]);
       }
     }
   }
@@ -418,7 +426,7 @@ int colloids_q_boundary(fe_lc_param_t * param,
   if (anchoring == LC_ANCHORING_NORMAL) {
     for (ia = 0; ia < 3; ia++) {
       for (ib = 0; ib < 3; ib++) {
-	q0[ia][ib] = 0.5*amp*(3.0*nhat[ia]*nhat[ib] - d[ia][ib]);
+        q0[ia][ib] = 0.5 * amp * (3.0 * nhat[ia] * nhat[ib] - d[ia][ib]);
       }
     }
   }
@@ -429,24 +437,23 @@ int colloids_q_boundary(fe_lc_param_t * param,
 
     for (ia = 0; ia < 3; ia++) {
       for (ib = 0; ib < 3; ib++) {
-	qtilde[ia][ib] = qs[ia][ib] + 0.5*amp*d[ia][ib];
+        qtilde[ia][ib] = qs[ia][ib] + 0.5 * amp * d[ia][ib];
       }
     }
 
     for (ia = 0; ia < 3; ia++) {
       for (ib = 0; ib < 3; ib++) {
-	q0[ia][ib] = 0.0;
-	for (ic = 0; ic < 3; ic++) {
-	  for (id = 0; id < 3; id++) {
-	    q0[ia][ib] += (d[ia][ic] - nhat[ia]*nhat[ic])*qtilde[ic][id]
-	      *(d[id][ib] - nhat[id]*nhat[ib]);
-	  }
-	}
-	/* Return Q^0_ab = ~Q_ab - (1/2) A d_ab */
-	q0[ia][ib] -= 0.5*amp*d[ia][ib];
+        q0[ia][ib] = 0.0;
+        for (ic = 0; ic < 3; ic++) {
+          for (id = 0; id < 3; id++) {
+            q0[ia][ib] += (d[ia][ic] - nhat[ia] * nhat[ic]) * qtilde[ic][id] *
+                          (d[id][ib] - nhat[id] * nhat[ib]);
+          }
+        }
+        /* Return Q^0_ab = ~Q_ab - (1/2) A d_ab */
+        q0[ia][ib] -= 0.5 * amp * d[ia][ib];
       }
     }
-
   }
 
   return 0;
@@ -464,7 +471,7 @@ int colloids_q_boundary(fe_lc_param_t * param,
  *****************************************************************************/
 
 static int fe_lc_colloid(fe_lc_t * fe, cs_t * cs, colloids_info_t * cinfo,
-			 map_t * map, double * fs) {
+                         map_t * map, double * fs) {
 
   int ic, jc, kc, index, index1;
   int nhat[3];
@@ -490,93 +497,94 @@ static int fe_lc_colloid(fe_lc_t * fe, cs_t * cs, colloids_info_t * cinfo,
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 
         index = cs_index(cs, ic, jc, kc);
-	map_status(map, index, &status);
-	if (status != MAP_FLUID) continue;
+        map_status(map, index, &status);
+        if (status != MAP_FLUID) {
+          continue;
+        }
 
-	/* This site is fluid. Look at six nearest neighbours... */
-	field_tensor(fe->q, index, qs);
+        /* This site is fluid. Look at six nearest neighbours... */
+        field_tensor(fe->q, index, qs);
 
         nhat[Y] = 0;
         nhat[Z] = 0;
 
-	/* Surface in direction of (ic+1,jc,kc) */
-	index1 = cs_index(cs, ic+1, jc, kc);
-	map_status(map, index1, &status);
+        /* Surface in direction of (ic+1,jc,kc) */
+        index1 = cs_index(cs, ic + 1, jc, kc);
+        map_status(map, index1, &status);
 
-	if (status == MAP_COLLOID) {
+        if (status == MAP_COLLOID) {
           nhat[X] = -1;
           colloids_q_boundary_normal(cinfo, index, nhat, dn);
-	  blue_phase_fs(fe->param, dn, qs, MAP_COLLOID, &fes);
-	  fs[0] += fes;
-	  fs[1] += 1.0;
+          blue_phase_fs(fe->param, dn, qs, MAP_COLLOID, &fes);
+          fs[0] += fes;
+          fs[1] += 1.0;
         }
 
-	/* Surface in direction of (ic-1,jc,kc) */
-	index1 = cs_index(cs, ic-1, jc, kc);
-	map_status(map, index1, &status);
+        /* Surface in direction of (ic-1,jc,kc) */
+        index1 = cs_index(cs, ic - 1, jc, kc);
+        map_status(map, index1, &status);
 
         if (status == MAP_COLLOID) {
           nhat[X] = +1;
           colloids_q_boundary_normal(cinfo, index, nhat, dn);
-	  blue_phase_fs(fe->param, dn, qs, MAP_COLLOID, &fes);
-	  fs[0] += fes;
-	  fs[1] += 1.0;
+          blue_phase_fs(fe->param, dn, qs, MAP_COLLOID, &fes);
+          fs[0] += fes;
+          fs[1] += 1.0;
         }
 
-	nhat[X] = 0;
-	nhat[Z] = 0;
+        nhat[X] = 0;
+        nhat[Z] = 0;
 
-	/* Surface in direction of (ic, jc+1,kc) */
-	index1 = cs_index(cs, ic, jc+1, kc);
-	map_status(map, index1, &status);
+        /* Surface in direction of (ic, jc+1,kc) */
+        index1 = cs_index(cs, ic, jc + 1, kc);
+        map_status(map, index1, &status);
 
         if (status == MAP_COLLOID) {
           nhat[Y] = -1;
           colloids_q_boundary_normal(cinfo, index, nhat, dn);
-	  blue_phase_fs(fe->param, dn, qs, MAP_COLLOID, &fes);
-	  fs[0] += fes;
-	  fs[1] += 1.0;
+          blue_phase_fs(fe->param, dn, qs, MAP_COLLOID, &fes);
+          fs[0] += fes;
+          fs[1] += 1.0;
         }
 
-	/* Surface in direction of (ic,jc-1,kc) */
-	index1 = cs_index(cs, ic, jc-1, kc);
-	map_status(map, index1, &status);
+        /* Surface in direction of (ic,jc-1,kc) */
+        index1 = cs_index(cs, ic, jc - 1, kc);
+        map_status(map, index1, &status);
 
         if (status == MAP_COLLOID) {
           nhat[Y] = +1;
           colloids_q_boundary_normal(cinfo, index, nhat, dn);
-	  blue_phase_fs(fe->param, dn, qs, MAP_COLLOID, &fes);
-	  fs[0] += fes;
-	  fs[1] += 1.0;
+          blue_phase_fs(fe->param, dn, qs, MAP_COLLOID, &fes);
+          fs[0] += fes;
+          fs[1] += 1.0;
         }
 
-	nhat[X] = 0;
-	nhat[Y] = 0;
+        nhat[X] = 0;
+        nhat[Y] = 0;
 
-	/* Surface in direction of (ic,jc,kc+1) */
-	index1 = cs_index(cs, ic, jc, kc+1);
-	map_status(map, index1, &status);
+        /* Surface in direction of (ic,jc,kc+1) */
+        index1 = cs_index(cs, ic, jc, kc + 1);
+        map_status(map, index1, &status);
 
         if (status == MAP_COLLOID) {
           nhat[Z] = -1;
           colloids_q_boundary_normal(cinfo, index, nhat, dn);
-	  blue_phase_fs(fe->param, dn, qs, MAP_COLLOID, &fes);
-	  fs[0] += fes;
-	  fs[1] += 1.0;
+          blue_phase_fs(fe->param, dn, qs, MAP_COLLOID, &fes);
+          fs[0] += fes;
+          fs[1] += 1.0;
         }
 
-	/* Surface in direction of (ic,jc,kc-1) */
-	index1 = cs_index(cs, ic, jc, kc-1);
-	map_status(map, index1, &status);
+        /* Surface in direction of (ic,jc,kc-1) */
+        index1 = cs_index(cs, ic, jc, kc - 1);
+        map_status(map, index1, &status);
 
         if (status == MAP_COLLOID) {
           nhat[Z] = +1;
           colloids_q_boundary_normal(cinfo, index, nhat, dn);
-	  blue_phase_fs(fe->param, dn, qs, MAP_COLLOID, &fes);
-	  fs[0] += fes;
-	  fs[1] += 1.0;
+          blue_phase_fs(fe->param, dn, qs, MAP_COLLOID, &fes);
+          fs[0] += fes;
+          fs[1] += 1.0;
         }
-
       }
     }
   }
@@ -607,10 +615,9 @@ static int fe_lc_colloid(fe_lc_t * fe, cs_t * cs, colloids_info_t * cinfo,
  *****************************************************************************/
 
 __host__ int blue_phase_fs(fe_lc_param_t * feparam, const double dn[3],
-			   double qs[3][3], char status,
-			   double * fs) {
+                           double qs[3][3], char status, double * fs) {
 
-  int ia, ib;
+  int    ia, ib;
   double w1, w2;
   double q0[3][3];
   double qtilde;
@@ -631,7 +638,7 @@ __host__ int blue_phase_fs(fe_lc_param_t * feparam, const double dn[3],
   }
 
   fe_lc_amplitude_compute(feparam, &amplitude);
-  s0 = 1.5*amplitude;  /* Fournier & Galatola S_0 = (3/2)A */
+  s0 = 1.5 * amplitude; /* Fournier & Galatola S_0 = (3/2)A */
 
   /* Free energy density */
 
@@ -639,13 +646,13 @@ __host__ int blue_phase_fs(fe_lc_param_t * feparam, const double dn[3],
   f2 = 0.0;
   for (ia = 0; ia < 3; ia++) {
     for (ib = 0; ib < 3; ib++) {
-      f1 += (qs[ia][ib] - q0[ia][ib])*(qs[ia][ib] - q0[ia][ib]);
-      qtilde = qs[ia][ib] + 0.5*amplitude*d[ia][ib];
-      f2 += (qtilde*qtilde - s0*s0)*(qtilde*qtilde - s0*s0);
+      f1 += (qs[ia][ib] - q0[ia][ib]) * (qs[ia][ib] - q0[ia][ib]);
+      qtilde = qs[ia][ib] + 0.5 * amplitude * d[ia][ib];
+      f2 += (qtilde * qtilde - s0 * s0) * (qtilde * qtilde - s0 * s0);
     }
   }
 
-  *fs = 0.5*w1*f1 + 0.5*w2*f2;
+  *fs = 0.5 * w1 * f1 + 0.5 * w2 * f2;
 
   return 0;
 }
@@ -660,35 +667,36 @@ __host__ int blue_phase_fs(fe_lc_param_t * feparam, const double dn[3],
 
 int fe_lc_stats_fluid_total(fe_lc_t * fe, map_t * map, double sum[2]) {
 
-  const int nsz = 2*sizeof(double);
-  int nlocal[3] = {0};
-  double * dsum = NULL;
+  const int nsz = 2 * sizeof(double);
+
+  int      nlocal[3] = {0};
+  double * dsum      = NULL;
 
   assert(fe);
   assert(map);
 
   cs_nlocal(map->cs, nlocal);
 
-  tdpAssert( tdpMalloc((void ** ) &dsum, nsz) );
-  tdpAssert( tdpMemcpy(dsum, sum, nsz, tdpMemcpyHostToDevice) );
+  tdpAssert(tdpMalloc((void **) &dsum, nsz));
+  tdpAssert(tdpMemcpy(dsum, sum, nsz, tdpMemcpyHostToDevice));
 
   {
     /* Kernel */
-    dim3 nblk = {};
-    dim3 ntpb = {};
-    cs_limits_t lim = {1, nlocal[X], 1, nlocal[Y], 1, nlocal[Z]};
-    kernel_3d_t k3d = kernel_3d(map->cs, lim);
+    dim3        nblk = {};
+    dim3        ntpb = {};
+    cs_limits_t lim  = {1, nlocal[X], 1, nlocal[Y], 1, nlocal[Z]};
+    kernel_3d_t k3d  = kernel_3d(map->cs, lim);
 
     kernel_3d_launch_param(k3d.kiterations, &nblk, &ntpb);
-    tdpLaunchKernel(fe_lc_stats_fluid_total_kernel, nblk, ntpb, 0, 0,
-                    k3d, fe->target, map->target, dsum);
+    tdpLaunchKernel(fe_lc_stats_fluid_total_kernel, nblk, ntpb, 0, 0, k3d,
+                    fe->target, map->target, dsum);
 
-    tdpAssert( tdpPeekAtLastError() );
-    tdpAssert( tdpStreamSynchronize(0) );
+    tdpAssert(tdpPeekAtLastError());
+    tdpAssert(tdpStreamSynchronize(0));
   }
 
-  tdpAssert( tdpMemcpy(sum, dsum, nsz, tdpMemcpyDeviceToHost) );
-  tdpAssert( tdpFree(dsum) );
+  tdpAssert(tdpMemcpy(sum, dsum, nsz, tdpMemcpyDeviceToHost));
+  tdpAssert(tdpFree(dsum));
 
   return 0;
 }
@@ -700,21 +708,22 @@ int fe_lc_stats_fluid_total(fe_lc_t * fe, map_t * map, double sum[2]) {
  *****************************************************************************/
 
 __global__ void fe_lc_stats_fluid_total_kernel(kernel_3d_t k3d, fe_lc_t * fe,
-					       map_t * map, double * sum) {
+                                               map_t * map, double * sum) {
   int kindex = 0;
-  int tid = threadIdx.x;
+  int tid    = threadIdx.x;
+  int pid    = TARGET_PAD * tid;
 
-  __shared__ double tfed[TARGET_PAD*TARGET_MAX_THREADS_PER_BLOCK];
-  __shared__ double tvol[TARGET_PAD*TARGET_MAX_THREADS_PER_BLOCK];
+  __shared__ double tfed[TARGET_PAD * TARGET_MAX_THREADS_PER_BLOCK];
+  __shared__ double tvol[TARGET_PAD * TARGET_MAX_THREADS_PER_BLOCK];
 
-  tfed[TARGET_PAD*tid] = 0.0;
-  tvol[TARGET_PAD*tid] = 0.0;
+  tfed[pid] = 0.0;
+  tvol[pid] = 0.0;
 
   for_simt_parallel(kindex, k3d.kiterations, 1) {
 
-    int ic = kernel_3d_ic(&k3d, kindex);
-    int jc = kernel_3d_jc(&k3d, kindex);
-    int kc = kernel_3d_kc(&k3d, kindex);
+    int ic     = kernel_3d_ic(&k3d, kindex);
+    int jc     = kernel_3d_jc(&k3d, kindex);
+    int kc     = kernel_3d_kc(&k3d, kindex);
     int index  = kernel_3d_cs_index(&k3d, ic, jc, kc);
     int status = MAP_BOUNDARY;
 
@@ -725,8 +734,8 @@ __global__ void fe_lc_stats_fluid_total_kernel(kernel_3d_t k3d, fe_lc_t * fe,
 
       fe_lc_fed(fe, index, &fed);
 
-      tfed[TARGET_PAD*tid] += fed;
-      tvol[TARGET_PAD*tid] += 1.0;
+      tfed[pid] += fed;
+      tvol[pid] += 1.0;
     }
   }
 
@@ -738,8 +747,9 @@ __global__ void fe_lc_stats_fluid_total_kernel(kernel_3d_t k3d, fe_lc_t * fe,
     double bvol = 0.0;
 
     for (int it = 0; it < blockDim.x; it++) {
-      bfed += tfed[TARGET_PAD*it];
-      bvol += tvol[TARGET_PAD*it];
+      pid = TARGET_PAD * it;
+      bfed += tfed[pid];
+      bvol += tvol[pid];
     }
 
     atomicAdd(sum + 0, bfed);
@@ -756,39 +766,40 @@ __global__ void fe_lc_stats_fluid_total_kernel(kernel_3d_t k3d, fe_lc_t * fe,
  *****************************************************************************/
 
 __global__ void fe_lc_stats_bulk_grad_kernel(kernel_3d_t k3d, fe_lc_t * fe,
-					     map_t * map, double * sum);
+                                             map_t * map, double * sum);
 
-int fe_lc_stats_bulk_grad(fe_lc_t * fe,  map_t * map, double sum[2]) {
+int fe_lc_stats_bulk_grad(fe_lc_t * fe, map_t * map, double sum[2]) {
 
-  const int nsz = 2*sizeof(double);
-  int nlocal[3] = {0};
-  double * dsum = NULL;
+  const int nsz = 2 * sizeof(double);
+
+  int      nlocal[3] = {0};
+  double * dsum      = NULL;
 
   assert(fe);
   assert(map);
 
   cs_nlocal(map->cs, nlocal);
 
-  tdpAssert( tdpMalloc((void ** ) &dsum, nsz) );
-  tdpAssert( tdpMemcpy(dsum, sum, nsz, tdpMemcpyHostToDevice) );
+  tdpAssert(tdpMalloc((void **) &dsum, nsz));
+  tdpAssert(tdpMemcpy(dsum, sum, nsz, tdpMemcpyHostToDevice));
 
   {
     /* Kernel */
-    dim3 nblk = {};
-    dim3 ntpb = {};
-    cs_limits_t lim = {1, nlocal[X], 1, nlocal[Y], 1, nlocal[Z]};
-    kernel_3d_t k3d = kernel_3d(map->cs, lim);
+    dim3        nblk = {};
+    dim3        ntpb = {};
+    cs_limits_t lim  = {1, nlocal[X], 1, nlocal[Y], 1, nlocal[Z]};
+    kernel_3d_t k3d  = kernel_3d(map->cs, lim);
 
     kernel_3d_launch_param(k3d.kiterations, &nblk, &ntpb);
-    tdpLaunchKernel(fe_lc_stats_bulk_grad_kernel, nblk, ntpb, 0, 0,
-                    k3d, fe->target, map->target, dsum);
+    tdpLaunchKernel(fe_lc_stats_bulk_grad_kernel, nblk, ntpb, 0, 0, k3d,
+                    fe->target, map->target, dsum);
 
-    tdpAssert( tdpPeekAtLastError() );
-    tdpAssert( tdpStreamSynchronize(0) );
+    tdpAssert(tdpPeekAtLastError());
+    tdpAssert(tdpStreamSynchronize(0));
   }
 
-  tdpAssert( tdpMemcpy(sum, dsum, nsz, tdpMemcpyDeviceToHost) );
-  tdpAssert( tdpFree(dsum) );
+  tdpAssert(tdpMemcpy(sum, dsum, nsz, tdpMemcpyDeviceToHost));
+  tdpAssert(tdpFree(dsum));
 
   return 0;
 }
@@ -800,21 +811,22 @@ int fe_lc_stats_bulk_grad(fe_lc_t * fe,  map_t * map, double sum[2]) {
  *****************************************************************************/
 
 __global__ void fe_lc_stats_bulk_grad_kernel(kernel_3d_t k3d, fe_lc_t * fe,
-					     map_t * map, double * sum) {
+                                             map_t * map, double * sum) {
   int kindex = 0;
-  int tid = threadIdx.x;
+  int tid    = threadIdx.x;
+  int pid    = TARGET_PAD * tid;
 
-  __shared__ double tbulk[TARGET_PAD*TARGET_MAX_THREADS_PER_BLOCK];
-  __shared__ double tgrad[TARGET_PAD*TARGET_MAX_THREADS_PER_BLOCK];
+  __shared__ double tbulk[TARGET_PAD * TARGET_MAX_THREADS_PER_BLOCK];
+  __shared__ double tgrad[TARGET_PAD * TARGET_MAX_THREADS_PER_BLOCK];
 
-  tbulk[TARGET_PAD*tid] = 0.0;
-  tgrad[TARGET_PAD*tid] = 0.0;
+  tbulk[pid] = 0.0;
+  tgrad[pid] = 0.0;
 
   for_simt_parallel(kindex, k3d.kiterations, 1) {
 
-    int ic = kernel_3d_ic(&k3d, kindex);
-    int jc = kernel_3d_jc(&k3d, kindex);
-    int kc = kernel_3d_kc(&k3d, kindex);
+    int ic     = kernel_3d_ic(&k3d, kindex);
+    int jc     = kernel_3d_jc(&k3d, kindex);
+    int kc     = kernel_3d_kc(&k3d, kindex);
     int index  = kernel_3d_cs_index(&k3d, ic, jc, kc);
     int status = MAP_BOUNDARY;
 
@@ -833,8 +845,8 @@ __global__ void fe_lc_stats_bulk_grad_kernel(kernel_3d_t k3d, fe_lc_t * fe,
       fe_lc_compute_h(fe, fe->param->gamma, q, dq, dsq, h);
 
       blue_phase_fbg(fe->param, q, dq, fecontrib);
-      tbulk[TARGET_PAD*tid] += fecontrib[0];
-      tgrad[TARGET_PAD*tid] += fecontrib[1];
+      tbulk[pid] += fecontrib[0];
+      tgrad[pid] += fecontrib[1];
     }
   }
 
@@ -846,8 +858,9 @@ __global__ void fe_lc_stats_bulk_grad_kernel(kernel_3d_t k3d, fe_lc_t * fe,
     double bgrad = 0.0;
 
     for (int it = 0; it < blockDim.x; it++) {
-      bbulk += tbulk[TARGET_PAD*it];
-      bgrad += tgrad[TARGET_PAD*it];
+      pid = TARGET_PAD * it;
+      bbulk += tbulk[pid];
+      bgrad += tgrad[pid];
     }
 
     atomicAdd(sum + 0, bbulk);
@@ -866,27 +879,29 @@ __global__ void fe_lc_stats_bulk_grad_kernel(kernel_3d_t k3d, fe_lc_t * fe,
  *****************************************************************************/
 
 __host__ __device__ int blue_phase_fbg(fe_lc_param_t * feparam, double q[3][3],
-				       double dq[3][3][3], double * febg) {
+                                       double dq[3][3][3], double * febg) {
 
-  int ia, ib, ic, id;
+  int    ia, ib, ic, id;
   double q0, redshift, rredshift, a0, gamma, kappa0, kappa1;
   double q2, q3, dq0, dq1, sum;
-  const double r3 = 1.0/3.0;
+
+  const double r3 = 1.0 / 3.0;
+
   LEVI_CIVITA_CHAR(e);
 
-  q0 = feparam->q0;
+  q0     = feparam->q0;
   kappa0 = feparam->kappa0;
   kappa1 = feparam->kappa1;
 
   /* Use current redshift.*/
-  redshift = feparam->redshift;
+  redshift  = feparam->redshift;
   rredshift = feparam->rredshift;
 
   q0 *= rredshift;
-  kappa0 *= redshift*redshift;
-  kappa1 *= redshift*redshift;
+  kappa0 *= redshift * redshift;
+  kappa1 *= redshift * redshift;
 
-  a0 = feparam->a0;
+  a0    = feparam->a0;
   gamma = feparam->gamma;
 
   q2 = 0.0;
@@ -895,7 +910,7 @@ __host__ __device__ int blue_phase_fbg(fe_lc_param_t * feparam, double q[3][3],
 
   for (ia = 0; ia < 3; ia++) {
     for (ib = 0; ib < 3; ib++) {
-      q2 += q[ia][ib]*q[ia][ib];
+      q2 += q[ia][ib] * q[ia][ib];
     }
   }
 
@@ -906,8 +921,8 @@ __host__ __device__ int blue_phase_fbg(fe_lc_param_t * feparam, double q[3][3],
   for (ia = 0; ia < 3; ia++) {
     for (ib = 0; ib < 3; ib++) {
       for (ic = 0; ic < 3; ic++) {
-	/* We use here the fact that q[ic][ia] = q[ia][ic] */
-	q3 += q[ia][ib]*q[ib][ic]*q[ia][ic];
+        /* We use here the fact that q[ic][ia] = q[ia][ic] */
+        q3 += q[ia][ib] * q[ib][ic] * q[ia][ic];
       }
     }
   }
@@ -921,7 +936,7 @@ __host__ __device__ int blue_phase_fbg(fe_lc_param_t * feparam, double q[3][3],
     for (ib = 0; ib < 3; ib++) {
       sum += dq[ib][ia][ib];
     }
-    dq0 += sum*sum;
+    dq0 += sum * sum;
   }
 
   /* (e_agd d_g Q_db + 2q_0 Q_ab)^2 */
@@ -932,23 +947,23 @@ __host__ __device__ int blue_phase_fbg(fe_lc_param_t * feparam, double q[3][3],
     for (ib = 0; ib < 3; ib++) {
       sum = 0.0;
       for (id = 0; id < 3; id++) {
-	for (ic = 0; ic < 3; ic++) {
-	  sum += e[ia][id][ic]*dq[id][ic][ib];
-	}
+        for (ic = 0; ic < 3; ic++) {
+          sum += e[ia][id][ic] * dq[id][ic][ib];
+        }
       }
-      sum += 2.0*q0*q[ia][ib];
-      dq1 += sum*sum;
+      sum += 2.0 * q0 * q[ia][ib];
+      dq1 += sum * sum;
     }
   }
 
   /* Contribution bulk */
-  febg[0] = 0.5*a0*(1.0 - r3*gamma)*q2;
-  febg[0] += -r3*a0*gamma*q3;
-  febg[0] += 0.25*a0*gamma*q2*q2;
+  febg[0] = 0.5 * a0 * (1.0 - r3 * gamma) * q2;
+  febg[0] += -r3 * a0 * gamma * q3;
+  febg[0] += 0.25 * a0 * gamma * q2 * q2;
 
   /* Contribution gradient kapp0 and kappa1 */
-  febg[1] = 0.5*kappa0*dq0;
-  febg[1] += 0.5*kappa1*dq1;
+  febg[1] = 0.5 * kappa0 * dq0;
+  febg[1] += 0.5 * kappa1 * dq1;
 
   return 0;
 }

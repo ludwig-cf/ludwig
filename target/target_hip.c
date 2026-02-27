@@ -53,18 +53,17 @@ __device__ double tdpAtomicAddDouble(double * sum, double val) {
 
 #else
   unsigned long long int * address_as_ull = (unsigned long long int *) sum;
-  unsigned long long int old = *address_as_ull;
-  unsigned long long int assumed;
+  unsigned long long int   old            = *address_as_ull;
+  unsigned long long int   assumed;
 
   do {
     assumed = old;
-    old = atomicCAS(address_as_ull, assumed,
-		    __double_as_longlong(val + __longlong_as_double(assumed)));
+    old     = atomicCAS(address_as_ull, assumed,
+                        __double_as_longlong(val + __longlong_as_double(assumed)));
   } while (assumed != old);
 
   return __longlong_as_double(old);
 #endif
-
 }
 
 /*****************************************************************************
@@ -82,13 +81,14 @@ __device__ double tdpAtomicMinDouble(double * minval, double val) {
 #else
 
   unsigned long long int * address_as_ull = (unsigned long long int *) minval;
-  unsigned long long int old = *address_as_ull;
-  unsigned long long int assumed;
+  unsigned long long int   old            = *address_as_ull;
+  unsigned long long int   assumed;
 
   do {
     assumed = old;
-    old = atomicCAS(address_as_ull, assumed, __double_as_longlong
-		    (fminf(val, __longlong_as_double(assumed))));
+    old     = atomicCAS(
+        address_as_ull, assumed,
+        __double_as_longlong(fminf(val, __longlong_as_double(assumed))));
   } while (assumed != old);
 
   return __longlong_as_double(old);
@@ -109,16 +109,20 @@ __device__ double tdpAtomicMaxDouble(double * address, double val) {
 
 #else
 
-  if (*address >= val) return *address;
+  if (*address >= val) {
+    return *address;
+  }
 
   {
     unsigned long long * const address_as_ull = (unsigned long long *) address;
-    unsigned long long old = *address_as_ull;
-    unsigned long long assumed;
+    unsigned long long         old            = *address_as_ull;
+    unsigned long long         assumed;
 
     do {
       assumed = old;
-      if (__longlong_as_double(assumed) >= val) break;
+      if (__longlong_as_double(assumed) >= val) {
+        break;
+      }
       old = atomicCAS(address_as_ull, assumed, __double_as_longlong(val));
     } while (assumed != old);
 
@@ -134,19 +138,23 @@ __device__ double tdpAtomicMaxDouble(double * address, double val) {
  *****************************************************************************/
 
 __host__ __device__ void tdpErrorHandler(tdpError_t ifail, const char * file,
-					 int line, int fatal) {
+                                         int line, int fatal) {
 
 #ifdef __HIP_DEVICE_COMPILE__
   if (ifail != tdpSuccess) {
     /*    printf("Line %d (%s): %s %s\n", line, file, hipGetErrorName(ifail),
-	  hipGetErrorString(ifail));*/
-    if (fatal) assert(0);
+          hipGetErrorString(ifail));*/
+    if (fatal) {
+      assert(0);
+    }
   }
 #else
   if (ifail != tdpSuccess) {
     fprintf(stderr, "Line %d (%s): %s: %s\n", line, file,
-	    hipGetErrorName(ifail), hipGetErrorString(ifail));
-    if (fatal) exit(ifail);
+            hipGetErrorName(ifail), hipGetErrorString(ifail));
+    if (fatal) {
+      exit(ifail);
+    }
   }
 #endif
 
@@ -159,9 +167,9 @@ __host__ __device__ void tdpErrorHandler(tdpError_t ifail, const char * file,
  *
  *****************************************************************************/
 
-__host__ __device__ tdpError_t tdpDeviceGetAttribute(int * value,
-						     tdpDeviceAttr attr,
-						     int device) {
+__host__ __device__ tdpError_t tdpDeviceGetAttribute(int *         value,
+                                                     tdpDeviceAttr attr,
+                                                     int           device) {
 #ifdef __HIP_DEVICE_COMPILE__
   return hipErrorInvalidDevice;
 #else
@@ -183,9 +191,9 @@ __host__ __device__ tdpError_t tdpDeviceGetCacheConfig(tdpFuncCache * cache) {
 #endif
 }
 
-__host__ tdpError_t tdpDeviceGetP2PAttribute(int * value,
-					     tdpDeviceP2PAttr attr,
-					     int srcDevice, int dstDevice) {
+__host__ tdpError_t tdpDeviceGetP2PAttribute(int *            value,
+                                             tdpDeviceP2PAttr attr,
+                                             int srcDevice, int dstDevice) {
   return hipDeviceGetP2PAttribute(value, attr, srcDevice, dstDevice);
 }
 
@@ -205,15 +213,12 @@ __host__ tdpError_t tdpDeviceSynchronize(void) {
 }
 
 __host__ tdpError_t tdpGetDeviceProperties(struct tdpDeviceProp * prop,
-					   int device) {
+                                           int                    device) {
 
   return hipGetDeviceProperties(prop, device);
 }
 
-__host__ tdpError_t tdpSetDevice(int device) {
-
-  return hipSetDevice(device);
-}
+__host__ tdpError_t tdpSetDevice(int device) { return hipSetDevice(device); }
 
 __host__ __device__ tdpError_t tdpGetDevice(int * device) {
 
@@ -248,7 +253,6 @@ __host__ __device__ const char * tdpGetErrorName(tdpError_t error) {
 #endif
 }
 
-
 __host__ __device__ const char * tdpGetErrorString(tdpError_t error) {
 
 #ifdef __HIP_DEVICE_COMPILE__
@@ -280,7 +284,6 @@ __host__ __device__ tdpError_t tdpPeekAtLastError(void) {
 #endif
 }
 
-
 /* Stream management */
 
 __host__ tdpError_t tdpStreamCreate(tdpStream_t * stream) {
@@ -300,38 +303,35 @@ __host__ tdpError_t tdpStreamSynchronize(tdpStream_t stream) {
 
 /* Memory management */
 
-__host__ tdpError_t tdpFreeHost(void * phost) {
-
-  return hipHostFree(phost);
-}
+__host__ tdpError_t tdpFreeHost(void * phost) { return hipHostFree(phost); }
 
 __host__ tdpError_t tdpMallocManaged(void ** devptr, size_t size,
-				     unsigned int flag) {
+                                     unsigned int flag) {
 
   return hipMallocManaged(devptr, size, flag);
 }
 
 __host__ tdpError_t tdpMemcpy(void * dst, const void * src, size_t count,
-			      tdpMemcpyKind kind) {
+                              tdpMemcpyKind kind) {
 
   return hipMemcpy(dst, src, count, kind);
 }
 
 __host__ tdpError_t tdpMemcpyAsync(void * dst, const void * src, size_t count,
-				   tdpMemcpyKind kind, tdpStream_t stream) {
+                                   tdpMemcpyKind kind, tdpStream_t stream) {
 
   return hipMemcpyAsync(dst, src, count, kind, stream);
 }
 
 __host__ tdpError_t tdpMemcpyPeer(void * dst, int dstDevice, const void * src,
-				  int srcDevice, size_t count) {
+                                  int srcDevice, size_t count) {
 
   return hipMemcpyPeer(dst, dstDevice, src, srcDevice, count);
 }
 
 __host__ tdpError_t tdpMemcpyPeerAsync(void * dst, int dstDevice,
-				       const void * src, int srcDevice,
-				       size_t count, tdpStream_t stream) {
+                                       const void * src, int srcDevice,
+                                       size_t count, tdpStream_t stream) {
 
   return hipMemcpyPeerAsync(dst, dstDevice, src, srcDevice, count, stream);
 }
@@ -362,7 +362,7 @@ __host__ __device__ tdpError_t tdpFree(void * devptr) {
 }
 
 __host__ tdpError_t tdpHostAlloc(void ** phost, size_t size,
-				 unsigned int flags) {
+                                 unsigned int flags) {
 
   return hipHostMalloc(phost, size, flags);
 }
@@ -370,7 +370,7 @@ __host__ tdpError_t tdpHostAlloc(void ** phost, size_t size,
 /* Peer device memory access */
 
 __host__ tdpError_t tdpDeviceCanAccessPeer(int * canAccessPeer, int device,
-					   int peerDevice) {
+                                           int peerDevice) {
 
   return hipDeviceCanAccessPeer(canAccessPeer, device, peerDevice);
 }
@@ -380,8 +380,8 @@ __host__ tdpError_t tdpDeviceDisablePeerAccess(int peerDevice) {
   return hipDeviceDisablePeerAccess(peerDevice);
 }
 
-__host__ tdpError_t tdpDeviceEnablePeerAccess(int peerDevice,
-					      unsigned int flags) {
+__host__ tdpError_t tdpDeviceEnablePeerAccess(int          peerDevice,
+                                              unsigned int flags) {
 
   return hipDeviceEnablePeerAccess(peerDevice, flags);
 }
@@ -392,13 +392,12 @@ __host__ tdpError_t tdpDeviceEnablePeerAccess(int peerDevice,
  *
  *****************************************************************************/
 
-__host__ tdpError_t tdpGraphAddKernelNode(tdpGraphNode_t * pGraphNode,
-                                          tdpGraph_t graph,
-                                          const tdpGraphNode_t * pDependencies,
-                                          size_t numDependencies,
-                                          const tdpKernelNodeParams * nParams) {
+__host__ tdpError_t tdpGraphAddKernelNode(
+    tdpGraphNode_t * pGraphNode, tdpGraph_t graph,
+    const tdpGraphNode_t * pDependencies, size_t numDependencies,
+    const tdpKernelNodeParams * nParams) {
   return hipGraphAddKernelNode(pGraphNode, graph, pDependencies,
-			       numDependencies, nParams);
+                               numDependencies, nParams);
 }
 
 /*****************************************************************************
@@ -407,15 +406,13 @@ __host__ tdpError_t tdpGraphAddKernelNode(tdpGraphNode_t * pGraphNode,
  *
  *****************************************************************************/
 
-__host__ tdpError_t tdpGraphAddMemcpyNode(tdpGraphNode_t * pGraphNode,
-                                          tdpGraph_t graph,
-                                          const tdpGraphNode_t * pDependencies,
-                                          size_t numDependencies,
-                                          const tdpMemcpy3DParms * copyParams) {
+__host__ tdpError_t tdpGraphAddMemcpyNode(
+    tdpGraphNode_t * pGraphNode, tdpGraph_t graph,
+    const tdpGraphNode_t * pDependencies, size_t numDependencies,
+    const tdpMemcpy3DParms * copyParams) {
   return hipGraphAddMemcpyNode(pGraphNode, graph, pDependencies,
-			       numDependencies, copyParams);
+                               numDependencies, copyParams);
 }
-
 
 /*****************************************************************************
  *
@@ -427,7 +424,6 @@ __host__ tdpError_t tdpGraphCreate(tdpGraph_t * pGraph, unsigned int flags) {
 
   return hipGraphCreate(pGraph, flags);
 }
-
 
 /*****************************************************************************
  *
@@ -446,8 +442,8 @@ __host__ tdpError_t tdpGraphDestroy(tdpGraph_t graph) {
  *
  *****************************************************************************/
 
-__host__ tdpError_t tdpGraphInstantiate(tdpGraphExec_t * pGraphExec,
-                                        tdpGraph_t graph,
+__host__ tdpError_t tdpGraphInstantiate(tdpGraphExec_t *   pGraphExec,
+                                        tdpGraph_t         graph,
                                         unsigned long long flags) {
 
   /* Note API has changed between CUDA 11 and CUDA 12 */
