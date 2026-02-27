@@ -25,10 +25,10 @@
 
 __host__ int test0(void) {
 
-  int mydevice;
-  int ndevice = 0;
+  int                  mydevice;
+  int                  ndevice = 0;
   struct tdpDeviceProp prop;
-  tdpError_t ifail;
+  tdpError_t           ifail;
 
   ifail = tdpGetDeviceCount(&ndevice);
   if (ifail == tdpSuccess) {
@@ -38,16 +38,18 @@ __host__ int test0(void) {
     printf("No GPU device detected\n");
   }
 
-  tdpAssert( tdpGetDevice(&mydevice) );
+  tdpAssert(tdpGetDevice(&mydevice));
   ifail = tdpGetDeviceProperties(&prop, mydevice);
-  if (ifail != tdpSuccess) printf("FAIL!\n");
+  if (ifail != tdpSuccess) {
+    printf("FAIL!\n");
+  }
 
-  printf("Device id                 %d\n",  mydevice);
-  printf("Device name               %s\n",  prop.name);
-  printf("maxThreadsPerBlock        %d\n",  prop.maxThreadsPerBlock);
-  printf("maxThreadsDim[0]          %d\n",  prop.maxThreadsDim[0]);
-  printf("maxThreadsDim[1]          %d\n",  prop.maxThreadsDim[1]);
-  printf("maxThreadsDim[2]          %d\n",  prop.maxThreadsDim[2]);
+  printf("Device id                 %d\n", mydevice);
+  printf("Device name               %s\n", prop.name);
+  printf("maxThreadsPerBlock        %d\n", prop.maxThreadsPerBlock);
+  printf("maxThreadsDim[0]          %d\n", prop.maxThreadsDim[0]);
+  printf("maxThreadsDim[1]          %d\n", prop.maxThreadsDim[1]);
+  printf("maxThreadsDim[2]          %d\n", prop.maxThreadsDim[2]);
   printf("totalGlobalMem (bytes)    %ld\n", prop.totalGlobalMem);
 
   return 0;
@@ -58,8 +60,8 @@ __host__ int test0(void) {
 __global__ void kerneltest1() {
 
   if (threadIdx.x == 0) {
-    printf("blockidx.x %2d griddim %2d %2d %2d\n", blockIdx.x,
-	   gridDim.x, gridDim.y, gridDim.z);
+    printf("blockidx.x %2d griddim %2d %2d %2d\n", blockIdx.x, gridDim.x,
+           gridDim.y, gridDim.z);
   }
 
   return;
@@ -71,7 +73,7 @@ int test1(void) {
   dim3 nblk = {4, 1, 1};
 
   tdpLaunchKernel(kerneltest1, nblk, ntpb, 0, 0);
-  tdpAssert( tdpStreamSynchronize(0) );
+  tdpAssert(tdpStreamSynchronize(0));
 
   return 0;
 }
@@ -82,9 +84,7 @@ __global__ void kerneltest2(int * n) {
 
   int p = 0;
 
-  for_simt_parallel(p, NARRAY, 1) {
-    n[p] = 2*n[p];
-  }
+  for_simt_parallel(p, NARRAY, 1) { n[p] = 2 * n[p]; }
 
   return;
 }
@@ -97,7 +97,7 @@ __global__ void kerneltest2(int * n) {
 
 __device__ void test_atomicAdd(int * sumint, double * sumdouble) {
 
-  *sumint = 1;
+  *sumint    = 1;
   *sumdouble = 2.0;
 
   /* int */
@@ -114,7 +114,7 @@ __device__ void test_atomicAdd(int * sumint, double * sumdouble) {
     double val = 1.0;
     double old = atomicAdd(sumdouble, val);
 
-    assert(fabs(old - 2.0)        < DBL_EPSILON);
+    assert(fabs(old - 2.0) < DBL_EPSILON);
     assert(fabs(*sumdouble - 3.0) < DBL_EPSILON);
   }
 
@@ -129,7 +129,7 @@ __device__ void test_atomicAdd(int * sumint, double * sumdouble) {
 
 __device__ void test_atomicMax(int * sumint, double * sumdouble) {
 
-  *sumint = -2;
+  *sumint    = -2;
   *sumdouble = 1.0;
 
   /* int */
@@ -146,7 +146,7 @@ __device__ void test_atomicMax(int * sumint, double * sumdouble) {
     double b = 2.0;
     double c = atomicMax(sumdouble, b);
 
-    assert(fabs(c          - 1.0) < DBL_EPSILON);
+    assert(fabs(c - 1.0) < DBL_EPSILON);
     assert(fabs(*sumdouble - 2.0) < DBL_EPSILON);
   }
 
@@ -161,7 +161,7 @@ __device__ void test_atomicMax(int * sumint, double * sumdouble) {
 
 __device__ void test_atomicMin(int * sumint, double * sumdouble) {
 
-  *sumint = -1;
+  *sumint    = -1;
   *sumdouble = 2.0;
 
   /* int */
@@ -178,7 +178,7 @@ __device__ void test_atomicMin(int * sumint, double * sumdouble) {
     double b = 1.0;
     double c = atomicMin(sumdouble, b);
 
-    assert(fabs(c          - 2.0) < DBL_EPSILON);
+    assert(fabs(c - 2.0) < DBL_EPSILON);
     assert(fabs(*sumdouble - 1.0) < DBL_EPSILON);
   }
 
@@ -197,35 +197,36 @@ __global__ void test_kernel(int * sumint, double * sumdouble) {
   /* Atomic updates cannot take place in local memory, hence
    * have to pass some variables in ... */
 
-  assert(threadIdx.x == 0);
-  assert(blockIdx.x  == 0);
+  if (threadIdx.x == 0) {
 
-  test_atomicAdd(sumint, sumdouble);
-  test_atomicMax(sumint, sumdouble);
-  test_atomicMin(sumint, sumdouble);
+    test_atomicAdd(sumint, sumdouble);
+    test_atomicMax(sumint, sumdouble);
+    test_atomicMin(sumint, sumdouble);
+  }
 
   return;
 }
-
 
 int main(int argc, char * argv[]) {
 
   int ndevice = 0;
 
-  dim3 nblk, ntpb;
-  int p;
-  int bufsz;
+  dim3  nblk, ntpb;
+  int   p;
+  int   bufsz;
   int * n_h; /* host */
   int * n_d; /* device */
 
-  if (argc > 1) printf("%s: takes no arguments\n", argv[0]);
+  if (argc > 1) {
+    printf("%s: takes no arguments\n", argv[0]);
+  }
 
   test0();
   test1();
 
-  tdpAssert( tdpGetDeviceCount(&ndevice) );
+  tdpAssert(tdpGetDeviceCount(&ndevice));
 
-  bufsz = NARRAY*sizeof(int);
+  bufsz = NARRAY * sizeof(int);
 
   n_h = (int *) calloc(NARRAY, sizeof(int));
   tdpAssert(tdpMalloc((void **) &n_d, bufsz));
@@ -236,10 +237,16 @@ int main(int argc, char * argv[]) {
 
   tdpAssert(tdpMemcpy(n_d, n_h, bufsz, tdpMemcpyHostToDevice));
 
-  ntpb.x = tdp_get_max_threads(); ntpb.y = 1; ntpb.z = 1;
-  nblk.x = (NARRAY + ntpb.x - 1)/ntpb.x; nblk.y = 1; nblk.z = 1;
+  ntpb.x = tdp_get_max_threads();
+  ntpb.y = 1;
+  ntpb.z = 1;
+  nblk.x = (NARRAY + ntpb.x - 1) / ntpb.x;
+  nblk.y = 1;
+  nblk.z = 1;
 
-  if (ndevice == 0) nblk.x = 1; /* OpenMP */
+  if (ndevice == 0) {
+    nblk.x = 1; /* OpenMP */
+  }
 
   tdpLaunchKernel(kerneltest2, nblk, ntpb, 0, 0, n_d);
   tdpAssert(tdpPeekAtLastError());
@@ -248,7 +255,9 @@ int main(int argc, char * argv[]) {
   tdpAssert(tdpMemcpy(n_h, n_d, bufsz, tdpMemcpyDeviceToHost));
 
   for (p = 0; p < NARRAY; p++) {
-    if (n_h[p] != 2*p) printf("Wrong %3d %3d\n", p, n_h[p]);
+    if (n_h[p] != 2 * p) {
+      printf("Wrong %3d %3d\n", p, n_h[p]);
+    }
   }
 
   /* Serial tests */
@@ -256,7 +265,7 @@ int main(int argc, char * argv[]) {
     dim3 nsblk = {1, 1, 1};
     dim3 nstpb = {1, 1, 1};
 
-    int * sumint = NULL;
+    int *    sumint    = NULL;
     double * sumdouble = NULL;
 
     tdpAssert(tdpMalloc((void **) &sumint, sizeof(int)));

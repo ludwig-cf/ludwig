@@ -27,40 +27,43 @@
 
 dim3 threadIdx;
 dim3 blockIdx;
-dim3 gridDim = {1, 1, 1};
+dim3 gridDim  = {1, 1, 1};
 dim3 blockDim = {1, 1, 1};
 
-static tdpError_t lastError = tdpSuccess;
-static char lastErrorString[BUFSIZ] = "";
+static tdpError_t lastError               = tdpSuccess;
+static char       lastErrorString[BUFSIZ] = "";
 
 /* Utilities */
 
 static void error_boke(int line, tdpError_t error) {
 
   fprintf(stderr, "File %s line %d error %s\n", __FILE__, line,
-	  tdpGetErrorName(error));
+          tdpGetErrorName(error));
   exit(0);
 }
 
 #define errors_make_me_boke(error) error_boke(__LINE__, error)
 
-#define error_return_if(expr, error) \
-  do { if ((expr)) { 		     \
-      lastError = error;	     \
-      errors_make_me_boke(error);    \
-      return error;		     \
-    }				     \
-  } while(0)
+#define error_return_if(expr, error)                                          \
+  do {                                                                        \
+    if ((expr)) {                                                             \
+      lastError = error;                                                      \
+      errors_make_me_boke(error);                                             \
+      return error;                                                           \
+    }                                                                         \
+  } while (0)
 
-#define error_return(error) \
-  error_return_if(1, error)
+#define error_return(error) error_return_if(1, error)
 
-void tdpErrorHandler(tdpError_t ifail, const char * file, int line, int fatal) {
+void tdpErrorHandler(tdpError_t ifail, const char * file, int line,
+                     int fatal) {
 
   if (ifail != tdpSuccess) {
-    printf("tdpErrorHandler: %s:%d %s %s\n", file, line, tdpGetErrorName(ifail),
-	   tdpGetErrorString(ifail));
-    if (fatal) exit(ifail);
+    printf("tdpErrorHandler: %s:%d %s %s\n", file, line,
+           tdpGetErrorName(ifail), tdpGetErrorString(ifail));
+    if (fatal) {
+      exit(ifail);
+    }
   }
 
   return;
@@ -83,7 +86,7 @@ __host__ void tdp_x86_prelaunch(dim3 nblocks, dim3 nthreads) {
 
   /* In case we request fewer threads than are available: */
 
-  omp_set_num_threads(blockDim.x*blockDim.y*blockDim.z);
+  omp_set_num_threads(blockDim.x * blockDim.y * blockDim.z);
 
   /* A serial loop in the block index is implemented as part of the
    * kernel launch. Typically only one block. */
@@ -127,7 +130,7 @@ tdpError_t tdpDeviceGetCacheConfig(tdpFuncCache * cacheConfig) {
  *****************************************************************************/
 
 tdpError_t tdpDeviceGetP2PAttribute(int * value, tdpDeviceP2PAttr attr,
-				    int srcDevice, int peerDevice) {
+                                    int srcDevice, int peerDevice) {
 
   error_return_if(value == NULL, tdpErrorInvalidValue);
   error_return_if(srcDevice != 0, tdpErrorInvalidDevice);
@@ -173,8 +176,6 @@ tdpError_t tdpDeviceSetCacheConfig(tdpFuncCache cacheConfig) {
 
   return ifail;
 }
-
-
 
 /*****************************************************************************
  *
@@ -235,6 +236,17 @@ tdpError_t tdpDeviceGetAttribute(int * value, tdpDeviceAttr attr, int device) {
   switch (attr) {
   case tdpDevAttrMaxThreadsPerBlock:
     *value = omp_get_max_threads();
+    break;
+  case tdpDevAttrMaxBlockDimX:
+    /* This value needs to be reviewed in the light of the serial
+     * block loop in the kernel launch. */
+    *value = 1;
+    break;
+  case tdpDevAttrMaxBlockDimY:
+    *value = 1;
+    break;
+  case tdpDevAttrMaxBlockDimZ:
+    *value = 1;
     break;
   default:
     *value = -1;
@@ -316,9 +328,12 @@ tdpError_t tdpSetDevice(int device) {
  *
  *****************************************************************************/
 
-#define CASE_RETURN(x) case(x): return #x; break
+#define CASE_RETURN(x)                                                        \
+  case (x):                                                                   \
+    return #x;                                                                \
+    break
 
-const char *  tdpGetErrorName(tdpError_t error) {
+const char * tdpGetErrorName(tdpError_t error) {
 
   switch (error) {
     CASE_RETURN(tdpSuccess);
@@ -371,10 +386,7 @@ const char * tdpGetErrorString(tdpError_t ifail) {
  *
  *****************************************************************************/
 
-tdpError_t tdpPeekAtLastError(void) {
-
-  return lastError;
-}
+tdpError_t tdpPeekAtLastError(void) { return lastError; }
 
 /*****************************************************************************
  *
@@ -466,7 +478,7 @@ tdpError_t tdpMalloc(void ** devPtr, size_t size) {
 
 tdpError_t tdpMallocManaged(void ** devptr, size_t size, unsigned int flag) {
 
-  void * ptr = NULL;
+  void *       ptr   = NULL;
   unsigned int valid = (tdpMemAttachGlobal | tdpMemAttachHost);
 
   assert(devptr);
@@ -489,7 +501,7 @@ tdpError_t tdpMallocManaged(void ** devptr, size_t size, unsigned int flag) {
  *****************************************************************************/
 
 tdpError_t tdpMemcpy(void * dst, const void * src, size_t count,
-		       tdpMemcpyKind kind) {
+                     tdpMemcpyKind kind) {
 
   assert(dst);
   assert(src);
@@ -525,9 +537,8 @@ tdpError_t tdpMemcpy(void * dst, const void * src, size_t count,
  *
  *****************************************************************************/
 
-tdpError_t tdpMemcpyFromSymbol(void * dst, const void * symbol,
-			       size_t count, size_t offset,
-			       tdpMemcpyKind kind) {
+tdpError_t tdpMemcpyFromSymbol(void * dst, const void * symbol, size_t count,
+                               size_t offset, tdpMemcpyKind kind) {
   assert(dst);
   assert(symbol);
 
@@ -563,7 +574,7 @@ tdpError_t tdpMemcpyFromSymbol(void * dst, const void * symbol,
  *****************************************************************************/
 
 __host__ tdpError_t tdpMemcpyPeer(void * dst, int dstDevice, const void * src,
-				  int srcDevice, size_t count) {
+                                  int srcDevice, size_t count) {
 
   error_return_if(dst == NULL, tdpErrorInvalidValue);
   error_return_if(src == NULL, tdpErrorInvalidValue);
@@ -582,8 +593,8 @@ __host__ tdpError_t tdpMemcpyPeer(void * dst, int dstDevice, const void * src,
  *****************************************************************************/
 
 __host__ tdpError_t tdpMemcpyPeerAsync(void * dst, int dstDevice,
-				       const void * src, int srcDevice,
-				       size_t count, tdpStream_t stream) {
+                                       const void * src, int srcDevice,
+                                       size_t count, tdpStream_t stream) {
 
   error_return_if(dst == NULL, tdpErrorInvalidValue);
   error_return_if(src == NULL, tdpErrorInvalidValue);
@@ -596,7 +607,6 @@ __host__ tdpError_t tdpMemcpyPeerAsync(void * dst, int dstDevice,
   return tdpMemcpy(dst, src, count, tdpMemcpyDeviceToDevice);
 }
 
-
 /*****************************************************************************
  *
  *  tdpMemcpyToSymbol
@@ -606,9 +616,8 @@ __host__ tdpError_t tdpMemcpyPeerAsync(void * dst, int dstDevice,
  *
  *****************************************************************************/
 
-tdpError_t tdpMemcpyToSymbol(void * symbol, const void * src,
-			     size_t count, size_t offset,
-			     tdpMemcpyKind kind) {
+tdpError_t tdpMemcpyToSymbol(void * symbol, const void * src, size_t count,
+                             size_t offset, tdpMemcpyKind kind) {
   assert(symbol);
   assert(src);
 
@@ -701,7 +710,7 @@ tdpError_t tdpStreamSynchronize(tdpStream_t stream) {
  *****************************************************************************/
 
 tdpError_t tdpMemcpyAsync(void * dst, const void * src, size_t count,
-			  tdpMemcpyKind kind, tdpStream_t stream) {
+                          tdpMemcpyKind kind, tdpStream_t stream) {
 
   /* Just ignore the stream argument and copy immediately */
 
@@ -717,7 +726,7 @@ tdpError_t tdpMemcpyAsync(void * dst, const void * src, size_t count,
  *****************************************************************************/
 
 tdpError_t tdpDeviceCanAccessPeer(int * canAccessPeer, int device,
-				  int peerDevice) {
+                                  int peerDevice) {
 
   /* cudaSuccess, cudaErrorInvalidDevice */
 
@@ -762,8 +771,8 @@ tdpError_t tdpDeviceEnablePeerAccess(int peerDevice, unsigned int flags) {
   return tdpSuccess;
 }
 
-static int int_max(int a, int b) {return (a > b) ?a :b;}
-static int int_min(int a, int b) {return (a < b) ?a :b;}
+static int int_max(int a, int b) { return (a > b) ? a : b; }
+static int int_min(int a, int b) { return (a < b) ? a : b; }
 
 /*****************************************************************************
  *
@@ -778,7 +787,7 @@ __device__ int atomicAddInt(int * sum, int val) {
   assert(sum);
 
 #ifdef _OPENMP
-  #pragma omp critical(atomicAddInt)
+#pragma omp critical(atomicAddInt)
   {
     old = *sum;
     *sum += val;
@@ -806,14 +815,14 @@ __device__ int atomicMaxInt(int * maxval, int val) {
   assert(maxval);
 
 #ifdef _OPENMP
-  /* Ug. */
-  #pragma omp critical (atomicMaxInt)
+/* Ug. */
+#pragma omp critical(atomicMaxInt)
   {
-    old = *maxval;
+    old     = *maxval;
     *maxval = int_max(*maxval, val);
   }
 #else
-  old = *maxval;
+  old     = *maxval;
   *maxval = int_max(*maxval, val);
 #endif
 
@@ -833,13 +842,13 @@ __device__ int atomicMinInt(int * minval, int val) {
   assert(minval);
 
 #ifdef _OPENMP
-  #pragma omp critical (tdpAtomicMinInt)
+#pragma omp critical(tdpAtomicMinInt)
   {
-    old = *minval;
+    old     = *minval;
     *minval = int_min(*minval, val);
   }
 #else
-  old = *minval;
+  old     = *minval;
   *minval = int_min(*minval, val);
 #endif
 
@@ -859,8 +868,8 @@ __device__ double atomicAddDouble(double * sum, double val) {
   assert(sum);
 
 #ifdef _OPENMP
-  /* Could use "omp capture" here, but not entirely portable without warning */
-  #pragma omp critical(tdpAtomicAddDouble)
+/* Could use "omp capture" here, but not entirely portable without warning */
+#pragma omp critical(tdpAtomicAddDouble)
   {
     old = *sum;
     *sum += val;
@@ -873,8 +882,8 @@ __device__ double atomicAddDouble(double * sum, double val) {
   return old;
 }
 
-static double double_max(double a, double b) {return (a > b) ?a :b;}
-static double double_min(double a, double b) {return (a < b) ?a :b;}
+static double double_max(double a, double b) { return (a > b) ? a : b; }
+static double double_min(double a, double b) { return (a < b) ? a : b; }
 
 /*****************************************************************************
  *
@@ -889,13 +898,13 @@ __device__ double atomicMaxDouble(double * maxval, double val) {
   assert(maxval);
 
 #ifdef _OPENMP
-#pragma omp critical (atomicMaxDouble)
+#pragma omp critical(atomicMaxDouble)
   {
-    old = *maxval;
+    old     = *maxval;
     *maxval = double_max(*maxval, val);
   }
 #else
-  old = *maxval;
+  old     = *maxval;
   *maxval = double_max(*maxval, val);
 #endif
 
@@ -915,13 +924,13 @@ __device__ double atomicMinDouble(double * minval, double val) {
   assert(minval);
 
 #ifdef _OPENMP
-  #pragma omp critical (atomicMinDouble)
+#pragma omp critical(atomicMinDouble)
   {
-    old = *minval;
+    old     = *minval;
     *minval = double_min(*minval, val);
   }
 #else
-  old = *minval;
+  old     = *minval;
   *minval = double_min(*minval, val);
 #endif
 
@@ -934,17 +943,16 @@ __device__ double atomicMinDouble(double * minval, double val) {
  *
  *****************************************************************************/
 
-__host__ tdpError_t tdpGraphAddKernelNode(tdpGraphNode_t * pGraphNode,
-					  tdpGraph_t graph,
-					  const tdpGraphNode_t * pDependencies,
-					  size_t numDependencies,
-					  const tdpKernelNodeParams * nParams) {
+__host__ tdpError_t tdpGraphAddKernelNode(
+    tdpGraphNode_t * pGraphNode, tdpGraph_t graph,
+    const tdpGraphNode_t * pDependencies, size_t numDependencies,
+    const tdpKernelNodeParams * nParams) {
   /* tdpSuccess, tdpErrorInvalidValue, tdpErrorInvalidDeviceFunction */
 
   error_return_if(pGraphNode == NULL, tdpErrorInvalidValue);
   error_return_if(graph == NULL, tdpErrorInvalidValue);
   error_return_if(numDependencies > 0 && pDependencies == NULL,
-		  tdpErrorInvalidValue);
+                  tdpErrorInvalidValue);
   error_return_if(nParams == NULL, tdpErrorInvalidValue);
 
   return tdpErrorInvalidValue;
@@ -956,17 +964,16 @@ __host__ tdpError_t tdpGraphAddKernelNode(tdpGraphNode_t * pGraphNode,
  *
  *****************************************************************************/
 
-__host__ tdpError_t tdpGraphAddMemcpyNode(tdpGraphNode_t * pGraphNode,
-					  tdpGraph_t graph,
-					  const tdpGraphNode_t * pDependencies,
-					  size_t numDependencies,
-					  const tdpMemcpy3DParms * copyParams) {
+__host__ tdpError_t tdpGraphAddMemcpyNode(
+    tdpGraphNode_t * pGraphNode, tdpGraph_t graph,
+    const tdpGraphNode_t * pDependencies, size_t numDependencies,
+    const tdpMemcpy3DParms * copyParams) {
   /* tdpSuccess or tdpErrorInvalidValue */
 
   error_return_if(pGraphNode == NULL, tdpErrorInvalidValue);
   error_return_if(graph == NULL, tdpErrorInvalidValue);
   error_return_if(numDependencies > 0 && pDependencies == NULL,
-		  tdpErrorInvalidValue);
+                  tdpErrorInvalidValue);
   error_return_if(copyParams == NULL, tdpErrorInvalidValue);
 
   return tdpErrorInvalidValue;
@@ -1010,9 +1017,9 @@ __host__ tdpError_t tdpGraphDestroy(tdpGraph_t graph) {
  *
  *****************************************************************************/
 
-__host__ tdpError_t tdpGraphInstantiate(tdpGraphExec_t * pGraphExec,
-					tdpGraph_t graph,
-					unsigned long long flags) {
+__host__ tdpError_t tdpGraphInstantiate(tdpGraphExec_t *   pGraphExec,
+                                        tdpGraph_t         graph,
+                                        unsigned long long flags) {
 
   /* tdpSuccess or tdpErrorInvalidValue */
   /* flags is enum CUgraphinstantiate_flags */
@@ -1049,9 +1056,9 @@ __host__ tdpError_t tdpGraphLaunch(tdpGraphExec_t exec, tdpStream_t stream) {
 __host__ struct tdpExtent make_tdpExtent(size_t w, size_t h, size_t d) {
 
   struct tdpExtent extent = {0};
-  extent.width  = w;
-  extent.height = h;
-  extent.depth  = d;
+  extent.width            = w;
+  extent.height           = h;
+  extent.depth            = d;
 
   return extent;
 }
@@ -1066,7 +1073,9 @@ __host__ struct tdpPos make_tdpPos(size_t x, size_t y, size_t z) {
 
   struct tdpPos pos = {0};
 
-  pos.x = x; pos.y = y; pos.z = z;
+  pos.x = x;
+  pos.y = y;
+  pos.z = z;
 
   return pos;
 }
@@ -1078,7 +1087,7 @@ __host__ struct tdpPos make_tdpPos(size_t x, size_t y, size_t z) {
  *****************************************************************************/
 
 __host__ struct tdpPitchedPtr make_tdpPitchedPtr(void * d, size_t p,
-						 size_t xsz, size_t ysz) {
+                                                 size_t xsz, size_t ysz) {
   struct tdpPitchedPtr ptr = {0};
 
   ptr.ptr   = d;
