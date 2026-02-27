@@ -6,7 +6,24 @@ CPUs (OpenMP) or GPUs (CUDA/HIP). TargetDP was first written by
 Alan Gray in 2013/2014 and this version has been maintained as
 part of the Ludwig code.
 
-Note that the HIP implementation is under development.
+The idea is to provide an API which apes CUDA/HIP, and has a small
+number of additional features to allow a host implementation using
+OpenMP. This allows a single source to be used on both CPU and GPU
+"targets". Relevant source code should include the file:
+```
+#include "target.h"
+```
+The API replaces e.g., `cuda` by `tdp`, so `cudaMalloc()` becomes
+`tdpMalloc()` and so on.
+
+There are three implementations:
+```
+target_x86.h
+target_cuda.h
+target_hip.h
+```
+representing respectively: serial and OpenMP, CUDA, and HIP targets.
+The x86 implementation is also referred to as the host implementation.
 
 ## Memory
 
@@ -15,6 +32,16 @@ device memory is allocated in a manner distinct from that on the host.
 Copies of data may be required between the two spaces, and these copies
 are explicit.
 
+In the host implementation memory allocation via
+```
+tdpHostAlloc()
+tdpMalloc()
+tdpMallocManaged()
+```
+result in a C `malloc()` allocation, which should be released with
+`tdpFree()`. A `tdpMamcpy()` will result in a copy from the source
+to the destination for all values of the `tdpMemcpyKind` argument.
+
 
 ## Kernels
 
@@ -22,8 +49,8 @@ are explicit.
 
 The model is one of execution of kernels, which may reside on the
 GPU or the CPU depending on the current targets. Within kernels,
-executation involves one or more independent blocks each of which
-execute a number of threads per block. 
+execution involves one or more independent blocks each of which
+execute a number of threads per block.
 
 Kernels are introduced with the `__global__` execution space qualifier
 and are launched on the device via `tdpLaunchKernel()`. The kernel
@@ -58,8 +85,8 @@ There are three relevant macros which may occur in a kernel:
 This provides worksharing of the iterations of a one-dimensional loop with
 index `index` which varies in the range `0 <= index < ndata` and with
 stride `stride`. The `stride` must be present and should be set to 1
-if a unit stride is required. The macro gaurantees that the correct number
-of interations are performed independent of the number of threads.
+if a unit stride is required. The macro guarantees that the correct number
+of interactions are performed independent of the number of threads.
 
 ```
 * for_sind_v(iv, nsimdvl)
@@ -110,28 +137,13 @@ argument, add the value of the second argument `val` and
 write back the result of the relevant operation to the address.
 The old value is returned.
 ```
-__device__ int tdpAtomicAddInt(int * sum, int val);
-__device__ int tdpAtomicMaxInt(int * maxval, int val);
-__device__ int tdpAtomicMinInt(int * minval, int val);
-__device__ double tdpAtomicAddDouble(double * sum, double val);
-__device__ double tdpAtomicMaxDouble(double * maxval, double val);
-__device__ double tdpAtomicMinDouble(double * minval, double val);
+__device__ int atomicAdd(int * sum, int val);
+__device__ int atomicMax(int * maxval, int val);
+__device__ int atomicMin(int * minval, int val);
+__device__ double atomicAdd(double * sum, double val);
+__device__ double atomicMax(double * maxval, double val);
+__device__ double atomicMin(double * minval, double val);
 ```
-
-### Type-specific intra-block reductions
-
-The following functions return sum of an array of elements. The
-argument must be an array of elements (one per thread) in shared memory.
-
-```
-__device__ int tdpAtomicBlockAddInt(int * partsum);
-__device__ double tdpAtomicBlockAddDouble(double * partsum);
-
-```
-
-On return, only thread zero holds the correct result; all threads in
-the block must be involved.
-
 
 ## Comments on OpenMP target
 
@@ -139,8 +151,8 @@ If the target is OpenMP, then it is assumed that host and device memory
 spaces are the same. All copies via `tdpMemcpy()` and related routines
 are therefore host to hoast copies.
 
-Threads are started by the kernel launch, and 
-Kernel executation should be regarded as being a single block running
+Threads are started by the kernel launch, and
+Kernel execution should be regarded as being a single block running
 at most `OMP_NUM_THREADS` threads.
 
 ## Comments on CUDA target
@@ -150,5 +162,4 @@ someone having experience of CUDA.
 
 ## Comments on HIP target
 
-The HIP implementation is awaiting further testing on up-to-date AMD GPU
-hardware.
+The HIP implementation is similar to the CUDA implementation.

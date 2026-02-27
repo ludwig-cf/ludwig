@@ -28,7 +28,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2010-2024 The University of Edinburgh
+ *  (c) 2010-2026 The University of Edinburgh
  *
  *  Contributions:
  *  Thanks to Markus Gross, who helped to validate the noise implementation.
@@ -189,7 +189,7 @@ __host__ int phi_ch_free(phi_ch_t * pch) {
  *
  *  Conservation is ensured by face-flux uniqueness. However, in the
  *  x-direction, the fluxes at the east face and west face of a given
- *  cell must be handled spearately to take account of Lees Edwards
+ *  cell must be handled separately to take account of Lees Edwards
  *  boundaries.
  *
  *  hydro is allowed to be NULL, in which case the dynamics is
@@ -1274,8 +1274,8 @@ __global__ void phi_ch_subtract_kernel1(kernel_3d_t k3d,
       phi    += sum_phi_local[it];
     }
 
-    tdpAtomicAddInt(&correct->nfluid, nfluid);
-    tdpAtomicAddDouble(&correct->phi, phi);
+    atomicAdd(&correct->nfluid, nfluid);
+    atomicAdd(&correct->phi, phi);
   }
 
   return;
