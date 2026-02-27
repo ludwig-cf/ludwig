@@ -146,12 +146,12 @@ int test_cs_limits_with_halo(cs_limits_t lim) {
     if (t.imax != lim.imax + nhalo) ifail = -1;
     assert(ifail == 0);
 
-    assert(t.imin = 1 - nhalo);
-    assert(t.imax = lim.imax + nhalo);
-    assert(t.jmin = 1 - nhalo);
-    assert(t.jmax = lim.jmax + nhalo);
-    assert(t.kmin = 1 - nhalo);
-    assert(t.kmax = lim.kmax + nhalo);
+    assert(t.imin == 1 - nhalo);
+    assert(t.imax == lim.imax + nhalo);
+    assert(t.jmin == 1 - nhalo);
+    assert(t.jmax == lim.jmax + nhalo);
+    assert(t.kmin == 1 - nhalo);
+    assert(t.kmax == lim.kmax + nhalo);
   }
 
   return ifail;
