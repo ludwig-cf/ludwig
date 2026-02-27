@@ -134,12 +134,12 @@ __global__ void build_remove_fluid_kernel(kernel_3d_t k3d, lb_t * lb,
        * the local boundary vector rb for the torque */
 
       /* Mass (anomaly) */
-      tdpAtomicAddDouble(&pc->deltam, -(rho - rho0));
+      atomicAdd(&pc->deltam, -(rho - rho0));
 
       /* Force */
-      tdpAtomicAddDouble(pc->f0 + X, rhou[X]);
-      tdpAtomicAddDouble(pc->f0 + Y, rhou[Y]);
-      tdpAtomicAddDouble(pc->f0 + Z, rhou[Z]);
+      atomicAdd(pc->f0 + X, rhou[X]);
+      atomicAdd(pc->f0 + Y, rhou[Y]);
+      atomicAdd(pc->f0 + Z, rhou[Z]);
 
       {
         double r0[3] = {1.0 * ic, 1.0 * jc, 1.0 * kc};
@@ -153,9 +153,9 @@ __global__ void build_remove_fluid_kernel(kernel_3d_t k3d, lb_t * lb,
       }
 
       /* Torque correction */
-      tdpAtomicAddDouble(pc->t0 + X, rbxrhou[X]);
-      tdpAtomicAddDouble(pc->t0 + Y, rbxrhou[Y]);
-      tdpAtomicAddDouble(pc->t0 + Z, rbxrhou[Z]);
+      atomicAdd(pc->t0 + X, rbxrhou[X]);
+      atomicAdd(pc->t0 + Y, rbxrhou[Y]);
+      atomicAdd(pc->t0 + Z, rbxrhou[Z]);
     }
   }
 
@@ -339,17 +339,17 @@ __global__ void build_replace_fluid_kernel(kernel_3d_t k3d, lb_t * lb,
       /* Set corrections for excess mass and momentum, and for the
        * correction to the torque */
 
-      tdpAtomicAddDouble(&pc->deltam, (rhonew - rho0));
+      atomicAdd(&pc->deltam, (rhonew - rho0));
 
-      tdpAtomicAddDouble(pc->f0 + X, rhou[X]);
-      tdpAtomicAddDouble(pc->f0 + Y, rhou[Y]);
-      tdpAtomicAddDouble(pc->f0 + Z, rhou[Z]);
+      atomicAdd(pc->f0 + X, rhou[X]);
+      atomicAdd(pc->f0 + Y, rhou[Y]);
+      atomicAdd(pc->f0 + Z, rhou[Z]);
 
       util_vector_cross_product(rbxrhou, rb, rhou);
 
-      tdpAtomicAddDouble(pc->t0 + X, rbxrhou[X]);
-      tdpAtomicAddDouble(pc->t0 + Y, rbxrhou[Y]);
-      tdpAtomicAddDouble(pc->t0 + Z, rbxrhou[Z]);
+      atomicAdd(pc->t0 + X, rbxrhou[X]);
+      atomicAdd(pc->t0 + Y, rbxrhou[Y]);
+      atomicAdd(pc->t0 + Z, rbxrhou[Z]);
     }
   }
 
@@ -426,7 +426,7 @@ __global__ void build_remove_order_parameter_kernel(kernel_3d_t       k3d,
       /* Here we always use the value from the scalar field. */
       double phiold = 0.0;
       field_scalar(phi, index, &phiold);
-      tdpAtomicAddDouble(&pc->s.deltaphi, +(phiold - phi0));
+      atomicAdd(&pc->s.deltaphi, +(phiold - phi0));
     }
   }
 
@@ -632,7 +632,7 @@ __global__ void build_replace_order_parameter_kernel(kernel_3d_t k3d,
 
       /* Set correction arising from change in conserved order parameter. */
 
-      tdpAtomicAddDouble(&pc->s.deltaphi, -(phinew - phi0));
+      atomicAdd(&pc->s.deltaphi, -(phinew - phi0));
     }
   }
 
