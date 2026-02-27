@@ -46,7 +46,7 @@
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *  Alan Gray (alang@epcc.ed.ac.uk) provided device implementations.
  *
- *  (c) 2010-2024 The University of Edinburgh
+ *  (c) 2010-2026 The University of Edinburgh
  *
  *****************************************************************************/
 
@@ -657,41 +657,37 @@ __global__ void pth_force_wall_kernel(kernel_3d_t k3d, pth_t * pth,
 				      double fw[3]) {
   int kindex = 0;
 
-  int ic, jc, kc;
-  int ia, ib;
-  int index, index1;
-  int tid;
+  int tid = threadIdx.x;
+  int pid = TARGET_PAD*tid;
 
-  double pth0[3][3];
-  double fxb, fyb, fzb;
-
-  __shared__ double fx[TARGET_MAX_THREADS_PER_BLOCK];
-  __shared__ double fy[TARGET_MAX_THREADS_PER_BLOCK];
-  __shared__ double fz[TARGET_MAX_THREADS_PER_BLOCK];
+  __shared__ double fx[TARGET_PAD*TARGET_MAX_THREADS_PER_BLOCK];
+  __shared__ double fy[TARGET_PAD*TARGET_MAX_THREADS_PER_BLOCK];
+  __shared__ double fz[TARGET_PAD*TARGET_MAX_THREADS_PER_BLOCK];
 
   assert(pth);
   assert(map);
   assert(wall);
 
-  tid = threadIdx.x;
-
-  fx[tid] = 0.0;
-  fy[tid] = 0.0;
-  fz[tid] = 0.0;
+  fx[pid] = 0.0;
+  fy[pid] = 0.0;
+  fz[pid] = 0.0;
 
   for_simt_parallel(kindex, k3d.kiterations, 1) {
 
-    ic = kernel_3d_ic(&k3d, kindex);
-    jc = kernel_3d_jc(&k3d, kindex);
-    kc = kernel_3d_kc(&k3d, kindex);
-    index = kernel_3d_cs_index(&k3d, ic, jc, kc);
+    int ic = kernel_3d_ic(&k3d, kindex);
+    int jc = kernel_3d_jc(&k3d, kindex);
+    int kc = kernel_3d_kc(&k3d, kindex);
+    int index = kernel_3d_cs_index(&k3d, ic, jc, kc);
 
     if (map->status[index] == MAP_FLUID) {
 
+      int index1 = 0;
+      double pth0[3][3] = {0};
+
       /* Compute pth at current point */
 
-      for (ia = 0; ia < 3; ia++) {
-	for (ib = 0; ib < 3; ib++) {
+      for (int ia = 0; ia < 3; ia++) {
+	for (int ib = 0; ib < 3; ib++) {
 	  pth0[ia][ib] = pth->str[addr_rank2(pth->nsites,3,3,index,ia,ib)];
 	}
       }
@@ -701,64 +697,74 @@ __global__ void pth_force_wall_kernel(kernel_3d_t k3d, pth_t * pth,
       index1 = kernel_3d_cs_index(&k3d, ic+1, jc, kc);
 
       if (map->status[index1] == MAP_BOUNDARY) {
-	fx[tid] += -pth0[X][X];
-	fy[tid] += -pth0[Y][X];
-	fz[tid] += -pth0[Z][X];
+	fx[pid] += -pth0[X][X];
+	fy[pid] += -pth0[Y][X];
+	fz[pid] += -pth0[Z][X];
       }
 
       index1 = kernel_3d_cs_index(&k3d, ic-1, jc, kc);
 
       if (map->status[index1] == MAP_BOUNDARY) {
-	fx[tid] += pth0[X][X];
-	fy[tid] += pth0[Y][X];
-	fz[tid] += pth0[Z][X];
+	fx[pid] += pth0[X][X];
+	fy[pid] += pth0[Y][X];
+	fz[pid] += pth0[Z][X];
       }
 
       index1 = kernel_3d_cs_index(&k3d, ic, jc+1, kc);
 
       if (map->status[index1] == MAP_BOUNDARY) {
-	fx[tid] += -pth0[X][Y];
-	fy[tid] += -pth0[Y][Y];
-	fz[tid] += -pth0[Z][Y];
+	fx[pid] += -pth0[X][Y];
+	fy[pid] += -pth0[Y][Y];
+	fz[pid] += -pth0[Z][Y];
       }
 
       index1 = kernel_3d_cs_index(&k3d, ic, jc-1, kc);
 
       if (map->status[index1] == MAP_BOUNDARY) {
-	fx[tid] += pth0[X][Y];
-	fy[tid] += pth0[Y][Y];
-	fz[tid] += pth0[Z][Y];
+	fx[pid] += pth0[X][Y];
+	fy[pid] += pth0[Y][Y];
+	fz[pid] += pth0[Z][Y];
       }
 
       index1 = kernel_3d_cs_index(&k3d, ic, jc, kc+1);
 
       if (map->status[index1] == MAP_BOUNDARY) {
-	fx[tid] += -pth0[X][Z];
-	fy[tid] += -pth0[Y][Z];
-	fz[tid] += -pth0[Z][Z];
+	fx[pid] += -pth0[X][Z];
+	fy[pid] += -pth0[Y][Z];
+	fz[pid] += -pth0[Z][Z];
       }
 
       index1 = kernel_3d_cs_index(&k3d, ic, jc, kc-1);
 
       if (map->status[index1] == MAP_BOUNDARY) {
-	fx[tid] += pth0[X][Z];
-	fy[tid] += pth0[Y][Z];
-	fz[tid] += pth0[Z][Z];
+	fx[pid] += pth0[X][Z];
+	fy[pid] += pth0[Y][Z];
+	fz[pid] += pth0[Z][Z];
       }
     }
     /* Next site */
   }
 
+  __syncthreads();
+
   /* Reduction */
 
-  fxb = tdpAtomicBlockAddDouble(fx);
-  fyb = tdpAtomicBlockAddDouble(fy);
-  fzb = tdpAtomicBlockAddDouble(fz);
-
   if (tid == 0) {
-    tdpAtomicAddDouble(fw+X, -fxb);
-    tdpAtomicAddDouble(fw+Y, -fyb);
-    tdpAtomicAddDouble(fw+Z, -fzb);
+
+    double fxb = 0.0;
+    double fyb = 0.0;
+    double fzb = 0.0;
+
+    for (int it = 0; it < blockDim.x; it++) {
+      pid = TARGET_PAD*it;
+      fxb += fx[pid];
+      fyb += fy[pid];
+      fzb += fz[pid];
+    }
+
+    atomicAdd(fw + X, -fxb);
+    atomicAdd(fw + Y, -fyb);
+    atomicAdd(fw + Z, -fzb);
   }
 
   return;

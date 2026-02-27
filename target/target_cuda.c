@@ -7,7 +7,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2019-2023 The University of Edinburgh
+ *  (c) 2019-2026 The University of Edinburgh
  *
  *  Contributing authors:
  *  Alan Gray (alang@epcc.ed.ac.uk)
@@ -24,25 +24,6 @@
 #include <math.h>
 
 #include "target.h"
-
-/*****************************************************************************
- *
- *  tdpThreadModelInfo
- *
- *  Provide some information on the model, usually to stdout.
- *
- ****************************************************************************/
-
-__host__ tdpError_t tdpThreadModelInfo(FILE * fp) {
-
-  assert(fp);
-
-  fprintf(fp, "Target thread model: CUDA.\n");
-  fprintf(fp, "Default threads per block: %d; max. threads per block: %d.\n",
-	  tdp_get_max_threads(), 1024);
-
-  return tdpSuccess;
-}
 
 /*****************************************************************************
  *
@@ -75,13 +56,13 @@ __device__ double tdpAtomicAddDouble(double * sum, double val) {
 #else
 
   unsigned long long int * address_as_ull = (unsigned long long int *) sum;
-  unsigned long long int old = *address_as_ull;
-  unsigned long long int assumed;
+  unsigned long long int   old            = *address_as_ull;
+  unsigned long long int   assumed;
 
   do {
     assumed = old;
-    old = atomicCAS(address_as_ull, assumed,
-		    __double_as_longlong(val + __longlong_as_double(assumed)));
+    old     = atomicCAS(address_as_ull, assumed,
+                        __double_as_longlong(val + __longlong_as_double(assumed)));
   } while (assumed != old);
 
   return __longlong_as_double(old);
@@ -91,24 +72,28 @@ __device__ double tdpAtomicAddDouble(double * sum, double val) {
 
 /*****************************************************************************
  *
- *  tdpAtomicMaxDouble
+ *  atomicMax
  *
  *****************************************************************************/
 
-__device__ double tdpAtomicMaxDouble(double * address, double val) {
+__device__ double atomicMax(double * address, double val) {
 
   assert(address);
 
-  if (*address >= val) return *address;
+  if (*address >= val) {
+    return *address;
+  }
 
   {
     unsigned long long * const address_as_ull = (unsigned long long *) address;
-    unsigned long long old = *address_as_ull;
-    unsigned long long assumed;
+    unsigned long long         old            = *address_as_ull;
+    unsigned long long         assumed;
 
     do {
       assumed = old;
-      if (__longlong_as_double(assumed) >= val) break;
+      if (__longlong_as_double(assumed) >= val) {
+        break;
+      }
       old = atomicCAS(address_as_ull, assumed, __double_as_longlong(val));
     } while (assumed != old);
 
@@ -118,78 +103,24 @@ __device__ double tdpAtomicMaxDouble(double * address, double val) {
 
 /*****************************************************************************
  *
- *  tdpAtomicMinDouble
+ *  atomicMin
  *
  *****************************************************************************/
 
-__device__ double tdpAtomicMinDouble(double * minval, double val) {
+__device__ double atomicMin(double * minval, double val) {
 
   unsigned long long int * address_as_ull = (unsigned long long int *) minval;
-  unsigned long long int old = *address_as_ull;
-  unsigned long long int assumed;
+  unsigned long long int   old            = *address_as_ull;
+  unsigned long long int   assumed;
 
   do {
     assumed = old;
-    old = atomicCAS(address_as_ull, assumed, __double_as_longlong
-		    (fmin(val, __longlong_as_double(assumed))));
+    old     = atomicCAS(
+        address_as_ull, assumed,
+        __double_as_longlong(fmin(val, __longlong_as_double(assumed))));
   } while (assumed != old);
 
   return __longlong_as_double(old);
-}
-
-/*****************************************************************************
- *
- *  tdpAtomicBlockAddInt
- *
- *  partsum is per-thread contribution on input
- *  Returns on thread 0 the sum for block (other elements destroyed).
- *
- *****************************************************************************/
-
-__device__ int tdpAtomicBlockAddInt(int * partsum) {
-
-  int istr;
-  int nblock;
-  int nthread = TARGET_MAX_THREADS_PER_BLOCK;
-  int idx = threadIdx.x;
-
-  nblock = pow(2.0, ceil(log(1.0*nthread)/log(2.0)));
-
-  for (istr = nblock/2; istr > 0; istr /= 2) {
-    __syncthreads();
-    if (idx < istr && idx + istr < nthread) {
-      partsum[idx] += partsum[idx + istr];
-    }
-  }
-
-  return partsum[0];
-}
-
-/*****************************************************************************
- *
- *  tdpAtomicBlockAddDouble
- *
- *  Type-specfic version for double
- *
- *****************************************************************************/
-
-__device__ double tdpAtomicBlockAddDouble(double * partsum) {
-
-  int istr;
-  int nblock;
-  int nthread = TARGET_MAX_THREADS_PER_BLOCK;
-  int idx = threadIdx.x;
-
-  nblock = pow(2.0, ceil(log(1.0*nthread)/log(2.0)));
-
-  for (istr = nblock/2; istr > 0; istr /= 2) {
-    __syncthreads();
-    if (idx < istr && idx + istr < nthread) {
-      partsum[idx] += partsum[idx + istr];
-    }
-  }
-
-  return partsum[0];
 }
 
 /*****************************************************************************
@@ -199,19 +130,23 @@ __device__ double tdpAtomicBlockAddDouble(double * partsum) {
  *****************************************************************************/
 
 __host__ __device__ void tdpErrorHandler(tdpError_t ifail, const char * file,
-					 int line, int fatal) {
+                                         int line, int fatal) {
 #ifdef __CUDA_ARCH__
 
   if (ifail != tdpSuccess) {
     printf("Line %d (%s): %s %s\n", line, file, cudaGetErrorName(ifail),
-	   cudaGetErrorString(ifail));
-    if (fatal) assert(0);
+           cudaGetErrorString(ifail));
+    if (fatal) {
+      assert(0);
+    }
   }
 #else
   if (ifail != tdpSuccess) {
     fprintf(stderr, "Line %d (%s): %s: %s\n", line, file,
-	    cudaGetErrorName(ifail), cudaGetErrorString(ifail));
-    if (fatal) exit(ifail);
+            cudaGetErrorName(ifail), cudaGetErrorString(ifail));
+    if (fatal) {
+      exit(ifail);
+    }
   }
 #endif
 
@@ -224,9 +159,9 @@ __host__ __device__ void tdpErrorHandler(tdpError_t ifail, const char * file,
  *
  *****************************************************************************/
 
-__host__ __device__ tdpError_t tdpDeviceGetAttribute(int * value,
-						     tdpDeviceAttr attr,
-						     int device) {
+__host__ __device__ tdpError_t tdpDeviceGetAttribute(int *         value,
+                                                     tdpDeviceAttr attr,
+                                                     int           device) {
 
   return cudaDeviceGetAttribute(value, attr, device);
 }
@@ -235,9 +170,9 @@ __host__ __device__ tdpError_t tdpDeviceGetCacheConfig(tdpFuncCache * cache) {
   return cudaDeviceGetCacheConfig(cache);
 }
 
-__host__ tdpError_t tdpDeviceGetP2PAttribute(int * value,
-					     tdpDeviceP2PAttr attr,
-					     int srcDevice, int dstDevice) {
+__host__ tdpError_t tdpDeviceGetP2PAttribute(int *            value,
+                                             tdpDeviceP2PAttr attr,
+                                             int srcDevice, int dstDevice) {
   return cudaDeviceGetP2PAttribute(value, attr, srcDevice, dstDevice);
 }
 
@@ -254,15 +189,12 @@ __host__ tdpError_t tdpDeviceSynchronize(void) {
 }
 
 __host__ tdpError_t tdpGetDeviceProperties(struct tdpDeviceProp * prop,
-					   int device) {
+                                           int                    device) {
 
   return cudaGetDeviceProperties(prop, device);
 }
 
-__host__ tdpError_t tdpSetDevice(int device) {
-
-  return cudaSetDevice(device);
-}
+__host__ tdpError_t tdpSetDevice(int device) { return cudaSetDevice(device); }
 
 __host__ __device__ tdpError_t tdpGetDevice(int * device) {
 
@@ -281,7 +213,6 @@ __host__ __device__ const char * tdpGetErrorName(tdpError_t error) {
   return cudaGetErrorName(error);
 }
 
-
 __host__ __device__ const char * tdpGetErrorString(tdpError_t error) {
 
   return cudaGetErrorString(error);
@@ -296,7 +227,6 @@ __host__ __device__ tdpError_t tdpPeekAtLastError(void) {
 
   return cudaPeekAtLastError();
 }
-
 
 /* Stream management */
 
@@ -317,42 +247,38 @@ __host__ tdpError_t tdpStreamSynchronize(tdpStream_t stream) {
 
 /* Memory management */
 
-__host__ tdpError_t tdpFreeHost(void * phost) {
-
-  return cudaFreeHost(phost);
-}
+__host__ tdpError_t tdpFreeHost(void * phost) { return cudaFreeHost(phost); }
 
 __host__ tdpError_t tdpMallocManaged(void ** devptr, size_t size,
-				     unsigned int flag) {
+                                     unsigned int flag) {
 
   return cudaMallocManaged(devptr, size, flag);
 }
 
 __host__ tdpError_t tdpMemcpy(void * dst, const void * src, size_t count,
-			      tdpMemcpyKind kind) {
+                              tdpMemcpyKind kind) {
 
   return cudaMemcpy(dst, src, count, kind);
 }
 
 __host__ tdpError_t tdpMemcpyAsync(void * dst, const void * src, size_t count,
-				   tdpMemcpyKind kind, tdpStream_t stream) {
+                                   tdpMemcpyKind kind, tdpStream_t stream) {
 
   return cudaMemcpyAsync(dst, src, count, kind, stream);
 }
 
 __host__ tdpError_t tdpMemcpyPeer(void * dst, int dstDevice, const void * src,
-				  int srcDevice, size_t count) {
+                                  int srcDevice, size_t count) {
 
   return cudaMemcpyPeer(dst, dstDevice, src, srcDevice, count);
 }
 
 __host__ tdpError_t tdpMemcpyPeerAsync(void * dst, int dstDevice,
-				       const void * src, int srcDevice,
-				       size_t count, tdpStream_t stream) {
+                                       const void * src, int srcDevice,
+                                       size_t count, tdpStream_t stream) {
 
   return cudaMemcpyPeerAsync(dst, dstDevice, src, srcDevice, count, stream);
 }
-
 
 __host__ __device__ tdpError_t tdpMalloc(void ** devptr, size_t size) {
 
@@ -370,13 +296,13 @@ __host__ __device__ tdpError_t tdpFree(void * devptr) {
 }
 
 __host__ tdpError_t tdpHostAlloc(void ** phost, size_t size,
-				 unsigned int flags) {
+                                 unsigned int flags) {
 
   return cudaHostAlloc(phost, size, flags);
 }
 
 __host__ tdpError_t tdpDeviceCanAccessPeer(int * canAccessPeer, int device,
-					   int peerDevice) {
+                                           int peerDevice) {
 
   return cudaDeviceCanAccessPeer(canAccessPeer, device, peerDevice);
 }
@@ -386,8 +312,8 @@ __host__ tdpError_t tdpDeviceDisablePeerAccess(int peerDevice) {
   return cudaDeviceDisablePeerAccess(peerDevice);
 }
 
-__host__ tdpError_t tdpDeviceEnablePeerAccess(int peerDevice,
-					      unsigned int flags) {
+__host__ tdpError_t tdpDeviceEnablePeerAccess(int          peerDevice,
+                                              unsigned int flags) {
 
   return cudaDeviceEnablePeerAccess(peerDevice, flags);
 }
@@ -398,13 +324,12 @@ __host__ tdpError_t tdpDeviceEnablePeerAccess(int peerDevice,
  *
  *****************************************************************************/
 
-__host__ tdpError_t tdpGraphAddKernelNode(tdpGraphNode_t * pGraphNode,
-                                          tdpGraph_t graph,
-                                          const tdpGraphNode_t * pDependencies,
-                                          size_t numDependencies,
-                                          const tdpKernelNodeParams * nParams) {
+__host__ tdpError_t tdpGraphAddKernelNode(
+    tdpGraphNode_t * pGraphNode, tdpGraph_t graph,
+    const tdpGraphNode_t * pDependencies, size_t numDependencies,
+    const tdpKernelNodeParams * nParams) {
   return cudaGraphAddKernelNode(pGraphNode, graph, pDependencies,
-				numDependencies, nParams);
+                                numDependencies, nParams);
 }
 
 /*****************************************************************************
@@ -413,13 +338,12 @@ __host__ tdpError_t tdpGraphAddKernelNode(tdpGraphNode_t * pGraphNode,
  *
  *****************************************************************************/
 
-__host__ tdpError_t tdpGraphAddMemcpyNode(tdpGraphNode_t * pGraphNode,
-                                          tdpGraph_t graph,
-                                          const tdpGraphNode_t * pDependencies,
-                                          size_t numDependencies,
-                                          const tdpMemcpy3DParms * copyParams) {
+__host__ tdpError_t tdpGraphAddMemcpyNode(
+    tdpGraphNode_t * pGraphNode, tdpGraph_t graph,
+    const tdpGraphNode_t * pDependencies, size_t numDependencies,
+    const tdpMemcpy3DParms * copyParams) {
   return cudaGraphAddMemcpyNode(pGraphNode, graph, pDependencies,
-				numDependencies, copyParams);
+                                numDependencies, copyParams);
 }
 
 /*****************************************************************************
@@ -450,8 +374,8 @@ __host__ tdpError_t tdpGraphDestroy(tdpGraph_t graph) {
  *
  *****************************************************************************/
 
-__host__ tdpError_t tdpGraphInstantiate(tdpGraphExec_t * pGraphExec,
-                                        tdpGraph_t graph,
+__host__ tdpError_t tdpGraphInstantiate(tdpGraphExec_t *   pGraphExec,
+                                        tdpGraph_t         graph,
                                         unsigned long long flags) {
 
   /* Note API has changed between CUDA 11 and CUDA 12 */

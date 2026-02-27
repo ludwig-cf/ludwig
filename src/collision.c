@@ -13,7 +13,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2011-2025 The University of Edinburgh
+ *  (c) 2011-2026 The University of Edinburgh
  *
  *  Contributing authors:
  *    Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -1088,10 +1088,10 @@ __global__ void lb_collision_kt_stats_kernel(kernel_3d_t k3d,
       gzb += gz[TARGET_PAD*it];
     }
 
-    tdpAtomicAddDouble(result4 + X, gxb);
-    tdpAtomicAddDouble(result4 + Y, gyb);
-    tdpAtomicAddDouble(result4 + Z, gzb);
-    tdpAtomicAddDouble(result4 + 3, gvb);
+    atomicAdd(result4 + X, gxb);
+    atomicAdd(result4 + Y, gyb);
+    atomicAdd(result4 + Z, gzb);
+    atomicAdd(result4 + 3, gvb);
   }
 
   return;

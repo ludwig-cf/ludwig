@@ -7,7 +7,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2011-2025 The University of Edinburgh
+ *  (c) 2011-2026 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -246,9 +246,9 @@ __global__ void fe_stats_fluid_total_kernel(kernel_3d_t k3d, fe_t * fe,
       bvol += tvol[TARGET_PAD*it];
     }
 
-    tdpAtomicAddDouble(sum + 0, ball);
-    tdpAtomicAddDouble(sum + 1, bfed);
-    tdpAtomicAddDouble(sum + 2, bvol);
+    atomicAdd(sum + 0, ball);
+    atomicAdd(sum + 1, bfed);
+    atomicAdd(sum + 2, bvol);
   }
 
   return;

@@ -7,7 +7,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2011-2025 The University of Edinburgh
+ *  (c) 2011-2026 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -93,7 +93,7 @@ int stats_velocity_minmax(stats_vel_t * stat, hydro_t * hydro, map_t * map) {
  *
  *  The volume flux of is of interest for porous media calculations
  *  of permeability. Note that with the body force density f, the
- *  volume flux is the same as the total momemtum  plus 0.5*f per
+ *  volume flux is the same as the total momentum  plus 0.5*f per
  *  lattice site. So for complex porous media, the total momentum
  *  can actually look quite wrong (e.g., have the opposite sign to
  *  the flow).
@@ -218,9 +218,9 @@ __global__ void stats_hydro_volume_flux_kernel(kernel_3d_t k3d,
       bflux[Z] += tz[TARGET_PAD*it];
     }
 
-    tdpAtomicAddDouble(uflux + X, bflux[X]);
-    tdpAtomicAddDouble(uflux + Y, bflux[Y]);
-    tdpAtomicAddDouble(uflux + Z, bflux[Z]);
+    atomicAdd(uflux + X, bflux[X]);
+    atomicAdd(uflux + Y, bflux[Y]);
+    atomicAdd(uflux + Z, bflux[Z]);
   }
 
   return;
@@ -234,7 +234,7 @@ __global__ void stats_hydro_volume_flux_kernel(kernel_3d_t k3d,
 
 int stats_hydro_uminmax(hydro_t * hydro, map_t * map) {
 
-  double umin[3]       = {0}; /* x,y,z compoents */
+  double umin[3]       = {0}; /* x,y,z components */
   double umax[3]       = {0};
   double umin_local[3] = {+DBL_MAX, +DBL_MAX, +DBL_MAX};
   double umax_local[3] = {-DBL_MAX, -DBL_MAX, -DBL_MAX};
@@ -372,12 +372,12 @@ __global__ void stats_hydro_uminmax_kernel(kernel_3d_t k3d, hydro_t * hydro,
       bmax[Z]  = double_max(bmax[Z], tzmax[TARGET_PAD*it]);
     }
 
-    tdpAtomicMinDouble(umin + X, bmin[X]);
-    tdpAtomicMaxDouble(umax + X, bmax[X]);
-    tdpAtomicMinDouble(umin + Y, bmin[Y]);
-    tdpAtomicMaxDouble(umax + Y, bmax[Y]);
-    tdpAtomicMinDouble(umin + Z, bmin[Z]);
-    tdpAtomicMaxDouble(umax + Z, bmax[Z]);
+    atomicMin(umin + X, bmin[X]);
+    atomicMax(umax + X, bmax[X]);
+    atomicMin(umin + Y, bmin[Y]);
+    atomicMax(umax + Y, bmax[Y]);
+    atomicMin(umin + Z, bmin[Z]);
+    atomicMax(umax + Z, bmax[Z]);
   }
 
   return;
