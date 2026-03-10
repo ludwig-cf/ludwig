@@ -622,8 +622,6 @@ __global__ void build_replace_order_parameter_kernel(kernel_3d_t k3d,
 
       if (interpolate == 0) {
         /* No information. For phinew, use existing (solid) value. */
-        /* FIXME No current test */
-	assert(0);
         field_scalar(phi, index, &phinew);
       }
       else {

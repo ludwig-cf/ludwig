@@ -2180,15 +2180,7 @@ int ludwig_colloids_update(ludwig_t * ludwig) {
 
   TIMER_start(TIMER_HALO_LATTICE);
 
-  /* __NVCC__ */
-  if (ndevice == 0) {
-    lb_halo(ludwig->lb);
-  }
-  else {
-    /* Run the halo on the target, and copy back the data */
-    lb_halo(ludwig->lb);
-    lb_memcpy(ludwig->lb, tdpMemcpyDeviceToHost);
-  }
+  lb_halo(ludwig->lb);
 
   TIMER_stop(TIMER_HALO_LATTICE);
 
@@ -2218,11 +2210,6 @@ int ludwig_colloids_update(ludwig_t * ludwig) {
   subgrid_force_from_particles(ludwig->collinfo, ludwig->hydro, ludwig->wall);
 
   TIMER_stop(TIMER_FORCES);
-
-
-  /* __NVCC__ TODO: remove */
-
-  lb_memcpy(ludwig->lb, tdpMemcpyHostToDevice);
 
   return 0;
 }

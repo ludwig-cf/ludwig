@@ -509,44 +509,6 @@ __host__ int colloids_info_cell_index(colloids_info_t * cinfo, int ic, int jc, i
 
 /*****************************************************************************
  *
- *  colloids_info_map
- *
- *  Look at the pointer map for site index (current time step).
- *
- *****************************************************************************/
-
-__host__ int colloids_info_map(colloids_info_t * info, int index, colloid_t ** pc) {
-
-  assert(info);
-  assert(pc);
-
-  *pc = NULL;
-  if (info->map_new) *pc = info->map_new[index];
-
-  return 0;
-}
-
-/*****************************************************************************
- *
- *  colloids_info_map_old
- *
- *  Look at the pointer map for site index (old time step).
- *
- *****************************************************************************/
-
-__host__ int colloids_info_map_old(colloids_info_t * info, int index, colloid_t ** pc) {
-
-  assert(info);
-  assert(pc);
-
-  *pc = NULL;
-  if (info->map_old) *pc = info->map_old[index];
-
-  return 0;
-}
-
-/*****************************************************************************
- *
  *  colloids_info_map_update
  *
  *****************************************************************************/
