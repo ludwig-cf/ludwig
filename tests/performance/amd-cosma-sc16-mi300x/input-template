@@ -1,0 +1,120 @@
+##############################################################################
+#
+#  Ludwig input file SC16 benchmark
+#  1 episode of diagnostic output at 1000 steps is representative.
+#
+#  The single GPU run template should be "size 256_256_256"
+#  Weak scaling would be 512_256_256, 512_512_256 for two
+#  and four MPI processes (GPUs), and so on.
+#
+##############################################################################
+
+N_cycles 20000
+
+##############################################################################
+#
+#  System and MPI
+#
+##############################################################################
+
+SYSTEM_SIZE_TEMPLATE
+
+lb_halo_scheme               lb_halo_openmp_reduced
+hydro_halo_scheme            hydro_u_halo_openmp
+lb_halo_report_imbalance     no
+
+lb_data_use_first_touch      yes
+field_data_use_first_touch   yes
+hydro_data_use_first_touch   yes
+
+##############################################################################
+#
+#  Fluid parameters
+#
+##############################################################################
+
+viscosity 1.0
+
+isothermal_fluctuations off
+
+##############################################################################
+#
+#  Free energy parameters
+#
+###############################################################################
+
+free_energy lc_blue_phase
+
+fd_advection_scheme_order     2
+fd_gradient_calculation       3d_7pt_fluid
+
+###############################################################################
+#
+#  Blue Phase free energy
+#
+###############################################################################
+
+lc_a0      0.01
+lc_gamma   3.0
+lc_q0      0.19635
+lc_kappa0  0.000648456
+lc_kappa1  0.000648456
+lc_xi      0.7
+
+lc_Gamma   0.5
+
+lc_q_initialisation twist
+lc_q_init_amplitude 0.333333333333333
+lc_init_redshift 1.0
+
+lc_anchoring_method two
+lc_wall_anchoring normal
+lc_coll_anchoring normal
+lc_anchoring_strength_colloid 0.002593824
+
+###############################################################################
+#
+#  Colloid parameters
+#
+###############################################################################
+
+colloid_init        no_colloids
+
+###############################################################################
+#
+#  Periodic conditions / boundaries
+#
+###############################################################################
+
+periodicity 1_1_1
+
+###############################################################################
+#
+#  Output frequency and type
+#
+###############################################################################
+
+default_io_mode   mpiio
+default_io_format binary
+default_io_report yes
+
+freq_statistics   1000
+config_at_end     no
+
+lb_data_stat_rho         float
+lb_data_stat_momentum    float
+field_options_stat       float
+
+
+timer_lap_report         yes
+timer_lap_report_freq    1000
+
+###############################################################################
+#
+#  Miscellaneous
+#
+#  random_seed  +ve integer is the random number generator seed
+#
+###############################################################################
+
+random_seed 8361235
