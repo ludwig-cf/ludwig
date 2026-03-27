@@ -142,8 +142,6 @@ __host__ int colloids_info_nhalo(colloids_info_t * info, int * nhalo);
 __host__ int colloids_info_ntotal(colloids_info_t * info, int * ntotal);
 __host__ int colloids_info_nlocal(colloids_info_t * cinfo, int * nlocal);
 __host__ int colloids_info_ntotal_set(colloids_info_t * cinfo);
-__host__ int colloids_info_map(colloids_info_t * info, int index, colloid_t ** pc);
-__host__ int colloids_info_map_old(colloids_info_t * info, int index, colloid_t ** pc);
 __host__ int colloids_info_cell_index(colloids_info_t * cinfo, int ic, int jc, int kc);
 __host__ int colloids_info_insert_colloid(colloids_info_t * cinfo, colloid_t * coll);
 __host__ int colloids_info_cell_list_clean(colloids_info_t * cinfo);
@@ -217,6 +215,70 @@ static inline int colloids_info_map_set(colloids_info_t * info, int index,
   info->map_new[index] = pc;
 
   return 0;
+}
+
+/*****************************************************************************
+ *
+ *  colloid_ub
+ *
+ *  u_b = v + omega x r_b
+ *
+ *****************************************************************************/
+
+__host__ __device__
+static inline void colloid_ub(const colloid_t * pc, const double rb[3],
+			      double ub[3]) {
+  assert(pc);
+
+  ub[X] = pc->s.v[X] + pc->s.w[Y]*rb[Z] - pc->s.w[Z]*rb[Y];
+  ub[Y] = pc->s.v[Y] + pc->s.w[Z]*rb[X] - pc->s.w[X]*rb[Z];
+  ub[Z] = pc->s.v[Z] + pc->s.w[X]*rb[Y] - pc->s.w[Y]*rb[X];
+
+  return;
+}
+
+/*****************************************************************************
+ *
+ *  colloids_info_map
+ *
+ *  Look at the pointer map for site index (current time step).
+ *  The "if" is here to allow this routine to be called when
+ *  options->have_colloids = 0.
+ *  It might be better if this were disallowed.
+ *
+ *****************************************************************************/
+
+__host__ __device__
+static inline void colloids_info_map(const colloids_info_t * info, int index,
+				     colloid_t ** pc) {
+  assert(info);
+  assert(pc);
+
+  *pc = NULL;
+  if (info->map_new) *pc = info->map_new[index];
+
+  return ;
+}
+
+/*****************************************************************************
+ *
+ *  colloids_info_map_old
+ *
+ *  Look at the pointer map for site index (old time step).
+ *  See comment above.
+ *
+ *****************************************************************************/
+
+__host__ __device__
+static inline void colloids_info_map_old(const colloids_info_t * info,
+					 int index, colloid_t ** pc) {
+  assert(info);
+  assert(pc);
+
+  *pc = NULL;
+  if (info->map_old) *pc = info->map_old[index];
+
+  return;
 }
 
 #endif

@@ -1,0 +1,83 @@
+##############################################################################
+#
+#  Conversered order parameter replacement (scalar field)
+#
+#  On colloid movement replacement of fluid
+#
+#  The colloid initial conditions are carefully crafted to
+#  give a change in discrete shape at time step 1.
+#
+##############################################################################
+
+N_start  0
+N_cycles 2
+
+size 32_32_32
+periodicity 1_1_1
+
+##############################################################################
+#
+#  Fluid parameters
+#
+##############################################################################
+
+viscosity                 0.1
+
+isothermal_fluctuations   off
+
+free_energy               symmetric
+
+symmetric_a              -0.0625
+symmetric_b               0.0625
+symmetric_kappa           0.04
+
+phi0                      0.0
+phi_initialisation        spinodal
+mobility                  0.45
+
+fd_advection_scheme_order 2
+fd_gradient_calculation   3d_27pt_solid
+
+###############################################################################
+#
+#  Colloid parameters
+#
+###############################################################################
+
+colloid_init        input_one
+
+colloid_one_a0      2.3
+colloid_one_ah      2.3
+colloid_one_r       16.0_16.0_16.299
+colloid_one_v       0.0_0.0_0.01
+colloid_one_s       1.0_0.0_0.0
+colloid_one_m       1.0_0.0_0.0
+colloid_one_c       0.0
+colloid_one_h       0.0
+
+colloid_one_q0     +0.01
+colloid_one_q1      0.0000
+
+###############################################################################
+#
+#  Output frequency and type
+#
+###############################################################################
+
+freq_statistics 1
+freq_psi_resid  10
+config_at_end  no
+
+default_io_grid 1_1_1
+colloid_io_freq 1000
+
+psi_io_mode      mpiio
+psi_io_report    no
+
+###############################################################################
+#
+#  Miscellaneous
+#
+###############################################################################
+
+random_seed 8361235

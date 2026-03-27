@@ -14,7 +14,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2022 The University of Edinburgh
+ *  (c) 2022-2026 The University of Edinburgh
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *
@@ -35,6 +35,46 @@ struct cs_limits_s {
   int kmin;
   int kmax;
 };
+
+/*****************************************************************************
+ *
+ *  cs_limits
+ *
+ *****************************************************************************/
+
+static inline cs_limits_t cs_limits(const int nlocal[3]) {
+
+  cs_limits_t lims = {0};
+
+  lims.imin = 1;
+  lims.imax = nlocal[0];
+  lims.jmin = 1;
+  lims.jmax = nlocal[1];
+  lims.kmin = 1;
+  lims.kmax = nlocal[2];
+
+  return lims;
+}
+
+/*****************************************************************************
+ *
+ *  cs)limits_with_halo
+ *
+ *****************************************************************************/
+
+static inline cs_limits_t cs_limits_with_halo(const int nlocal[3], int nh) {
+
+  cs_limits_t lims = {0};
+
+  lims.imin = 1 - nh;
+  lims.imax = nlocal[0] + nh;
+  lims.jmin = 1 - nh;
+  lims.jmax = nlocal[1] + nh;
+  lims.kmin = 1 - nh;
+  lims.kmax = nlocal[2] + nh;
+
+  return lims;
+}
 
 /*****************************************************************************
  *
@@ -75,7 +115,7 @@ static inline int cs_limits_ic(cs_limits_t lim, int iflat) {
   int stry = strz*nz;
   int strx = stry*ny;
 
-  int ic = lim.imin + iflat/strx;
+  int ic = lim.imin + iflat / strx;
 
   assert(lim.imin <= ic && ic <= lim.imax);
 
@@ -100,7 +140,7 @@ static inline int cs_limits_jc(cs_limits_t lim, int iflat) {
   int stry = strz*nz;
   int strx = stry*ny;
 
-  int jc = lim.jmin + (iflat % strx)/stry;
+  int jc = lim.jmin + (iflat % strx) / stry;
 
   assert(lim.jmin <= jc && jc <= lim.jmax);
 
@@ -123,7 +163,7 @@ static inline int cs_limits_kc(cs_limits_t lim, int iflat) {
   int strz = 1;
   int stry = strz*nz;
 
-  int kc = lim.kmin + (iflat % stry)/strz;
+  int kc = lim.kmin + (iflat % stry) / strz;
 
   assert(lim.kmin <= kc && kc <= lim.kmax);
 
@@ -142,8 +182,8 @@ static inline int cs_limits_index(cs_limits_t lim, int ic, int jc, int kc) {
 
   int iflat = -1;
 
-  int ny  = 1 + lim.jmax - lim.jmin;
-  int nz  = 1 + lim.kmax - lim.kmin;
+  int ny = 1 + lim.jmax - lim.jmin;
+  int nz = 1 + lim.kmax - lim.kmin;
 
   assert(lim.imin <= ic && ic <= lim.imax);
   assert(lim.jmin <= jc && jc <= lim.jmax);
