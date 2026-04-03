@@ -30,7 +30,7 @@ colloid_link_t * colloid_link_allocate(void) {
 
   colloid_link_t * p_link;
 
-  p_link = (colloid_link_t *) malloc(sizeof(colloid_link_t));
+  p_link = (colloid_link_t *) calloc(1, sizeof(colloid_link_t));
   assert(p_link);
   nlinks_++;
 
