@@ -1,16 +1,19 @@
-Welcome to Ludwig v0.16.1 (Serial version running on 1 process)
-Start time: Mon Jul  4 10:46:04 2022
+Welcome to: Ludwig v0.24.0 (Serial version running on 1 process)
+Git commit: 222f3df27dcb69fd8d603b56bec9746ae391782d
+
+Start time: Sun Apr  5 15:11:35 2026
 
 Compiler:
-  name:           Gnu 11.2.0
-  version-string: 11.2.0
+  name:           Gnu 15.2.0
+  version-string: 15.2.0
+  options:        -O2 -g -Wall -Wextra
 
 Note assertions via standard C assert() are on.
 
-Target thread model: OpenMP.
-OpenMP threads: 1; maximum number of threads: 8.
+Target thread model: OpenMP
+OpenMP threads: 1; maximum number of threads 8
 
-Read 26 user parameters from serial-anch-wn2.inp
+Read 26 user parameters from input
 
 System details
 --------------
@@ -44,8 +47,8 @@ Liquid crystal activity                  No
 
 Liquid crystal anchoring:
 Wall anchoring type:          planar
-Wall anchoring w1:            2.0000000e-04
-Wall anchoring w2:            2.0000000e-04
+Wall anchoring w1:            1.9540000e-04
+Wall anchoring w2:            1.9540000e-04
 
 Using Beris-Edwards solver:
 Rotational diffusion const =  2.5000000e+00
@@ -67,7 +70,7 @@ Lattice Boltzmann distributions
 Model:            d3q19  
 SIMD vector len:  1
 Number of sets:   1
-Halo type:        lb_halo_target (full halo)
+Halo type:        full halo
 Input format:     binary
 Output format:    binary
 I/O grid:         1 1 1
@@ -113,7 +116,7 @@ Scalars - total mean variance min max
 [Qyz]  0.0000000e+00  0.0000000e+00  0.0000000e+00  0.0000000e+00  0.0000000e+00
 
 Free energies - timestep f v f/v f_s1 fs_s2 redshift
-[fe]              0 -8.6306600774e-03  2.5600000000e+02 -3.3713515927e-05  1.0567663416e-03  9.5798326283e-04  1.0000000000e+00
+[fe]              0 -8.6266216021e-03  2.5600000000e+02 -3.3697740633e-05  1.0324607157e-03  9.3594964779e-04  1.0000000000e+00
 
 Momentum - x y z
 [total   ]  0.0000000e+00  0.0000000e+00  0.0000000e+00
@@ -124,14 +127,14 @@ Starting time step loop.
 
 Scalars - total mean variance min max
 [rho]         256.00  1.00000000000  2.2204460e-16  1.00000000000  1.00000000000
-[Qxx]  2.7759754e+01  1.0843654e-01 2.7900674e-02 -1.6658228e-01 3.3545673e-01
-[Qxy] -1.3445297e+01 -5.2520691e-02 1.8571508e-02 -2.4652161e-01 2.4228311e-01
-[Qxz]  0.0000000e+00  0.0000000e+00 0.0000000e+00  0.0000000e+00 0.0000000e+00
-[Qyy]  1.1372296e+01  4.4423032e-02 2.7662195e-02 -1.6795611e-01 3.3366463e-01
-[Qyz]  0.0000000e+00  0.0000000e+00 0.0000000e+00  0.0000000e+00 0.0000000e+00
+[Qxx]  2.7729479e+01  1.0831828e-01  2.7900174e-02 -1.6657954e-01  3.3548240e-01
+[Qxy] -1.3436849e+01 -5.2487693e-02  1.8590746e-02 -2.4652091e-01  2.4232257e-01
+[Qxz]  0.0000000e+00  0.0000000e+00  0.0000000e+00  0.0000000e+00  0.0000000e+00
+[Qyy]  1.1405952e+01  4.4554500e-02  2.7661483e-02 -1.6796930e-01  3.3365511e-01
+[Qyz]  0.0000000e+00  0.0000000e+00  0.0000000e+00  0.0000000e+00  0.0000000e+00
 
 Free energies - timestep f v f/v f_s1 fs_s2 redshift
-[fe]           1000 -1.3493135565e-02  2.5600000000e+02 -5.2707560800e-05  1.0117484724e-03  9.2013682890e-04  1.0000000000e+00
+[fe]           1000 -1.3492774922e-02  2.5600000000e+02 -5.2706152039e-05  9.8972803335e-04  8.9953174092e-04  1.0000000000e+00
 
 Momentum - x y z
 [total   ]  0.0000000e+00  0.0000000e+00  0.0000000e+00
@@ -144,14 +147,19 @@ Timer resolution: 1e-06 second
 
 Timer statistics
              Section:       tmin       tmax      total
-               Total:      1.121      1.121      1.121   1.120998 (1 call)
-      Time step loop:      0.001      0.002      1.119   0.001119 (1000 calls)
-       phi gradients:      0.001      0.001      0.590   0.000590 (1000 calls)
-           phi halos:      0.000      0.000      0.158   0.000158 (1000 calls)
+               Total:      0.302      0.302      0.302   0.301544 (1 call)
+      Time step loop:      0.000      0.000      0.301   0.000301 (1000 calls)
+       phi gradients:      0.000      0.000      0.142   0.000142 (1000 calls)
+           phi halos:      0.000      0.000      0.027   0.000027 (1000 calls)
+            -> irecv:      0.000      0.000      0.000   0.000000 (1001 calls)
+             -> pack:      0.000      0.000      0.013   0.000013 (1001 calls)
+            -> isend:      0.000      0.000      0.000   0.000000 (1001 calls)
+          -> waitall:      0.000      0.000      0.000   0.000000 (1001 calls)
+           -> unpack:      0.000      0.000      0.013   0.000013 (1001 calls)
    Force calculation:      0.000      0.000      0.000   0.000000 (1000 calls)
-          phi update:      0.001      0.001      0.528   0.000528 (1000 calls)
-BE mol field (krnl) :      0.000      0.001      0.375   0.000375 (1000 calls)
-BP BE update (krnl) :      0.000      0.000      0.152   0.000152 (1000 calls)
-               Free1:      0.000      0.000      0.001   0.000001 (1000 calls)
-End time: Mon Jul  4 10:46:05 2022
+          phi update:      0.000      0.000      0.159   0.000159 (1000 calls)
+BE mol field (krnl) :      0.000      0.000      0.125   0.000125 (1000 calls)
+BP BE update (krnl) :      0.000      0.000      0.034   0.000034 (1000 calls)
+Diagnostics / output:      0.000      0.000      0.000   0.000000 (1000 calls)
+End time: Sun Apr  5 15:11:36 2026
 Ludwig finished normally.

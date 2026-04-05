@@ -9,13 +9,13 @@
 #  Relaxational dynamics only.
 #
 #  We can identify three cases for the dimensionless parameter:
-#    w_1 / kappa L
+#    w_1 L / kappa
 #
-#  (for fixed kappa1 L) with zero, weak, or strong using
+#  (for fixed kappa1 L) with zero, "weak", or "strong" using
 #
-#  lc_wall_anchoring_w1   0.0       => w_1 / kappa L = 0
-#  lc_wall_anchoring_w1   0.0002    => w_1 / kappa L = 0.002
-#  lc_wall_anchoring_w1   0.02      => w_1 / kappa L = 2.0
+#  lc_wall_anchoring_w1   0.0       => w_1 L / kappa = 0
+#  lc_wall_anchoring_w1   0.0001954 => w_1 L / kappa = 5.0
+#  lc_wall_anchoring_w1   0.01954   => w_1 L / kappa = 500.0
 #
 #  Run for e.g., 100,000 steps to obtain a steady energy.
 #  This test is only for 1000 steps.
@@ -66,7 +66,7 @@ lc_init_redshift           1.0
 
 lc_wall_anchoring          fixed
 lc_wall_fixed_orientation  1.0_0.0_0.0
-lc_wall_anchoring_w1       0.0002
+lc_wall_anchoring_w1       0.0001954
 
 
 ###############################################################################
