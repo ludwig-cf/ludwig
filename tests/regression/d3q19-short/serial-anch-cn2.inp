@@ -2,19 +2,19 @@
 #
 #  Colloid anchoring (planar)
 #
-#  A single colloid (radius a0 = 7.5) is placed at the centre of the
+#  A single colloid (radius a0 = 7.25) is placed at the centre of the
 #  system which contains an ordinary nematic.
 #
 #  Relaxational dynamics only (no hydrodynamics)
 #
-#  For planar anchoring here we choose to set w1 = 2.0*w2.
+#  For planar anchoring here we choose to set w1 = w2.
 #
 #  The colloid has planar anchoring and one can identify three cases
-#  for the dimensionless parameter w_1 / kapaa a
+#  for the dimensionless parameter w_1 a / kappa
 #
-#  lc_coll_anchoring_w1    0.0       => w_1 / kappa a  = 0
-#  lc_coll_anchoring_w1    0.00008   => w_1 / kappa a  = 0.02
-#  lc_coll_anchoring_w1    0.008     => w_1 / kappa a  = 2.0
+#  lc_coll_anchoring_w1    0.0         => w_1 a / kappa  = 0
+#  lc_coll_anchoring_w1    0.0000147   => w_1 a / kappa  = 0.2
+#  lc_coll_anchoring_w1    0.00147     => w_1 a / kappa  = 20.0
 #
 #  corresponding to no anchoring, weak anchoring, and strong anchoring.
 #  The value below is for strong anchoring.
@@ -72,8 +72,8 @@ lc_q_init_amplitude   0.333333333333333
 lc_init_redshift      1.0
 
 lc_coll_anchoring     planar
-lc_coll_anchoring_w1  0.008
-lc_coll_anchoring_w2  0.004
+lc_coll_anchoring_w1  0.00147
+lc_coll_anchoring_w2  0.00147
 
 
 ###############################################################################

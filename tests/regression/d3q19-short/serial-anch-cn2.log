@@ -1,16 +1,19 @@
-Welcome to Ludwig v0.16.1 (Serial version running on 1 process)
-Start time: Wed Jul 13 09:30:45 2022
+Welcome to: Ludwig v0.24.0 (Serial version running on 1 process)
+Git commit: 222f3df27dcb69fd8d603b56bec9746ae391782d
+
+Start time: Mon Mar 30 19:32:07 2026
 
 Compiler:
-  name:           Gnu 11.2.0
-  version-string: 11.2.0
+  name:           Gnu 15.2.0
+  version-string: 15.2.0
+  options:        -O2 -g -Wall -Wextra
 
 Note assertions via standard C assert() are on.
 
-Target thread model: OpenMP.
-OpenMP threads: 1; maximum number of threads: 8.
+Target thread model: OpenMP
+OpenMP threads: 1; maximum number of threads 8
 
-Read 30 user parameters from serial-anch-cn2.inp
+Read 30 user parameters from input
 
 System details
 --------------
@@ -44,8 +47,8 @@ Liquid crystal activity                  No
 
 Liquid crystal anchoring:
 Colloid anchoring type:       planar
-Colloid anchoring w1:         8.0000000e-03
-Colloid anchoring w2:         4.0000000e-03
+Colloid anchoring w1:         1.4700000e-03
+Colloid anchoring w2:         1.4700000e-03
 
 Using Beris-Edwards solver:
 Rotational diffusion const =  5.0000000e-01
@@ -67,7 +70,7 @@ Lattice Boltzmann distributions
 Model:            d3q19  
 SIMD vector len:  1
 Number of sets:   1
-Halo type:        lb_halo_target (full halo)
+Halo type:        full halo
 Input format:     binary
 Output format:    binary
 I/O grid:         1 1 1
@@ -139,14 +142,14 @@ Initial conditions.
 
 Scalars - total mean variance min max
 [rho]      260569.00  1.00000000000  2.2204460e-16  1.00000000000  1.00000000000
-[Qxx]  8.6856333e+04  3.3333333e-01 -2.9758140e-13  3.3333333e-01  3.3333333e-01
+[Qxx]  8.6856333e+04  3.3333333e-01 -6.0314898e-13  3.3333333e-01  3.3333333e-01
 [Qxy]  0.0000000e+00  0.0000000e+00  0.0000000e+00  0.0000000e+00  0.0000000e+00
 [Qxz]  0.0000000e+00  0.0000000e+00  0.0000000e+00  0.0000000e+00  0.0000000e+00
-[Qyy] -4.3428167e+04 -1.6666667e-01 -7.4395351e-14 -1.6666667e-01 -1.6666667e-01
+[Qyy] -4.3428167e+04 -1.6666667e-01 -1.5078725e-13 -1.6666667e-01 -1.6666667e-01
 [Qyz]  0.0000000e+00  0.0000000e+00  0.0000000e+00  0.0000000e+00  0.0000000e+00
 
 Free energies - timestep f v f/v f_s a f_s/a
-[fe]              0 -1.7124366154e+01  2.6056900000e+05 -6.5719122975e-05  1.4909235568e+00  1.0140000000e+03  1.4703388134e-03
+[fe]              0 -1.8062294558e+01  2.6056900000e+05 -6.9318662457e-05  4.6027970355e-01  1.0140000000e+03  4.5392475696e-04
 
 Momentum - x y z
 [total   ]  0.0000000e+00  0.0000000e+00  0.0000000e+00
@@ -163,14 +166,14 @@ Colloid velocities - x y z
 
 Scalars - total mean variance min max
 [rho]      260569.00  1.00000000000  2.2204460e-16  1.00000000000  1.00000000000
-[Qxx]  8.6854570e+04  3.3332657e-01  3.9599019e-08  3.2273571e-01  3.3333345e-01
-[Qxy] -5.9732106e-18 -2.2923719e-23  6.0655261e-09 -5.0352107e-03  5.0352107e-03
-[Qxz] -3.1520214e-19 -1.2096686e-24  6.0655261e-09 -5.0352107e-03  5.0352107e-03
-[Qyy] -4.3427285e+04 -1.6666328e-01  1.0805859e-08 -1.6666674e-01 -1.5995154e-01
-[Qyz]  1.1520177e-18  4.4211619e-24  8.2287936e-10 -2.0266288e-03  2.0266288e-03
+[Qxx]  8.6856008e+04  3.3333208e-01  1.3535593e-09  3.3137136e-01  3.3333336e-01
+[Qxy]  0.0000000e+00  0.0000000e+00  2.0674618e-10 -9.3051896e-04  9.3051896e-04
+[Qxz]  0.0000000e+00  0.0000000e+00  2.0674618e-10 -9.3051896e-04  9.3051896e-04
+[Qyy] -4.3428004e+04 -1.6666604e-01  3.6939966e-10 -1.6666668e-01 -1.6542322e-01
+[Qyz]  0.0000000e+00  0.0000000e+00  2.8237256e-11 -3.7572166e-04  3.7572166e-04
 
 Free energies - timestep f v f/v f_s a f_s/a
-[fe]              2 -1.7142944558e+01  2.6056900000e+05 -6.5790422339e-05  1.4735048183e+00  1.0140000000e+03  1.4531605703e-03
+[fe]              2 -1.8062409740e+01  2.6056900000e+05 -6.9319104500e-05  4.5968194696e-01  1.0140000000e+03  4.5333525341e-04
 
 Momentum - x y z
 [total   ]  0.0000000e+00  0.0000000e+00  0.0000000e+00
@@ -183,18 +186,28 @@ Timer resolution: 1e-06 second
 
 Timer statistics
              Section:       tmin       tmax      total
-               Total:      1.458      1.458      1.458   1.458055 (1 call)
-      Time step loop:      0.414      0.475      0.889   0.444392 (2 calls)
-       Lattice halos:      0.009      0.012      0.022   0.010755 (2 calls)
-       phi gradients:      0.127      0.147      0.275   0.137341 (2 calls)
-           phi halos:      0.004      0.006      0.010   0.005096 (2 calls)
-              Forces:      0.000      0.000      0.000   0.000011 (2 calls)
-             Rebuild:      0.006      0.007      0.013   0.006303 (2 calls)
-      Particle halos:      0.000      0.000      0.000   0.000037 (2 calls)
-   Force calculation:      0.148      0.163      0.311   0.155475 (2 calls)
-          phi update:      0.123      0.146      0.269   0.134458 (2 calls)
-BE mol field (krnl) :      0.065      0.069      0.134   0.066898 (2 calls)
-BP BE update (krnl) :      0.058      0.077      0.135   0.067550 (2 calls)
-               Free1:      0.000      0.214      0.214   0.035619 (6 calls)
-End time: Wed Jul 13 09:30:47 2022
+               Total:      0.591      0.591      0.591   0.591484 (1 call)
+      Time step loop:      0.137      0.243      0.380   0.190146 (2 calls)
+       Lattice halos:      0.005      0.005      0.010   0.004937 (2 calls)
+            -> irecv:      0.000      0.000      0.000   0.000000 (2 calls)
+             -> pack:      0.003      0.003      0.006   0.002934 (2 calls)
+            -> isend:      0.000      0.000      0.000   0.000001 (2 calls)
+          -> waitall:      0.000      0.000      0.000   0.000000 (2 calls)
+           -> unpack:      0.002      0.002      0.004   0.002001 (2 calls)
+       phi gradients:      0.033      0.033      0.065   0.032737 (2 calls)
+           phi halos:      0.001      0.001      0.002   0.001176 (2 calls)
+            -> irecv:      0.000      0.000      0.000   0.000000 (3 calls)
+             -> pack:      0.001      0.001      0.002   0.000821 (3 calls)
+            -> isend:      0.000      0.000      0.000   0.000000 (3 calls)
+          -> waitall:      0.000      0.000      0.000   0.000000 (3 calls)
+           -> unpack:      0.000      0.000      0.001   0.000379 (3 calls)
+              Forces:      0.000      0.000      0.000   0.000009 (2 calls)
+             Rebuild:      0.006      0.006      0.012   0.006140 (2 calls)
+      Particle halos:      0.000      0.000      0.000   0.000012 (2 calls)
+   Force calculation:      0.054      0.054      0.109   0.054308 (2 calls)
+          phi update:      0.036      0.039      0.075   0.037313 (2 calls)
+BE mol field (krnl) :      0.023      0.024      0.046   0.023213 (2 calls)
+BP BE update (krnl) :      0.013      0.015      0.028   0.014098 (2 calls)
+Diagnostics / output:      0.000      0.109      0.109   0.054688 (2 calls)
+End time: Mon Mar 30 19:32:08 2026
 Ludwig finished normally.
