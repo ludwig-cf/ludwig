@@ -175,10 +175,6 @@ int build_links_colloid_fluid(colloids_info_t * info, map_t * map,
 
           /* Index j is inside, so initialise the link */
 
-          if (link == NULL) {
-            link = colloid_link_allocate();
-          }
-
           rb[X] = r0[X] - (pc->s.r[X] - map->cs->param->noffset[X]);
           rb[Y] = r0[Y] - (pc->s.r[Y] - map->cs->param->noffset[Y]);
           rb[Z] = r0[Z] - (pc->s.r[Z] - map->cs->param->noffset[Z]);
@@ -194,6 +190,147 @@ int build_links_colloid_fluid(colloids_info_t * info, map_t * map,
 
           if (status == MAP_FLUID) {
             link->status = LINK_FLUID;
+          }
+
+	  /* Add a new unused link here in case we need it next time */
+          if (link->next == NULL) {
+            link->next = colloid_link_allocate();
+          }
+
+          link = link->next;
+        }
+
+        /* Next site in the search */
+      }
+    }
+  }
+
+  return 0;
+}
+
+/****************************************************************************
+ *
+ *  build_links_colloid_wall
+ *
+ *  There's scope for some rationalisation between this routine and the
+ *  corresponding fluid one above.
+ *
+ *  The difference is that for the boundary link case, links are allowed
+ *  to start in the halo region, where the plane wall are located. Flkuid
+ *  links cannot start in the halo region.
+ *
+ *  However, much is very similar.
+ *
+ ****************************************************************************/
+
+int build_links_colloid_wall(colloids_info_t * info, map_t * map,
+			     wall_t * wall,
+			     const lb_model_t * model, colloid_t * pc) {
+
+  const double lambda = 0.5;
+
+  int i_min, i_max;
+  int j_min, j_max;
+  int k_min, k_max;
+  int nlocal[3] = {0};
+
+  double amax  = 0.0;
+
+  assert(model);
+  assert(pc);
+  assert(pc->lnk);
+
+  colloid_link_t * link = NULL;
+
+  /* Limits of the search region around the particle. This has to be large
+   * enough to capture any local links. Links are "outside to inside" and
+   * the outside is not in the halo region. (Such links are captured by the
+   * image particle in a neighbouring procees.) */
+
+  cs_nlocal(info->cs, nlocal);
+
+  amax = colloid_principal_radius(&pc->s);
+
+  {
+    /* Local limits require colloid position minus offset */
+    double rc[3] = {};
+
+    rc[X] = pc->s.r[X] - 1.0*map->cs->param->noffset[X];
+    rc[Y] = pc->s.r[Y] - 1.0*map->cs->param->noffset[Y];
+    rc[Z] = pc->s.r[Z] - 1.0*map->cs->param->noffset[Z];
+
+    i_min = util_imax(1,         (int) floor(rc[X] - amax));
+    j_min = util_imax(1,         (int) floor(rc[Y] - amax));
+    k_min = util_imax(1,         (int) floor(rc[Z] - amax));
+    i_max = util_imin(nlocal[X], (int) ceil(rc[X] + amax));
+    j_max = util_imin(nlocal[Y], (int) ceil(rc[Y] + amax));
+    k_max = util_imin(nlocal[Z], (int) ceil(rc[Z] + amax));
+  }
+
+  /* Begin search ... */
+
+  link = pc->lnk;
+  while (link && link->status != LINK_UNUSED) {
+    link = link->next;
+  }
+
+  for (int ic = i_min; ic <= i_max; ic++) {
+    int inear = (ic == 1 || ic == nlocal[X])*wall->param->isboundary[X];
+    for (int jc = j_min; jc <= j_max; jc++) {
+      int jnear = (jc == 1 || jc == nlocal[Y])*wall->param->isboundary[Y];
+      for (int kc = k_min; kc <= k_max; kc++) {
+	int knear = (kc == 1 || kc == nlocal[Z])*wall->param->isboundary[Z];
+
+        /* We are looking for links i -> j where i is outside and j is
+         * inside; i (outside) must be a BOUNDARY */
+
+        int   indexj = cs_index(info->cs, ic, jc, kc);
+        double r0[3] = {ic, jc, kc};
+
+	colloid_t * pchere = NULL;
+
+	/* We need to be near the perimeter */
+	/* We need indexj inside colloid */
+	if (0 == (inear || jnear || knear)) continue;
+
+	colloids_info_map(info, indexj, &pchere);
+	if (pchere != pc) continue;
+
+	/* The search is now "inside out" ... */
+
+        for (int p = 1; p < model->nvel; p++) {
+
+          /* Find the index of the potential outside site */
+
+          int ii = ic + model->cv[p][X];
+          int jj = jc + model->cv[p][Y];
+          int kk = kc + model->cv[p][Z];
+
+          int    indexi = cs_index(info->cs, ii, jj, kk);
+	  int    status = MAP_FLUID;
+          double rb[3]  = {0}; /* centre -> local site (i, j, k) */
+
+	  map_status(map, indexi, &status);
+	  if (status != MAP_BOUNDARY) continue;
+
+          /* Index i is boundary, so initialise the link */
+
+          rb[X] = r0[X] - (pc->s.r[X] - map->cs->param->noffset[X]);
+          rb[Y] = r0[Y] - (pc->s.r[Y] - map->cs->param->noffset[Y]);
+          rb[Z] = r0[Z] - (pc->s.r[Z] - map->cs->param->noffset[Z]);
+
+          link->rb[X] = rb[X] + lambda * model->cv[p][X];
+          link->rb[Y] = rb[Y] + lambda * model->cv[p][Y];
+          link->rb[Z] = rb[Z] + lambda * model->cv[p][Z];
+
+          link->i      = indexi;
+          link->j      = indexj;
+          link->p      = model->nvel - p; /* Opposite of search direction */
+          link->status = LINK_BOUNDARY;
+
+	  /* Add a new unused link here in case we need it next time */
+          if (link->next == NULL) {
+            link->next = colloid_link_allocate();
           }
 
           link = link->next;
@@ -376,11 +513,14 @@ int build_links_update_links_colloid(colloids_info_t *  info,
                                      const lb_model_t * model, map_t * map,
                                      wall_t * wall, colloid_t * pc) {
   assert(pc);
+  assert(wall);
 
   if (pc->s.rebuild) {
     /* The shape has changed, so need to reconstruct */
     build_links_colloid_fluid(info, map, model, pc);
-    /* FIXME if (wall) build_links_colloid_wall(pc, map, model); */
+    if (wall->param->iswall) {
+      build_links_colloid_wall(info, map, wall, model, pc);
+    }
   }
   else {
     /* Shape unchanged, so just reset existing links */
@@ -400,8 +540,6 @@ int build_links_update_links_colloid(colloids_info_t *  info,
 /*****************************************************************************
  *
  *  build_links_update_driver
- *
- *  FIXME CHECK if wall ever null: wall may be NULL, i.e., no walls
  *
  *****************************************************************************/
 
