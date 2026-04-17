@@ -25,8 +25,9 @@
 #include "util_vector.h"
 #include "util_ellipsoid.h"
 #include "colloids.h"
+#include "colloid_link.h"
 
-__host__ int colloid_create(colloids_info_t * cinfo, colloid_t ** pc);
+__host__ int colloid_create(colloids_info_t * cinfo, const double a0, colloid_t ** pc);
 __host__ void colloid_free(colloids_info_t * cinfo, colloid_t * pc);
 
 /*****************************************************************************
@@ -279,14 +280,14 @@ int colloids_info_recreate(const colloid_options_t * newopts,
   /* Need to copy all colloid state across */
 
   for ( ; pc; pc = pc->nextlocal) {
-    colloids_info_add_local(newinfo, pc->s.index, pc->s.r, &pcnew);
+    colloids_info_add_local(newinfo, pc->s.index, pc->s.r, pc->s.a0, &pcnew);
     if (pcnew == NULL) {
       /* We have dropped a colloid, probably at the new cell list boundary;
        * try adjusting the position by a small amount... */
       pc->s.r[X] += DBL_EPSILON*pc->s.r[X];
       pc->s.r[Y] += DBL_EPSILON*pc->s.r[Y];
       pc->s.r[Z] += DBL_EPSILON*pc->s.r[Z];
-      colloids_info_add_local(newinfo, pc->s.index, pc->s.r, &pcnew);
+      colloids_info_add_local(newinfo, pc->s.index, pc->s.r, pc->s.a0, &pcnew);
     }
     /* If we've still failed, then we need to stop under control */
     if (pcnew == NULL) {
@@ -903,7 +904,7 @@ __host__ int colloids_info_update_cell_list(colloids_info_t * cinfo) {
  *****************************************************************************/
 
 __host__ int colloids_info_add_local(colloids_info_t * cinfo, int index,
-			    const double r[3], colloid_t ** pc) {
+			    const double r[3], double a0, colloid_t ** pc) {
   int is_local = 1;
   int icell[3];
 
@@ -919,7 +920,7 @@ __host__ int colloids_info_add_local(colloids_info_t * cinfo, int index,
   if (icell[Z] < 1 || icell[Z] > cinfo->ncell[Z]) is_local = 0;
 
   *pc = NULL;
-  if (is_local) colloids_info_add(cinfo, index, r, pc);
+  if (is_local) colloids_info_add(cinfo, index, r, a0, pc);
 
   return 0;
 }
@@ -938,7 +939,7 @@ int colloids_info_add_state_local(colloids_info_t * info,
   int ifail = 0;
   colloid_t * pc = NULL;
 
-  ifail = colloids_info_add_local(info, state->index, state->r, &pc);
+  ifail = colloids_info_add_local(info, state->index, state->r, state->a0, &pc);
   if (state->index < 1) ifail = -1;
   if (pc) pc->s = *state;
 
@@ -954,7 +955,7 @@ int colloids_info_add_state_local(colloids_info_t * info,
  *****************************************************************************/
 
 __host__ int colloids_info_add(colloids_info_t * cinfo, int index,
-				     const double r[3], colloid_t ** pc) {
+				     const double r[3], const double a0, colloid_t ** pc) {
 
   int icell[3];
 
@@ -970,7 +971,7 @@ __host__ int colloids_info_add(colloids_info_t * cinfo, int index,
   assert(icell[Y] < cinfo->ncell[Y] + 2*cinfo->nhalo);
   assert(icell[Z] < cinfo->ncell[Z] + 2*cinfo->nhalo);
 
-  colloid_create(cinfo, pc);
+  colloid_create(cinfo, a0, pc);
   (*pc)->s.index = index;
 
   (*pc)->s.r[X] = r[X];
@@ -994,7 +995,7 @@ __host__ int colloids_info_add(colloids_info_t * cinfo, int index,
  *
  *****************************************************************************/
 
-__host__ int colloid_create(colloids_info_t * cinfo, colloid_t ** pc) {
+__host__ int colloid_create(colloids_info_t * cinfo, const double a0, colloid_t ** pc) {
 
   colloid_state_t s = {0};
   colloid_t * obj = NULL;
@@ -1011,6 +1012,10 @@ __host__ int colloid_create(colloids_info_t * cinfo, colloid_t ** pc) {
 
   cinfo->nallocated += 1;
   *pc = obj;
+
+  (*pc)->s.a0 = a0;
+
+  create_links_arrays(cinfo, *pc);
 
   return 0;
 }
@@ -1668,4 +1673,41 @@ int colloids_gravity_set(colloids_info_t * cinfo, const double g[3]) {
   cinfo->fgravity[Z] = g[Z];
 
   return 0;
+}
+
+/**
+ * create_links_arrays
+ * 
+ * Allocate the arrays of links for a colloid assuming the max number of links determined by the colloid radius
+ * 
+ */
+void create_links_arrays(colloids_info_t * cinfo, colloid_t * pc) {
+  pc->links->max_links = colloid_link_max_3d(pc->s.a0, cinfo->options.nvel);
+  tdpAssert(tdpMallocManaged((void **) &pc->links->i, pc->links->max_links*sizeof(int), tdpMemAttachGlobal));
+  tdpAssert(tdpMallocManaged((void **) &pc->links->j, pc->links->max_links*sizeof(int), tdpMemAttachGlobal));
+  tdpAssert(tdpMallocManaged((void **) &pc->links->p, pc->links->max_links*sizeof(int), tdpMemAttachGlobal));
+  tdpAssert(tdpMallocManaged((void **) &pc->links->status, pc->links->max_links*sizeof(int), tdpMemAttachGlobal));
+  tdpAssert(tdpMallocManaged((void **) &pc->links->rb, pc->links->max_links*sizeof(double *), tdpMemAttachGlobal));
+  for (int i = 0; i < pc->links->max_links; i++) {
+    tdpAssert(tdpMallocManaged((void **) &pc->links->rb[i], 3*sizeof(double), tdpMemAttachGlobal)); // XXX: change order to reduce number of managed allocations.
+    for (int j = 0; j < 3; j++) 
+      pc->links->rb[i][j] = 0.0;
+  }
+  for (int i = 0; i < pc->links->max_links; i++) pc->links->i[i] = 0;
+  for (int i = 0; i < pc->links->max_links; i++) pc->links->j[i] = 0;
+  for (int i = 0; i < pc->links->max_links; i++) pc->links->p[i] = 0;
+  for (int i = 0; i < pc->links->max_links; i++) pc->links->status[i] = 0;
+}
+
+/**
+ * Free the links arrays
+ */
+void colloid_free_links_arrays(colloid_t * pc) {
+  if (pc->links->i) {
+    tdpAssert( tdpFree(pc->links->i) );
+    tdpAssert( tdpFree(pc->links->j) );
+    tdpAssert( tdpFree(pc->links->p) );
+    tdpAssert( tdpFree(pc->links->status) );
+    tdpAssert( tdpFree(pc->links->rb) );
+  }
 }

@@ -414,7 +414,7 @@ int colloid_io_ansi_read_ascii(colloid_io_ansi_t * io, FILE * fp) {
     ifail = colloid_state_read_ascii(&s, fp);
     if (ifail != 0) goto err;
 
-    colloids_info_add_local(io->info, s.index, s.r, &pc);
+    colloids_info_add_local(io->info, s.index, s.r, s.a0, &pc);
     if (pc) pc->s = s;
   }
 
@@ -449,7 +449,7 @@ int colloid_io_ansi_read_binary(colloid_io_ansi_t * io, FILE * fp) {
     ifail = colloid_state_read_binary(&s, fp);
     if (ifail != 0) goto err;
 
-    colloids_info_add_local(io->info, s.index, s.r, &pc);
+    colloids_info_add_local(io->info, s.index, s.r, s.a0, &pc);
     if (pc) pc->s = s;
   }
 
