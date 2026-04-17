@@ -105,7 +105,7 @@ int test_colloids_halo111(pe_t * pe, cs_t * cs) {
   r0[Z] = lmin[Z] + 1.0*(noffset[Z] + 1);
 
   index = 1 + pe_mpi_rank(pe);
-  colloids_info_add_local(cinfo, index, r0, &pc);
+  colloids_info_add_local(cinfo, index, r0, 0.0, &pc);
   assert(pc);
 
   colloids_halo_send_count(halo, X, ncount);
@@ -254,7 +254,7 @@ int test_colloids_halo211(pe_t * pe, cs_t * cs) {
   r0[Z] = lmin[Z] + 1.0*(noffset[Z] + 1);
 
   index = 1 + pe_mpi_rank(pe);
-  colloids_info_add_local(cinfo, index, r0, &pc);
+  colloids_info_add_local(cinfo, index, r0, 0.0, &pc);
   assert(pc);
 
   colloids_halo_send_count(halo, X, ncount);
@@ -385,13 +385,13 @@ int test_colloids_halo_repeat(pe_t * pe, cs_t * cs) {
   r0[Z] = lmin[Z] + 1.0*(noffset[Z] + 1);
 
   index = 1 + pe_mpi_rank(pe);
-  colloids_info_add_local(cinfo, index, r0, &pc);
+  colloids_info_add_local(cinfo, index, r0, 0.0, &pc);
   assert(pc);
 
   index = 1 + pe_mpi_size(pe) + pe_mpi_rank(pe);
-  colloids_info_add_local(cinfo, index, r0, &pc);
+  colloids_info_add_local(cinfo, index, r0, 0.0, &pc);
   index = 1 + 2*pe_mpi_size(pe) + pe_mpi_rank(pe);
-  colloids_info_add_local(cinfo, index, r0, &pc);
+  colloids_info_add_local(cinfo, index, r0, 0.0, &pc);
 
   colloids_halo_state(cinfo);
   colloids_halo_state(cinfo);

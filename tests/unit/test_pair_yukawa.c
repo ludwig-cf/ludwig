@@ -166,8 +166,8 @@ int test_pair_yukawa_config1(pe_t * pe, cs_t * cs, colloids_info_t * cinfo,
   r2[Y] = lmin[Y] + ltot[Y] - 0.5*sqrt(1.0/3.0)*r;
   r2[Z] = lmin[Z] + ltot[Z] - 0.5*sqrt(1.0/3.0)*r;
 
-  colloids_info_add_local(cinfo, 1, r1, &pc1);
-  colloids_info_add_local(cinfo, 2, r2, &pc2);
+  colloids_info_add_local(cinfo, 1, r1, 0.0, &pc1);
+  colloids_info_add_local(cinfo, 2, r2, 0.0, &pc2);
   colloids_info_ntotal_set(cinfo);
   colloids_info_ntotal(cinfo, &nc);
   assert(nc == 2);

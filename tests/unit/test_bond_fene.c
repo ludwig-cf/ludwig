@@ -195,7 +195,7 @@ int test_create_dimer(colloids_info_t * cinfo, double a, double r1[3],
   assert(cinfo);
   assert(pc);
 
-  colloids_info_add_local(cinfo, 1, r1, pc);
+  colloids_info_add_local(cinfo, 1, r1, a, pc);
   if (pc[0]) {
     pc[0]->s.a0      = a;
     pc[0]->s.ah      = a;
@@ -203,7 +203,7 @@ int test_create_dimer(colloids_info_t * cinfo, double a, double r1[3],
     pc[0]->s.bond[0] = 2;
   }
 
-  colloids_info_add_local(cinfo, 2, r2, pc + 1);
+  colloids_info_add_local(cinfo, 2, r2, a, pc + 1);
   if (pc[1]) {
     pc[1]->s.a0      = a;
     pc[1]->s.ah      = a;

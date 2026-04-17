@@ -159,13 +159,13 @@ static int test_colloid_sums_edge(pe_t * pe, cs_t * cs, int ncell[3],
    * which only gets swapped in the x-direction. */
 
   index = 1;
-  colloids_info_add_local(cinfo, index, r0, &pc);
+  colloids_info_add_local(cinfo, index, r0, 0.0, &pc);
   if (pc) {
     test_colloid_sums_copy(&cref1, pc);
   }
 
   index = 2;
-  colloids_info_add_local(cinfo, index, r0, &pc);
+  colloids_info_add_local(cinfo, index, r0, 0.0, &pc);
   if (pc) {
     test_colloid_sums_copy(&cref2, pc);
   }
@@ -387,7 +387,7 @@ static int test_colloid_sums_move(pe_t * pe) {
   dx = 1.0*ntotal[X]/nstep;
 
   index = 1;
-  colloids_info_add_local(cinfo, index, r0, &pc);
+  colloids_info_add_local(cinfo, index, r0, 0.0, &pc);
 
   colloids_halo_state(cinfo);
   colloid_sums_halo(cinfo, COLLOID_SUM_STRUCTURE);
@@ -457,7 +457,7 @@ int test_colloid_sums_conservation(pe_t * pe) {
   assert(cinfo);
 
   index = 1;
-  colloids_info_add_local(cinfo, index, r0, &pc);
+  colloids_info_add_local(cinfo, index, r0, 0.0, &pc);
 
   /* Swap the halo with zero information before setting the
    * test quantities locally. */

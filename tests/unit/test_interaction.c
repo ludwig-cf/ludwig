@@ -73,7 +73,7 @@ int test_colloids_update_forces_external(pe_t * pe) {
     int index = 1;
     double r0[3] = {2.0, 2.0, 2.0};
 
-    colloids_info_add_local(cinfo, index, r0, &pc);
+    colloids_info_add_local(cinfo, index, r0, 0.0, &pc);
     if (pc) {
       pc->s.s[X] = s[X]; pc->s.s[Y] = s[Y]; pc->s.s[Z] = s[Z];
     }
@@ -145,7 +145,7 @@ int test_colloids_update_forces_fluid_body_force(pe_t * pe) {
     int index = 1;
     double r0[3] = {2.0, 2.0, 2.0};
     double a0    = 0.5; /* discrete volume should be unity */
-    colloids_info_add_local(cinfo, index, r0, &pc);
+    colloids_info_add_local(cinfo, index, r0, a0, &pc);
     if (pc) {
       pc->s.a0 = a0;
       pc->s.ah = a0;
@@ -226,7 +226,7 @@ int test_colloids_update_forces_buoyancy(pe_t * pe) {
     int index = 1;
     double r0[3] = {2.0, 2.0, 2.0};
     double a0    = 2.3;
-    colloids_info_add_local(cinfo, index, r0, &pc);
+    colloids_info_add_local(cinfo, index, r0, a0, &pc);
     if (pc) {
       pc->s.shape = COLLOID_SHAPE_SPHERE;
       pc->s.a0 = a0;

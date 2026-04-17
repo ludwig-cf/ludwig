@@ -262,7 +262,7 @@ int test_colloids_info_add_local(colloids_info_t * cinfo) {
   r[Y] = lmin[Y] + 1.0*(noffset[Y] - 1);
   r[Z] = lmin[Z] + 1.0*(noffset[Z] - 1);
 
-  colloids_info_add_local(cinfo, index, r, &pcref);
+  colloids_info_add_local(cinfo, index, r, 0.0, &pcref);
   test_assert(pcref == NULL);
 
   /* This one will, giving one colloid per MPI task */
@@ -271,7 +271,7 @@ int test_colloids_info_add_local(colloids_info_t * cinfo) {
   r[Y] = lmin[Y] + 1.0*(noffset[Y] + 1);
   r[Z] = lmin[Z] + 1.0*(noffset[Z] + 1);
 
-  colloids_info_add_local(cinfo, index, r, &pcref);
+  colloids_info_add_local(cinfo, index, r, 0.0, &pcref);
   test_assert(pcref != NULL);
   colloids_info_nlocal(cinfo, &ncolloid);
   test_assert(ncolloid == 1);

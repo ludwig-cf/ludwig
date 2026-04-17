@@ -172,7 +172,7 @@ static int test_pair_config1(colloids_info_t * cinfo, interact_t * interact,
   r1[Y] = lmin[Y] + h/sqrt(12.0);
   r1[Z] = lmin[Z] + h/sqrt(12.0);
 
-  colloids_info_add_local(cinfo, 1, r1, &pc1);
+  colloids_info_add_local(cinfo, 1, r1, a0, &pc1);
   if (pc1) {
     pc1->s.a0 = a0;
     pc1->s.ah = ah;
@@ -182,7 +182,7 @@ static int test_pair_config1(colloids_info_t * cinfo, interact_t * interact,
   r2[Y] = lmin[Y] + ltot[Y] - h/sqrt(12.0);
   r2[Z] = lmin[Z] + ltot[Z] - h/sqrt(12.0);
 
-  colloids_info_add_local(cinfo, 2, r2, &pc2);
+  colloids_info_add_local(cinfo, 2, r2, a0, &pc2);
   if (pc2) {
     pc2->s.a0 = a0;
     pc2->s.ah = ah;

@@ -176,7 +176,7 @@ static int test_build_update_map_sph(pe_t * pe, cs_t * cs, double a0,
                          .a0      = a0,
                          .r       = {r0[X], r0[Y], r0[Z]}
     };
-    colloids_info_add_local(cinfo, 1, r0, &pc);
+    colloids_info_add_local(cinfo, 1, r0, a0, &pc);
     if (pc) pc->s = s;
   }
 
@@ -233,7 +233,7 @@ static int test_build_update_map_ell(pe_t * pe, cs_t * cs, const double abc[3],
                          .elabc   = {abc[X], abc[Y], abc[Z]},
                          .quat    = {q[0], q[1], q[2], q[3]}
     };
-    colloids_info_add_local(cinfo, 1, r0, &pc);
+    colloids_info_add_local(cinfo, 1, r0, 0.0, &pc);
     if (pc) pc->s = s;
   }
 
@@ -295,7 +295,7 @@ static int test_build_update_links_sph(pe_t * pe, cs_t * cs, double a0,
                           .a0      = a0,
                           .r       = {r0[X], r0[Y], r0[Z]}
     };
-    colloids_info_add_local(cinfo, 1, r0, &pc);
+    colloids_info_add_local(cinfo, 1, r0, a0, &pc);
     if (pc) pc->s = s;
   }
 

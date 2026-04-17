@@ -220,7 +220,7 @@ int test_bonds_dimer_instance(pe_t * pe, cs_t * cs, double a0, double r1[3],
   state1.r[Y]  = r1[Y];
   state1.r[Z]  = r1[Z];
 
-  colloids_info_add_local(cinfo, state1.index, state1.r, &pc);
+  colloids_info_add_local(cinfo, state1.index, state1.r, a0, &pc);
   if (pc) {
     pc->s.a0      = a0;
     pc->s.ah      = a0;
@@ -237,7 +237,7 @@ int test_bonds_dimer_instance(pe_t * pe, cs_t * cs, double a0, double r1[3],
   state2.r[Z]  = r2[Z];
 
   pc = NULL;
-  colloids_info_add_local(cinfo, state2.index, state2.r, &pc);
+  colloids_info_add_local(cinfo, state2.index, state2.r, a0, &pc);
   if (pc) {
     pc->s.a0      = a0;
     pc->s.ah      = a0;
@@ -322,7 +322,7 @@ int test_bonds_trimer_instance(pe_t * pe, cs_t * cs, double a0, double r0[3],
   state0.r[Y]  = r0[Y];
   state0.r[Z]  = r0[Z];
 
-  colloids_info_add_local(cinfo, state0.index, state0.r, &pc);
+  colloids_info_add_local(cinfo, state0.index, state0.r, a0, &pc);
   if (pc) {
     pc->s.a0      = a0;
     pc->s.ah      = a0;
@@ -342,7 +342,7 @@ int test_bonds_trimer_instance(pe_t * pe, cs_t * cs, double a0, double r0[3],
   state1.r[Z]  = r1[Z];
 
   pc = NULL;
-  colloids_info_add_local(cinfo, state1.index, state1.r, &pc);
+  colloids_info_add_local(cinfo, state1.index, state1.r, a0, &pc);
   if (pc) {
     pc->s.a0      = a0;
     pc->s.ah      = a0;
@@ -360,7 +360,7 @@ int test_bonds_trimer_instance(pe_t * pe, cs_t * cs, double a0, double r0[3],
   state2.r[Z]  = r2[Z];
 
   pc = NULL;
-  colloids_info_add_local(cinfo, state2.index, state2.r, &pc);
+  colloids_info_add_local(cinfo, state2.index, state2.r, a0, &pc);
   if (pc) {
     pc->s.a0      = a0;
     pc->s.ah      = a0;

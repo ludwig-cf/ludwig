@@ -156,7 +156,7 @@ int test_wall_ss_cut_compute(pe_t * pe, cs_t * cs, wall_t * wall) {
     double r[3] = {0.5 + a0 + h, 0.5 + a0 + opts.hc, 0.5 + a0 + opts.hc};
     colloid_t * pc = NULL;
 
-    colloids_info_add_local(cinfo, 1, r, &pc);
+    colloids_info_add_local(cinfo, 1, r, a0, &pc);
     if (pc) {
       pc->s.a0 = a0;
       pc->s.ah = ah;
