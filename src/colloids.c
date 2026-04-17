@@ -1682,6 +1682,7 @@ int colloids_gravity_set(colloids_info_t * cinfo, const double g[3]) {
  * 
  */
 void create_links_arrays(colloids_info_t * cinfo, colloid_t * pc) {
+  tdpAssert(tdpMallocManaged((void **) &pc->links, sizeof(colloid_links_array_t), tdpMemAttachGlobal));
   pc->links->max_links = colloid_link_max_3d(pc->s.a0, cinfo->options.nvel);
   tdpAssert(tdpMallocManaged((void **) &pc->links->i, pc->links->max_links*sizeof(int), tdpMemAttachGlobal));
   tdpAssert(tdpMallocManaged((void **) &pc->links->j, pc->links->max_links*sizeof(int), tdpMemAttachGlobal));
@@ -1703,11 +1704,12 @@ void create_links_arrays(colloids_info_t * cinfo, colloid_t * pc) {
  * Free the links arrays
  */
 void colloid_free_links_arrays(colloid_t * pc) {
-  if (pc->links->i) {
+  if (pc->links) {
     tdpAssert( tdpFree(pc->links->i) );
     tdpAssert( tdpFree(pc->links->j) );
     tdpAssert( tdpFree(pc->links->p) );
     tdpAssert( tdpFree(pc->links->status) );
     tdpAssert( tdpFree(pc->links->rb) );
+    tdpAssert( tdpFree(pc->links) );
   }
 }
