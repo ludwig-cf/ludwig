@@ -176,6 +176,9 @@ __host__ int tests_create(int argc, char ** argv) {
   test_fe_symmetric_suite();
   test_fe_ternary_suite();
 
+  /* Memory management */
+  test_create_links_arrays_suite();
+
   return 0;
 }
 
