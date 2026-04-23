@@ -54,6 +54,11 @@ int test_links_array(double a0) {
 
   test_links_allocated(pc, nlinks);
 
+  colloid_options_t new_opts = cinfo->options;
+  colloids_info_t *new_info = NULL;
+  colloids_info_recreate(&new_opts, &new_info);
+  test_links_allocated(new_info->headlocal, nlinks);
+
   return 0;
 }
 
@@ -66,4 +71,6 @@ int test_links_array(double a0) {
  int test_create_links_arrays_suite(void) {
    test_links_array(0.0);
    test_links_array(2.3);
+
+   return 0;
  }
