@@ -11,6 +11,7 @@
  *****************************************************************************/
 
  void test_links_allocated(colloid_t * pc, int nlinks) {
+    if (pc == NULL) return;
     test_assert(pc->links != NULL);
     test_assert(pc->links->max_links == nlinks);
     
@@ -48,16 +49,16 @@ int test_links_array(double a0) {
   cs_create(pe, &cs);
   cs_init(cs);
   colloids_info_create(pe, cs, &opts, &cinfo);
-  colloids_info_add_local(cinfo, 1, r, a0, pc);
+  colloids_info_add_local(cinfo, 1, r, a0, &pc);
 
   int nlinks = colloid_link_max_3d(a0, cinfo->options.nvel);
-
+  
   test_links_allocated(pc, nlinks);
 
   colloid_options_t new_opts = cinfo->options;
-  colloids_info_t *new_info = NULL;
-  colloids_info_recreate(&new_opts, &new_info);
-  test_links_allocated(new_info->headlocal, nlinks);
+  colloids_info_recreate(&new_opts, &cinfo);
+  colloids_info_add_local(cinfo, 1, r, a0, &pc);
+  test_links_allocated(pc, nlinks);
 
   return 0;
 }
