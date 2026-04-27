@@ -315,10 +315,7 @@ static int test_build_update_links_sph(pe_t * pe, cs_t * cs, double a0,
     /* Remember to run through all halo images ... */
     colloids_info_all_head(cinfo, &pc);
     for (; pc; pc = pc->nextall) {
-      colloid_link_t * link = pc->lnk;
-      for (; link; link = link->next) {
-        nlink += 1;
-      }
+      nlink += pc->links->active_links;
     }
 
     /* All ranks check */

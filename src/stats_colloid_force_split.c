@@ -244,12 +244,12 @@ int colloid_force_from_pth(colloid_t * pc, pth_t * pth, double f[3]) {
 
   f[X] = 0.0; f[Y] = 0.0; f[Z] = 0.0;
 
-  for (colloid_link_t * link = pc->lnk; link; link = link->next) {
+  for (int link_index = 0; link_index < pc->links->active_links; link_index++) {
 
-    if (link->status != LINK_FLUID) continue;
+    if (pc->links->status[link_index] != LINK_FLUID) continue;
 
     int id  = -1;
-    int p = link->p;
+    int p = pc->links->p[link_index];
     int cmod = model.cv[p][X]*model.cv[p][X]
              + model.cv[p][Y]*model.cv[p][Y]
              + model.cv[p][Z]*model.cv[p][Z];
@@ -262,7 +262,7 @@ int colloid_force_from_pth(colloid_t * pc, pth_t * pth, double f[3]) {
 
     for (int ia = 0; ia < 3; ia++) {
       f[ia] += 1.0*model.cv[p][id]
-	*pth->str[addr_rank2(pth->nsites, 3, 3, link->i, ia, id)];
+	*pth->str[addr_rank2(pth->nsites, 3, 3, pc->links->i[link_index], ia, id)];
     }
   }
 

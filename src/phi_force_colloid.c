@@ -174,22 +174,20 @@ __host__ int pth_force_driver(pth_t * pth, colloids_info_t * cinfo,
 
 
   colloid_t * pc;
-  colloid_link_t * p_link;
 
   /* All colloids, including halo */
   colloids_info_all_head(cinfo, &pc);
 
   for ( ; pc; pc = pc->nextall) {
 
-    p_link = pc->lnk;
 
-    for (; p_link; p_link = p_link->next) {
+	  for (int link_index = 0; link_index < pc->links->active_links; link_index++) {
 
-      if (p_link->status == LINK_FLUID) {
+      if (pc->links->status[link_index] == LINK_FLUID) {
 	int id, p;
 	int cmod;
 
-	p = p_link->p;
+	p = pc->links->p[link_index];
 	cmod = model->cv[p][X]*model->cv[p][X]
 	     + model->cv[p][Y]*model->cv[p][Y]
 	     + model->cv[p][Z]*model->cv[p][Z];
@@ -202,7 +200,7 @@ __host__ int pth_force_driver(pth_t * pth, colloids_info_t * cinfo,
 
 	for (int ia = 0; ia < 3; ia++) {
 	  pc->force[ia] += 1.0*model->cv[p][id]
-	    *pth->str[addr_rank2(pth->nsites, 3, 3, p_link->i, ia, id)];
+	    *pth->str[addr_rank2(pth->nsites, 3, 3, pc->links->i[link_index], ia, id)];
 	}
       }
     }
