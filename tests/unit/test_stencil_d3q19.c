@@ -60,7 +60,8 @@ int test_stencil_d3q19_create(void) {
   assert(s->wlaplacian);
   assert(s->wgradients);
 
-  if (fabs(s->wlaplacian[0] - 4.0) > DBL_EPSILON) ifail = -1;
+  /* See analogous test for d3q27 for a comment on round-off ... */
+  if (fabs(s->wlaplacian[0] - 4.0) > FLT_EPSILON) ifail = -1;
   if (fabs(s->wgradients[0] - 0.0) > DBL_EPSILON) ifail = -2;
   assert(ifail == 0);
 
