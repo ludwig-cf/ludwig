@@ -6,7 +6,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2023 The University of Edinburgh
+ *  (c) 2023-2026 The University of Edinburgh
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *
@@ -49,8 +49,8 @@ int test_stencil_d3q27_suite(void) {
 
 int test_stencil_d3q27_create(void) {
 
-  int ifail = 0;
-  stencil_t * s = NULL;
+  int         ifail = 0;
+  stencil_t * s     = NULL;
 
   ifail = stencil_d3q27_create(&s);
   assert(ifail == 0);
@@ -61,8 +61,12 @@ int test_stencil_d3q27_create(void) {
   assert(s->wlaplacian);
   assert(s->wgradients);
 
-  if (s->wlaplacian[0] != 152.0) ifail = -1;
-  if (s->wgradients[0] !=   0.0) ifail = -1;
+  /* The computation of wlaplacian[0] is actually rather poor in
+   * floating point. about 10 DBL_EPSILON out form the true answer.
+   * The order of the wv could be addressed ... */
+
+  if (fabs(s->wlaplacian[0] - 6.0*152.0/216.0) > FLT_EPSILON) ifail = -1;
+  if (fabs(s->wgradients[0] - 0.0)             > DBL_EPSILON) ifail = -2;
   assert(ifail == 0);
 
   ifail = stencil_free(&s);
