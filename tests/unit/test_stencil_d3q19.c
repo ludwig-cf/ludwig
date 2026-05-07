@@ -2,6 +2,13 @@
  *
  *  test_stencil_d3q19.c
  *
+ *  Edinburgh Soft Matter and Statistical Phsyics Group and
+ *  Edinburgh Parallel Computing Centre
+ *
+ *  (c) 2026 The University of Edinburgh
+ *
+ *  kevin@epcc.ed.ac.uk
+ *
  *****************************************************************************/
 
 #include <assert.h>
@@ -41,8 +48,8 @@ int test_stencil_d3q19_suite(void) {
 
 int test_stencil_d3q19_create(void) {
 
-  int ifail = 0;
-  stencil_t * s = NULL;
+  int         ifail = 0;
+  stencil_t * s     = NULL;
 
   ifail = stencil_d3q19_create(&s);
   assert(ifail == 0);
@@ -53,8 +60,9 @@ int test_stencil_d3q19_create(void) {
   assert(s->wlaplacian);
   assert(s->wgradients);
 
-  if (s->wlaplacian[0] != 24.0) ifail = -1;
-  if (s->wgradients[0] !=  0.0) ifail = -1;
+  /* See analogous test for d3q27 for a comment on round-off ... */
+  if (fabs(s->wlaplacian[0] - 4.0) > FLT_EPSILON) ifail = -1;
+  if (fabs(s->wgradients[0] - 0.0) > DBL_EPSILON) ifail = -2;
   assert(ifail == 0);
 
   ifail = stencil_free(&s);
