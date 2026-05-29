@@ -11,7 +11,7 @@
  *****************************************************************************/
 
  void test_links_allocated(colloid_t * pc, int nlinks) {
-    if (pc == NULL) return; // Don't fail if there are no local colloids
+    if (pc == NULL) return;
     test_assert(pc->links != NULL);
     test_assert(pc->links->max_links == nlinks);
     
