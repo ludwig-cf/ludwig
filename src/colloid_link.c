@@ -143,3 +143,24 @@ int colloid_link_max_3d(double a, int nvel) {
 
   return 4*pi*ai*ai*(nvel - 1)/2;
 }
+
+/***************************************************************************
+ * 
+ * copy_link_to_array
+ * 
+ * Copies provided link to specified links array at the specified index
+ * 
+ ***************************************************************************/
+void copy_link_to_array(colloid_link_t *link, colloid_links_array_t *links_array, size_t index) {
+  assert(index < links_array->max_links);
+  if (index > links_array->active_links) {
+    assert(index == links_array->active_links + 1);
+    links_array->active_links++;
+  }
+  links_array->i[index] = link->i;
+  links_array->j[index] = link->j;
+  links_array->p[index] = link->p;
+  for (int i = 0; i < 3; i++) 
+    links_array->rb[index][i] = link->rb[i];
+  links_array->status[index] = link->status;
+}
