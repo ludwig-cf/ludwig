@@ -60,6 +60,8 @@ int test_links_array(double a0) {
   colloids_info_add_local(cinfo, 1, r, a0, &pc);
   test_links_allocated(pc, nlinks);
 
+  colloid_free_links_array(pc);
+
   return 0;
 }
 
