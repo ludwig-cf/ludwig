@@ -195,7 +195,7 @@ __host__ int colloids_gravity_set(colloids_info_t * cinfo, const double g[3]);
 
 void create_links_arrays(colloids_info_t * cinfo, colloid_t * pc);
 void colloid_free_links_arrays(colloid_t *pc);
-void copy_links_to_arrays(colloid_t *pc);
+void copy_links_to_array(colloid_t *pc);
 
 int colloids_info_add_state_local(colloids_info_t * info,
 				  const colloid_state_t * state);
