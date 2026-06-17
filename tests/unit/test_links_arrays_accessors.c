@@ -16,14 +16,15 @@ int test_links_arrays_accessors(void) {
   colloids_info_t * cinfo = NULL;
   colloid_options_t opts = colloid_options_default();
   colloid_t * pc;
-  double r[3] = {0.0, 0.0, 0.0};
+  double r[3] = {0.5, 0.5, 0.5};
 
   pe_create(MPI_COMM_WORLD, PE_QUIET, &pe);
   cs_create(pe, &cs);
   cs_init(cs);
   colloids_info_create(pe, cs, &opts, &cinfo);
   colloids_info_add_local(cinfo, 1, r, 1.0, &pc);
-
+  pc->lnk = colloid_link_allocate();
+  
   pc->lnk->i = 3;
   pc->lnk->j = 2;
   pc->lnk->p = 1;
@@ -42,12 +43,14 @@ int test_links_arrays_accessors(void) {
   colloid_link_status(pc->links, 0, &status);
   colloid_link_rb(pc->links, 0, rb);
 
-  assert(i == pc->lnk->i);
-  assert(j == pc->lnk->j);
-  assert(p == pc->lnk->p);
-  assert(status == pc->lnk->status);
+  test_assert(i == pc->lnk->i);
+  test_assert(j == pc->lnk->j);
+  test_assert(p == pc->lnk->p);
+  test_assert(status == pc->lnk->status);
   for (int index = 0; index < 3; index++)
-    assert(rb[index] == pc->lnk->rb[index]);
+    test_assert(rb[index] == pc->lnk->rb[index]);
+
+  pe_info(pe, "PASS     ./unit/test_links_arrays_accessors\n");
 
   return 0;
 }
