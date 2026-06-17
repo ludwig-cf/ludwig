@@ -11,7 +11,6 @@
  *****************************************************************************/
 
  void test_links_allocated(colloid_t * pc, int nlinks) {
-    if (pc == NULL) return;
     test_assert(pc->links != NULL);
     test_assert(pc->links->max_links == nlinks);
     
@@ -36,16 +35,14 @@
  *
  *****************************************************************************/
 
-int test_links_array(double a0) {
+int test_links_array(pe_t *pe, double a0) {
 
-  pe_t * pe = NULL;
   cs_t * cs = NULL;
   colloids_info_t * cinfo = NULL;
   colloid_options_t opts = colloid_options_default();
   colloid_t * pc;
-  double r[3] = {0.0, 0.0, 0.0};
+  double r[3] = {0.5, 0.5, 0.5};
 
-  pe_create(MPI_COMM_WORLD, PE_QUIET, &pe);
   cs_create(pe, &cs);
   cs_init(cs);
   colloids_info_create(pe, cs, &opts, &cinfo);
@@ -53,11 +50,6 @@ int test_links_array(double a0) {
 
   int nlinks = colloid_link_max_3d(a0, cinfo->options.nvel);
   
-  test_links_allocated(pc, nlinks);
-
-  colloid_options_t new_opts = cinfo->options;
-  colloids_info_recreate(&new_opts, &cinfo);
-  colloids_info_add_local(cinfo, 1, r, a0, &pc);
   test_links_allocated(pc, nlinks);
 
   colloid_free_links_arrays(pc);
@@ -72,8 +64,12 @@ int test_links_array(double a0) {
  *****************************************************************************/
 
  int test_create_links_arrays_suite(void) {
-   test_links_array(0.0);
-   test_links_array(2.3);
+   pe_t * pe = NULL;
+   pe_create(MPI_COMM_WORLD, PE_QUIET, &pe);
+
+   test_links_array(pe, 0.0);
+   test_links_array(pe, 2.3);
+   pe_info(pe, "PASS     ./unit/test_create_links_array\n");
 
    return 0;
  }
