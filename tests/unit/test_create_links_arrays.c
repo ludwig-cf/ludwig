@@ -48,11 +48,14 @@ int test_links_array(pe_t *pe, double a0) {
   colloids_info_create(pe, cs, &opts, &cinfo);
   colloids_info_add_local(cinfo, 1, r, a0, &pc);
 
-  int nlinks = colloid_link_max_3d(a0, cinfo->options.nvel);
+  // We've only initialised one colloid, so if a rank doesn't have a colloid don't do the test.
+  if (pc) {
+    int nlinks = colloid_link_max_3d(a0, cinfo->options.nvel);
   
-  test_links_allocated(pc, nlinks);
+    test_links_allocated(pc, nlinks);
 
-  colloid_free(cinfo, pc);
+    colloid_free(cinfo, pc);
+  }
 
   return 0;
 }
@@ -69,6 +72,7 @@ int test_links_array(pe_t *pe, double a0) {
 
    test_links_array(pe, 0.0);
    test_links_array(pe, 2.3);
+   MPI_Barrier(MPI_COMM_WORLD);
    pe_info(pe, "PASS     ./unit/test_create_links_array\n");
 
    return 0;
