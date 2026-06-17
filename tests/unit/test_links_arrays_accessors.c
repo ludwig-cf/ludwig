@@ -50,6 +50,8 @@ int test_links_arrays_accessors(void) {
   for (int index = 0; index < 3; index++)
     test_assert(rb[index] == pc->lnk->rb[index]);
 
+  colloid_free(cinfo, pc);
+
   pe_info(pe, "PASS     ./unit/test_links_arrays_accessors\n");
 
   return 0;
