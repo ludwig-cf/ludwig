@@ -53,7 +53,11 @@ int              colloid_link_total(void);
 int colloid_link_max_2d(double a, int nvel);
 int colloid_link_max_3d(double a, int nvel);
 
-void create_links_arrays(colloids_info_t * cinfo, colloid_t * pc);
+void colloid_link_i(colloid_links_array_t *links_array, size_t index, int *i);
+void colloid_link_j(colloid_links_array_t *links_array, size_t index, int *j);
+void colloid_link_p(colloid_links_array_t *links_array, size_t index, int *p);
+void colloid_link_status(colloid_links_array_t *links_array, size_t index, int *status);
+void colloid_link_rb(colloid_links_array_t *links_array, size_t index, double *rb);
 
 void copy_link_to_array(colloid_link_t *link, colloid_links_array_t *links_array, size_t index);
 

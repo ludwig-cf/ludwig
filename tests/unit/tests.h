@@ -86,6 +86,7 @@ int test_lb_bc_outflow_opts_suite(void);
 int test_lb_bc_outflow_rhou_suite(void);
 int test_lc_anchoring_suite(void);
 int test_le_suite(void);
+int test_links_arrays_accessors(void);
 int test_kernel_suite(void);
 int test_kernel_3d_suite(void);
 int test_kernel_3d_v_suite(void);
