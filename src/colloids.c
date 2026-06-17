@@ -30,6 +30,9 @@
 __host__ int colloid_create(colloids_info_t * cinfo, const double a0, colloid_t ** pc);
 __host__ void colloid_free(colloids_info_t * cinfo, colloid_t * pc);
 
+void copy_colloid_links(colloids_info_t *cinfo, colloid_t *pc_new, colloid_t *pc);
+void colloid_free_links_arrays(colloid_t *pc);
+
 /*****************************************************************************
  *
  *  colloids_info_create
@@ -296,8 +299,6 @@ int colloids_info_recreate(const colloid_options_t * newopts,
     }
     pcnew->s = pc->s;
 
-    //copy_colloid_links(pcnew, pc);
-    create_links_arrays(newinfo, pcnew);
   }
 
   colloids_info_ntotal_set(newinfo);
@@ -305,7 +306,6 @@ int colloids_info_recreate(const colloid_options_t * newopts,
 
   colloids_info_free(pinfo);
   *pinfo = newinfo;
-  printf("finished recreating colloids info \n");
 
   return 0;
 }
@@ -1036,6 +1036,7 @@ __host__ void colloid_free(colloids_info_t * cinfo, colloid_t * pc) {
   assert(pc);
 
   colloid_link_free_list(pc->lnk);
+  colloid_free_links_arrays(pc);
   tdpAssert(tdpFree(pc));
 
   cinfo->nallocated -= 1;
@@ -1687,6 +1688,7 @@ int colloids_gravity_set(colloids_info_t * cinfo, const double g[3]) {
  */
 void create_links_arrays(colloids_info_t * cinfo, colloid_t * pc) {
   tdpAssert(tdpMallocManaged((void **) &pc->links, sizeof(colloid_links_array_t), tdpMemAttachGlobal));
+  tdpAssert(tdpMemset(pc->links, 0, sizeof(colloid_links_array_t)));
   pc->links->max_links = colloid_link_max_3d(pc->s.a0, cinfo->options.nvel);
   tdpAssert(tdpMallocManaged((void **) &pc->links->i, pc->links->max_links*sizeof(int), tdpMemAttachGlobal));
   tdpAssert(tdpMallocManaged((void **) &pc->links->j, pc->links->max_links*sizeof(int), tdpMemAttachGlobal));
@@ -1702,39 +1704,36 @@ void create_links_arrays(colloids_info_t * cinfo, colloid_t * pc) {
   for (int i = 0; i < pc->links->max_links; i++) pc->links->j[i] = 0;
   for (int i = 0; i < pc->links->max_links; i++) pc->links->p[i] = 0;
   for (int i = 0; i < pc->links->max_links; i++) pc->links->status[i] = 0;
-
-  //printf("Colloid %d: allocated links arrays with max_links = %d\n", pc->s.index, pc->links->max_links);
 }
     
 void copy_links_to_array(colloid_t *pc) {
   colloid_link_t *link = pc->lnk;
   int index = 0;
   for (; link; link = link->next) {
-    int rank;
-    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-    printf("rank %d processing link index %d\n", rank, index);
-    copy_link_to_array(link, &pc->links, index);
+    copy_link_to_array(link, pc->links, index);
     index++;
   }
 }
 
-//void copy_colloid_links(colloid_info_t *cinfo, colloid_t *pc_new, colloid_t *pc) {
-//  create_links_arrays(cinfo, pc_new);
-//
-//  colloid_link_t *link = pc->lnk;
-//  int index = 0;
-//  for (; link; link = link->next) {
-//    copy_link_to_array(link, &pc_new->links, index)
-//    index++
-//  }
-//
-//}
+void copy_colloid_links(colloids_info_t *cinfo, colloid_t *pc_new, colloid_t *pc) {
+  create_links_arrays(cinfo, pc_new);
+
+  colloid_link_t *link = pc->lnk;
+  int index = 0;
+  for (; link; link = link->next) {
+    copy_link_to_array(link, pc_new->links, index);
+    index++;
+  }
+
+}
 
 /**
  * Free the links arrays
  */
 void colloid_free_links_arrays(colloid_t * pc) {
   if (pc->links) {
+    assert(pc->links);
+    assert(pc->links->i);
     tdpAssert( tdpFree(pc->links->i) );
     tdpAssert( tdpFree(pc->links->j) );
     tdpAssert( tdpFree(pc->links->p) );

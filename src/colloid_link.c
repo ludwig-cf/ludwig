@@ -161,13 +161,10 @@ void copy_link_to_array(colloid_link_t *link, colloid_links_array_t *links_array
     assert(index == links_array->active_links + 1);
     links_array->active_links++;
   }
-  printf("link i %d\n", link->i);
-  printf("links array index %d active_links %d max links %d\n", index, links_array->active_links, links_array->max_links);
-  printf("links array i %d\n", links_array->i[index]); 
-  //links_array->i[index] = link->i;
-  //links_array->j[index] = link->j;
-  //links_array->p[index] = link->p;
-  //for (int i = 0; i < 3; i++) 
-  //  links_array->rb[index][i] = link->rb[i];
-  //links_array->status[index] = link->status;
+  links_array->i[index] = link->i;
+  links_array->j[index] = link->j;
+  links_array->p[index] = link->p;
+  for (int i = 0; i < 3; i++) 
+    links_array->rb[index][i] = link->rb[i];
+  links_array->status[index] = link->status;
 }
