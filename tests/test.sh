@@ -18,7 +18,7 @@
 #  Edinburgh Soft Matter and Statisical Physics Group and
 #  Edinburgh Parallel Computing Centre
 #
-#  (c) 2014-2023 The University of Edinburgh
+#  (c) 2014-2026 The University of Edinburgh
 #
 #  Contributing authors:
 #  Kevin Stratford (kevin@epcce.ed.ac.uk)
@@ -43,7 +43,7 @@ function main() {
   launch_serial="$2"
   launch_mpi="$3"
 
-  # An occurance of "test_tolerance" in the input
+  # An occurrence of "test_tolerance" in the input
   # (as a comment) sets a tolerance
   tolerance=$(grep test\_tolerance $input | sed 's#.*tolerance##')
 

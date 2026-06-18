@@ -53,7 +53,7 @@ BEGIN {
   # TOLERANCE  the floating point tolerance
   # files1[]   lines of file 1 (1..nlines1 with file1[0] the filename)
   # files2[]   lines of file 2 (1..nlines2 with file2[0] the filename)
-  # lcslen[,]  lowest common subsequence array for diff algorithm 
+  # lcslen[,]  lowest common subsequence array for diff algorithm
 
   nlines1 = 0
   nlines2 = 0
@@ -98,7 +98,7 @@ END {
 
 function fp_lines_equal(line1, line2) {
 
-  if (line1 == line2) return 1; 
+  if (line1 == line2) return 1;
 
   # OK, the lines don't match. Can this be attributed to a floating
   # point mismatch at the level of TOLERANCE?
@@ -115,7 +115,7 @@ function fp_lines_equal(line1, line2) {
   for (it = 1; it <= nt1; it++) {
 
       if (tokens1[it] == tokens2[it]) continue
-      
+
       fp1 = matches_floating_point(tokens1[it])
       fp2 = matches_floating_point(tokens2[it])
 
@@ -159,7 +159,7 @@ function fp_differ(sx, sy) {
 
     delta = sx - sy
     if (delta < 0.0) delta = -delta
-    if (delta < TOLERANCE) return 0 
+    if (delta < TOLERANCE) return 0
 
     return 1
 }
