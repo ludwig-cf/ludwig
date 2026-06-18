@@ -19,14 +19,14 @@
     pc->links->p[0] = 1;
     pc->links->status[0] = 1;
     for (int j = 0; j < 3; j++) 
-      pc->links->rb[0][j] = 1;
+      pc->links->rb[j][0] = 1;
     
     pc->links->i[nlinks-1] = 1;
     pc->links->j[nlinks-1] = 1;
     pc->links->p[nlinks-1] = 1;
     pc->links->status[nlinks-1] = 1;
     for (int j = 0; j < 3; j++) 
-      pc->links->rb[nlinks-1][j] = 1;
+      pc->links->rb[j][nlinks-1] = 1;
  }
 
 /*****************************************************************************

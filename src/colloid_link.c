@@ -165,7 +165,7 @@ void copy_link_to_array(colloid_link_t *link, colloid_links_array_t *links_array
   links_array->j[index] = link->j;
   links_array->p[index] = link->p;
   for (int i = 0; i < 3; i++) 
-    links_array->rb[index][i] = link->rb[i];
+    links_array->rb[i][index] = link->rb[i];
   links_array->status[index] = link->status;
 }
 
@@ -222,5 +222,5 @@ void colloid_link_status(colloid_links_array_t *links_array, size_t index, int *
  ***************************************************************************/
 void colloid_link_rb(colloid_links_array_t *links_array, size_t index, double *rb) {
   for (int i = 0; i < 3; i++)
-    rb[i] = links_array->rb[index][i];
+    rb[i] = links_array->rb[i][index];
 }

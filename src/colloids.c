@@ -1693,11 +1693,14 @@ void create_links_arrays(colloids_info_t * cinfo, colloid_t * pc) {
   tdpAssert(tdpMallocManaged((void **) &pc->links->j, pc->links->max_links*sizeof(int), tdpMemAttachGlobal));
   tdpAssert(tdpMallocManaged((void **) &pc->links->p, pc->links->max_links*sizeof(int), tdpMemAttachGlobal));
   tdpAssert(tdpMallocManaged((void **) &pc->links->status, pc->links->max_links*sizeof(int), tdpMemAttachGlobal));
-  tdpAssert(tdpMallocManaged((void **) &pc->links->rb, pc->links->max_links*sizeof(double *), tdpMemAttachGlobal));
-  for (int i = 0; i < pc->links->max_links; i++) {
-    tdpAssert(tdpMallocManaged((void **) &pc->links->rb[i], 3*sizeof(double), tdpMemAttachGlobal)); // XXX: change order to reduce number of managed allocations.
-    for (int j = 0; j < 3; j++) 
-      pc->links->rb[i][j] = 0.0;
+  tdpAssert(tdpMallocManaged((void **) &pc->links->rb, 3*sizeof(double *), tdpMemAttachGlobal));
+  tdpAssert(tdpMallocManaged((void **) &pc->links->rb[0], 3*pc->links->max_links*sizeof(double), tdpMemAttachGlobal));
+  for (int i = 1; i < 3; i++) {
+    pc->links->rb[i] = pc->links->rb[i-1] + pc->links->max_links; 
+  }
+  for (int j = 0; j < 3; j++) 
+    for (int i = 0; i < pc->links->max_links; i++) {
+      pc->links->rb[j][i] = 0.0;
   }
   for (int i = 0; i < pc->links->max_links; i++) pc->links->i[i] = 0;
   for (int i = 0; i < pc->links->max_links; i++) pc->links->j[i] = 0;
