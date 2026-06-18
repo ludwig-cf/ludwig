@@ -2,6 +2,14 @@
 #
 #  Cholesteric normal anchoring isotropy test (X; see -n03 and -n04).
 #
+#  This total energy computed by this test is not very robust to
+#  threads so use a slightly relaxed tolerance
+#
+#  test_tolerance 2.0e-09
+#
+#  The initial conditions/energy scale could be revisited to avoid
+#  this problem.
+#
 ##############################################################################
 
 N_cycles 5
@@ -9,7 +17,7 @@ N_cycles 5
 ##############################################################################
 #
 #  System and MPI
-# 
+#
 ##############################################################################
 
 size 64_64_64

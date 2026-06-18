@@ -18,7 +18,7 @@
 #  Edinburgh Soft Matter and Statisical Physics Group and
 #  Edinburgh Parallel Computing Centre
 #
-#  (c) 2014-2023 The University of Edinburgh
+#  (c) 2014-2026 The University of Edinburgh
 #
 #  Contributing authors:
 #  Kevin Stratford (kevin@epcce.ed.ac.uk)
@@ -43,6 +43,15 @@ function main() {
   launch_serial="$2"
   launch_mpi="$3"
 
+  # An occurrence of "test_tolerance" in the input
+  # (as a comment) sets a tolerance
+  tolerance=$(grep test\_tolerance $input | sed 's#.*tolerance##')
+
+  options=""
+  if [[ "${tolerance}" != "" ]]; then
+      options=$(printf "%s %s" "-t" "${tolerance}")
+  fi
+
   # The naming convention for the files is "serial-xxxx-xxx.inp"
   # for the input and with extension ".log" for the reference
   # output.
@@ -53,7 +62,7 @@ function main() {
   ${launch_mpi} ${executable} > $stub.new
 
   # Get difference via the difference script
-  ${launch_serial} ${test_diff} $stub.new $stub.log
+  ${launch_serial} ${test_diff} ${options} $stub.new $stub.log
 
   if [ $? -ne 0 ]
   then
