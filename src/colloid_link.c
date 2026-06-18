@@ -151,7 +151,7 @@ int colloid_link_max_3d(double a, int nvel) {
  * Copies provided link to specified links array at the specified index
  * 
  ***************************************************************************/
-void copy_link_to_array(colloid_link_t *link, colloid_links_array_t *links_array, size_t index) {
+void copy_link_to_array(colloid_link_t *link, colloid_links_array_t *links_array, int index) {
   assert(link);
   assert(link->i);
   assert(links_array);

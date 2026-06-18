@@ -59,6 +59,6 @@ void colloid_link_p(colloid_links_array_t *links_array, size_t index, int *p);
 void colloid_link_status(colloid_links_array_t *links_array, size_t index, int *status);
 void colloid_link_rb(colloid_links_array_t *links_array, size_t index, double *rb);
 
-void copy_link_to_array(colloid_link_t *link, colloid_links_array_t *links_array, size_t index);
+void copy_link_to_array(colloid_link_t *link, colloid_links_array_t *links_array, int index);
 
 #endif
