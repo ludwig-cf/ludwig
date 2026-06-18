@@ -31,7 +31,6 @@ __host__ int colloid_create(colloids_info_t * cinfo, const double a0, colloid_t 
 __host__ void colloid_free(colloids_info_t * cinfo, colloid_t * pc);
 
 void copy_colloid_links(colloids_info_t *cinfo, colloid_t *pc_new, colloid_t *pc);
-void colloid_free_links_arrays(colloid_t *pc);
 
 /*****************************************************************************
  *

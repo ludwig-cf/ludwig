@@ -54,7 +54,7 @@ int test_links_array(pe_t *pe, double a0) {
   
     test_links_allocated(pc, nlinks);
 
-    colloid_free(cinfo, pc);
+    colloid_free_links_arrays(pc);
   }
 
   return 0;
