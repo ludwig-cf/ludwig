@@ -19,14 +19,15 @@
 #    - allow "Model R" tests to pass by looking for "d3q19 R" etc
 #
 #  Options:
-#    -v causes the actual results of the diff to be sent to stdout
+#    -t <value>  specify a tolerance
+#    -v          causes the actual results of the diff to be sent to stdout
 #
 #  Edinburgh Soft Matter and Statistical Physics Group and
 #  Edinburgh Parallel Computing Centre
 #
 #  Contributing Authors:
 #  Kevin Stratford (kevin@epcc.ed.ac.uk)
-#  (c) 2013-2024 The University of Edinburgh
+#  (c) 2013-2026 The University of Edinburgh
 #
 ###############################################################################
 
@@ -44,18 +45,31 @@ then
     exit -1
 fi
 
+tolerance=""
 is_verbose=0
 
-while getopts v opt
-do
-case "$opt" in
-    v) is_verbose=1;;
-esac
+POSITIONAL_ARGS=()
+
+while [[ $# -gt 0 ]]; do
+    case $1 in
+	-t)
+	    tolerance="$2"
+	    shift # past option
+	    shift # value
+	    ;;
+	-v)
+	    is_verbose=1
+	    shift # past option
+	    ;;
+	*)
+	    POSITIONAL_ARGS+=("$1")
+	    shift
+	    ;;
+    esac
 done
 
-if [ $is_verbose -eq 1 ]; then
-    shift
-fi
+# restore positional arguments
+set -- "${POSITIONAL_ARGS[@]}"
 
 if [ ! -e $1 ]; then
     if [ $is_verbose -eq 1 ]; then
@@ -145,12 +159,12 @@ sed -i~ '/Final cell lengths/d' test-diff-tmp.log
 
 # Here we use the floating point diff to measure "success"
 
-var=`$FPDIFF test-diff-tmp.ref test-diff-tmp.log | wc -l`
+var=`$FPDIFF test-diff-tmp.ref test-diff-tmp.log $tolerance | wc -l`
 
 
 if [ $is_verbose -eq 1 -a $var -gt 0 ]
     then
-    c=`$FPDIFF test-diff-tmp.ref test-diff-tmp.log`
+    c=$($FPDIFF test-diff-tmp.ref test-diff-tmp.log $tolerance)
     echo "$c"
 fi
 

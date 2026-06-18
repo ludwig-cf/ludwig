@@ -21,10 +21,31 @@ BEGIN {
 
   # "When the music stops... begin!"
 
-  if (ARGC != 3) {
+  TOLERANCE = 1.0e-12
+
+  if (ARGC < 3 || ARGC > 4) {
     # note ARGV[0] will be /usr/bin/awk
-    print "usage: awk-fp-diff.sh file1 file2"
+    print "usage: awk-fp-diff.sh file1 file2 [tolerance]"
     exit -1
+  }
+
+  if (ARGC == 4) {
+    # The last argument is the tolerance (a +ve floating point number)
+    # and zero the ARGV so that it isn't interpreted as a filename in
+    # the body below...
+
+    TOLERANCE = ARGV[3]
+    ARGV[3]=""
+
+    fp = matches_floating_point(TOLERANCE)
+    if (fp != 1) {
+      print "Tolerance argument is present but doesn't look like fp"
+      exit(-1)
+    }
+    if (TOLERANCE <= 0.0) {
+      print "The tolerance must be a positive number"
+      exit(-2)
+    }
   }
 
   # There a a number of global objects in use, including:
@@ -34,7 +55,6 @@ BEGIN {
   # files2[]   lines of file 2 (1..nlines2 with file2[0] the filename)
   # lcslen[,]  lowest common subsequence array for diff algorithm 
 
-  TOLERANCE = 1.0e-12
   nlines1 = 0
   nlines2 = 0
   file1[0] = ARGV[1]
