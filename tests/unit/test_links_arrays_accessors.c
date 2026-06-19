@@ -22,8 +22,10 @@ int test_links_arrays_accessors(void) {
   cs_create(pe, &cs);
   cs_init(cs);
   colloids_info_create(pe, cs, &opts, &cinfo);
+  colloids_rt_init_few(pe, cs, cinfo, 1);
   colloids_info_add_local(cinfo, 1, r, 1.0, &pc);
   pc->lnk = colloid_link_allocate();
+  pc->lnk->next = NULL;
   
   pc->lnk->i = 3;
   pc->lnk->j = 2;
@@ -32,6 +34,10 @@ int test_links_arrays_accessors(void) {
   for (int i = 0; i < 3; i++)
     pc->lnk->rb[i] = i;
 
+  test_assert(pc->links != NULL);
+  test_assert(pc);
+  test_assert(pc->lnk);
+  test_assert(pc->lnk->next == NULL);
   copy_links_to_array(pc);
 
   int i, j, p, status;

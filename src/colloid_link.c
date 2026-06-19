@@ -176,7 +176,7 @@ void copy_link_to_array(colloid_link_t *link, colloid_links_array_t *links_array
  * Retrieves the i link at given index
  * 
  ***************************************************************************/
-void colloid_link_i(colloid_links_array_t *links_array, size_t index, int *i) {
+__host__ __device__ void colloid_link_i(colloid_links_array_t *links_array, size_t index, int *i) {
   *i = links_array->i[index];
 }
 
@@ -187,7 +187,7 @@ void colloid_link_i(colloid_links_array_t *links_array, size_t index, int *i) {
  * Retrieves the j link at given index
  * 
  ***************************************************************************/
-void colloid_link_j(colloid_links_array_t *links_array, size_t index, int *j) {
+__host__ __device__ void colloid_link_j(colloid_links_array_t *links_array, size_t index, int *j) {
   *j = links_array->j[index];
 }
 
@@ -198,7 +198,7 @@ void colloid_link_j(colloid_links_array_t *links_array, size_t index, int *j) {
  * Retrieves the p link at given index
  * 
  ***************************************************************************/
-void colloid_link_p(colloid_links_array_t *links_array, size_t index, int *p) {
+__host__ __device__ void colloid_link_p(colloid_links_array_t *links_array, size_t index, int *p) {
   *p = links_array->p[index];
 }
 
@@ -209,7 +209,7 @@ void colloid_link_p(colloid_links_array_t *links_array, size_t index, int *p) {
  * Retrieves the link status at given index
  * 
  ***************************************************************************/
-void colloid_link_status(colloid_links_array_t *links_array, size_t index, int *status) {
+__host__ __device__ void colloid_link_status(colloid_links_array_t *links_array, size_t index, int *status) {
   *status = links_array->status[index];
 }
 
@@ -220,7 +220,7 @@ void colloid_link_status(colloid_links_array_t *links_array, size_t index, int *
  * Retrieves the rb link at given index
  * 
  ***************************************************************************/
-void colloid_link_rb(colloid_links_array_t *links_array, size_t index, double *rb) {
+__host__ __device__ void colloid_link_rb(colloid_links_array_t *links_array, size_t index, double *rb) {
   for (int i = 0; i < 3; i++)
     rb[i] = links_array->rb[i][index];
 }
