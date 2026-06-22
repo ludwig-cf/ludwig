@@ -48,6 +48,7 @@ int test_colloids_file_io_suite(void);
 int test_coords_suite(void);
 int test_create_links_arrays_suite(void);
 int test_cs_limits_suite(void);
+int test_device_memcpy_colloid_links_array(void);
 int test_ewald_suite(void);
 int test_fe_null_suite(void);
 int test_fe_electro_suite(void);
