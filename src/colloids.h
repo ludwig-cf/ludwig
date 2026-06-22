@@ -152,6 +152,7 @@ __host__ int colloids_info_ncell(colloids_info_t * info, int ncell[3]);
 __host__ int colloids_info_nhalo(colloids_info_t * info, int * nhalo);
 __host__ int colloids_info_ntotal(colloids_info_t * info, int * ntotal);
 __host__ int colloids_info_nlocal(colloids_info_t * cinfo, int * nlocal);
+__host__ int colloids_info_n_all(colloids_info_t * cinfo, int * n_all);
 __host__ int colloids_info_ntotal_set(colloids_info_t * cinfo);
 __host__ int colloids_info_cell_index(colloids_info_t * cinfo, int ic, int jc, int kc);
 __host__ int colloids_info_insert_colloid(colloids_info_t * cinfo, colloid_t * coll);
@@ -198,7 +199,7 @@ __host__ int colloids_gravity_set(colloids_info_t * cinfo, const double g[3]);
 
 __host__ void colloids_array_create(colloids_arrays_t * colloids_array, int n_colloids);
 __host__ void colloids_array_free(colloids_arrays_t * colloids_array);
-__host__ void colloids_array_resize(colloids_arrays_t * colloids_array);
+__host__ void colloids_array_resize(colloids_arrays_t * colloids_array, size_t new_size);
 __host__ void set_colloids_array(colloids_info_t * cinfo, int n_colloids);
 __host__ void update_colloids_array(colloids_info_t * cinfo);
 __host__ void copy_colloids_array_info(colloids_info_t * oldinfo, colloids_info_t * newinfo);

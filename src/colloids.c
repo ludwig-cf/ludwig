@@ -229,6 +229,8 @@ int colloids_info_finalise(colloids_info_t * info) {
     }
   }
 
+  colloids_array_free(&info->colloid_array);
+
   *info = (colloids_info_t) {0};
 
   return 0;
@@ -296,6 +298,8 @@ int colloids_info_recreate(const colloid_options_t * newopts,
     }
     pcnew->s = pc->s;
   }
+
+  copy_colloids_array_info(oldinfo, newinfo);
 
   colloids_info_ntotal_set(newinfo);
   assert(newinfo->ntotal == (*pinfo)->ntotal);
@@ -571,6 +575,39 @@ __host__ int colloids_info_nlocal(colloids_info_t * cinfo, int * nlocal) {
 
 	colloids_info_cell_list_head(cinfo, ic, jc, kc, &pc);
 	for (; pc; pc = pc->next) *nlocal += 1;
+
+      }
+    }
+  }
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  colloids_info_n_all
+ *
+ *  Return the number of colloids in the all list. As the colloids move about,
+ *  this must be recomputed each time.
+ *
+ ****************************************************************************/
+
+__host__ int colloids_info_n_all(colloids_info_t * cinfo, int * n_all) {
+
+  int ic, jc, kc;
+  colloid_t * pc = NULL;
+
+  assert(cinfo);
+  assert(n_all);
+
+  *n_all = 0;
+
+  for (ic = 1; ic <= cinfo->ncell[X]; ic++) {
+    for (jc = 1; jc <= cinfo->ncell[Y]; jc++) {
+      for (kc = 1; kc <= cinfo->ncell[Z]; kc++) {
+
+	colloids_info_cell_list_head(cinfo, ic, jc, kc, &pc);
+	for (; pc; pc = pc->nextall) *n_all += 1;
 
       }
     }
@@ -1192,6 +1229,7 @@ __host__ int colloids_info_update_lists(colloids_info_t * cinfo) {
 
   colloids_info_list_local_build(cinfo);
   colloids_info_list_all_build(cinfo);
+  update_colloids_array(cinfo);
 
   return 0;
 }
@@ -1655,21 +1693,20 @@ void colloids_array_free(colloids_arrays_t * colloids_array) {
  *  Enlarges the colloid array 
  *
  *****************************************************************************/
-void colloids_array_resize(colloids_arrays_t * colloids_array) {
+void colloids_array_resize(colloids_arrays_t * colloids_array, size_t new_size) {
   int n_devices;
   tdpGetDeviceCount(&n_devices);
 
+  colloids_array->max_colloids = new_size;
   if (n_devices == 0) {
     colloids_array->colloids = (colloid_t **) realloc(colloids_array->colloids, colloids_array->max_colloids * sizeof(colloid_t *));
   } else if (n_devices > 0) {
     void *newptr;
-    tdpMallocManaged(&newptr, colloids_array->max_colloids * sizeof(colloid_t *) * 2, tdpMemAttachGlobal);
+    tdpMallocManaged(&newptr, colloids_array->max_colloids * sizeof(colloid_t *), tdpMemAttachGlobal);
     tdpMemcpy(newptr, colloids_array->colloids, colloids_array->max_colloids, tdpMemcpyDeviceToDevice);
     tdpFree(colloids_array->colloids);
     colloids_array->colloids = (colloid_t **) &newptr;
   }
-      
-  colloids_array->max_colloids *= 2;
 }
 
 /*****************************************************************************
@@ -1684,6 +1721,11 @@ void set_colloids_array(colloids_info_t * cinfo, int n_colloids) {
     colloid_t * colloid;
     colloids_info_all_head(cinfo, &colloid);
     int i = 0;
+    int n_coll = 0;
+    for (; colloid; colloid = colloid->nextall)
+      n_coll++;
+    printf("n_colloids %d\n", n_coll);
+    colloids_info_all_head(cinfo, &colloid);
     for (; colloid; colloid = colloid->nextall) {
         if (cinfo->colloid_array.colloids) {
           if (i >= cinfo->colloid_array.max_colloids) {
@@ -1712,10 +1754,12 @@ void set_colloids_array(colloids_info_t * cinfo, int n_colloids) {
 void update_colloids_array(colloids_info_t * cinfo) {
   /* Copy over colloids pointers to array*/
   int n_total;
-  colloids_info_ntotal(cinfo, &n_total);
+  colloids_info_n_all(cinfo, &n_total); // XXX: Is this the correct change to count all colloids (potentially double counting any in halos)
+  printf("updating colloids array n total %d\n", n_total);
+  //colloids_info_ntotal(cinfo, &n_total);
   if (n_total > cinfo->colloid_array.max_colloids) {
     if (cinfo->colloid_array.max_colloids > 0) {
-      colloids_array_resize(&cinfo->colloid_array);
+      colloids_array_resize(&cinfo->colloid_array, n_total);
     } else {
       colloids_array_create(&cinfo->colloid_array, n_total);
     }
