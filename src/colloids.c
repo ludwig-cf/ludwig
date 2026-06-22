@@ -1620,3 +1620,141 @@ int colloids_gravity_set(colloids_info_t * cinfo, const double g[3]) {
 
   return 0;
 }
+
+/*****************************************************************************
+ *
+ *  colloids_array_create
+ * 
+ *  Allocates space for the colloids array
+ *
+ *****************************************************************************/
+void colloids_array_create(colloids_arrays_t * colloids_array, int n) {
+    if (n > 0) {
+      colloids_array->max_colloids = n;
+      tdpAssert(tdpMallocManaged((void **) &colloids_array->colloids, n*sizeof(colloid_t *), tdpMemAttachGlobal));
+    }
+}
+
+/*****************************************************************************
+ *
+ *  colloids_array_free
+ * 
+ *  Frees the colloids array
+ *
+ *****************************************************************************/
+void colloids_array_free(colloids_arrays_t * colloids_array) {
+    if (colloids_array->colloids) {
+        tdpAssert( tdpFree(colloids_array->colloids) );
+    }
+}
+
+/*****************************************************************************
+ *
+ *  colloids_array_resize
+ * 
+ *  Enlarges the colloid array 
+ *
+ *****************************************************************************/
+void colloids_array_resize(colloids_arrays_t * colloids_array) {
+  int n_devices;
+  tdpGetDeviceCount(&n_devices);
+
+  if (n_devices == 0) {
+    colloids_array->colloids = (colloid_t **) realloc(colloids_array->colloids, colloids_array->max_colloids * sizeof(colloid_t *));
+  } else if (n_devices > 0) {
+    void *newptr;
+    tdpMallocManaged(&newptr, colloids_array->max_colloids * sizeof(colloid_t *) * 2, tdpMemAttachGlobal);
+    tdpMemcpy(newptr, colloids_array->colloids, colloids_array->max_colloids, tdpMemcpyDeviceToDevice);
+    tdpFree(colloids_array->colloids);
+    colloids_array->colloids = (colloid_t **) &newptr;
+  }
+      
+  colloids_array->max_colloids *= 2;
+}
+
+/*****************************************************************************
+ *
+ *  set_colloids_array
+ * 
+ *  sets the pointers in the colloid array to point to the appropriate 
+ *  colloid structures
+ *
+ *****************************************************************************/
+void set_colloids_array(colloids_info_t * cinfo, int n_colloids) {
+    colloid_t * colloid;
+    colloids_info_all_head(cinfo, &colloid);
+    int i = 0;
+    for (; colloid; colloid = colloid->nextall) {
+        if (cinfo->colloid_array.colloids) {
+          if (i >= cinfo->colloid_array.max_colloids) {
+            printf("Colloids array overflow: i %d max %d n_colloids %d\n",
+                     i, cinfo->colloid_array.max_colloids, n_colloids);
+          }
+          assert(i < cinfo->colloid_array.max_colloids);
+          if (i < cinfo->colloid_array.max_colloids) {
+            cinfo->colloid_array.colloids[i] = colloid;
+          }
+          i++;
+        }
+    }
+
+    cinfo->colloid_array.n_colloids = i;
+}
+
+/*****************************************************************************
+ *
+ *  update_colloids_array
+ * 
+ *  Updates the colloid array, enlarging if necessary and setting the links 
+ *  appropriately
+ *
+ *****************************************************************************/
+void update_colloids_array(colloids_info_t * cinfo) {
+  /* Copy over colloids pointers to array*/
+  int n_total;
+  colloids_info_ntotal(cinfo, &n_total);
+  if (n_total > cinfo->colloid_array.max_colloids) {
+    if (cinfo->colloid_array.max_colloids > 0) {
+      colloids_array_resize(&cinfo->colloid_array);
+    } else {
+      colloids_array_create(&cinfo->colloid_array, n_total);
+    }
+  }
+  set_colloids_array(cinfo, n_total);
+}
+
+/*****************************************************************************
+ *
+ *  copy_colloids_array_info
+ * 
+ *  Copies the colloids array between two colloids info objects
+ *
+ *****************************************************************************/
+void copy_colloids_array_info(colloids_info_t * oldinfo, colloids_info_t * newinfo) {
+  newinfo->colloid_array.n_colloids = oldinfo->colloid_array.n_colloids;
+  newinfo->colloid_array.max_colloids = oldinfo->colloid_array.max_colloids;
+  colloids_array_create(&newinfo->colloid_array, newinfo->colloid_array.max_colloids);
+  
+  for (int i = 0; i < newinfo->colloid_array.n_colloids; i++) {
+    newinfo->colloid_array.colloids[i] = oldinfo->colloid_array.colloids[i];
+  }
+}
+
+/*****************************************************************************
+ *
+ *  colloids_array_check
+ * 
+ *  Precursor to proper unit test. remove once test in place.
+ *
+ *****************************************************************************/
+void colloids_array_check(colloids_info_t *cinfo) {
+  colloid_t *pc = cinfo->headall;
+  int i = 0;
+  for (; pc; pc = pc->nextall) {
+    assert(pc->s.index == cinfo->colloid_array.colloids[i]->s.index);
+    assert(pc->s.r[0] == cinfo->colloid_array.colloids[i]->s.r[0]);
+    assert(pc->s.r[1] == cinfo->colloid_array.colloids[i]->s.r[1]);
+    assert(pc->s.r[2] == cinfo->colloid_array.colloids[i]->s.r[2]);
+    i++;
+  }
+}
