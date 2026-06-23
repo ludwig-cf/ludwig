@@ -602,15 +602,9 @@ __host__ int colloids_info_n_all(colloids_info_t * cinfo, int * n_all) {
 
   *n_all = 0;
 
-  for (ic = 1; ic <= cinfo->ncell[X]; ic++) {
-    for (jc = 1; jc <= cinfo->ncell[Y]; jc++) {
-      for (kc = 1; kc <= cinfo->ncell[Z]; kc++) {
-
-	colloids_info_cell_list_head(cinfo, ic, jc, kc, &pc);
-	for (; pc; pc = pc->nextall) *n_all += 1;
-
-      }
-    }
+  colloids_info_all_head(cinfo, &pc);
+  for (; pc; pc = pc->nextall) {
+    (*n_all)++;
   }
 
   return 0;
@@ -1721,11 +1715,6 @@ void set_colloids_array(colloids_info_t * cinfo, int n_colloids) {
     colloid_t * colloid;
     colloids_info_all_head(cinfo, &colloid);
     int i = 0;
-    int n_coll = 0;
-    for (; colloid; colloid = colloid->nextall)
-      n_coll++;
-    printf("n_colloids %d\n", n_coll);
-    colloids_info_all_head(cinfo, &colloid);
     for (; colloid; colloid = colloid->nextall) {
         if (cinfo->colloid_array.colloids) {
           if (i >= cinfo->colloid_array.max_colloids) {
@@ -1754,9 +1743,7 @@ void set_colloids_array(colloids_info_t * cinfo, int n_colloids) {
 void update_colloids_array(colloids_info_t * cinfo) {
   /* Copy over colloids pointers to array*/
   int n_total;
-  colloids_info_n_all(cinfo, &n_total); // XXX: Is this the correct change to count all colloids (potentially double counting any in halos)
-  printf("updating colloids array n total %d\n", n_total);
-  //colloids_info_ntotal(cinfo, &n_total);
+  colloids_info_n_all(cinfo, &n_total);
   if (n_total > cinfo->colloid_array.max_colloids) {
     if (cinfo->colloid_array.max_colloids > 0) {
       colloids_array_resize(&cinfo->colloid_array, n_total);

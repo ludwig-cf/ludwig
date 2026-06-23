@@ -184,9 +184,11 @@ int colloids_init_rt(pe_t * pe, rt_t * rt, cs_t * cs, colloids_info_t ** pinfo,
   
   /* Copy over colloid linked list to array */
   int n_all;
+  colloids_info_update_lists(*pinfo);
+  printf("creating initial colloids array\n");
   colloids_info_n_all(*pinfo, &n_all);
-  colloids_array_create(&(*pinfo)->colloid_array, nc);
-  set_colloids_array(*pinfo, nc);
+  colloids_array_create(&(*pinfo)->colloid_array, n_all);
+  set_colloids_array(*pinfo, n_all);
 
   colloids_rt_cell_list_checks(pe, cs, model, pinfo, *interact);
   colloids_init_halo_range_check(pe, cs, *pinfo);
