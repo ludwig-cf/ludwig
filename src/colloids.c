@@ -1223,7 +1223,9 @@ __host__ int colloids_info_update_lists(colloids_info_t * cinfo) {
 
   colloids_info_list_local_build(cinfo);
   colloids_info_list_all_build(cinfo);
+  printf("here 1\n");
   update_colloids_array(cinfo);
+  printf("here 2\n");
 
   return 0;
 }
@@ -1715,6 +1717,7 @@ void set_colloids_array(colloids_info_t * cinfo, int n_colloids) {
     colloid_t * colloid;
     colloids_info_all_head(cinfo, &colloid);
     int i = 0;
+    printf("Setting colloids array: n_colloids %d max %d\n", n_colloids, cinfo->colloid_array.max_colloids);
     for (; colloid; colloid = colloid->nextall) {
         if (cinfo->colloid_array.colloids) {
           if (i >= cinfo->colloid_array.max_colloids) {
@@ -1743,15 +1746,23 @@ void set_colloids_array(colloids_info_t * cinfo, int n_colloids) {
 void update_colloids_array(colloids_info_t * cinfo) {
   /* Copy over colloids pointers to array*/
   int n_total;
+  printf("Here 1\n");
   colloids_info_n_all(cinfo, &n_total);
+  printf("Here 2\n");
   if (n_total > cinfo->colloid_array.max_colloids) {
     if (cinfo->colloid_array.max_colloids > 0) {
+      printf("Here 3\n");
       colloids_array_resize(&cinfo->colloid_array, n_total);
+      printf("Here 4\n");
     } else {
+      printf("Here 5\n");
       colloids_array_create(&cinfo->colloid_array, n_total);
+      printf("Here 6\n");
     }
   }
+  printf("Here 7\n");
   set_colloids_array(cinfo, n_total);
+  printf("Here 8\n");
 }
 
 /*****************************************************************************
