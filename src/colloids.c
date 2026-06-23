@@ -1223,9 +1223,7 @@ __host__ int colloids_info_update_lists(colloids_info_t * cinfo) {
 
   colloids_info_list_local_build(cinfo);
   colloids_info_list_all_build(cinfo);
-  printf("here 1\n");
   update_colloids_array(cinfo);
-  printf("here 2\n");
 
   return 0;
 }
@@ -1700,6 +1698,7 @@ void colloids_array_resize(colloids_arrays_t * colloids_array, size_t new_size) 
     void *newptr;
     tdpMallocManaged(&newptr, colloids_array->max_colloids * sizeof(colloid_t *), tdpMemAttachGlobal);
     tdpMemcpy(newptr, colloids_array->colloids, colloids_array->max_colloids, tdpMemcpyDeviceToDevice);
+    //memcpy(newptr, colloids_array->colloids, colloids_array->max_colloids * sizeof(colloid_t *));
     tdpFree(colloids_array->colloids);
     colloids_array->colloids = (colloid_t **) &newptr;
   }
@@ -1717,7 +1716,6 @@ void set_colloids_array(colloids_info_t * cinfo, int n_colloids) {
     colloid_t * colloid;
     colloids_info_all_head(cinfo, &colloid);
     int i = 0;
-    printf("Setting colloids array: n_colloids %d max %d\n", n_colloids, cinfo->colloid_array.max_colloids);
     for (; colloid; colloid = colloid->nextall) {
         if (cinfo->colloid_array.colloids) {
           if (i >= cinfo->colloid_array.max_colloids) {
@@ -1746,23 +1744,17 @@ void set_colloids_array(colloids_info_t * cinfo, int n_colloids) {
 void update_colloids_array(colloids_info_t * cinfo) {
   /* Copy over colloids pointers to array*/
   int n_total;
-  printf("Here 1\n");
   colloids_info_n_all(cinfo, &n_total);
-  printf("Here 2\n");
   if (n_total > cinfo->colloid_array.max_colloids) {
     if (cinfo->colloid_array.max_colloids > 0) {
-      printf("Here 3\n");
-      colloids_array_resize(&cinfo->colloid_array, n_total);
-      printf("Here 4\n");
+      printf("would need to resize colloids array: n_total %d max %d\n", n_total, cinfo->colloid_array.max_colloids);
+      //colloids_array_resize(&cinfo->colloid_array, n_total);
     } else {
-      printf("Here 5\n");
-      colloids_array_create(&cinfo->colloid_array, n_total);
-      printf("Here 6\n");
+      printf("Would need to create colloids array: n_total %d max %d\n", n_total);
+      //colloids_array_create(&cinfo->colloid_array, n_total);
     }
   }
-  printf("Here 7\n");
   set_colloids_array(cinfo, n_total);
-  printf("Here 8\n");
 }
 
 /*****************************************************************************
