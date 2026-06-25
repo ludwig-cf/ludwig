@@ -2,7 +2,10 @@
  *
  *  build_remove_replace_q.h
  *
- *  FIXME
+ *  Edinburgh Soft Matter and Statistical Physics Group and
+ *  Edinburgh Parallel Computing Centre
+ *
+ *  (c) 2026 The University of Edinburgh
  *
  *****************************************************************************/
 
