@@ -1,0 +1,75 @@
+##############################################################################
+#
+#  Replacement of tensor order parameter on colloid movement
+#
+#  The colloid initial conditions are such that 4 sites should
+#  have a replacement before output at timestep 10. If there
+#  is no replacement, this will show up in the free energy.
+#
+##############################################################################
+
+N_start      0
+N_cycles     10
+
+size         32_32_32
+periodicity  1_1_1
+
+##############################################################################
+#
+#  Fluid parameters
+#
+##############################################################################
+
+viscosity 0.01
+
+
+free_energy               lc_blue_phase
+fd_gradient_calculation   s7_anchoring
+
+lc_a0      0.01
+lc_gamma   3.0
+lc_q0      0.19635
+lc_kappa0  0.000648456
+lc_kappa1  0.000648456
+lc_xi      0.7
+
+lc_Gamma   0.5
+
+lc_q_initialisation        nematic
+lc_q_init_amplitude        0.333333333333333
+lc_init_redshift           1.0
+lc_init_nematic            1.0_1.0_1.0
+
+lc_coll_anchoring          normal
+lc_coll_anchoring_w1       0.0
+
+###############################################################################
+#
+#  Colloid parameters
+#
+###############################################################################
+
+colloid_init          input_one
+
+colloid_one_a0        2.3
+colloid_one_ah        2.3
+colloid_one_r         16.0_16.0_15.699
+colloid_one_v         0.0_0.0_0.015
+colloid_one_isfixedv  1
+
+###############################################################################
+#
+#  Output frequency and type
+#
+###############################################################################
+
+freq_statistics 10
+config_at_end   no
+
+###############################################################################
+#
+#  Miscellaneous
+#
+###############################################################################
+
+random_seed 8361235
