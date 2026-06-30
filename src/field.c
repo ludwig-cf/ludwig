@@ -848,15 +848,13 @@ int field_tensor_set(field_t * obj, int index, double q[3][3]) {
  *****************************************************************************/
 
 __host__ __device__
-int field_scalar_array(field_t * obj, int index, double * array) {
-
-  int n;
+int field_scalar_array(const field_t * obj, int index, double * array) {
 
   assert(obj);
   assert(obj->data);
   assert(array);
 
-  for (n = 0; n < obj->nf; n++) {
+  for (int n = 0; n < obj->nf; n++) {
     array[n] = obj->data[addr_rank1(obj->nsites, obj->nf, index, n)];
   }
 
@@ -1036,7 +1034,7 @@ int field_io_aggr_pack(field_t * field, io_aggregator_t * aggr) {
  *
  *  field_io_aggr_unpack
  *
- *  Aggregator for the upack (read) stage.
+ *  Aggregator for the unpack (read) stage.
  *
  *****************************************************************************/
 

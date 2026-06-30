@@ -318,11 +318,9 @@ __global__ void build_replace_fluid_kernel(kernel_3d_t k3d, lb_t * lb,
                                                          ic, jc, kc, fnew);
       if (interpolate == 0) {
         /* ... it was not possible to interpolate, so ... */
-	/* No test is available */
-        double ub[3] = {0};
+        double ub[3] = {};
         colloid_ub(pc, rb, ub);
         build_replace_fluid_by_equilibrium(lb, rho0, ub, fnew);
-	assert(0);
       }
 
       /* Compute the new rho, rhou (with a sign) from the fnew ... */

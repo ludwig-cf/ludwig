@@ -24,6 +24,10 @@ void   util_vector_dcm_to_euler(const double r[3][3], double * phi,
  *
  *  __host__ __device__ static inline functions
  *
+ *  double util_vector_modulus(const double v[3]);
+ *  double util_vector_dot_product(const double a[3], const double b[3]);
+ *  int    util_vector_random_util_vector(int seed, double v[3]);
+ *
  *****************************************************************************/
 
 #include <math.h>
@@ -138,6 +142,54 @@ static inline void util_vector_normalise(int n, double * a) {
   }
 
   return;
+}
+
+/*****************************************************************************
+ *
+ *  util_random_uniform
+ *
+ *  A simple LCG for "occasional" use where statistics are not an
+ *  overriding concern.
+ *
+ *  The state is one int32_t (> 0 on input), and the updated state
+ *  must also be < INT_MAX = 2147483647, ie., suitable for int32_t.
+ *
+ *****************************************************************************/
+
+__host__ __device__
+static inline double util_random_uniform(int * seed) {
+
+  int64_t s = *seed;
+
+  assert(s > 0);
+
+  s = 1389796*(s + 0) % 2147483647;
+  *seed = (int) s;
+
+  return (1.0*s/2147483647);
+}
+
+/*****************************************************************************
+ *
+ *  util_vector_random_unit_vector
+ *
+ *  See, e.g., https://mathworld.wolfram.com/SpherePointPicking.html (2026).
+ *
+ *****************************************************************************/
+
+__host__ __device__
+static inline int util_vector_random_unit_vector(int seed, double r[3]) {
+
+  int s = seed;
+
+  double u = 1.0 - 2.0*util_random_uniform(&s);          /* -1 < u <= 1   */
+  double v = 2.0*4.0*atan(1.0)*util_random_uniform(&s);  /*  0 < v <= 2pi */
+
+  r[X] = sqrt(1.0 - u*u)*cos(v);
+  r[Y] = sqrt(1.0 - u*u)*sin(v);
+  r[Z] = u;
+
+  return s;
 }
 
 #endif

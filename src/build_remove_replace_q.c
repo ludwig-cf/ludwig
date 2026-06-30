@@ -8,7 +8,7 @@
  *  anchoring.
  *
  *
- *  Edinburgh Soft Matter and Statisitical Physics Group and
+ *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
  *  (c) 2026 The University of Edinburgh
@@ -22,13 +22,21 @@
 
 #include "build_remove_replace_q.h"
 #include "kernel_3d.h"
+#include "util_ellipsoid.h"
 #include "util_vector.h"
 
-int build_replace_q_local(const fe_lc_t * fe,
-			  const colloids_info_t * info,
-			  const colloid_t * pc,
-			  int ic, int jc, int kc, field_t * q);
 
+__host__ __device__ int build_replace_q_interp(const lb_t * lb,
+					       const colloids_info_t * info,
+					       const map_t * map,
+					       const field_t * q,
+					       int ic, int jc, int kc,
+					       double qreplacement[NQAB]);
+__host__ __device__ int build_replace_q_surface(const fe_lc_t * fe,
+						const colloids_info_t * info,
+						colloid_t * pc,
+						int ic, int jc, int kc,
+						double qreplacement[NQAB]);
 
 /*****************************************************************************
  *
@@ -52,62 +60,28 @@ __global__ void build_replace_q_kernel(kernel_3d_t k3d,
     int jc = kernel_3d_jc(&k3d, kindex);
     int kc = kernel_3d_kc(&k3d, kindex);
 
-    int index0 = cs_index(info->cs, ic, jc, kc);
+    int index = cs_index(info->cs, ic, jc, kc);
 
     colloid_t * pc    = NULL;
     colloid_t * pcnew = NULL;
 
-    colloids_info_map_old(info, index0, &pc);
-    colloids_info_map_old(info, index0, &pcnew);
+    colloids_info_map_old(info, index, &pc);
+    colloids_info_map(info, index, &pcnew);
 
     if (pc != NULL && pcnew == NULL) {
 
-      /* Was solid && now fluid: Q_ab at index needs to be replaced. */
+      /* Was solid and now fluid: Q_ab at index needs to be replaced. */
 
-      /* Check the surrounding sites that were linked to inode,
-       * and accumulate a (weighted) average distribution. */
-
-      int nweight       = 0;
-      double weight     = 0.0;
       double qnew[NQAB] = {};
 
-      for (int p = 1; p < lb->model.nvel; p++) {
+      /* Try interpolation ... */
+      int have_q = build_replace_q_interp(lb, info, map, q, ic, jc, kc, qnew);
 
-	int index = cs_index(lb->cs, ic + lb->model.cv[p][X],
-			             jc + lb->model.cv[p][Y],
-		                     kc + lb->model.cv[p][Z]);
-	int status = MAP_FLUID;	double qs[NQAB] = {};
-	colloid_t * pcold = NULL;
-
-	/* Adjacent site must have been fluid before position update */
-	/* Adjacent site must not be a boundary */
-
-	colloids_info_map_old(info, index, &pcold);
-	if (pcold) continue;
-
-	map_status(map, index, &status);
-	if (status == MAP_BOUNDARY) continue;
-
-	
-	field_scalar_array(q, index, qs);
-	for (int n = 0; n < NQAB; n++) {
-	  qnew[n] += lb->model.wv[p]*qs[n];
-	}
-	weight  += lb->model.wv[p];
-	nweight += 1;
+      if (have_q == 0) {
+	/* No fluid information. Use the anchoring ... */
+	build_replace_q_surface(fe, info, pc, ic, jc, kc, qnew);
       }
-
-      if (nweight == 0) {
-	/* No fluid information. */
-	build_replace_q_local(fe, info, pc, ic, jc, kc, q);
-      }
-      else {
-	weight = 1.0 / weight;
-	for (int n = 0; n < NQAB; n++) {
-	  qnew[n] *= weight;
-	}
-      }
-      field_scalar_array_set(q, index0, qnew);
+      field_scalar_array_set(q, index, qnew);
     }
   }
 
@@ -116,22 +90,80 @@ __global__ void build_replace_q_kernel(kernel_3d_t k3d,
 
 /*****************************************************************************
  *
- *  build_replace_q_local
+ *  build_replace_q_interpolate
+ *
+ *  Interpolate between nearby fluid sites.
+ *
+ *  Returns 0 if no interpolation is available.
  *
  *****************************************************************************/
 
-__host__ __device__ int build_replace_q_local(const fe_lc_t * fe,
-					      const colloids_info_t * info,
-					      const colloid_t * pc,
-					      int ic, int jc, int kc,
-					      field_t * q) {
+__host__ __device__ int build_replace_q_interp(const lb_t * lb,
+					       const colloids_info_t * info,
+					       const map_t * map,
+					       const field_t * q,
+					       int ic, int jc, int kc,
+					       double qreplacement[NQAB]) {
+  int nweight   = 0;
+  double weight = 0.0;
+
+  double qnew[NQAB] = {};
+
+  for (int p = 1; p < lb->model.nvel; p++) {
+
+    int index = cs_index(lb->cs, ic + lb->model.cv[p][X],
+			         jc + lb->model.cv[p][Y],
+		                 kc + lb->model.cv[p][Z]);
+    int status = MAP_FLUID;
+    double qs[NQAB]   = {};
+    colloid_t * pcold = NULL;
+
+    /* Adjacent site must have been fluid before position update */
+    /* Adjacent site must not be a boundary */
+
+    colloids_info_map_old(info, index, &pcold);
+    if (pcold) continue;
+
+    map_status(map, index, &status);
+    if (status == MAP_BOUNDARY) continue;
+
+    field_scalar_array(q, index, qs);
+    for (int n = 0; n < NQAB; n++) {
+      qnew[n] += lb->model.wv[p]*qs[n];
+    }
+    weight  += lb->model.wv[p];
+    nweight += 1;
+  }
+
+  if (nweight > 0) {
+    weight = 1.0 / weight;
+    for (int n = 0; n < NQAB; n++) {
+      qreplacement[n] = weight*qnew[n];
+    }
+  }
+
+  return nweight;
+}
+
+/*****************************************************************************
+ *
+ *  build_replace_q_surface
+ *
+ *  Construct a replacement Q_ab from the local surface anchoring.
+ *
+ *****************************************************************************/
+
+__host__ __device__ int build_replace_q_surface(const fe_lc_t * fe,
+					        const colloids_info_t * info,
+					        colloid_t * pc,
+					        int ic, int jc, int kc,
+					        double qreplacement[NQAB]) {
   double rb[3]      = {};
   double qnew[3][3] = {};
 
   assert(fe);
   assert(info);
   assert(pc);
-  assert(q);
 
   double amplitude = 0.0;
 
@@ -161,7 +193,6 @@ __host__ __device__ int build_replace_q_local(const fe_lc_t * fe,
     rb[Z] *= rbmod;
   }
 
-
   /* For planar degenerate anchoring we subtract the projection of a
      randomly oriented unit vector on rb and renormalise the result   */
 
@@ -172,9 +203,7 @@ __host__ __device__ int build_replace_q_local(const fe_lc_t * fe,
     double rbmod   = 0.0;
     double rhatrb  = 0.0;
 
-    /* FIXME device version required... */
-    /* util_random_unit_vector(&pc->s.rng, rhat);*/
-    assert(0);
+    pc->s.rng = util_vector_random_unit_vector(pc->s.rng, rhat);
 
     rhatrb = util_vector_dot_product(rhat, rb);
 
@@ -195,10 +224,11 @@ __host__ __device__ int build_replace_q_local(const fe_lc_t * fe,
     }
   }
 
-  {
-    int index = cs_index(info->cs, ic, jc, kc);
-    field_tensor_set(q, index, qnew);
-  }
+  qreplacement[XX] = qnew[X][X];
+  qreplacement[XY] = qnew[X][Y];
+  qreplacement[XZ] = qnew[X][Z];
+  qreplacement[YY] = qnew[Y][Y];
+  qreplacement[YZ] = qnew[Y][Z];
 
   return 0;
 }

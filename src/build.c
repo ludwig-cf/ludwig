@@ -6,7 +6,7 @@
  *  do bounce back on links.
  *
  *
- *  Edinburgh Soft Matter and Statisitical Physics Group and
+ *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
  *  (c) 2006-2026 The University of Edinburgh
@@ -32,19 +32,14 @@
 #include "wall.h"
 #include "build.h"
 #include "build_remove_replace.h"
+#include "build_remove_replace_q.h"
 #include "blue_phase.h"
 
 
 int build_replace_fluid_local(colloids_info_t * info, colloid_t * pc,
 			      int index, lb_t * lb);
 
-int build_replace_q_local(fe_t * fe, colloids_info_t * info, colloid_t * pc, int index,
-			  field_t * q);
-
 static int build_remove_fluid(lb_t * lb, int index, colloid_t * pc);
-static int build_replace_order_parameter(fe_t * fe, lb_t * lb, colloids_info_t * cinfo,
-					 field_t * f, int index,
-					 colloid_t * pc, map_t * map);
 static int build_reset_links(cs_t * cs, colloid_t * pc, map_t * map,
 			     const lb_model_t * model);
 static int build_reconstruct_links(cs_t * cs, colloids_info_t * cinfo,
@@ -453,14 +448,14 @@ int build_remove_replace(fe_t * fe, colloids_info_t * cinfo, lb_t * lb,
   assert(lb);
   assert(cinfo);
 
-
-  /* These are the parallel versions ... */
   build_bbl_rebuild_flags_driver(cinfo);
   build_remove_replace_fluid_driver(lb, cinfo, map);
   build_remove_replace_order_parameter_driver(lb, cinfo, map, phi);
+  build_remove_replace_q_driver(lb, (fe_lc_t *) fe, cinfo, map, q);
 
-  /* Which are not yet available for Q_ab or charge */
-  if (q == NULL && psi == NULL) return 0;
+  if (psi == NULL) return 0;
+
+  /* Charge is dealt with here. */
 
   cs_nlocal(lb->cs, nlocal);
   cs_nhalo(lb->cs, &nhalo);
@@ -487,7 +482,6 @@ int build_remove_replace(fe_t * fe, colloids_info_t * cinfo, lb_t * lb,
 	if (pcold != NULL && pcnew == NULL) {
 
 	  if (!is_halo) {
-	    if (q) build_replace_order_parameter(fe, lb, cinfo, q, index, pcold, map);
 	    if (psi) psi_colloid_replace_charge(psi, cinfo, pcold, index);
 	  }
 	}
@@ -667,231 +661,6 @@ int build_replace_fluid_local(colloids_info_t * cinfo, colloid_t * pc,
     pc->f0[ia] += gnew[ia];
     pc->t0[ia] += tnew[ia];
   }
-
-  return 0;
-}
-
-/*****************************************************************************
- *
- *  build_replace_order_parameter
- *
- *  Replace the order parameter(s) at a newly exposed site (index).
- *
- *****************************************************************************/
-
-static int build_replace_order_parameter(fe_t * fe, lb_t * lb,
-					 colloids_info_t * cinfo,
-					 field_t * f, int index,
-					 colloid_t * pc, map_t * map) {
-  int indexn, n, p, pdash;
-  int status;
-  int ri[3];
-  int nf;
-  int nweight;
-
-  double g;
-  double weight = 0.0;
-  double newg[NVEL];
-  double phi[NQAB];
-  double qs[NQAB];
-  double phi0;
-
-  physics_t * phys = NULL;
-  colloid_t * pcmap = NULL;
-
-  assert(map);
-  assert(lb);
-
-  field_nf(f, &nf);
-  assert(nf <= NQAB);
-
-  cs_index_to_ijk(lb->cs, index, ri);
-  physics_ref(&phys);
-  physics_phi0(phys, &phi0);
-
-  /* Check the surrounding sites that were linked to inode,
-   * and accumulate a (weighted) average distribution. */
-
-  for (p = 0; p < lb->model.nvel; p++) {
-    newg[p] = 0.0;
-  }
-
-  if (lb->ndist == 2) {
-
-    /* Reset the distribution (distribution index 1) */
-
-    for (p = 1; p < lb->model.nvel; p++) {
-
-      indexn = cs_index(lb->cs, ri[X] + lb->model.cv[p][X],
-			        ri[Y] + lb->model.cv[p][Y],
-			        ri[Z] + lb->model.cv[p][Z]);
-
-      /* Site must have been fluid before position update */
-
-      /* TODO Could be done with MAP_STATUS ? */
-      colloids_info_map_old(cinfo, indexn, &pcmap);
-      if (pcmap) continue;
-      map_status(map, indexn, &status);
-      if (status == MAP_BOUNDARY) continue;
-
-      for (pdash = 0; pdash < lb->model.nvel; pdash++) {
-	lb_f(lb, indexn, pdash, LB_PHI, &g);
-	newg[pdash] += lb->model.wv[p]*g;
-      }
-      weight += lb->model.wv[p];
-    }
-
-    /* Set new fluid distributions */
-
-    if (weight == 0.0) {
-      /* No neighbouring fluid: as there's no information, we
-       * fall back to the value that is currently stored on the
-       * lattice. This is not entirely unreasonable, as it may
-       * reflect what is nearby, or initial conditions. It could
-       * also be set as a contingency in a separate step. */
-      field_scalar(f, index, newg);
-      weight = 1.0;
-    }
-
-    weight = 1.0/weight;
-    phi[0] = 0.0;
-
-    for (p = 0; p < lb->model.nvel; p++) {
-      newg[p] *= weight;
-      lb_f_set(lb, index, p, LB_PHI, newg[p]);
-
-      /* ... and remember the new fluid properties */
-      phi[0] += newg[p];
-    }
-  }
-  else {
-
-    /* Replace field value(s), based on same average */
-
-    nweight = 0.0;
-    for (n = 0; n < nf; n++) {
-      phi[n] = 0.0;
-    }
-
-    for (p = 1; p < lb->model.nvel; p++) {
-
-      indexn = cs_index(lb->cs, ri[X] + lb->model.cv[p][X],
-			        ri[Y] + lb->model.cv[p][Y],
-		                ri[Z] + lb->model.cv[p][Z]);
-
-      /* Site must have been fluid before position update */
-
-      colloids_info_map_old(cinfo, indexn, &pcmap);
-      if (pcmap) continue;
-      map_status(map, indexn, &status);
-      if (status == MAP_BOUNDARY) continue;
-
-      field_scalar_array(f, indexn, qs);
-      for (n = 0; n < nf; n++) {
-	phi[n] += lb->model.wv[p]*qs[n];
-      }
-      weight += lb->model.wv[p];
-      nweight += 1;
-    }
-    if (nweight == 0) {
-      /* No information. For phi, use existing (solid) value. */
-      if (fe->id == FE_LC) build_replace_q_local(fe, cinfo, pc, index, f);
-      if (fe->id == FE_SYMMETRIC) field_scalar(f, index, phi);
-    }
-    else {
-      weight = 1.0 / weight;
-      for (n = 0; n < nf; n++) {
-	phi[n] *= weight;
-      }
-      field_scalar_array_set(f, index, phi);
-    }
-  }
-
-  /* Set corrections arising from change in conserved order parameter,
-   * which we assume means nf == 1 */
-
-  pc->s.deltaphi -= (phi[0] - phi0);
-
-  return 0;
-}
-
-/*****************************************************************************
- *
- *  build_replace_q_local
- *
- *  ASSUME NORMAL ANCHORING AMPLITUDE = 1/3
- *
- *****************************************************************************/
-
-int build_replace_q_local(fe_t * fe, colloids_info_t * info, colloid_t * pc,
-			  int index, field_t * q) {
-
-  int ia, ib;
-  double rb[3], rbp[3], rhat[3];
-  double rbmod, rhat_dot_rb;
-  double qnew[3][3];
-
-  double amplitude = (1.0/3.0);
-
-  fe_lc_t * fe_lc = (fe_lc_t *) fe;
-  fe_lc_param_t * lc_param = fe_lc->param;
-
-  KRONECKER_DELTA_CHAR(d);
-
-  assert(fe);
-  assert(info);
-  assert(pc);
-  assert(q);
-
-  fe_lc_amplitude_compute(lc_param, &amplitude);
-
-  /* For normal anchoring we determine the radial unit vector rb */
-
-  colloid_rb(info, pc, index, rb);
-
-  if (pc->s.shape == COLLOID_SHAPE_ELLIPSOID) {
-    /* Compute correct spheroid normal ... */
-    int isphere = util_ellipsoid_is_sphere(pc->s.elabc);
-    if (!isphere) {
-      double posvector[3] = {0};
-      util_vector_copy(3, rb, posvector);
-      util_spheroid_surface_normal(pc->s.elabc, pc->s.m, posvector, rb);
-    }
-  }
-
-  /* Make sure we have a unit vector */
-  rbmod = 1.0/sqrt(rb[X]*rb[X] + rb[Y]*rb[Y] + rb[Z]*rb[Z]);
-  rb[0] *= rbmod;
-  rb[1] *= rbmod;
-  rb[2] *= rbmod;
-
-
-  /* For planar degenerate anchoring we subtract the projection of a
-     randomly oriented unit vector on rb and renormalise the result   */
-
-  if (lc_param->coll.type == LC_ANCHORING_PLANAR) {
-
-    util_random_unit_vector(&pc->s.rng, rhat);
-
-    rhat_dot_rb = dot_product(rhat,rb);
-    rbp[0] = rhat[0] - rhat_dot_rb*rb[0];
-    rbp[1] = rhat[1] - rhat_dot_rb*rb[1];
-    rbp[2] = rhat[2] - rhat_dot_rb*rb[2];
-
-    rbmod = 1.0/sqrt(rbp[X]*rbp[X] + rbp[Y]*rbp[Y] + rbp[Z]*rbp[Z]);
-    rb[0] = rbmod * rbp[0];
-    rb[1] = rbmod * rbp[1];
-    rb[2] = rbmod * rbp[2];
-
-  }
-
-  for (ia = 0; ia < 3; ia++) {
-    for (ib = 0; ib < 3; ib++) {
-      qnew[ia][ib] = 0.5*amplitude*(3.0*rb[ia]*rb[ib] - d[ia][ib]);
-    }
-  }
-
-  field_tensor_set(q, index, qnew);
 
   return 0;
 }

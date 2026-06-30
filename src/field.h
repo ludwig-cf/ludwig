@@ -114,7 +114,7 @@ __host__ __device__ int field_vector_set(field_t * obj, int index,
 __host__ __device__ int field_tensor(field_t * obj, int index, double q[3][3]);
 __host__ __device__ int field_tensor_set(field_t * obj, int index,
 					 double q[3][3]);
-__host__ __device__ int field_scalar_array(field_t * obj, int index,
+__host__ __device__ int field_scalar_array(const field_t * obj, int index,
 					   double * array);
 __host__ __device__ int field_scalar_array_set(field_t * obj, int index,
 					       const double * array);
