@@ -31,6 +31,7 @@ void   util_vector_dcm_to_euler(const double r[3][3], double * phi,
  *****************************************************************************/
 
 #include <math.h>
+#include "cartesian.h"
 #include "target.h"
 
 /*****************************************************************************
