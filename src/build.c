@@ -58,6 +58,7 @@ int build_conservation_psi(colloids_info_t * cinfo, psi_t * psi,
 
 int build_update_map_driver(map_t * map);
 int build_update_map_colloids_driver(colloids_info_t * info, map_t * map);
+int build_conservation_phi_driver(const colloids_info_t * info, field_t * phi);
 
 /*****************************************************************************
  *
@@ -1274,4 +1275,92 @@ int build_update_map_colloids_driver(colloids_info_t * info, map_t * map) {
   }
 
   return ifail;
+}
+
+/*****************************************************************************
+ *
+ *  build_conservation_phi_driver
+ *
+ *  For conserved scalar order parameter field phi, add corrections
+ *  arising from remove/replace back to the fluid to ensure global
+ *  conservation.
+ *
+ *  - corrrection
+ *  - set delta phi to zero for all colloids.
+ *
+ *****************************************************************************/
+
+__global__ void build_conservation_phi_kernel(kernel_3d_t k3d,
+					      const colloids_info_t * info,
+					      field_t * phi) {
+  int kindex = 0;
+  int8_t stencil[6][3] = {{-1,0,0},{1,0,0},{0,-1,0},{0,1,0},{0,0,-1},{0,0,1}};
+
+  for_simt_parallel(kindex, k3d.kiterations, 1) {
+
+    int ic = kernel_3d_ic(&k3d, kindex);
+    int jc = kernel_3d_jc(&k3d, kindex);
+    int kc = kernel_3d_kc(&k3d, kindex);
+
+    /* Fluid site index and position (local) */
+    /* Site must be fluid */
+    int index = cs_index(info->cs, ic, jc, kc);
+
+    colloid_t * pc = NULL;
+
+    colloids_info_map(info, index, &pc);
+
+    if (pc == NULL) {
+
+      for (int p = 0; p < 6; p++) {
+
+	int px = stencil[p][X];
+	int py = stencil[p][Y];
+	int pz = stencil[p][Z];
+
+	int indexc = cs_index(info->cs, ic + px, jc + py, kc + pz);
+
+	colloids_info_map(info, indexc, &pc);
+
+	if (pc != NULL) {
+	  double phi0 = 0.0;
+	  double dphi = pc->s.deltaphi / pc->s.saf;
+
+	  field_scalar(phi, index, &phi0);
+	  field_scalar_set(phi, index, phi0 + dphi);
+	}
+      }
+    }
+  }
+
+  return;;
+}
+
+
+int build_conservation_phi_driver(const colloids_info_t * info,
+				  field_t * phi) {
+  dim3 nblk  = {};
+  dim3 ntpb  = {};
+
+  cs_limits_t lim = cs_limits(info->cs->param->nlocal);
+  kernel_3d_t k3d = kernel_3d(info->cs, lim);
+
+  kernel_3d_launch_param(k3d.kiterations, &nblk, &ntpb);
+
+  /* Make sure the target copy is up-to-date ... */
+  info->target->headall = info->headall;
+
+  tdpLaunchKernel(build_conservation_phi_kernel, nblk, ntpb, 0, 0, k3d,
+		  info->target, phi->target);
+
+  tdpAssert(tdpPeekAtLastError());
+  tdpAssert(tdpStreamSynchronize(0));
+
+  /* Set all deltaphi to zero. */
+
+  for (colloid_t * pc = info->headall; pc != NULL; pc = pc->nextall) {
+    pc->s.deltaphi = 0.0;
+  }
+
+  return 0;
 }
