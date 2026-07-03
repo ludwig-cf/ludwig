@@ -13,6 +13,7 @@
 #define LUDWIG_UTIL_RANDOM_IMPL_H
 
 #include <math.h>
+#include <stdint.h>
 
 #include "target.h"
 
