@@ -14,11 +14,11 @@
 #ifndef LUDWIG_UTIL_VECTOR_H
 #define LUDWIG_UTIL_VECTOR_H
 
-int    util_vector_orthonormalise(const double a[3], double b[3]);
-void   util_vector_basis_to_dcm(const double a[3], const double b[3],
-				const double c[3], double r[3][3]);
-void   util_vector_dcm_to_euler(const double r[3][3], double * phi,
-				double * theta, double * psi);
+int  util_vector_orthonormalise(const double a[3], double b[3]);
+void util_vector_basis_to_dcm(const double a[3], const double b[3],
+                              const double c[3], double r[3][3]);
+void util_vector_dcm_to_euler(const double r[3][3], double * phi,
+                              double * theta, double * psi);
 
 /*****************************************************************************
  *
@@ -33,6 +33,7 @@ void   util_vector_dcm_to_euler(const double r[3][3], double * phi,
 #include <math.h>
 #include "cartesian.h"
 #include "target.h"
+#include "util_random_impl.h"
 
 /*****************************************************************************
  *
@@ -68,7 +69,7 @@ static inline double util_vector_dot_product(const double a[3],
 
 __host__ __device__
 static inline void util_vector_cross_product(double c[3], const double a[3],
-					     const double b[3]) {
+                                             const double b[3]) {
   c[0] = a[1]*b[2] - a[2]*b[1];
   c[1] = a[2]*b[0] - a[0]*b[2];
   c[2] = a[0]*b[1] - a[1]*b[0];
@@ -147,34 +148,11 @@ static inline void util_vector_normalise(int n, double * a) {
 
 /*****************************************************************************
  *
- *  util_random_uniform
- *
- *  A simple LCG for "occasional" use where statistics are not an
- *  overriding concern.
- *
- *  The state is one int32_t (> 0 on input), and the updated state
- *  must also be < INT_MAX = 2147483647, ie., suitable for int32_t.
- *
- *****************************************************************************/
-
-__host__ __device__
-static inline double util_random_uniform(int * seed) {
-
-  int64_t s = *seed;
-
-  assert(s > 0);
-
-  s = 1389796*(s + 0) % 2147483647;
-  *seed = (int) s;
-
-  return (1.0*s/2147483647);
-}
-
-/*****************************************************************************
- *
  *  util_vector_random_unit_vector
  *
  *  See, e.g., https://mathworld.wolfram.com/SpherePointPicking.html (2026).
+ *
+ *  The return value is the updated seed.
  *
  *****************************************************************************/
 
