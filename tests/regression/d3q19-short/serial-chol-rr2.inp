@@ -3,7 +3,7 @@
 #  serial-chol-rr2.inp
 #
 #  This test is set up to test a situation where fluid must be replaced
-#  following a chnage in discrete shape of a colloid, but no interpotion
+#  following a change in discrete shape of a colloid, but no interpolation
 #  is available.
 #
 #  This test is for liquid crystal tensor order parameter using a
@@ -22,7 +22,7 @@ N_cycles 2
 ##############################################################################
 #
 #  System and MPI
-# 
+#
 ##############################################################################
 
 size 32_32_16
@@ -63,6 +63,8 @@ lc_coll_anchoring          planar
 lc_coll_anchoring_w1       0.1
 lc_coll_anchoring_w2       0.0
 
+lc_wall_anchoring          normal
+lc_wall_anchoring_w1       0.0
 
 ###############################################################################
 #

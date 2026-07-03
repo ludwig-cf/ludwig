@@ -1,7 +1,7 @@
 Welcome to: Ludwig v0.24.0 (Serial version running on 1 process)
-Git commit: 03ae452ac7c30f5dd93ec255865451e2369e22f4
+Git commit: bc662544f85fe23d125d6469225d680090dead23
 
-Start time: Mon Jun 29 19:10:12 2026
+Start time: Fri Jul  3 14:41:59 2026
 
 Compiler:
   name:           Gnu 15.2.0
@@ -11,9 +11,9 @@ Compiler:
 Note assertions via standard C assert() are on.
 
 Target thread model: OpenMP
-OpenMP threads: 1; maximum number of threads 8
+OpenMP threads: 1; maximum number of threads 11
 
-Read 33 user parameters from input
+Read 35 user parameters from input
 
 System details
 --------------
@@ -44,6 +44,10 @@ Reduced temperature        =  0.0000000e+00
 Initial redshift           =  1.0000000e+00
 Dynamic redshift update    =             no
 Liquid crystal activity                  No
+
+Liquid crystal anchoring:
+Wall anchoring type:          normal
+Wall anchoring w1:            0.0000000e+00
 
 Liquid crystal anchoring:
 Colloid anchoring type:       planar
@@ -163,7 +167,7 @@ Scalars - total mean variance min max
 [Qyz]  2.4341667e+03  1.6666667e-01 -5.1587125e-15  1.6666667e-01  1.6666667e-01
 
 Free energies - timestep f v f/v f_s1 fs_s2 redshift
-[fe]              0  1.3101601217e+02  1.4605000000e+04  8.9706273309e-03  0.0000000000e+00  0.0000000000e+00  1.0000000000e+00
+[fe]              0  1.3100986838e+02  1.4605000000e+04  8.9702066679e-03  0.0000000000e+00  0.0000000000e+00  1.0000000000e+00
 
 Momentum - x y z
 [total   ]  0.0000000e+00  0.0000000e+00 -3.5342917e+02
@@ -180,21 +184,21 @@ Colloid velocities - x y z
 [maximum ]  0.0000000e+00  0.0000000e+00 -2.0000000e-01
 
 Scalars - total mean variance min max
-[rho]       14605.00  1.00000000000  1.4179211e-02 -0.83520101536  2.35098985218
-[Qxx] -9.3320022e-02 -6.3895941e-06  1.4373091e-05 -4.1622736e-02  4.9143749e-02
-[Qxy]  2.4286478e+03  1.6628879e-01  1.0591303e-05  1.0295425e-01  1.7681797e-01
-[Qxz]  2.4291724e+03  1.6632471e-01  1.8351274e-05  9.0441819e-02  1.9526753e-01
-[Qyy] -6.7620864e-02 -4.6299804e-06  1.4867788e-05 -4.7773489e-02  4.8900715e-02
-[Qyz]  2.4291919e+03  1.6632604e-01  1.9000441e-05  9.0867977e-02  1.9666472e-01
+[rho]       14605.00  1.00000000000  1.4179200e-02 -0.83520158416  2.35098567991
+[Qxx] -9.3150256e-02 -6.3779703e-06  1.4373152e-05 -4.1622736e-02  4.9143749e-02
+[Qxy]  2.4286642e+03  1.6628991e-01  1.0592140e-05  1.0295425e-01  1.7681797e-01
+[Qxz]  2.4291766e+03  1.6632500e-01  1.8351481e-05  9.0441819e-02  1.9526753e-01
+[Qyy] -6.7790630e-02 -4.6416042e-06  1.4867848e-05 -4.7773489e-02  4.8900715e-02
+[Qyz]  2.4291959e+03  1.6632632e-01  1.9000639e-05  9.0867977e-02  1.9666472e-01
 
 Free energies - timestep f v f/v f_s1 fs_s2 redshift
-[fe]              1  1.3100871851e+02  1.4605000000e+04  8.9701279366e-03  0.0000000000e+00  0.0000000000e+00  1.0000000000e+00
+[fe]              1  1.3100257565e+02  1.4605000000e+04  8.9697073367e-03  0.0000000000e+00  0.0000000000e+00  1.0000000000e+00
 
 Momentum - x y z
-[total   ] -1.4575694e+00 -1.1997529e+00 -4.5214920e+02
-[fluid   ] -1.7530658e+00 -1.4957065e+00 -9.6185197e+01
+[total   ] -1.4575835e+00 -1.1997205e+00 -4.5214921e+02
+[fluid   ] -1.7154101e+00 -1.5332761e+00 -9.6185209e+01
 [colloids]  0.0000000e+00  0.0000000e+00 -3.5342917e+02
-[walls   ]  2.9549635e-01  2.9595356e-01 -2.5348279e+00
+[walls   ]  2.5782652e-01  3.3355562e-01 -2.5348237e+00
 
 Velocity - x y z
 [minimum ] -4.7001156e-01 -4.7235066e-01 -5.0957409e-01
@@ -209,25 +213,25 @@ Colloid velocities - x y z
 [maximum ]  0.0000000e+00  0.0000000e+00 -2.0000000e-01
 
 Scalars - total mean variance min max
-[rho]       14609.00  1.00000000000  4.4624237e-02 -2.46925583945  4.76155166387
-[Qxx] -2.8165193e+00 -1.9279344e-04  7.6216139e-05 -1.5479813e-01  1.5050041e-01
-[Qxy]  2.4207097e+03  1.6569989e-01  1.2434436e-04  1.2981766e-02  2.4726110e-01
-[Qxz]  2.4222657e+03  1.6580640e-01  1.5313732e-04 -5.9254204e-03  2.5617120e-01
-[Qyy] -2.4077031e+00 -1.6480958e-04  8.1183574e-05 -1.0362839e-01  3.0176266e-01
-[Qyz]  2.4223309e+03  1.6581087e-01  1.5509378e-04 -4.9966897e-03  2.5645759e-01
+[rho]       14609.00  1.00000000000  4.4624109e-02 -2.46925637297  4.76155144420
+[Qxx] -2.8164935e+00 -1.9279167e-04  7.6216401e-05 -1.5479813e-01  1.5050113e-01
+[Qxy]  2.4207422e+03  1.6570211e-01  1.2435214e-04  1.2981599e-02  2.4726096e-01
+[Qxz]  2.4222739e+03  1.6580696e-01  1.5313863e-04 -5.9265577e-03  2.5617186e-01
+[Qyy] -2.4080300e+00 -1.6483195e-04  8.1183944e-05 -1.0362926e-01  3.0176266e-01
+[Qyz]  2.4223389e+03  1.6581141e-01  1.5509587e-04 -4.9966854e-03  2.5645677e-01
 
 Free energies - timestep f v f/v f_s1 fs_s2 redshift
-[fe]              2  1.1058144940e+02  1.4609000000e+04  7.5694058043e-03  0.0000000000e+00  0.0000000000e+00  1.0000000000e+00
+[fe]              2  1.1057530063e+02  1.4609000000e+04  7.5689849157e-03  0.0000000000e+00  0.0000000000e+00  1.0000000000e+00
 
 Momentum - x y z
-[total   ]  2.5959983e+00  2.7792973e+00 -5.6063500e+02
-[fluid   ]  3.0462461e+00  3.2741384e+00 -1.8133108e+02
+[total   ]  2.5983362e+00  2.7761819e+00 -5.6063492e+02
+[fluid   ]  3.1181236e+00  3.2014926e+00 -1.8133100e+02
 [colloids]  0.0000000e+00  0.0000000e+00 -3.5342917e+02
-[walls   ] -4.5024783e-01 -4.9484102e-01 -2.5874745e+01
+[walls   ] -5.1978736e-01 -4.2531072e-01 -2.5874747e+01
 
 Velocity - x y z
-[minimum ] -2.6695533e+00 -2.7103028e+00 -2.9205439e+00
-[maximum ]  6.5486191e+00  6.0275224e+00  3.0084437e+00
+[minimum ] -2.6695533e+00 -2.7103028e+00 -2.9205437e+00
+[maximum ]  6.5489610e+00  6.0270014e+00  3.0084438e+00
 
 Completed cycle 2
 
@@ -235,37 +239,37 @@ Timer resolution: 1e-06 second
 
 Timer statistics
              Section:       tmin       tmax      total
-               Total:      0.098      0.098      0.098   0.098278 (1 call)
-      Time step loop:      0.030      0.037      0.068   0.033822 (2 calls)
-         Propagation:      0.003      0.003      0.006   0.003225 (2 calls)
-    Propagtn (krnl) :      0.003      0.003      0.006   0.003223 (2 calls)
-           Collision:      0.004      0.005      0.008   0.004138 (2 calls)
-   Collision (krnl) :      0.004      0.005      0.008   0.004135 (2 calls)
-       Lattice halos:      0.001      0.001      0.003   0.000808 (4 calls)
-            -> irecv:      0.000      0.000      0.000   0.000001 (4 calls)
-             -> pack:      0.000      0.001      0.002   0.000429 (4 calls)
+               Total:      0.077      0.077      0.077   0.076891 (1 call)
+      Time step loop:      0.030      0.031      0.061   0.030502 (2 calls)
+         Propagation:      0.003      0.003      0.006   0.003151 (2 calls)
+    Propagtn (krnl) :      0.003      0.003      0.006   0.003150 (2 calls)
+           Collision:      0.004      0.004      0.008   0.003864 (2 calls)
+   Collision (krnl) :      0.004      0.004      0.008   0.003862 (2 calls)
+       Lattice halos:      0.001      0.001      0.003   0.000681 (4 calls)
+            -> irecv:      0.000      0.000      0.000   0.000000 (4 calls)
+             -> pack:      0.000      0.000      0.001   0.000353 (4 calls)
             -> isend:      0.000      0.000      0.000   0.000000 (4 calls)
           -> waitall:      0.000      0.000      0.000   0.000000 (4 calls)
-           -> unpack:      0.000      0.000      0.002   0.000378 (4 calls)
-       phi gradients:      0.002      0.003      0.006   0.002963 (2 calls)
-           phi halos:      0.000      0.000      0.000   0.000185 (2 calls)
-            -> irecv:      0.000      0.000      0.000   0.000000 (5 calls)
-             -> pack:      0.000      0.000      0.001   0.000114 (5 calls)
+           -> unpack:      0.000      0.000      0.001   0.000327 (4 calls)
+       phi gradients:      0.002      0.002      0.005   0.002431 (2 calls)
+           phi halos:      0.000      0.000      0.000   0.000147 (2 calls)
+            -> irecv:      0.000      0.000      0.000   0.000001 (5 calls)
+             -> pack:      0.000      0.000      0.000   0.000080 (5 calls)
             -> isend:      0.000      0.000      0.000   0.000000 (5 calls)
           -> waitall:      0.000      0.000      0.000   0.000000 (5 calls)
-           -> unpack:      0.000      0.000      0.000   0.000092 (5 calls)
-              Forces:      0.000      0.000      0.000   0.000010 (2 calls)
-             Rebuild:      0.001      0.001      0.002   0.000824 (2 calls)
-                 BBL:      0.001      0.001      0.002   0.000866 (2 calls)
+           -> unpack:      0.000      0.000      0.000   0.000065 (5 calls)
+              Forces:      0.000      0.000      0.000   0.000008 (2 calls)
+             Rebuild:      0.001      0.001      0.001   0.000685 (2 calls)
+                 BBL:      0.001      0.001      0.002   0.000814 (2 calls)
       Particle halos:      0.000      0.000      0.000   0.000004 (2 calls)
-   Force calculation:      0.007      0.009      0.016   0.007863 (2 calls)
-   Phi force (krnl) :      0.002      0.003      0.005   0.002508 (2 calls)
-          phi update:      0.005      0.007      0.012   0.006242 (2 calls)
-      Velocity Halo :      0.000      0.000      0.000   0.000162 (2 calls)
-BE mol field (krnl) :      0.002      0.002      0.004   0.002056 (2 calls)
-BP BE update (krnl) :      0.002      0.003      0.005   0.002383 (2 calls)
-     Advectn (krnl) :      0.001      0.001      0.003   0.001258 (2 calls)
- Advectn BCS (krnl) :      0.000      0.000      0.001   0.000314 (2 calls)
-Diagnostics / output:      0.005      0.006      0.012   0.005787 (2 calls)
-End time: Mon Jun 29 19:10:12 2026
+   Force calculation:      0.007      0.007      0.013   0.006703 (2 calls)
+   Phi force (krnl) :      0.002      0.002      0.004   0.002203 (2 calls)
+          phi update:      0.005      0.006      0.011   0.005561 (2 calls)
+      Velocity Halo :      0.000      0.000      0.000   0.000129 (2 calls)
+BE mol field (krnl) :      0.002      0.002      0.004   0.001814 (2 calls)
+BP BE update (krnl) :      0.002      0.002      0.004   0.002174 (2 calls)
+     Advectn (krnl) :      0.001      0.001      0.002   0.001108 (2 calls)
+ Advectn BCS (krnl) :      0.000      0.000      0.001   0.000273 (2 calls)
+Diagnostics / output:      0.006      0.006      0.011   0.005681 (2 calls)
+End time: Fri Jul  3 14:41:59 2026
 Ludwig finished normally.
