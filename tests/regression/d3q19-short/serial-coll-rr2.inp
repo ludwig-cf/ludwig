@@ -3,10 +3,10 @@
 #  serial-coll-rr2.inp
 #
 #  This test is set up to test a situation where fluid must be replaced
-#  following a chnage in discrete shape of a colloid, but no interpotion
+#  following a change in discrete shape of a colloid, but no interpolation
 #  is available.
 #
-#  See comments in serial-coll-rr2.inp
+#  See comments in serial-coll-rr1.inp
 #
 #  This test includes compositional order parameter via finite difference.
 #
@@ -17,7 +17,7 @@ N_cycles 2
 ##############################################################################
 #
 #  System and MPI
-# 
+#
 ##############################################################################
 
 size 32_32_16
