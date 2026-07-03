@@ -7,7 +7,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2010-2025 The University of Edinburgh
+ *  (c) 2010-2026 The University of Edinburgh
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *
@@ -56,7 +56,6 @@ __host__ int tests_create(int argc, char ** argv) {
   test_coords_suite();
   test_cs_limits_suite();
   test_le_suite();
-
 
   /* i/o infrastructure */
   test_io_aggregator_suite();
@@ -165,6 +164,7 @@ __host__ int tests_create(int argc, char ** argv) {
   test_util_fopen_suite();
   test_util_io_suite();
   test_util_json_suite();
+  test_util_random_suite();
   test_util_string_suite();
   test_util_sum_suite();
   test_util_vector_suite();
@@ -188,13 +188,13 @@ __host__ int tests_create(int argc, char ** argv) {
  *****************************************************************************/
 
 __host__ __device__ void test_assert_info(const int lvalue, int line,
-					  const char * file) {
+                                          const char * file) {
 
   if (lvalue) {
     /* ok */
   }
   else {
-#if defined( __CUDA_ARCH__ ) || defined( __HIP_DEVICE_COMPILE__ )
+#if defined(__CUDA_ARCH__) || defined(__HIP_DEVICE_COMPILE__)
     /* No rank available */
     printf("Line %d file %s Failed test assertion\n", line, file);
     assert(0);
