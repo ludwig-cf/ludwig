@@ -7,7 +7,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2021 The University of Edinburgh
+ *  (c) 2021-2026 The University of Edinburgh
  *
  *  Contributing authots:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -21,8 +21,8 @@
 
 #include "symmetric.h"
 
-int test_fe_symm_theta_to_h(pe_t * pe);
-int test_fe_symm_h_to_costheta(pe_t * pe);
+int test_fe_symm_theta_to_h(void);
+int test_fe_symm_h_to_costheta(void);
 
 /*****************************************************************************
  *
@@ -36,8 +36,8 @@ int test_fe_symmetric_suite(void) {
 
   pe_create(MPI_COMM_WORLD, PE_QUIET, &pe);
 
-  test_fe_symm_theta_to_h(pe);
-  test_fe_symm_h_to_costheta(pe);
+  test_fe_symm_theta_to_h();
+  test_fe_symm_h_to_costheta();
 
   pe_info(pe, "PASS     ./unit/test_fe_symmetric\n");
   pe_free(pe);
@@ -51,7 +51,7 @@ int test_fe_symmetric_suite(void) {
  *
  *****************************************************************************/
 
-int test_fe_symm_theta_to_h(pe_t * pe) {
+int test_fe_symm_theta_to_h(void) {
 
   int ierr = 0;
 
@@ -84,7 +84,7 @@ int test_fe_symm_theta_to_h(pe_t * pe) {
  *
  *****************************************************************************/
 
-int test_fe_symm_h_to_costheta(pe_t * pe) {
+int test_fe_symm_h_to_costheta(void) {
 
   int ierr = 0;
 
