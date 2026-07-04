@@ -16,7 +16,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group
  *  and Edinburgh Parallel Computing Centre
  *
- *  (c) 2011-2024 The University of Edinburgh
+ *  (c) 2011-2026 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -459,7 +459,7 @@ __host__ int fe_symm_theta_to_h(double theta, double * h) {
   z  = csqrt(4.0*cpow(a1, 2)/a3 + a3 + 1.0/a3 - 2.0);
 
   /* May not quite make DBL_EPSILON depending on argument ... */
-  if (fabs(cimag(z)) > 2.0*DBL_EPSILON) ierr = -1;
+  if (fabs(cimag(z)) > 4.0*DBL_EPSILON) ierr = -1;
 
   *h = creal(z);
 
