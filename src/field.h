@@ -5,7 +5,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2012-2024 The University of Edinburgh
+ *  (c) 2012-2026 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -94,30 +94,16 @@ int field_halo_wait(field_t * field, field_halo_t * h);
 int field_halo_info(const field_t * field);
 int field_halo_free(field_halo_t * h);
 
-__host__ int field_create(pe_t * pe, cs_t * cs, lees_edw_t * le,
-			  const char * name,
-			  const field_options_t * opts,
-			  field_t ** pobj);
-__host__ int field_free(field_t * obj);
+int field_create(pe_t * pe, cs_t * cs, lees_edw_t * le,
+		 const char * name,
+		 const field_options_t * opts,
+		 field_t ** pobj);
+int field_free(field_t * obj);
 
-__host__ int field_memcpy(field_t * obj, tdpMemcpyKind flag);
-__host__ int field_halo(field_t * obj);
-__host__ int field_halo_swap(field_t * obj, field_halo_enum_t flag);
-__host__ int field_leesedwards(field_t * obj);
-
-__host__ __device__ int field_nf(field_t * obj, int * nop);
-__host__ __device__ int field_scalar(field_t * obj, int index, double * phi);
-__host__ __device__ int field_scalar_set(field_t * obj, int index, double phi);
-__host__ __device__ int field_vector(field_t * obj, int index, double p[3]);
-__host__ __device__ int field_vector_set(field_t * obj, int index,
-					 const double p[3]);
-__host__ __device__ int field_tensor(field_t * obj, int index, double q[3][3]);
-__host__ __device__ int field_tensor_set(field_t * obj, int index,
-					 double q[3][3]);
-__host__ __device__ int field_scalar_array(const field_t * obj, int index,
-					   double * array);
-__host__ __device__ int field_scalar_array_set(field_t * obj, int index,
-					       const double * array);
+int field_memcpy(field_t * obj, tdpMemcpyKind flag);
+int field_halo(field_t * obj);
+int field_halo_swap(field_t * obj, field_halo_enum_t flag);
+int field_leesedwards(field_t * obj);
 
 int field_read_buf(field_t * field, int index, const char * buf);
 int field_read_buf_ascii(field_t * field, int index, const char * buf);
@@ -131,5 +117,29 @@ int field_io_read(field_t * field, int timestep, io_event_t * event);
 
 int field_graph_halo_send_create(const field_t * field, field_halo_t * h);
 int field_graph_halo_recv_create(const field_t * field, field_halo_t * h);
+
+/* Inline implementations ... */
+
+__host__ __device__ static inline int field_nf(const field_t * f, int * nf);
+__host__ __device__
+static inline int field_scalar(const field_t * f, int index, double * phi);
+__host__ __device__
+static inline int field_scalar_set(field_t * f, int index, double phi);
+__host__ __device__
+static inline int field_vector(const field_t * f, int index, double p[3]);
+__host__ __device__
+static inline int field_vector_set(field_t * f, int index, const double p[3]);
+__host__ __device__
+static inline int field_tensor(const field_t * f, int index, double q[3][3]);
+__host__ __device__
+static inline int field_tensor_set(field_t * f, int index, double q[3][3]);
+__host__ __device__
+static inline int field_scalar_array(const field_t * f, int index,
+				     double * array);
+__host__ __device__
+static inline int field_scalar_array_set(field_t * f, int index,
+					 const double * array);
+
+#include "field_impl.h"
 
 #endif

@@ -14,7 +14,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2012-2025 The University of Edinburgh
+ *  (c) 2012-2026 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -108,7 +108,7 @@ __host__ int field_create(pe_t * pe, cs_t * cs, lees_edw_t * le,
     {
       /* Input metadata */
       int ifail = 0;
-      io_element_t element = {0};
+      io_element_t element = {};
       if (opts->iodata.input.iorformat == IO_RECORD_ASCII)  element = elasc;
       if (opts->iodata.input.iorformat == IO_RECORD_BINARY) element = elbin;
       ifail = io_metadata_initialise(cs, &opts->iodata.input, &element,
@@ -289,22 +289,6 @@ __host__ int field_memcpy(field_t * obj, tdpMemcpyKind flag) {
 
 /*****************************************************************************
  *
- *  field_nf
- *
- *****************************************************************************/
-
-__host__ __device__ int field_nf(field_t * obj, int * nf) {
-
-  assert(obj);
-  assert(nf);
-
-  *nf = obj->nf;
-
-  return 0;
-}
-
-/*****************************************************************************
- *
  *  field_data_touch
  *
  *****************************************************************************/
@@ -344,7 +328,7 @@ __host__ void field_data_touch_kernel(cs_limits_t lim, field_t * f) {
 
 __host__ int field_data_touch(field_t * field) {
 
-  int nlocal[3] = {0};
+  int nlocal[3] = {};
 
   assert(field);
 
@@ -701,190 +685,6 @@ static int field_leesedwards_parallel(field_t * obj) {
 
 /*****************************************************************************
  *
- *  field_scalar
- *
- *****************************************************************************/
-
-__host__ __device__
-int field_scalar(field_t * obj, int index, double * phi) {
-
-  assert(obj);
-  assert(obj->nf == 1);
-  assert(obj->data);
-  assert(phi);
-
-  *phi = obj->data[addr_rank1(obj->nsites, 1, index, 0)];
-
-  return 0;
-}
-
-/*****************************************************************************
- *
- *  field_scalar_set
- *
- *****************************************************************************/
-
-__host__ __device__
-int field_scalar_set(field_t * obj, int index, double phi) {
-
-  assert(obj);
-  assert(obj->nf == 1);
-  assert(obj->data);
-
-  obj->data[addr_rank1(obj->nsites, 1, index, 0)] = phi;
-
-  return 0;
-}
-
-/*****************************************************************************
- *
- *  field_vector
- *
- *****************************************************************************/
-
-__host__ __device__
-int field_vector(field_t * obj, int index, double p[3]) {
-
-  int ia;
-
-  assert(obj);
-  assert(obj->nf == 3);
-  assert(obj->data);
-
-  for (ia = 0; ia < 3; ia++) {
-    p[ia] = obj->data[addr_rank1(obj->nsites, 3, index, ia)];
-  }
-
-  return 0;
-}
-
-/*****************************************************************************
- *
- *  field_vector_set
- *
- *****************************************************************************/
-
-__host__ __device__
-int field_vector_set(field_t * obj, int index, const double p[3]) {
-
-  int ia;
-
-  assert(obj);
-  assert(obj->nf == 3);
-  assert(obj->data);
-  assert(p);
-
-  for (ia = 0; ia < 3; ia++) {
-    obj->data[addr_rank1(obj->nsites, 3, index, ia)] = p[ia];
-  }
-
-  return 0;
-}
-
-/*****************************************************************************
- *
- *  field_tensor
- *
- *  The tensor is expanded from the compressed form.
- *
- *****************************************************************************/
-
-__host__ __device__
-int field_tensor(field_t * obj, int index, double q[3][3]) {
-
-  assert(obj);
-  assert(obj->nf == NQAB);
-  assert(obj->data);
-  assert(q);
-
-  q[X][X] = obj->data[addr_rank1(obj->nsites, NQAB, index, XX)];
-  q[X][Y] = obj->data[addr_rank1(obj->nsites, NQAB, index, XY)];
-  q[X][Z] = obj->data[addr_rank1(obj->nsites, NQAB, index, XZ)];
-  q[Y][X] = q[X][Y];
-  q[Y][Y] = obj->data[addr_rank1(obj->nsites, NQAB, index, YY)];
-  q[Y][Z] = obj->data[addr_rank1(obj->nsites, NQAB, index, YZ)];
-  q[Z][X] = q[X][Z];
-  q[Z][Y] = q[Y][Z];
-  q[Z][Z] = 0.0 - q[X][X] - q[Y][Y];
-
-  return 0;
-}
-
-/*****************************************************************************
- *
- *  field_tensor_set
- *
- *  The tensor supplied should be traceless and symmetric, as it will
- *  be stored in 'compressed' form.
- *
- *****************************************************************************/
-
-__host__ __device__
-int field_tensor_set(field_t * obj, int index, double q[3][3]) {
-
-  assert(obj);
-  assert(obj->nf == NQAB);
-  assert(obj->data);
-  assert(q);
-
-  obj->data[addr_rank1(obj->nsites, NQAB, index, XX)] = q[X][X];
-  obj->data[addr_rank1(obj->nsites, NQAB, index, XY)] = q[X][Y];
-  obj->data[addr_rank1(obj->nsites, NQAB, index, XZ)] = q[X][Z];
-  obj->data[addr_rank1(obj->nsites, NQAB, index, YY)] = q[Y][Y];
-  obj->data[addr_rank1(obj->nsites, NQAB, index, YZ)] = q[Y][Z];
-
-  return 0;
-}
-
-/*****************************************************************************
- *
- *  field_scalar_array
- *
- *  Return whatever field data there are for this index in a flattened
- *  1d array of length obj->nf.
- *
- *  Array must be of at least obj->nf, but there is no check.
- *
- *****************************************************************************/
-
-__host__ __device__
-int field_scalar_array(const field_t * obj, int index, double * array) {
-
-  assert(obj);
-  assert(obj->data);
-  assert(array);
-
-  for (int n = 0; n < obj->nf; n++) {
-    array[n] = obj->data[addr_rank1(obj->nsites, obj->nf, index, n)];
-  }
-
-  return 0;
-}
-
-/*****************************************************************************
- *
- *  field_scalar_array_set
- *
- *****************************************************************************/
-
-__host__ __device__
-int field_scalar_array_set(field_t * obj, int index, const double * array) {
-
-  int n;
-
-  assert(obj);
-  assert(obj->data);
-  assert(array);
-
-  for (n = 0; n < obj->nf; n++) {
-    obj->data[addr_rank1(obj->nsites, obj->nf, index, n)] = array[n];
-  }
-
-  return 0;
-}
-
-/*****************************************************************************
- *
  *  field_write_buf
  *
  *  Per-lattice site binary write.
@@ -893,7 +693,7 @@ int field_scalar_array_set(field_t * obj, int index, const double * array) {
 
 int field_write_buf(field_t * field, int index, char * buf) {
 
-  double array[NQAB] = {0};
+  double array[NQAB] = {};
 
   assert(field);
 
@@ -913,7 +713,7 @@ int field_write_buf(field_t * field, int index, char * buf) {
 
 int field_read_buf(field_t * field, int index, const char * buf) {
 
-  double array[NQAB] = {0};
+  double array[NQAB] = {};
 
   assert(field);
   assert(buf);
@@ -936,7 +736,7 @@ int field_write_buf_ascii(field_t * field, int index, char * buf) {
 
   const int nbyte = 23;
 
-  double array[NQAB] = {0};
+  double array[NQAB] = {};
   int ifail = 0;
 
   assert(field);
@@ -948,7 +748,7 @@ int field_write_buf_ascii(field_t * field, int index, char * buf) {
   /* Use tmp with +1 to allow for the \0 */
 
   for (int n = 0; n < field->nf; n++) {
-    char tmp[BUFSIZ] = {0};
+    char tmp[BUFSIZ] = {};
     int np = snprintf(tmp, nbyte + 1, " %22.15e", array[n]);
     if (np != nbyte) ifail = 1;
     memcpy(buf + n*nbyte, tmp, nbyte*sizeof(char));
@@ -974,7 +774,7 @@ int field_read_buf_ascii(field_t * field, int index, const char * buf) {
 
   const int nbyte = 23;
 
-  double array[NQAB] = {0};
+  double array[NQAB] = {};
   int ifail = 0;
 
   assert(field);
@@ -982,7 +782,7 @@ int field_read_buf_ascii(field_t * field, int index, const char * buf) {
 
   for (int n = 0; n < field->nf; n++) {
     /* First, make sure we have a \0, before sscanf() */
-    char tmp[BUFSIZ] = {0};
+    char tmp[BUFSIZ] = {};
     memcpy(tmp, buf + n*nbyte, nbyte*sizeof(char));
     int nr = sscanf(tmp, "%le", array + n);
     if (nr != 1) ifail = 1;
@@ -1261,14 +1061,14 @@ __global__ void field_halo_dequeue_recv_kernel(field_t * field,
 
 int field_halo_create(const field_t * field, field_halo_t * h) {
 
-  int nlocal[3] = {0};
-  int nhalo = 0;
-  int ndevice = 0;
+  int nlocal[3] = {};
+  int nhalo     = 0;
+  int ndevice   = 0;
 
   assert(field);
   assert(h);
 
-  *h = (field_halo_t) {0};
+  *h = (field_halo_t) {};
 
   /* Communictation model */
 
@@ -1288,15 +1088,15 @@ int field_halo_create(const field_t * field, field_halo_t * h) {
   /* Ranks of Cartesian neighbours */
 
   {
-    int dims[3] = {0};
-    int periods[3] = {0};
-    int coords[3] = {0};
+    int dims[3]    = {};
+    int periods[3] = {};
+    int coords[3]  = {};
 
     MPI_Cart_get(h->comm, 3, dims, periods, coords);
 
     for (int p = 0; p < h->nvel; p++) {
-      int nbr[3] = {0};
-      int out[3] = {0};  /* Out-of-range is erroneous for non-perioidic dims */
+      int nbr[3] = {};
+      int out[3] = {};  /* Out-of-range is erroneous for non-perioidic dims */
       int i = 1 + h->cv[p][X];
       int j = 1 + h->cv[p][Y];
       int k = 1 + h->cv[p][Z];
@@ -1617,7 +1417,7 @@ int field_halo_free(field_halo_t * h) {
   }
 
   tdpAssert( tdpStreamDestroy(h->stream) );
-  *h = (field_halo_t) {0};
+  *h = (field_halo_t) {};
 
   return 0;
 }
@@ -1632,7 +1432,7 @@ int field_io_write(field_t * field, int timestep, io_event_t * event) {
 
   int ifail = 0;
   io_impl_t * io = NULL;
-  char filename[BUFSIZ] = {0};
+  char filename[BUFSIZ] = {};
   const io_metadata_t * meta = &field->iometadata_out;
 
   /* Metadata */
@@ -1661,7 +1461,7 @@ int field_io_write(field_t * field, int timestep, io_event_t * event) {
       /* We could try to continue here, but fail at the moment */
       pe_t * pe = field->pe;
       int len = 0;
-      char msg[MPI_MAX_ERROR_STRING] = {0};
+      char msg[MPI_MAX_ERROR_STRING] = {};
       MPI_Error_string(ierr, msg, &len);
       pe_info(pe, "Error: Could not write field data file: %s\n", filename);
       pe_info(pe, "Error; %s\n", msg);
@@ -1689,7 +1489,7 @@ int field_io_read(field_t * field, int timestep, io_event_t * event) {
 
   int ifail = 0;
   io_impl_t * io = NULL;
-  char filename[BUFSIZ] = {0};
+  char filename[BUFSIZ] = {};
   const io_metadata_t * meta = &field->iometadata_in;
 
   io_subfile_name(&meta->subfile, field->name, timestep, filename, BUFSIZ);
@@ -1709,7 +1509,7 @@ int field_io_read(field_t * field, int timestep, io_event_t * event) {
     if (ierr != MPI_SUCCESS) {
       pe_t * pe = field->pe;
       int len = 0;
-      char msg[MPI_MAX_ERROR_STRING] = {0};
+      char msg[MPI_MAX_ERROR_STRING] = {};
       MPI_Error_string(ierr, msg, &len);
       pe_info(pe, "Error: Could not read field data file: %s\n", filename);
       pe_info(pe, "Error; %s\n", msg);
@@ -1743,13 +1543,14 @@ int field_graph_halo_send_create(const field_t * field, field_halo_t * h) {
 
   for (int ireq = 1; ireq < h->nvel; ireq++) {
     tdpGraphNode_t kernelNode;
-    tdpKernelNodeParams kernelNodeParams = {0};
+    tdpKernelNodeParams kernelNodeParams = {};
     void * kernelArgs[3] = {(void *) &field->target,
                             (void *) &h->target,
                             (void *) &ireq};
     kernelNodeParams.func = (void *) field_halo_enqueue_send_kernel;
-    dim3 nblk;
-    dim3 ntpb;
+
+    dim3 nblk  = {};
+    dim3 ntpb  = {};
     int scount = field->nf*field_halo_size(h->slim[ireq]);
 
     kernel_launch_param(scount, &nblk, &ntpb);
@@ -1776,7 +1577,7 @@ int field_graph_halo_send_create(const field_t * field, field_halo_t * h) {
 
       if (h->nbrrank[i][j][k] != h->nbrrank[1][1][1]) {
 	tdpGraphNode_t memcpyNode;
-        tdpMemcpy3DParms memcpyParams = {0};
+        tdpMemcpy3DParms memcpyParams = {};
 
 	memcpyParams.srcArray = NULL;
 	memcpyParams.srcPos   = make_tdpPos(0, 0, 0);
@@ -1817,7 +1618,7 @@ int field_graph_halo_recv_create(const field_t * field, field_halo_t * h) {
 
   for (int ireq = 1; ireq < h->nvel; ireq++) {
     int rcount = field->nf*field_halo_size(h->rlim[ireq]);
-    tdpGraphNode_t memcpyNode = {0};
+    tdpGraphNode_t memcpyNode = {};
 
     if (have_gpu_aware_mpi_()) {
       /* Don't need explicit copies */
@@ -1828,7 +1629,7 @@ int field_graph_halo_recv_create(const field_t * field, field_halo_t * h) {
       int k = 1 + h->cv[h->nvel - ireq][Z];
 
       if (h->nbrrank[i][j][k] != h->nbrrank[1][1][1]) {
-	tdpMemcpy3DParms memcpyParams = {0};
+	tdpMemcpy3DParms memcpyParams = {};
 
 	memcpyParams.srcArray = NULL;
 	memcpyParams.srcPos   = make_tdpPos(0, 0, 0);
@@ -1853,7 +1654,7 @@ int field_graph_halo_recv_create(const field_t * field, field_halo_t * h) {
     dim3 nblk;
     dim3 ntpb;
     tdpGraphNode_t node;
-    tdpKernelNodeParams kernelNodeParams = {0};
+    tdpKernelNodeParams kernelNodeParams = {};
     void * kernelArgs[3] = {(void *) &field->target,
                             (void *) &h->target,
                             (void *) &ireq};
