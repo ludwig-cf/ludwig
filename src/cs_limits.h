@@ -44,7 +44,7 @@ struct cs_limits_s {
 
 static inline cs_limits_t cs_limits(const int nlocal[3]) {
 
-  cs_limits_t lims = {0};
+  cs_limits_t lims = {};
 
   lims.imin = 1;
   lims.imax = nlocal[0];
@@ -64,7 +64,7 @@ static inline cs_limits_t cs_limits(const int nlocal[3]) {
 
 static inline cs_limits_t cs_limits_with_halo(const int nlocal[3], int nh) {
 
-  cs_limits_t lims = {0};
+  cs_limits_t lims = {};
 
   lims.imin = 1 - nh;
   lims.imax = nlocal[0] + nh;
