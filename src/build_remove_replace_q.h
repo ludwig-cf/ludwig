@@ -17,9 +17,7 @@
 #include "lb_data.h"
 #include "map.h"
 
-int build_remove_replace_q_driver(const lb_t * lb,
-				  const fe_lc_t * fe,
-				  const colloids_info_t * info,
-				  const map_t * map,
-                                  field_t * q);
+int build_remove_replace_q_driver(const lb_t * lb, const fe_lc_t * fe,
+                                  const colloids_info_t * info,
+                                  const map_t * map, field_t * q);
 #endif

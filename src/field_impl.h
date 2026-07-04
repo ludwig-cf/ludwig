@@ -17,13 +17,15 @@
 #ifndef LUDWIG_FIELD_IMPL_H
 #define LUDWIG_FIELD_IMPL_H
 
+#define HDSI_ __host__ __device__ static inline
+
 /*****************************************************************************
  *
  *  field_nf
  *
  *****************************************************************************/
 
-__host__ __device__ static inline int field_nf(const field_t * obj, int * nf) {
+HDSI_ int field_nf(const field_t * obj, int * nf) {
 
   assert(obj);
   assert(nf);
@@ -39,8 +41,7 @@ __host__ __device__ static inline int field_nf(const field_t * obj, int * nf) {
  *
  *****************************************************************************/
 
-__host__ __device__ static inline
-int field_scalar(const field_t * obj, int index, double * phi) {
+HDSI_ int field_scalar(const field_t * obj, int index, double * phi) {
 
   assert(obj);
   assert(obj->nf == 1);
@@ -58,8 +59,7 @@ int field_scalar(const field_t * obj, int index, double * phi) {
  *
  *****************************************************************************/
 
-__host__ __device__ static inline
-int field_scalar_set(field_t * obj, int index, double phi) {
+HDSI_ int field_scalar_set(field_t * obj, int index, double phi) {
 
   assert(obj);
   assert(obj->nf == 1);
@@ -76,16 +76,12 @@ int field_scalar_set(field_t * obj, int index, double phi) {
  *
  *****************************************************************************/
 
-__host__ __device__ static inline
-int field_vector(const field_t * obj, int index, double p[3]) {
-
-  int ia;
-
+HDSI_ int field_vector(const field_t * obj, int index, double p[3]) {
   assert(obj);
   assert(obj->nf == 3);
   assert(obj->data);
 
-  for (ia = 0; ia < 3; ia++) {
+  for (int ia = 0; ia < 3; ia++) {
     p[ia] = obj->data[addr_rank1(obj->nsites, 3, index, ia)];
   }
 
@@ -98,8 +94,7 @@ int field_vector(const field_t * obj, int index, double p[3]) {
  *
  *****************************************************************************/
 
-__host__ __device__ static inline
-int field_vector_set(field_t * obj, int index, const double p[3]) {
+HDSI_ int field_vector_set(field_t * obj, int index, const double p[3]) {
 
   assert(obj);
   assert(obj->nf == 3);
@@ -121,8 +116,7 @@ int field_vector_set(field_t * obj, int index, const double p[3]) {
  *
  *****************************************************************************/
 
-__host__ __device__ static inline
-int field_tensor(const field_t * obj, int index, double q[3][3]) {
+HDSI_ int field_tensor(const field_t * obj, int index, double q[3][3]) {
 
   assert(obj);
   assert(obj->nf == NQAB);
@@ -151,8 +145,7 @@ int field_tensor(const field_t * obj, int index, double q[3][3]) {
  *
  *****************************************************************************/
 
-__host__ __device__ static inline
-int field_tensor_set(field_t * obj, int index, double q[3][3]) {
+HDSI_ int field_tensor_set(field_t * obj, int index, double q[3][3]) {
 
   assert(obj);
   assert(obj->nf == NQAB);
@@ -179,8 +172,7 @@ int field_tensor_set(field_t * obj, int index, double q[3][3]) {
  *
  *****************************************************************************/
 
-__host__ __device__ static inline
-int field_scalar_array(const field_t * obj, int index, double * array) {
+HDSI_ int field_scalar_array(const field_t * obj, int index, double * array) {
 
   assert(obj);
   assert(obj->data);
@@ -199,8 +191,8 @@ int field_scalar_array(const field_t * obj, int index, double * array) {
  *
  *****************************************************************************/
 
-__host__ __device__ static inline
-int field_scalar_array_set(field_t * obj, int index, const double * array) {
+HDSI_ int field_scalar_array_set(field_t * obj, int index,
+                                 const double * array) {
 
   assert(obj);
   assert(obj->data);
@@ -212,5 +204,7 @@ int field_scalar_array_set(field_t * obj, int index, const double * array) {
 
   return 0;
 }
+
+#undef HDSI_
 
 #endif

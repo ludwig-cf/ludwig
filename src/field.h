@@ -17,8 +17,8 @@
 
 #include <stdint.h>
 
-#define NVECTOR 3    /* Storage requirement for vector (per site) */
-#define NQAB 5       /* Storage requirement for symmetric, traceless tensor */
+#define NVECTOR 3 /* Storage requirement for vector (per site) */
+#define NQAB 5    /* Storage requirement for symmetric, traceless tensor */
 
 #include "pe.h"
 #include "coords.h"
@@ -35,7 +35,7 @@
 typedef struct field_graph_halo_s field_graph_halo_t;
 
 struct field_graph_halo_s {
-  tdpGraph_t graph;
+  tdpGraph_t     graph;
   tdpGraphExec_t exec;
 };
 
@@ -46,18 +46,18 @@ struct field_halo_s {
   MPI_Comm comm;                /* coords: Cartesian communicator */
   int nbrrank[3][3][3];         /* coords: Cartesian neighbours */
 
-  int nvel;                     /* Number of directions involved (2d or 3d) */
-  int8_t cv[27][3];             /* Send/recv directions */
+  int         nvel;             /* Number of directions involved (2d or 3d) */
+  int8_t      cv[27][3];        /* Send/recv directions */
   cs_limits_t slim[27];         /* halo: send regions (rectangular) */
   cs_limits_t rlim[27];         /* halo: recv regions (rectangular) */
-  double * send[27];            /* halo: send data buffers */
-  double * recv[27];            /* halo: recv data buffers */
+  double *    send[27];         /* halo: send data buffers */
+  double *    recv[27];         /* halo: recv data buffers */
   MPI_Request request[2*27];    /* halo: array of send/recv requests */
 
-  tdpStream_t stream;
+  tdpStream_t    stream;
   field_halo_t * target;        /* target structure */
-  double * send_d[27];          /* halo: device send data buffers */
-  double * recv_d[27];          /* halo: device recv data buffers */
+  double *       send_d[27];    /* halo: device send data buffers */
+  double *       recv_d[27];    /* halo: device recv data buffers */
 
   field_graph_halo_t gsend;     /* Graph API halo swap */
   field_graph_halo_t grecv;
@@ -69,7 +69,8 @@ struct field_s {
   int nf;                       /* Number of field components */
   int nhcomm;                   /* Halo width required */
   int nsites;                   /* Local sites (allocated) */
-  double * data;                /* Field data */
+
+  double *     data;            /* Field data */
   const char * name;            /* "phi", "p", "q" etc. */
 
   double field_init_sum;        /* field sum at the beginning */
@@ -81,12 +82,11 @@ struct field_s {
   io_metadata_t iometadata_in;  /* Input details */
   io_metadata_t iometadata_out; /* Output details */
 
-  field_halo_t h;               /* Host halo */
+  field_halo_t    h;            /* Host halo */
   field_options_t opts;         /* Options */
 
   field_t * target;             /* target structure */
 };
-
 
 int field_halo_create(const field_t * field, field_halo_t * h);
 int field_halo_post(const field_t * field, field_halo_t * h);
@@ -94,10 +94,8 @@ int field_halo_wait(field_t * field, field_halo_t * h);
 int field_halo_info(const field_t * field);
 int field_halo_free(field_halo_t * h);
 
-int field_create(pe_t * pe, cs_t * cs, lees_edw_t * le,
-		 const char * name,
-		 const field_options_t * opts,
-		 field_t ** pobj);
+int field_create(pe_t * pe, cs_t * cs, lees_edw_t * le, const char * name,
+                 const field_options_t * opts, field_t ** pobj);
 int field_free(field_t * obj);
 
 int field_memcpy(field_t * obj, tdpMemcpyKind flag);
@@ -120,25 +118,19 @@ int field_graph_halo_recv_create(const field_t * field, field_halo_t * h);
 
 /* Inline implementations ... */
 
-__host__ __device__ static inline int field_nf(const field_t * f, int * nf);
-__host__ __device__
-static inline int field_scalar(const field_t * f, int index, double * phi);
-__host__ __device__
-static inline int field_scalar_set(field_t * f, int index, double phi);
-__host__ __device__
-static inline int field_vector(const field_t * f, int index, double p[3]);
-__host__ __device__
-static inline int field_vector_set(field_t * f, int index, const double p[3]);
-__host__ __device__
-static inline int field_tensor(const field_t * f, int index, double q[3][3]);
-__host__ __device__
-static inline int field_tensor_set(field_t * f, int index, double q[3][3]);
-__host__ __device__
-static inline int field_scalar_array(const field_t * f, int index,
-				     double * array);
-__host__ __device__
-static inline int field_scalar_array_set(field_t * f, int index,
-					 const double * array);
+#define HDSI_ __host__ __device__ static inline
+
+HDSI_ int field_nf(const field_t * f, int * nf);
+HDSI_ int field_scalar(const field_t * f, int index, double * phi);
+HDSI_ int field_scalar_set(field_t * f, int index, double phi);
+HDSI_ int field_vector(const field_t * f, int index, double p[3]);
+HDSI_ int field_vector_set(field_t * f, int index, const double p[3]);
+HDSI_ int field_tensor(const field_t * f, int index, double q[3][3]);
+HDSI_ int field_tensor_set(field_t * f, int index, double q[3][3]);
+HDSI_ int field_scalar_array(const field_t * f, int index, double * array);
+HDSI_ int field_scalar_array_set(field_t * f, int index, const double * array);
+
+#undef HDSI_
 
 #include "field_impl.h"
 

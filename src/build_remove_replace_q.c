@@ -25,18 +25,17 @@
 #include "util_ellipsoid.h"
 #include "util_vector.h"
 
-
 __host__ __device__ int build_replace_q_interp(const lb_t * lb,
-					       const colloids_info_t * info,
-					       const map_t * map,
-					       const field_t * q,
-					       int ic, int jc, int kc,
-					       double qreplacement[NQAB]);
+                                               const colloids_info_t * info,
+                                               const map_t * map,
+                                               const field_t * q, int ic,
+                                               int jc, int kc,
+                                               double qreplacement[NQAB]);
 __host__ __device__ int build_replace_q_surface(const fe_lc_t * fe,
-						const colloids_info_t * info,
-						colloid_t * pc,
-						int ic, int jc, int kc,
-						double qreplacement[NQAB]);
+                                                const colloids_info_t * info,
+                                                colloid_t * pc,
+                                                int ic, int jc, int kc,
+                                                double qreplacement[NQAB]);
 
 /*****************************************************************************
  *
@@ -46,12 +45,10 @@ __host__ __device__ int build_replace_q_surface(const fe_lc_t * fe,
  *
  *****************************************************************************/
 
-__global__ void build_replace_q_kernel(kernel_3d_t k3d,
-				       const fe_lc_t * fe,
-				       const lb_t * lb,
-				       const colloids_info_t * info,
-				       const map_t * map,
-				       field_t * q) {
+__global__ void build_replace_q_kernel(kernel_3d_t k3d, const fe_lc_t * fe,
+                                       const lb_t * lb,
+                                       const colloids_info_t * info,
+                                       const map_t * map, field_t * q) {
   int kindex = 0;
 
   for_simt_parallel(kindex, k3d.kiterations, 1) {
@@ -78,8 +75,8 @@ __global__ void build_replace_q_kernel(kernel_3d_t k3d,
       int have_q = build_replace_q_interp(lb, info, map, q, ic, jc, kc, qnew);
 
       if (have_q == 0) {
-	/* No fluid information. Use the anchoring ... */
-	build_replace_q_surface(fe, info, pc, ic, jc, kc, qnew);
+        /* No fluid information. Use the anchoring ... */
+        build_replace_q_surface(fe, info, pc, ic, jc, kc, qnew);
       }
       field_scalar_array_set(q, index, qnew);
     }
@@ -99,24 +96,25 @@ __global__ void build_replace_q_kernel(kernel_3d_t k3d,
  *****************************************************************************/
 
 __host__ __device__ int build_replace_q_interp(const lb_t * lb,
-					       const colloids_info_t * info,
-					       const map_t * map,
-					       const field_t * q,
-					       int ic, int jc, int kc,
-					       double qreplacement[NQAB]) {
-  int nweight   = 0;
-  double weight = 0.0;
+                                               const colloids_info_t * info,
+                                               const map_t * map,
+                                               const field_t * q,
+                                               int ic, int jc, int kc,
+                                               double qreplacement[NQAB]) {
+  int nweight = 0;
 
+  double weight     = 0.0;
   double qnew[NQAB] = {};
 
   for (int p = 1; p < lb->model.nvel; p++) {
 
     int index = cs_index(lb->cs, ic + lb->model.cv[p][X],
-			         jc + lb->model.cv[p][Y],
-		                 kc + lb->model.cv[p][Z]);
+                                 jc + lb->model.cv[p][Y],
+                                 kc + lb->model.cv[p][Z]);
     int status = MAP_FLUID;
-    double qs[NQAB]   = {};
-    colloid_t * pcold = NULL;
+
+    double      qs[NQAB] = {};
+    colloid_t * pcold    = NULL;
 
     /* Adjacent site must have been fluid before position update */
     /* Adjacent site must not be a boundary */
@@ -154,10 +152,10 @@ __host__ __device__ int build_replace_q_interp(const lb_t * lb,
  *****************************************************************************/
 
 __host__ __device__ int build_replace_q_surface(const fe_lc_t * fe,
-					        const colloids_info_t * info,
-					        colloid_t * pc,
-					        int ic, int jc, int kc,
-					        double qreplacement[NQAB]) {
+                                                const colloids_info_t * info,
+                                                colloid_t * pc,
+                                                int ic, int jc, int kc,
+                                                double qreplacement[NQAB]) {
   double rb[3]      = {};
   double qnew[3][3] = {};
 
@@ -169,23 +167,23 @@ __host__ __device__ int build_replace_q_surface(const fe_lc_t * fe,
 
   fe_lc_amplitude_compute(fe->param, &amplitude);
 
-  /* For normal anchoring we determine the radial unit vector rb */
+  /* For normal anchoring we determine the radial boundary vector rb */
 
   rb[X] = 1.0*ic - (pc->s.r[X] - 1.0*info->cs->param->noffset[X]);
   rb[Y] = 1.0*jc - (pc->s.r[Y] - 1.0*info->cs->param->noffset[Y]);
   rb[Z] = 1.0*kc - (pc->s.r[Z] - 1.0*info->cs->param->noffset[Z]);
 
   if (pc->s.shape == COLLOID_SHAPE_ELLIPSOID) {
-    /* Compute correct spheroid normal ... */
+    /* Compute correct spheroid normal and copy to rb ... */
     int isphere = util_ellipsoid_is_sphere(pc->s.elabc);
     if (!isphere) {
-      double posvector[3] = {};
-      util_vector_copy(3, rb, posvector); /* FIXME What is this...? */
-      util_spheroid_surface_normal(pc->s.elabc, pc->s.m, posvector, rb);
+      double rnormal[3] = {};
+      util_spheroid_surface_normal(pc->s.elabc, pc->s.m, rb, rnormal);
+      util_vector_copy(3, rnormal, rb);
     }
   }
 
-  /* Make sure we have a unit vector */
+  /* Make sure we have a unit vector (both cases above) */
   {
     double rbmod = 1.0/sqrt(rb[X]*rb[X] + rb[Y]*rb[Y] + rb[Z]*rb[Z]);
     rb[X] *= rbmod;
@@ -212,14 +210,14 @@ __host__ __device__ int build_replace_q_surface(const fe_lc_t * fe,
     rbp[Z] = rhat[Z] - rhatrb*rb[Z];
 
     rbmod = 1.0/sqrt(rbp[X]*rbp[X] + rbp[Y]*rbp[Y] + rbp[Z]*rbp[Z]);
-    rb[X] = rbmod * rbp[X];
-    rb[Y] = rbmod * rbp[Y];
-    rb[Z] = rbmod * rbp[Z];
+    rb[X] = rbmod*rbp[X];
+    rb[Y] = rbmod*rbp[Y];
+    rb[Z] = rbmod*rbp[Z];
   }
 
   for (int ia = 0; ia < 3; ia++) {
     for (int ib = 0; ib < 3; ib++) {
-      double d_ab = (ia == ib);
+      double d_ab  = (ia == ib);
       qnew[ia][ib] = 0.5*amplitude*(3.0*rb[ia]*rb[ib] - d_ab);
     }
   }
@@ -242,11 +240,9 @@ __host__ __device__ int build_replace_q_surface(const fe_lc_t * fe,
  *
  *****************************************************************************/
 
-int build_remove_replace_q_driver(const lb_t * lb,
-				  const fe_lc_t * fe,
-				  const colloids_info_t * info,
-				  const map_t * map,
-				  field_t * q) {
+int build_remove_replace_q_driver(const lb_t * lb, const fe_lc_t * fe,
+                                  const colloids_info_t * info,
+                                  const map_t * map, field_t * q) {
   int ifail = 0;
 
   if (q == NULL) {
@@ -259,11 +255,10 @@ int build_remove_replace_q_driver(const lb_t * lb,
     cs_limits_t lim = cs_limits(info->cs->param->nlocal);
     kernel_3d_t k3d = kernel_3d(info->cs, lim);
 
-    kernel_3d_launch_param(k3d.kiterations, &nblk, & ntpb);
+    kernel_3d_launch_param(k3d.kiterations, &nblk, &ntpb);
 
-    /* FIXME free energy target pointer ... */
-    tdpLaunchKernel(build_replace_q_kernel, nblk, ntpb, 0, 0,
-		    k3d, fe, lb->target, info->target, map->target, q->target);
+    tdpLaunchKernel(build_replace_q_kernel, nblk, ntpb, 0, 0, k3d, fe->target,
+                    lb->target, info->target, map->target, q->target);
 
     tdpAssert(tdpPeekAtLastError());
     tdpAssert(tdpStreamSynchronize(0));
