@@ -16,10 +16,9 @@
 #include "lb_data.h"
 #include "map.h"
 
-int build_remove_replace_order_parameter_driver(lb_t *            lb,
+int build_remove_replace_order_parameter_driver(lb_t * lb,
                                                 colloids_info_t * info,
-                                                map_t * map,
-						field_t * phi);
-int build_conservation_phi_driver(const colloids_info_t * info,
-				  field_t * phi);
+                                                map_t * map, field_t * phi);
+int build_conservation_phi_driver(const colloids_info_t * info, field_t * phi);
+
 #endif

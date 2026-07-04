@@ -75,13 +75,13 @@ __global__ void build_remove_order_parameter_kernel(kernel_3d_t       k3d,
  *
  *****************************************************************************/
 
-__host__ __device__ int build_replace_phi_distributions(lb_t * lb,
-							field_t * phi,
-							colloids_info_t * info,
-							map_t * map,
-							int ic, int jc, int kc,
-							double * phinew) {
+__host__ __device__
+int build_replace_phi_distributions(lb_t * lb, field_t * phi,
+                                    colloids_info_t * info, map_t * map,
+                                    int ic, int jc, int kc,
+                                    double * phinew) {
   int interpolate = 0;
+
   double gnew[27] = {};
   double weight   = 0.0;
 
@@ -89,10 +89,11 @@ __host__ __device__ int build_replace_phi_distributions(lb_t * lb,
 
   for (int p = 1; p < lb->model.nvel; p++) {
 
-    int index = cs_index(lb->cs, ic + lb->model.cv[p][X],
-			         jc + lb->model.cv[p][Y],
-			         kc + lb->model.cv[p][Z]);
+    int index  = cs_index(lb->cs, ic + lb->model.cv[p][X],
+                                  jc + lb->model.cv[p][Y],
+                                  kc + lb->model.cv[p][Z]);
     int status = MAP_FLUID;
+
     colloid_t * pc = NULL;
 
     /* Site must have been fluid before position update */
@@ -125,7 +126,7 @@ __host__ __device__ int build_replace_phi_distributions(lb_t * lb,
     weight = 1.0;
   }
 
-  weight = 1.0/weight;
+  weight = 1.0 / weight;
 
   for (int p = 0; p < lb->model.nvel; p++) {
     int index = cs_index(lb->cs, ic, jc, kc);
@@ -156,9 +157,9 @@ __host__ __device__ int build_replace_phi_distributions(lb_t * lb,
  *****************************************************************************/
 
 __host__ __device__ int build_replace_phi_scalar(lb_t * lb, field_t * phi,
-                                             colloids_info_t * info,
-                                             map_t * map, int ic, int jc,
-                                             int kc, double * phinew) {
+                                                 colloids_info_t * info,
+                                                 map_t * map, int ic, int jc,
+                                                 int kc, double * phinew) {
   int interpolate = 0;
 
   double phia   = 0.0;
@@ -209,11 +210,10 @@ __host__ __device__ int build_replace_phi_scalar(lb_t * lb, field_t * phi,
  *****************************************************************************/
 
 __global__ void build_replace_order_parameter_kernel(kernel_3d_t k3d,
-						     lb_t * lb,
-                                                     field_t *  phi,
+                                                     lb_t * lb, field_t * phi,
                                                      colloids_info_t * info,
-                                                     map_t * map,
-                                                     double phi0) {
+                                                     map_t *           map,
+                                                     double            phi0) {
   assert(lb);
   assert(phi);
   assert(info);
@@ -242,12 +242,12 @@ __global__ void build_replace_order_parameter_kernel(kernel_3d_t k3d,
       double phinew      = 0.0; /* Replacement value */
 
       if (lb->ndist == 2) {
-	interpolate = build_replace_phi_distributions(lb, phi, info, map,
-						      ic, jc, kc, &phinew);
+        interpolate = build_replace_phi_distributions(lb, phi, info, map,
+                                                      ic, jc, kc, &phinew);
       }
       else {
-	interpolate =
-          build_replace_phi_scalar(lb, phi, info, map, ic, jc, kc, &phinew);
+        interpolate =
+            build_replace_phi_scalar(lb, phi, info, map, ic, jc, kc, &phinew);
       }
 
       if (interpolate == 0) {
@@ -273,7 +273,7 @@ __global__ void build_replace_order_parameter_kernel(kernel_3d_t k3d,
  *
  *****************************************************************************/
 
-int build_remove_replace_order_parameter_driver(lb_t *            lb,
+int build_remove_replace_order_parameter_driver(lb_t * lb,
                                                 colloids_info_t * info,
                                                 map_t * map, field_t * phi) {
   int ifail = 0;
@@ -297,15 +297,15 @@ int build_remove_replace_order_parameter_driver(lb_t *            lb,
     physics_ref(&p);
     physics_phi0(p, &phi0);
 
-    /* Remove */
+    /* Remove composition */
     tdpLaunchKernel(build_remove_order_parameter_kernel, nblk, ntpb, 0, 0, k3d,
                     phi->target, info->target, phi0);
     tdpAssert(tdpPeekAtLastError());
 
-    /* Replace */
+    /* Replace composition */
     tdpLaunchKernel(build_replace_order_parameter_kernel, nblk, ntpb, 0, 0,
-                   k3d, lb->target, phi->target, info->target, map->target,
-                   phi0);
+                    k3d, lb->target, phi->target, info->target, map->target,
+                    phi0);
     tdpAssert(tdpPeekAtLastError());
 
     tdpAssert(tdpStreamSynchronize(0));
@@ -323,11 +323,12 @@ int build_remove_replace_order_parameter_driver(lb_t *            lb,
  *
  *****************************************************************************/
 
-__global__ void build_conservation_phi_kernel(kernel_3d_t k3d,
-					      const colloids_info_t * info,
-					      field_t * phi) {
-  int kindex = 0;
-  int8_t stencil[6][3] = {{-1,0,0},{1,0,0},{0,-1,0},{0,1,0},{0,0,-1},{0,0,1}};
+__global__ void build_conservation_phi_kernel(kernel_3d_t             k3d,
+                                              const colloids_info_t * info,
+                                              field_t *               phi) {
+  int    kindex        = 0;
+  int8_t stencil[6][3] = {{-1, 0, 0}, {1, 0, 0},  {0, -1, 0},
+                          {0, 1, 0},  {0, 0, -1}, {0, 0, 1}};
 
   for_simt_parallel(kindex, k3d.kiterations, 1) {
 
@@ -347,28 +348,28 @@ __global__ void build_conservation_phi_kernel(kernel_3d_t k3d,
 
       for (int p = 0; p < 6; p++) {
 
-	int px = stencil[p][X];
-	int py = stencil[p][Y];
-	int pz = stencil[p][Z];
+        int px = stencil[p][X];
+        int py = stencil[p][Y];
+        int pz = stencil[p][Z];
 
-	int indexc = cs_index(info->cs, ic + px, jc + py, kc + pz);
+        int indexc = cs_index(info->cs, ic + px, jc + py, kc + pz);
 
-	colloids_info_map(info, indexc, &pc);
+        colloids_info_map(info, indexc, &pc);
 
-	if (pc != NULL) {
-	  double phi0 = 0.0;
-	  double dphi = pc->s.deltaphi / pc->s.saf;
+        if (pc != NULL) {
+          double phi0 = 0.0;
+          double dphi = pc->s.deltaphi / pc->s.saf;
 
-	  field_scalar(phi, index, &phi0);
-	  field_scalar_set(phi, index, phi0 + dphi);
-	}
+          field_scalar(phi, index, &phi0);
+          field_scalar_set(phi, index, phi0 + dphi);
+        }
       }
     }
   }
 
-  return;;
+  return;
+  ;
 }
-
 
 /*****************************************************************************
  *
@@ -384,9 +385,9 @@ __global__ void build_conservation_phi_kernel(kernel_3d_t k3d,
  *****************************************************************************/
 
 int build_conservation_phi_driver(const colloids_info_t * info,
-				  field_t * phi) {
-  dim3 nblk  = {};
-  dim3 ntpb  = {};
+                                  field_t *               phi) {
+  dim3 nblk = {};
+  dim3 ntpb = {};
 
   cs_limits_t lim = cs_limits(info->cs->param->nlocal);
   kernel_3d_t k3d = kernel_3d(info->cs, lim);
@@ -397,7 +398,7 @@ int build_conservation_phi_driver(const colloids_info_t * info,
   info->target->headall = info->headall;
 
   tdpLaunchKernel(build_conservation_phi_kernel, nblk, ntpb, 0, 0, k3d,
-		  info->target, phi->target);
+                  info->target, phi->target);
 
   tdpAssert(tdpPeekAtLastError());
   tdpAssert(tdpStreamSynchronize(0));
