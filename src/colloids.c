@@ -283,14 +283,16 @@ int colloids_info_recreate(const colloid_options_t * newopts,
   /* Need to copy all colloid state across */
 
   for ( ; pc; pc = pc->nextlocal) {
-    colloids_info_add_local(newinfo, pc->s.index, pc->s.r, pc->s.a0, &pcnew);
+    //colloids_info_add_local(newinfo, pc->s.index, pc->s.r, pc->s.a0, &pcnew);
+    colloids_info_add_local_with_state(newinfo, &pc->s, &pcnew);
     if (pcnew == NULL) {
       /* We have dropped a colloid, probably at the new cell list boundary;
        * try adjusting the position by a small amount... */
       pc->s.r[X] += DBL_EPSILON*pc->s.r[X];
       pc->s.r[Y] += DBL_EPSILON*pc->s.r[Y];
       pc->s.r[Z] += DBL_EPSILON*pc->s.r[Z];
-      colloids_info_add_local(newinfo, pc->s.index, pc->s.r, pc->s.a0, &pcnew);
+      //colloids_info_add_local(newinfo, pc->s.index, pc->s.r, pc->s.a0, &pcnew);
+      colloids_info_add_local_with_state(newinfo, &pc->s, &pcnew);
     }
     /* If we've still failed, then we need to stop under control */
     if (pcnew == NULL) {
@@ -1796,7 +1798,6 @@ void create_links_arrays(colloids_info_t * cinfo, colloid_t * pc) {
   tdpAssert(tdpMemset(pc->links, 0, sizeof(colloid_links_array_t)));
   double a0 = colloid_principal_radius(&pc->s);
   pc->links->max_links = colloid_link_max_3d(a0, cinfo->options.nvel);
-  printf("1 creating links arrays max links %d, a0 %f, nvel %d, colloid radii %f %f %f\n", pc->links->max_links, a0, cinfo->options.nvel, pc->s.elabc[0], pc->s.elabc[1], pc->s.elabc[2]);
   tdpAssert(tdpMallocManaged((void **) &pc->links->i, pc->links->max_links*sizeof(int), tdpMemAttachGlobal));
   tdpAssert(tdpMallocManaged((void **) &pc->links->j, pc->links->max_links*sizeof(int), tdpMemAttachGlobal));
   tdpAssert(tdpMallocManaged((void **) &pc->links->p, pc->links->max_links*sizeof(int), tdpMemAttachGlobal));
@@ -1828,7 +1829,6 @@ void create_links_arrays_with_state(colloids_info_t * cinfo, const colloid_state
   tdpAssert(tdpMemset(pc->links, 0, sizeof(colloid_links_array_t)));
   double a0 = colloid_principal_radius(state);
   pc->links->max_links = colloid_link_max_3d(a0, cinfo->options.nvel);
-  printf("2 creating links arrays max links %d, a0 %f, nvel %d, colloid radii %f %f %f\n", pc->links->max_links, a0, cinfo->options.nvel, pc->s.elabc[0], pc->s.elabc[1], pc->s.elabc[2]);
   tdpAssert(tdpMallocManaged((void **) &pc->links->i, pc->links->max_links*sizeof(int), tdpMemAttachGlobal));
   tdpAssert(tdpMallocManaged((void **) &pc->links->j, pc->links->max_links*sizeof(int), tdpMemAttachGlobal));
   tdpAssert(tdpMallocManaged((void **) &pc->links->p, pc->links->max_links*sizeof(int), tdpMemAttachGlobal));
@@ -1851,18 +1851,6 @@ void create_links_arrays_with_state(colloids_info_t * cinfo, const colloid_state
 void copy_links_to_array(colloid_t *pc) {
   colloid_link_t *link = pc->lnk;
   int index = 0;
-
-  // debugging
-  int link_counter = 0;
-  for (; link; link = link->next) {
-    link_counter++;
-  }
-  link = pc->lnk;
-  if (link_counter > pc->links->max_links) {
-    printf("Warning: link_counter %d exceeds max_links %d for colloid index %d\n", link_counter, pc->links->max_links, pc->s.index);
-  }
-  // end debugging
-
   for (; link; link = link->next) {
     copy_link_to_array(link, pc->links, index);
     index++;

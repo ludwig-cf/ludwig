@@ -408,7 +408,8 @@ static int colloids_halo_unload(colloid_halo_t * halo, int nrecv) {
     }
 
     if (exists == 0) {
-      colloids_info_add(halo->cinfo, index, halo->recv[n].r, halo->recv[n].a0, &pc);
+      //colloids_info_add(halo->cinfo, index, halo->recv[n].r, halo->recv[n].a0, &pc);
+      colloids_info_add_with_state(halo->cinfo, &halo->recv[n], &pc);
       assert(pc);
       pc->s = halo->recv[n];
       pc->s.rebuild = 1;
