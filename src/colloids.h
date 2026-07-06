@@ -159,8 +159,10 @@ __host__ int colloids_info_cell_coords(colloids_info_t * cinfo, const double r[3
 			      int icell[3]);
 __host__ int colloids_info_add_local(colloids_info_t * cinfo, int index,
 			    const double r[3], double a0, colloid_t ** pc);
+__host__ int colloids_info_add_local_with_state(colloids_info_t * cinfo, const colloid_state_t * state, colloid_t ** pc);
 __host__ int colloids_info_add(colloids_info_t * confo, int index, const double r[3],
 		      double a0, colloid_t ** pc);
+__host__ int colloids_info_add_with_state(colloids_info_t * confo, const colloid_state_t * state, colloid_t ** pc);
 __host__ int colloids_info_update_cell_list(colloids_info_t * cinfo);
 __host__ int colloids_info_q_local(colloids_info_t * cinfo, double q[2]);
 __host__ int colloids_info_v_local(colloids_info_t * cinfo, double * v);
@@ -194,6 +196,7 @@ __host__ int colloids_buoyancy_set(colloids_info_t * cinfo, const double b[3]);
 __host__ int colloids_gravity_set(colloids_info_t * cinfo, const double g[3]);
 
 void create_links_arrays(colloids_info_t * cinfo, colloid_t * pc);
+void create_links_arrays_with_state(colloids_info_t * cinfo, const colloid_state_t * state, colloid_t * pc);
 void colloid_free_links_arrays(colloid_t *pc);
 void copy_links_to_array(colloid_t *pc);
 

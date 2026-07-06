@@ -28,6 +28,7 @@
 #include "colloid_link.h"
 
 __host__ int colloid_create(colloids_info_t * cinfo, const double a0, colloid_t ** pc);
+__host__ int colloid_create_with_state(colloids_info_t * cinfo, const colloid_state_t * state, colloid_t ** pc);
 __host__ void colloid_free(colloids_info_t * cinfo, colloid_t * pc);
 
 void copy_colloid_links(colloids_info_t *cinfo, colloid_t *pc_new, colloid_t *pc);
@@ -930,6 +931,39 @@ __host__ int colloids_info_add_local(colloids_info_t * cinfo, int index,
 
 /*****************************************************************************
  *
+ *  colloids_info_add_local_with_state
+ *
+ *  Return a pointer to a new colloid, if r is in the local domain.
+ *  Index is the (unique) id for the new colloid.
+ *
+ *  If r[3] is not in the local domain, no colloid is added, and
+ *  *pc is returned unchanged (NULL).
+ *
+ *****************************************************************************/
+
+__host__ int colloids_info_add_local_with_state(colloids_info_t * cinfo, const colloid_state_t * state, colloid_t ** pc) {
+  int is_local = 1;
+  int icell[3];
+
+  assert(cinfo);
+  assert(pc);
+
+  colloids_info_cell_coords(cinfo, state->r, icell);
+
+  assert(cinfo->nhalo == 1); /* Following would need to be adjusted */
+
+  if (icell[X] < 1 || icell[X] > cinfo->ncell[X]) is_local = 0;
+  if (icell[Y] < 1 || icell[Y] > cinfo->ncell[Y]) is_local = 0;
+  if (icell[Z] < 1 || icell[Z] > cinfo->ncell[Z]) is_local = 0;
+
+  *pc = NULL;
+  if (is_local) colloids_info_add_with_state(cinfo, state, pc);
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
  *  colloids_info_add_state_local
  *
  *  Returns zero success. May be called on all ranks, but a colloid will
@@ -990,6 +1024,44 @@ __host__ int colloids_info_add(colloids_info_t * cinfo, int index,
 
 /*****************************************************************************
  *
+ *  colloids_info_add_with_state
+ *
+ *  The colloid must have an index, and it must have a position.
+ *
+ *****************************************************************************/
+
+__host__ int colloids_info_add_with_state(colloids_info_t * cinfo, const colloid_state_t * state, colloid_t ** pc) {
+
+  int icell[3];
+
+  assert(cinfo);
+  assert(pc);
+
+  colloids_info_cell_coords(cinfo, state->r, icell);
+
+  assert(icell[X] >= 1 - cinfo->nhalo);
+  assert(icell[Y] >= 1 - cinfo->nhalo);
+  assert(icell[Z] >= 1 - cinfo->nhalo);
+  assert(icell[X] < cinfo->ncell[X] + 2*cinfo->nhalo);
+  assert(icell[Y] < cinfo->ncell[Y] + 2*cinfo->nhalo);
+  assert(icell[Z] < cinfo->ncell[Z] + 2*cinfo->nhalo);
+
+  colloid_create_with_state(cinfo, state, pc);
+  (*pc)->s.index = state->index;
+
+  (*pc)->s.r[X] = state->r[X];
+  (*pc)->s.r[Y] = state->r[Y];
+  (*pc)->s.r[Z] = state->r[Z];
+
+  (*pc)->s.rebuild = 1;
+
+  colloids_info_insert_colloid(cinfo, *pc);
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
  *  colloid_create
  *
  *  Allocate space for a colloid structure and return a pointer to
@@ -1019,6 +1091,39 @@ __host__ int colloid_create(colloids_info_t * cinfo, const double a0, colloid_t 
   (*pc)->s.a0 = a0;
 
   create_links_arrays(cinfo, *pc);
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  colloid_create_with_state
+ *
+ *  Allocate space for a colloid structure and return a pointer to
+ *  it (or fail gracefully). Use calloc to ensure everything is
+ *  zero and pointers are NULL.
+ *
+ *****************************************************************************/
+
+__host__ int colloid_create_with_state(colloids_info_t * cinfo, const colloid_state_t * state, colloid_t ** pc) {
+
+  colloid_state_t s = {0};
+  colloid_t * obj = NULL;
+
+  assert(cinfo);
+
+  tdpAssert(tdpMallocManaged((void **) &obj, sizeof(colloid_t),
+			     tdpMemAttachGlobal));
+
+  /* Important .. remember to nullify pointers. */
+
+  tdpAssert(tdpMemset((void *) obj, 0, sizeof(colloid_t)));
+  obj->s = s;
+
+  cinfo->nallocated += 1;
+  *pc = obj;
+
+  create_links_arrays_with_state(cinfo, state, *pc);
 
   return 0;
 }
@@ -1679,17 +1784,51 @@ int colloids_gravity_set(colloids_info_t * cinfo, const double g[3]) {
   return 0;
 }
 
-/**
+/*****************************************************************************
+ * 
  * create_links_arrays
  * 
  * Allocate the arrays of links for a colloid assuming the max number of links determined by the colloid radius
  * 
- */
+ *****************************************************************************/
 void create_links_arrays(colloids_info_t * cinfo, colloid_t * pc) {
   tdpAssert(tdpMallocManaged((void **) &pc->links, sizeof(colloid_links_array_t), tdpMemAttachGlobal));
   tdpAssert(tdpMemset(pc->links, 0, sizeof(colloid_links_array_t)));
   double a0 = colloid_principal_radius(&pc->s);
   pc->links->max_links = colloid_link_max_3d(a0, cinfo->options.nvel);
+  printf("1 creating links arrays max links %d, a0 %f, nvel %d, colloid radii %f %f %f\n", pc->links->max_links, a0, cinfo->options.nvel, pc->s.elabc[0], pc->s.elabc[1], pc->s.elabc[2]);
+  tdpAssert(tdpMallocManaged((void **) &pc->links->i, pc->links->max_links*sizeof(int), tdpMemAttachGlobal));
+  tdpAssert(tdpMallocManaged((void **) &pc->links->j, pc->links->max_links*sizeof(int), tdpMemAttachGlobal));
+  tdpAssert(tdpMallocManaged((void **) &pc->links->p, pc->links->max_links*sizeof(int), tdpMemAttachGlobal));
+  tdpAssert(tdpMallocManaged((void **) &pc->links->status, pc->links->max_links*sizeof(int), tdpMemAttachGlobal));
+  tdpAssert(tdpMallocManaged((void **) &pc->links->rb, 3*sizeof(double *), tdpMemAttachGlobal));
+  tdpAssert(tdpMallocManaged((void **) &pc->links->rb[0], 3*pc->links->max_links*sizeof(double), tdpMemAttachGlobal));
+  for (int i = 1; i < 3; i++) {
+    pc->links->rb[i] = pc->links->rb[i-1] + pc->links->max_links; 
+  }
+  for (int j = 0; j < 3; j++) 
+    for (int i = 0; i < pc->links->max_links; i++) {
+      pc->links->rb[j][i] = 0.0;
+  }
+  for (int i = 0; i < pc->links->max_links; i++) pc->links->i[i] = 0;
+  for (int i = 0; i < pc->links->max_links; i++) pc->links->j[i] = 0;
+  for (int i = 0; i < pc->links->max_links; i++) pc->links->p[i] = 0;
+  for (int i = 0; i < pc->links->max_links; i++) pc->links->status[i] = 0;
+}
+    
+/*****************************************************************************
+ * 
+ * create_links_arrays_with_state
+ * 
+ * Allocate the arrays of links for a colloid assuming the max number of links determined by the colloid radius
+ * 
+ *****************************************************************************/
+void create_links_arrays_with_state(colloids_info_t * cinfo, const colloid_state_t * state, colloid_t * pc) {
+  tdpAssert(tdpMallocManaged((void **) &pc->links, sizeof(colloid_links_array_t), tdpMemAttachGlobal));
+  tdpAssert(tdpMemset(pc->links, 0, sizeof(colloid_links_array_t)));
+  double a0 = colloid_principal_radius(state);
+  pc->links->max_links = colloid_link_max_3d(a0, cinfo->options.nvel);
+  printf("2 creating links arrays max links %d, a0 %f, nvel %d, colloid radii %f %f %f\n", pc->links->max_links, a0, cinfo->options.nvel, pc->s.elabc[0], pc->s.elabc[1], pc->s.elabc[2]);
   tdpAssert(tdpMallocManaged((void **) &pc->links->i, pc->links->max_links*sizeof(int), tdpMemAttachGlobal));
   tdpAssert(tdpMallocManaged((void **) &pc->links->j, pc->links->max_links*sizeof(int), tdpMemAttachGlobal));
   tdpAssert(tdpMallocManaged((void **) &pc->links->p, pc->links->max_links*sizeof(int), tdpMemAttachGlobal));
@@ -1712,6 +1851,18 @@ void create_links_arrays(colloids_info_t * cinfo, colloid_t * pc) {
 void copy_links_to_array(colloid_t *pc) {
   colloid_link_t *link = pc->lnk;
   int index = 0;
+
+  // debugging
+  int link_counter = 0;
+  for (; link; link = link->next) {
+    link_counter++;
+  }
+  link = pc->lnk;
+  if (link_counter > pc->links->max_links) {
+    printf("Warning: link_counter %d exceeds max_links %d for colloid index %d\n", link_counter, pc->links->max_links, pc->s.index);
+  }
+  // end debugging
+
   for (; link; link = link->next) {
     copy_link_to_array(link, pc->links, index);
     index++;
