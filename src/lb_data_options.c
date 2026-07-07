@@ -32,6 +32,7 @@ lb_data_options_t lb_data_options_default(void) {
 			    .halo   = LB_HALO_FULL,
 			    .reportimbalance = 0,
 			    .usefirsttouch   = 0,
+          .use_managed_memory = 0,
                             .iodata = io_info_args_default(),
 			    .istatdensity = LB_STAT_DENSITY_DEFAULT,
 			    .istatmomentum = LB_STAT_MOMENTUM_DEFAULT

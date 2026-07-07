@@ -51,6 +51,7 @@ struct lb_data_options_s {
   lb_halo_enum_t halo;
   int reportimbalance;
   int usefirsttouch;
+  int use_managed_memory;  /* 0 = explicit (default), 1 = managed */
 
   io_info_args_t iodata;
 
