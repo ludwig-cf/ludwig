@@ -215,3 +215,10 @@ __host__ __device__ void test_assert_info(const int lvalue, int line,
 
   return;
 }
+
+void create_dummy_state(colloid_state_t * state, int index, double a0) {
+  state->index = 1;
+  state->a0 = a0;
+
+  return;
+}
