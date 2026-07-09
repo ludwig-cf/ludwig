@@ -1,5 +1,6 @@
 #include <assert.h>
 
+#include "colloid.h"
 #include "colloids.h"
 #include "colloid_link.h"
 #include "tests.h"

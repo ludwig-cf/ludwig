@@ -77,7 +77,7 @@ __host__ int tests_create(int argc, char ** argv) {
   //test_angle_cosine_suite();
   //test_assumptions_suite();
   //test_be_suite();
-  //test_bond_fene_suite();
+  test_bond_fene_suite();
   //test_bonds_suite();
   //test_bp_suite();
   //test_build_suite();
