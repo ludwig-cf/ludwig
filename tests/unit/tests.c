@@ -177,7 +177,7 @@ __host__ int tests_create(int argc, char ** argv) {
   //test_fe_ternary_suite();
 
   ///* Memory management */
-  //test_create_links_arrays_suite();
+  test_create_links_arrays_suite();
   //test_links_arrays_accessors();
   ////test_device_memcpy_colloid_links_array();
 

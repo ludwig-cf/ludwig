@@ -62,6 +62,39 @@ int test_links_array(pe_t *pe, double a0) {
 
 /*****************************************************************************
  *
+ *  test_links_array_with_state
+ *
+ *****************************************************************************/
+
+int test_links_array_with_state(pe_t *pe, double a0) {
+
+  cs_t * cs = NULL;
+  colloids_info_t * cinfo = NULL;
+  colloid_options_t opts = colloid_options_default();
+  colloid_t * pc;
+  colloid_state_t state;
+  double r[3] = {0.5, 0.5, 0.5};
+
+  cs_create(pe, &cs);
+  cs_init(cs);
+  colloids_info_create(pe, cs, &opts, &cinfo);
+  create_dummy_state(&state, 1, a0, r);
+  colloids_info_add_local_with_state(cinfo, &state, &pc);
+
+  // We've only initialised one colloid, so if a rank doesn't have a colloid don't do the test.
+  if (pc) {
+    int nlinks = colloid_link_max_3d(a0, cinfo->options.nvel);
+  
+    test_links_allocated(pc, nlinks);
+
+    colloid_free_links_arrays(pc);
+  }
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
  *  test_create_links_arrays_suite
  *
  *****************************************************************************/
@@ -72,6 +105,8 @@ int test_links_array(pe_t *pe, double a0) {
 
    test_links_array(pe, 0.0);
    test_links_array(pe, 2.3);
+   test_links_array_with_state(pe, 0.0);
+   test_links_array_with_state(pe, 2.3);
    MPI_Barrier(MPI_COMM_WORLD);
    pe_info(pe, "PASS     ./unit/test_create_links_array\n");
 
