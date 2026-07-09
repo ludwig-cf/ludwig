@@ -401,7 +401,8 @@ int colloid_io_mpio_read_ascii(colloid_io_mpio_t * io, FILE * fp) {
     /* Add if local and assign the state */
     {
       colloid_t * pc = NULL;
-      colloids_info_add_local(io->info, s.index, s.r, s.a0, &pc);
+      //colloids_info_add_local(io->info, s.index, s.r, s.a0, &pc);
+      colloids_info_add_local_with_state(io->info, &s, &pc);
       if (pc) pc->s = s;
     }
   }
@@ -453,7 +454,8 @@ int colloid_io_mpio_read_binary(colloid_io_mpio_t * io, FILE * fp) {
     /* Add if local and assign the state */
     {
       colloid_t * pc = NULL;
-      colloids_info_add_local(io->info, s.index, s.r, s.a0, &pc);
+      //colloids_info_add_local(io->info, s.index, s.r, s.a0, &pc);
+      colloids_info_add_local_with_state(io->info, &s, &pc);
       if (pc) pc->s = s;
     }
   }
