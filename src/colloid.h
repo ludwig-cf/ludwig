@@ -142,4 +142,6 @@ int colloid_r_inside(const colloid_state_t * s, const double r[3]);
 
 double colloid_principal_radius(const colloid_state_t * s);
 
+void create_dummy_state(colloid_state_t * state, const int index, const double a0, const double *r);
+
 #endif

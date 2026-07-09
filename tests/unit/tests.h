@@ -15,6 +15,7 @@
 #define LUDWIG_UNIT_TESTS_H
 
 #include "target.h"
+#include "colloid.h"
 
 __host__ __device__ void test_assert_info(const int lvalue, int line,
 					  const char * file);
@@ -23,8 +24,6 @@ __host__ __device__ void test_assert_info(const int lvalue, int line,
 
 #define TEST_FLOAT_TOLERANCE  1.0e-07
 #define TEST_DOUBLE_TOLERANCE 1.0e-14
-
-void create_dummy_state(colloid_state_t * state, int index, double a0);
 
 /* List of test drivers (see relevant file.c) */
 

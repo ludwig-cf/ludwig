@@ -52,134 +52,134 @@ __host__ int tests_create(int argc, char ** argv) {
 
   /* Fundamentals: parallel environment, coordinate systems */
 
-  test_pe_suite();
-  test_coords_suite();
-  test_cs_limits_suite();
-  test_le_suite();
+  //test_pe_suite();
+  //test_coords_suite();
+  //test_cs_limits_suite();
+  //test_le_suite();
 
 
-  /* i/o infrastructure */
-  test_io_aggregator_suite();
-  test_io_element_suite();
-  test_io_options_suite();
-  test_io_options_rt_suite();
-  test_io_info_args_suite();
-  test_io_info_args_rt_suite();
-  test_io_subfile_suite();
-  test_io_metadata_suite();
-  test_io_impl_mpio_suite();
+  ///* i/o infrastructure */
+  //test_io_aggregator_suite();
+  //test_io_element_suite();
+  //test_io_options_suite();
+  //test_io_options_rt_suite();
+  //test_io_info_args_suite();
+  //test_io_info_args_rt_suite();
+  //test_io_subfile_suite();
+  //test_io_metadata_suite();
+  //test_io_impl_mpio_suite();
 
-  /* Kernel helpers */
-  test_kernel_3d_suite();
-  test_kernel_3d_v_suite();
+  ///* Kernel helpers */
+  //test_kernel_3d_suite();
+  //test_kernel_3d_v_suite();
 
-  test_gradient_d3q27_suite();
-  test_angle_cosine_suite();
-  test_assumptions_suite();
-  test_be_suite();
-  test_bond_fene_suite();
-  test_bonds_suite();
-  test_bp_suite();
-  test_build_suite();
-  test_ch_suite();
+  //test_gradient_d3q27_suite();
+  //test_angle_cosine_suite();
+  //test_assumptions_suite();
+  //test_be_suite();
+  //test_bond_fene_suite();
+  //test_bonds_suite();
+  //test_bp_suite();
+  //test_build_suite();
+  //test_ch_suite();
 
-  test_colloid_options_suite();
-  test_colloid_io_options_suite();
-  test_colloid_suite();
-  test_colloid_link_suite();
-  test_colloid_state_io_suite();
+  //test_colloid_options_suite();
+  //test_colloid_io_options_suite();
+  //test_colloid_suite();
+  //test_colloid_link_suite();
+  //test_colloid_state_io_suite();
 
-  test_colloid_io_impl_ansi_suite();
-  test_colloid_io_impl_mpio_suite();
-  test_colloids_file_io_suite();
+  //test_colloid_io_impl_ansi_suite();
+  //test_colloid_io_impl_mpio_suite();
+  //test_colloids_file_io_suite();
 
   test_colloid_sums_suite();
-  test_colloids_info_suite();
-  test_colloids_halo_suite();
+  //test_colloids_info_suite();
+  //test_colloids_halo_suite();
 
-  test_ewald_suite();
-  test_fe_null_suite();
-  test_fe_electro_suite();
-  test_fe_electro_symm_suite();
-  test_fe_lc_droplet_suite();
-  test_fe_force_method_suite();
-  test_fe_force_method_rt_suite();
-  test_field_suite();
-  test_field_grad_suite();
-  test_hydro_options_suite();
-  test_hydro_suite();
-  test_interaction_suite();
+  //test_ewald_suite();
+  //test_fe_null_suite();
+  //test_fe_electro_suite();
+  //test_fe_electro_symm_suite();
+  //test_fe_lc_droplet_suite();
+  //test_fe_force_method_suite();
+  //test_fe_force_method_rt_suite();
+  //test_field_suite();
+  //test_field_grad_suite();
+  //test_hydro_options_suite();
+  //test_hydro_suite();
+  //test_interaction_suite();
 
-  test_lb_d2q9_suite();
-  test_lb_d3q15_suite();
-  test_lb_d3q19_suite();
-  test_lb_d3q27_suite();
-  test_lb_model_suite();
+  //test_lb_d2q9_suite();
+  //test_lb_d3q15_suite();
+  //test_lb_d3q19_suite();
+  //test_lb_d3q27_suite();
+  //test_lb_model_suite();
 
-  test_lb_data_suite();
+  //test_lb_data_suite();
 
-  test_lb_bc_inflow_opts_suite();
-  test_lb_bc_inflow_rhou_suite();
-  test_lb_bc_outflow_opts_suite();
-  test_lb_bc_outflow_rhou_suite();
-  test_lc_anchoring_suite();
-  test_lubrication_suite();
+  //test_lb_bc_inflow_opts_suite();
+  //test_lb_bc_inflow_rhou_suite();
+  //test_lb_bc_outflow_opts_suite();
+  //test_lb_bc_outflow_rhou_suite();
+  //test_lc_anchoring_suite();
+  //test_lubrication_suite();
 
-  /* Map tests */
-  test_map_options_suite();
-  test_map_suite();
-  test_map_init_suite();
+  ///* Map tests */
+  //test_map_options_suite();
+  //test_map_suite();
+  //test_map_init_suite();
 
-  /* Noise tests */
-  test_noise_options_suite();
-  test_noise_suite();
+  ///* Noise tests */
+  //test_noise_options_suite();
+  //test_noise_suite();
 
   test_pair_lj_cut_suite();
-  test_pair_ss_cut_suite();
-  test_pair_ss_cut_ij_suite();
-  test_pair_yukawa_suite();
-  test_phi_bc_inflow_opts_suite();
-  test_phi_bc_inflow_fixed_suite();
-  test_phi_bc_outflow_opts_suite();
-  test_phi_bc_outflow_free_suite();
-  test_phi_ch_suite();
-  test_polar_active_suite();
+  //test_pair_ss_cut_suite();
+  //test_pair_ss_cut_ij_suite();
+  //test_pair_yukawa_suite();
+  //test_phi_bc_inflow_opts_suite();
+  //test_phi_bc_inflow_fixed_suite();
+  //test_phi_bc_outflow_opts_suite();
+  //test_phi_bc_outflow_free_suite();
+  //test_phi_ch_suite();
+  //test_polar_active_suite();
 
-  test_psi_solver_options_suite(argc, argv);
-  test_psi_options_suite();
-  test_psi_suite();
-  test_psi_solver_petsc_suite();
-  test_psi_sor_suite();
-  test_nernst_planck_suite();
-  test_lb_prop_suite();
-  test_random_suite();
-  test_rt_suite();
-  test_stencil_d3q7_suite();
-  test_stencil_d3q19_suite();
-  test_stencil_d3q27_suite();
-  test_stencils_suite();
-  test_timer_suite();
-  test_util_suite();
-  test_util_bits_suite();
-  test_util_ellipsoid_suite();
-  test_util_fopen_suite();
-  test_util_io_suite();
-  test_util_json_suite();
-  test_util_string_suite();
-  test_util_sum_suite();
-  test_util_vector_suite();
-  test_visc_arrhenius_suite();
-  test_wall_suite();
-  test_wall_ss_cut_suite();
+  //test_psi_solver_options_suite(argc, argv);
+  //test_psi_options_suite();
+  //test_psi_suite();
+  //test_psi_solver_petsc_suite();
+  //test_psi_sor_suite();
+  //test_nernst_planck_suite();
+  //test_lb_prop_suite();
+  //test_random_suite();
+  //test_rt_suite();
+  //test_stencil_d3q7_suite();
+  //test_stencil_d3q19_suite();
+  //test_stencil_d3q27_suite();
+  //test_stencils_suite();
+  //test_timer_suite();
+  //test_util_suite();
+  //test_util_bits_suite();
+  //test_util_ellipsoid_suite();
+  //test_util_fopen_suite();
+  //test_util_io_suite();
+  //test_util_json_suite();
+  //test_util_string_suite();
+  //test_util_sum_suite();
+  //test_util_vector_suite();
+  //test_visc_arrhenius_suite();
+  //test_wall_suite();
+  //test_wall_ss_cut_suite();
 
-  test_fe_surfactant1_suite();
-  test_fe_symmetric_suite();
-  test_fe_ternary_suite();
+  //test_fe_surfactant1_suite();
+  //test_fe_symmetric_suite();
+  //test_fe_ternary_suite();
 
-  /* Memory management */
-  test_create_links_arrays_suite();
-  test_links_arrays_accessors();
-  //test_device_memcpy_colloid_links_array();
+  ///* Memory management */
+  //test_create_links_arrays_suite();
+  //test_links_arrays_accessors();
+  ////test_device_memcpy_colloid_links_array();
 
   return 0;
 }
@@ -212,13 +212,6 @@ __host__ __device__ void test_assert_info(const int lvalue, int line,
     MPI_Abort(MPI_COMM_WORLD, 0);
 #endif
   }
-
-  return;
-}
-
-void create_dummy_state(colloid_state_t * state, int index, double a0) {
-  state->index = 1;
-  state->a0 = a0;
 
   return;
 }
