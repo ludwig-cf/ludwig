@@ -74,7 +74,7 @@ __host__ int tests_create(int argc, char ** argv) {
   //test_kernel_3d_v_suite();
 
   //test_gradient_d3q27_suite();
-  //test_angle_cosine_suite();
+  test_angle_cosine_suite();
   //test_assumptions_suite();
   //test_be_suite();
   test_bond_fene_suite();
