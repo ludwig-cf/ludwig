@@ -95,7 +95,7 @@ __host__ int tests_create(int argc, char ** argv) {
 
   test_colloid_sums_suite();
   //test_colloids_info_suite();
-  //test_colloids_halo_suite();
+  test_colloids_halo_suite();
 
   test_ewald_suite();
   //test_fe_null_suite();
