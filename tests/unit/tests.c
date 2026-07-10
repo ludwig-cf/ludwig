@@ -170,7 +170,7 @@ __host__ int tests_create(int argc, char ** argv) {
   //test_util_vector_suite();
   //test_visc_arrhenius_suite();
   //test_wall_suite();
-  //test_wall_ss_cut_suite();
+  test_wall_ss_cut_suite();
 
   //test_fe_surfactant1_suite();
   //test_fe_symmetric_suite();
