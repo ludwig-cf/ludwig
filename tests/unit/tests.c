@@ -137,7 +137,7 @@ __host__ int tests_create(int argc, char ** argv) {
   test_pair_lj_cut_suite();
   test_pair_ss_cut_suite();
   //test_pair_ss_cut_ij_suite();
-  //test_pair_yukawa_suite();
+  test_pair_yukawa_suite();
   //test_phi_bc_inflow_opts_suite();
   //test_phi_bc_inflow_fixed_suite();
   //test_phi_bc_outflow_opts_suite();
