@@ -195,6 +195,8 @@ __host__ int colloids_ellipsoid_abc_check(colloids_info_t * info);
 __host__ int colloids_buoyancy_set(colloids_info_t * cinfo, const double b[3]);
 __host__ int colloids_gravity_set(colloids_info_t * cinfo, const double g[3]);
 
+__host__ void colloid_free(colloids_info_t * cinfo, colloid_t * pc);
+
 void create_links_arrays(colloids_info_t * cinfo, colloid_t * pc);
 void create_links_arrays_with_state(colloids_info_t * cinfo, const colloid_state_t * state, colloid_t * pc);
 void colloid_free_links_arrays(colloid_t *pc);
