@@ -32,6 +32,10 @@ int test_bonds_dimer_instance(pe_t * pe, cs_t * cs, double a0, double r1[3],
                               double r2[3]);
 int test_bonds_trimer_instance(pe_t * pe, cs_t * cs, double a0, double r1[3],
                                double r2[3], double r3[3]);
+int test_bonds_dimer_instance_with_state(pe_t * pe, cs_t * cs, double a0, double r1[3],
+                              double r2[3]);
+int test_bonds_trimer_instance_with_state(pe_t * pe, cs_t * cs, double a0, double r1[3],
+                               double r2[3], double r3[3]);
 int colloid_forces_bonds_count_local(colloids_info_t * cinfo, int * nbond,
                                      int * nangle);
 int colloid_forces_bonds_check(cs_t * cs, colloids_info_t * cinfo,
@@ -86,6 +90,9 @@ int test_bonds_dimers(pe_t * pe, cs_t * cs) {
 
   test_bonds_dimer_instance(pe, cs, a0, r1, r2);
   test_bonds_dimer_instance(pe, cs, a0, r2, r1);
+  
+  test_bonds_dimer_instance_with_state(pe, cs, a0, r1, r2);
+  test_bonds_dimer_instance_with_state(pe, cs, a0, r2, r1);
 
   r1[X] = a0;
   r1[Y] = a0;
@@ -96,6 +103,9 @@ int test_bonds_dimers(pe_t * pe, cs_t * cs) {
 
   test_bonds_dimer_instance(pe, cs, a0, r1, r2);
   test_bonds_dimer_instance(pe, cs, a0, r2, r1);
+  
+  test_bonds_dimer_instance_with_state(pe, cs, a0, r1, r2);
+  test_bonds_dimer_instance_with_state(pe, cs, a0, r2, r1);
 
   return 0;
 }
@@ -132,6 +142,9 @@ int test_bonds_trimers(pe_t * pe, cs_t * cs) {
 
   test_bonds_trimer_instance(pe, cs, a0, r0, r1, r2);
   test_bonds_trimer_instance(pe, cs, a0, r0, r2, r1);
+  
+  test_bonds_trimer_instance_with_state(pe, cs, a0, r0, r1, r2);
+  test_bonds_trimer_instance_with_state(pe, cs, a0, r0, r2, r1);
 
   /* L-shape trimer */
 
@@ -149,11 +162,17 @@ int test_bonds_trimers(pe_t * pe, cs_t * cs) {
 
   test_bonds_trimer_instance(pe, cs, a0, r0, r1, r2);
   test_bonds_trimer_instance(pe, cs, a0, r0, r2, r1);
+  
+  test_bonds_trimer_instance_with_state(pe, cs, a0, r0, r1, r2);
+  test_bonds_trimer_instance_with_state(pe, cs, a0, r0, r2, r1);
 
   r2[Z] = a0;
 
   test_bonds_trimer_instance(pe, cs, a0, r0, r1, r2);
   test_bonds_trimer_instance(pe, cs, a0, r0, r2, r1);
+  
+  test_bonds_trimer_instance_with_state(pe, cs, a0, r0, r1, r2);
+  test_bonds_trimer_instance_with_state(pe, cs, a0, r0, r2, r1);
 
   /* Small angle */
 
@@ -170,6 +189,7 @@ int test_bonds_trimers(pe_t * pe, cs_t * cs) {
   r2[Z] = r0[Z];
 
   test_bonds_trimer_instance(pe, cs, a0, r0, r1, r2);
+  test_bonds_trimer_instance_with_state(pe, cs, a0, r0, r1, r2);
 
   return 0;
 }
@@ -238,6 +258,106 @@ int test_bonds_dimer_instance(pe_t * pe, cs_t * cs, double a0, double r1[3],
 
   pc = NULL;
   colloids_info_add_local(cinfo, state2.index, state2.r, a0, &pc);
+  if (pc) {
+    pc->s.a0      = a0;
+    pc->s.ah      = a0;
+    pc->s.nbonds  = 1;
+    pc->s.bond[0] = 1;
+  }
+
+  colloids_info_ntotal_set(cinfo);
+  colloids_info_ntotal(cinfo, &nc);
+  assert(nc == 2);
+
+  colloids_halo_state(cinfo);
+  colloids_info_list_local_build(cinfo);
+
+  colloid_forces_bonds_count_local(cinfo, &nbond_local, &nangle_local);
+
+  MPI_Allreduce(&nbond_local, &nbond, 1, MPI_INT, MPI_SUM, comm);
+  MPI_Allreduce(&nangle_local, &nangle, 1, MPI_INT, MPI_SUM, comm);
+
+  assert(nbond == 1);
+  assert(nangle == 0);
+
+  colloid_forces_bonds_check(cs, cinfo, &nbond_local, &npair_local);
+
+  MPI_Allreduce(&nbond_local, &nbond, 1, MPI_INT, MPI_SUM, comm);
+  MPI_Allreduce(&npair_local, &npair, 1, MPI_INT, MPI_SUM, comm);
+
+  assert(nbond == 1);
+  assert(npair == 1);
+
+  colloids_info_free(&cinfo);
+  free(state0);
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  test_bonds_dimer_instance_with_state
+ *
+ *  Two colloids sharing one bond. No angles.
+ *  Place two particles, radius a0, at r1 and r2
+ *  Assume a0 < 0.5 |r12|, although it doesn't really matter here.
+ *
+ *****************************************************************************/
+
+int test_bonds_dimer_instance_with_state(pe_t * pe, cs_t * cs, double a0, double r1[3],
+                              double r2[3]) {
+
+  int nc;
+  int nbond, nbond_local;
+  int nangle, nangle_local;
+  int npair, npair_local;
+
+  colloid_options_t options = colloid_options_default();
+  colloids_info_t * cinfo   = NULL;
+
+  colloid_t *       pc = NULL;
+  colloid_state_t   state1;
+  colloid_state_t   state2;
+  colloid_state_t * state0;
+
+  MPI_Comm comm;
+
+  assert(pe);
+  assert(cs);
+
+  colloids_info_create(pe, cs, &options, &cinfo);
+  assert(cinfo);
+
+  cs_cart_comm(cs, &comm);
+
+  state0 = (colloid_state_t *) calloc(1, sizeof(colloid_state_t));
+  assert(state0);
+
+  state1 = *state0;
+
+  state1.index = 1;
+  state1.r[X]  = r1[X];
+  state1.r[Y]  = r1[Y];
+  state1.r[Z]  = r1[Z];
+
+  colloids_info_add_local_with_state(cinfo, &state1, &pc);
+  if (pc) {
+    pc->s.a0      = a0;
+    pc->s.ah      = a0;
+    pc->s.nbonds  = 1;
+    pc->s.bond[0] = 2;
+  }
+
+  /* TWO */
+
+  state2       = *state0;
+  state2.index = 2;
+  state2.r[X]  = r2[X];
+  state2.r[Y]  = r2[Y];
+  state2.r[Z]  = r2[Z];
+
+  pc = NULL;
+  colloids_info_add_local_with_state(cinfo, &state2, &pc);
   if (pc) {
     pc->s.a0      = a0;
     pc->s.ah      = a0;
@@ -361,6 +481,129 @@ int test_bonds_trimer_instance(pe_t * pe, cs_t * cs, double a0, double r0[3],
 
   pc = NULL;
   colloids_info_add_local(cinfo, state2.index, state2.r, a0, &pc);
+  if (pc) {
+    pc->s.a0      = a0;
+    pc->s.ah      = a0;
+    pc->s.nbonds  = 1;
+    pc->s.bond[0] = 1;
+  }
+
+  colloids_info_ntotal_set(cinfo);
+  colloids_info_ntotal(cinfo, &nc);
+  assert(nc == 3);
+
+  colloids_halo_state(cinfo);
+  colloids_info_list_local_build(cinfo);
+
+  colloid_forces_bonds_count_local(cinfo, &nbond_local, &nangle_local);
+
+  MPI_Allreduce(&nbond_local, &nbond, 1, MPI_INT, MPI_SUM, comm);
+  MPI_Allreduce(&nangle_local, &nangle, 1, MPI_INT, MPI_SUM, comm);
+
+  assert(nbond == 2);
+  assert(nangle == 1);
+
+  colloid_forces_bonds_check(cs, cinfo, &nbond_local, &npair_local);
+
+  MPI_Allreduce(&nbond_local, &nbond, 1, MPI_INT, MPI_SUM, comm);
+  MPI_Allreduce(&npair_local, &npair, 1, MPI_INT, MPI_SUM, comm);
+
+  assert(nbond == 2);
+  assert(npair == 2);
+
+  colloids_info_free(&cinfo);
+  free(state_null);
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  test_bonds_trimer_instance_with_state
+ *
+ *  Two bonds plus one angle. r0 is the position of the 'central'
+ *  colloid.
+ *
+ *****************************************************************************/
+
+int test_bonds_trimer_instance_with_state(pe_t * pe, cs_t * cs, double a0, double r0[3],
+                               double r1[3], double r2[3]) {
+
+  int nc;
+  int nbond, nbond_local;
+  int nangle, nangle_local;
+  int npair, npair_local;
+
+  colloid_options_t options = colloid_options_default();
+  colloids_info_t * cinfo   = NULL;
+
+  colloid_t *       pc = NULL;
+  colloid_state_t   state0;
+  colloid_state_t   state1;
+  colloid_state_t   state2;
+  colloid_state_t * state_null;
+
+  MPI_Comm comm;
+
+  assert(pe);
+  assert(cs);
+
+  colloids_info_create(pe, cs, &options, &cinfo);
+  assert(cinfo);
+
+  cs_cart_comm(cs, &comm);
+
+  state_null = (colloid_state_t *) calloc(1, sizeof(colloid_state_t));
+  assert(state_null);
+
+  /* Central particle: two bonds plus one angle */
+
+  state0 = *state_null;
+
+  state0.index = 1;
+  state0.r[X]  = r0[X];
+  state0.r[Y]  = r0[Y];
+  state0.r[Z]  = r0[Z];
+
+  colloids_info_add_local_with_state(cinfo, &state0, &pc);
+  if (pc) {
+    pc->s.a0      = a0;
+    pc->s.ah      = a0;
+    pc->s.nbonds  = 2;
+    pc->s.bond[0] = 2;
+    pc->s.bond[1] = 3;
+    pc->s.nangles = 1;
+  }
+
+  /* Two */
+
+  state1 = *state_null;
+
+  state1.index = 2;
+  state1.r[X]  = r1[X];
+  state1.r[Y]  = r1[Y];
+  state1.r[Z]  = r1[Z];
+
+  pc = NULL;
+  colloids_info_add_local_with_state(cinfo, &state1, &pc);
+  if (pc) {
+    pc->s.a0      = a0;
+    pc->s.ah      = a0;
+    pc->s.nbonds  = 1;
+    pc->s.bond[0] = 1;
+  }
+
+  /* Three */
+
+  state2 = *state_null;
+
+  state2.index = 3;
+  state2.r[X]  = r2[X];
+  state2.r[Y]  = r2[Y];
+  state2.r[Z]  = r2[Z];
+
+  pc = NULL;
+  colloids_info_add_local_with_state(cinfo, &state2, &pc);
   if (pc) {
     pc->s.a0      = a0;
     pc->s.ah      = a0;
