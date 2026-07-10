@@ -80,7 +80,7 @@ __host__ int tests_create(int argc, char ** argv) {
   test_bond_fene_suite();
   //test_bonds_suite();
   //test_bp_suite();
-  //test_build_suite();
+  test_build_suite();
   //test_ch_suite();
 
   //test_colloid_options_suite();
@@ -97,7 +97,7 @@ __host__ int tests_create(int argc, char ** argv) {
   //test_colloids_info_suite();
   //test_colloids_halo_suite();
 
-  //test_ewald_suite();
+  test_ewald_suite();
   //test_fe_null_suite();
   //test_fe_electro_suite();
   //test_fe_electro_symm_suite();
