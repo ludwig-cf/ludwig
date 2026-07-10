@@ -108,7 +108,7 @@ __host__ int tests_create(int argc, char ** argv) {
   //test_field_grad_suite();
   //test_hydro_options_suite();
   //test_hydro_suite();
-  //test_interaction_suite();
+  test_interaction_suite();
 
   //test_lb_d2q9_suite();
   //test_lb_d3q15_suite();
