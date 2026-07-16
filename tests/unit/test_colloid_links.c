@@ -9,11 +9,15 @@
 
 #include "pe.h"
 #include "colloid_link.h"
+#include "tests.h"
 
 int test_colloid_link_max_2d_d2q9(void);
 int test_colloid_link_max_3d_d3q15(void);
 int test_colloid_link_max_3d_d3q19(void);
 int test_colloid_link_max_3d_d3q27(void);
+int test_links_arrays_accessors(pe_t * pe);
+int test_links_arrays_accessors_with_state(pe_t * pe);
+
 
 /*****************************************************************************
  *
@@ -31,6 +35,10 @@ int test_colloid_link_suite(void) {
   test_colloid_link_max_3d_d3q15();
   test_colloid_link_max_3d_d3q19();
   test_colloid_link_max_3d_d3q27();
+  test_links_arrays_accessors(pe);
+  test_links_arrays_accessors_with_state(pe);
+  
+  pe_info(pe, "PASS     ./unit/test_colloid_links\n");
 
   pe_free(pe);
 
@@ -350,4 +358,123 @@ int test_colloid_link_max_3d_d3q27(void) {
   }
 
   return ifail;
+}
+
+/*****************************************************************************
+ *
+ *  test_links_arrays_accessors_suite
+ *
+ *****************************************************************************/
+
+int test_links_arrays_accessors_suite(void) {
+  
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  test_links_arrays_accessors
+ *
+ *****************************************************************************/
+
+int test_links_arrays_accessors(pe_t * pe) {
+  cs_t * cs = NULL;
+  colloids_info_t * cinfo = NULL;
+  colloid_options_t opts = colloid_options_default();
+  colloid_t * pc;
+  double r[3] = {0.5, 0.5, 0.5};
+
+  pe_create(MPI_COMM_WORLD, PE_QUIET, &pe);
+  cs_create(pe, &cs);
+  cs_init(cs);
+  colloids_info_create(pe, cs, &opts, &cinfo);
+  colloids_info_add_local(cinfo, 1, r, 1.0, &pc);
+  pc->lnk = colloid_link_allocate();
+  pc->lnk->next = NULL;
+  
+  pc->lnk->i = 3;
+  pc->lnk->j = 2;
+  pc->lnk->p = 1;
+  pc->lnk->status = 0;
+  for (int i = 0; i < 3; i++)
+    pc->lnk->rb[i] = i;
+
+  assert(pc->links != NULL);
+  assert(pc);
+  assert(pc->lnk);
+  assert(pc->lnk->next == NULL);
+  copy_links_to_array(pc);
+
+  int i, j, p, status;
+  double rb[3];
+
+  colloid_link_i(pc->links, 0, &i);
+  colloid_link_j(pc->links, 0, &j);
+  colloid_link_p(pc->links, 0, &p);
+  colloid_link_status(pc->links, 0, &status);
+  colloid_link_rb(pc->links, 0, rb);
+
+  test_assert(i == pc->lnk->i);
+  test_assert(j == pc->lnk->j);
+  test_assert(p == pc->lnk->p);
+  test_assert(status == pc->lnk->status);
+  for (int index = 0; index < 3; index++)
+    test_assert(rb[index] == pc->lnk->rb[index]);
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  test_links_arrays_accessors_with_state
+ *
+ *****************************************************************************/
+
+int test_links_arrays_accessors_with_state(pe_t * pe) {
+  cs_t * cs = NULL;
+  colloids_info_t * cinfo = NULL;
+  colloid_options_t opts = colloid_options_default();
+  colloid_t * pc;
+  colloid_state_t state;
+  double r[3] = {0.5, 0.5, 0.5};
+
+  pe_create(MPI_COMM_WORLD, PE_QUIET, &pe);
+  cs_create(pe, &cs);
+  cs_init(cs);
+  colloids_info_create(pe, cs, &opts, &cinfo);
+  create_dummy_state(&state, 1, 1.0, r);
+  colloids_info_add_local_with_state(cinfo, &state, &pc);
+  pc->lnk = colloid_link_allocate();
+  pc->lnk->next = NULL;
+  
+  pc->lnk->i = 3;
+  pc->lnk->j = 2;
+  pc->lnk->p = 1;
+  pc->lnk->status = 0;
+  for (int i = 0; i < 3; i++)
+    pc->lnk->rb[i] = i;
+
+  assert(pc->links != NULL);
+  assert(pc);
+  assert(pc->lnk);
+  assert(pc->lnk->next == NULL);
+  copy_links_to_array(pc);
+
+  int i, j, p, status;
+  double rb[3];
+
+  colloid_link_i(pc->links, 0, &i);
+  colloid_link_j(pc->links, 0, &j);
+  colloid_link_p(pc->links, 0, &p);
+  colloid_link_status(pc->links, 0, &status);
+  colloid_link_rb(pc->links, 0, rb);
+
+  test_assert(i == pc->lnk->i);
+  test_assert(j == pc->lnk->j);
+  test_assert(p == pc->lnk->p);
+  test_assert(status == pc->lnk->status);
+  for (int index = 0; index < 3; index++)
+    test_assert(rb[index] == pc->lnk->rb[index]);
+
+  return 0;
 }
