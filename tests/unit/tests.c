@@ -179,7 +179,6 @@ __host__ int tests_create(int argc, char ** argv) {
   /* Memory management */
   test_create_links_arrays_suite();
   test_links_arrays_accessors_suite();
-  ////test_device_memcpy_colloid_links_array();
 
   return 0;
 }
