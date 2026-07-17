@@ -72,6 +72,8 @@ int test_colloids_info_suite(void) {
   ncell[Z] = 8;
   test_colloids_info_with_ncell(pe, cs, ncell);
 
+  test_colloids_array(pe, cs);
+
   pe_info(pe, "PASS     ./unit/test_colloids\n");
 
   cs_free(cs);
@@ -378,3 +380,28 @@ int test_colloids_info_cell_coords(colloids_info_t * cinfo) {
 
   return 0;
 }
+
+/*****************************************************************************
+ *
+ *  test_colloids_array
+ *
+ *****************************************************************************/
+
+int test_colloids_array(pe_t * pe, cs_t * cs) {
+  colloids_info_t *cinfo = NULL;
+  colloid_state_t state;
+  colloid_t *pc = NULL;
+
+  colloid_options_t options = colloid_options_default();
+
+  options.have_colloids = 1;
+  colloids_info_create(pe, cs, & options, cinfo)
+
+  create_dummy_state(&state, index, a0, r);
+
+  colloids_info_add_local_with_state(cinfo, &state, &pc)
+  
+  update_colloids_array(cinfo);
+  return 0;
+}
+
