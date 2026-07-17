@@ -1000,12 +1000,8 @@ __host__ int colloids_info_add_with_state(colloids_info_t * cinfo, const colloid
   assert(icell[Z] < cinfo->ncell[Z] + 2*cinfo->nhalo);
 
   colloid_create_with_state(cinfo, state, pc);
-  (*pc)->s.index = state->index;
 
-  (*pc)->s.r[X] = state->r[X];
-  (*pc)->s.r[Y] = state->r[Y];
-  (*pc)->s.r[Z] = state->r[Z];
-
+  (*pc)->s = *state;
   (*pc)->s.rebuild = 1;
 
   colloids_info_insert_colloid(cinfo, *pc);
