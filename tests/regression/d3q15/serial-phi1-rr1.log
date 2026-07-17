@@ -1,0 +1,226 @@
+Welcome to: Ludwig v0.24.0 (Serial version running on 1 process)
+Git commit: cb173170b8a9f70d5748e9bec4af8b8ccd209011
+
+Start time: Sat Feb 21 17:45:41 2026
+
+Compiler:
+  name:           Gnu 15.2.0
+  version-string: 15.2.0
+  options:        -O2 -g -Wall -Werror
+
+Note assertions via standard C assert() are on.
+
+Target thread model: OpenMP.
+OpenMP threads: 4; maximum number of threads: 11.
+
+Read 26 user parameters from input
+
+System details
+--------------
+System size:    32 32 32
+Decomposition:  1 1 1
+Local domain:   32 32 32
+Periodic:       1 1 1
+Halo nhalo:     2
+Reorder:        true
+Initialised:    1
+
+Free energy details
+-------------------
+
+Symmetric phi^4 free energy selected.
+
+Parameters:
+Bulk parameter A      = -6.25000e-02
+Bulk parameter B      =  6.25000e-02
+Surface penalty kappa =  4.00000e-02
+Surface tension       =  4.71405e-02
+Interfacial width     =  1.13137e+00
+
+Using Cahn-Hilliard finite difference solver.
+Mobility M            =  4.50000e-01
+Order parameter noise = off
+Force calculation:      stress_divergence
+
+System properties
+----------------
+Mean fluid density:           1.00000e+00
+Shear viscosity               1.00000e-01
+Bulk viscosity                1.00000e-01
+Temperature                   0.00000e+00
+External body force density   0.00000e+00  0.00000e+00  0.00000e+00
+External E-field amplitude    0.00000e+00  0.00000e+00  0.00000e+00
+External E-field frequency    0.00000e+00
+External magnetic field       0.00000e+00  0.00000e+00  0.00000e+00
+
+Lattice Boltzmann distributions
+-------------------------------
+Model:            d3q15  
+SIMD vector len:  1
+Number of sets:   1
+Halo type:        full halo
+Input format:     binary
+Output format:    binary
+I/O grid:         1 1 1
+
+Lattice Boltzmann collision
+---------------------------
+Relaxation time scheme:   M10
+Hydrodynamic modes:       on
+Ghost modes:              on
+Isothermal fluctuations:  off
+Shear relaxation time:    8.00000e-01
+Bulk relaxation time:     8.00000e-01
+Ghost relaxation time:    1.00000e+00
+[User   ] Random number seed: 8361235
+
+Hydrodynamics
+-------------
+Hydrodynamics: on
+
+Advection scheme order: 2
+Initialising phi for spinodal
+
+Colloid information
+-------------------
+
+Colloid Options
+---------------
+Cell list:                       2 2 2
+LB link set:                     19
+BBL rebuild freq:                1
+Solid density rho0:              1.0000000e+00
+Max. displacement per dt:        8.0000000e-01
+
+Colloid i/o input options
+-------------------------
+Mode:                            ansi
+Record format:                   ascii
+Report:                          yes
+Number of files:                 1
+
+Colloid i/o output options
+--------------------------
+Mode:                            ansi
+Record format:                   ascii
+Report:                          yes
+Number of files:                 1
+
+Colloid output frequency:        0
+
+Requested one colloid via input:
+colloid_one_a0                2.3000000e+00
+colloid_one_ah                2.3000000e+00
+colloid_one_r                 1.6000000e+01  1.6000000e+01  1.5699000e+01
+colloid_one_v                 0.0000000e+00  0.0000000e+00  1.0000000e-02
+colloid_one_s                 1.0000000e+00  0.0000000e+00  0.0000000e+00
+colloid_one_m                 1.0000000e+00  0.0000000e+00  0.0000000e+00
+
+Initialised 1 colloid
+
+Colloid cell list information
+-----------------------------
+Input radius maximum:         2.3000000e+00
+Final cell list:              8 8 8
+Final cell lengths:           4.0000000e+00  4.0000000e+00  4.0000000e+00
+
+Gradient calculation: 3d_27pt_solid
+Initial conditions.
+
+Scalars - total mean variance min max
+[rho]       32716.00  1.00000000000  0.0000000e+00  1.00000000000  1.00000000000
+[phi] -5.9329449e+00 -1.8134689e-04 8.3105287e-04 -4.9989121e-02 4.9997941e-02
+
+Free energies - timestep f v f/v f_s a f_s/a
+[fe]              0 -7.5905548261e-01  3.2716000000e+04 -2.3201353546e-05  0.0000000000e+00
+
+Momentum - x y z
+[total   ]  0.0000000e+00  0.0000000e+00  5.0965010e-01
+[fluid   ]  0.0000000e+00  0.0000000e+00  0.0000000e+00
+[colloids]  0.0000000e+00  0.0000000e+00  5.0965010e-01
+
+Starting time step loop.
+
+Particle statistics:
+
+Colloid velocities - x y z
+[minimum ]  0.0000000e+00  0.0000000e+00  1.0000000e-02
+[maximum ]  0.0000000e+00  0.0000000e+00  1.0000000e-02
+
+Scalars - total mean variance min max
+[rho]       32716.00  1.00000000000  2.8991493e-08  0.99486645919  1.00521473290
+[phi] -5.9329449e+00 -1.8134689e-04 5.9730819e-04 -4.7975240e-02 4.7302248e-02
+
+Free energies - timestep f v f/v f_s a f_s/a
+[fe]              1 -5.2038590972e-01  3.2716000000e+04 -1.5906159363e-05  0.0000000000e+00
+
+Momentum - x y z
+[total   ]  4.6034658e-13  1.3308582e-15  5.0965010e-01
+[fluid   ]  4.2752944e-05  7.3239389e-05  2.4349091e-01
+[colloids] -4.2752943e-05 -7.3239389e-05  2.6615920e-01
+
+Velocity - x y z
+[minimum ] -7.1590569e-05 -7.2633053e-05 -7.0924286e-05
+[maximum ]  7.1129005e-05  6.9582841e-05  7.3504260e-05
+
+Completed cycle 1
+
+Particle statistics:
+
+Colloid velocities - x y z
+[minimum ] -8.3886852e-07 -1.4370524e-06  5.2223907e-03
+[maximum ] -8.3886852e-07 -1.4370524e-06  5.2223907e-03
+
+Scalars - total mean variance min max
+[rho]       32715.00  1.00000000000  3.9442652e-08  0.99502689202  1.00484793592
+[phi] -5.9329449e+00 -1.8135243e-04 4.4294070e-04 -4.6353614e-02 4.5187420e-02
+
+Free energies - timestep f v f/v f_s a f_s/a
+[fe]              2 -3.7436754407e-01  3.2715000000e+04 -1.1443299528e-05  0.0000000000e+00
+
+Momentum - x y z
+[total   ]  4.5291142e-13  2.6815572e-15  5.0965010e-01
+[fluid   ]  9.3993852e-05  2.8485227e-04  2.8035584e-01
+[colloids] -9.3993852e-05 -2.8485227e-04  2.2929427e-01
+
+Velocity - x y z
+[minimum ] -8.9172167e-04 -9.1660845e-04 -9.9301683e-05
+[maximum ]  9.0166611e-04  9.0614579e-04  5.2584683e-03
+
+Completed cycle 2
+
+Timer resolution: 1e-06 second
+
+Timer statistics
+             Section:       tmin       tmax      total
+               Total:      0.044      0.044      0.044   0.044116 (1 call)
+      Time step loop:      0.015      0.015      0.029   0.014597 (2 calls)
+         Propagation:      0.001      0.001      0.002   0.001168 (2 calls)
+    Propagtn (krnl) :      0.001      0.001      0.002   0.001167 (2 calls)
+           Collision:      0.003      0.003      0.005   0.002723 (2 calls)
+   Collision (krnl) :      0.003      0.003      0.005   0.002720 (2 calls)
+       Lattice halos:      0.000      0.000      0.001   0.000269 (4 calls)
+            -> irecv:      0.000      0.000      0.000   0.000001 (4 calls)
+             -> pack:      0.000      0.000      0.001   0.000144 (4 calls)
+            -> isend:      0.000      0.000      0.000   0.000000 (4 calls)
+          -> waitall:      0.000      0.000      0.000   0.000000 (4 calls)
+           -> unpack:      0.000      0.000      0.000   0.000124 (4 calls)
+       phi gradients:      0.002      0.002      0.003   0.001668 (2 calls)
+           phi halos:      0.000      0.000      0.000   0.000074 (2 calls)
+            -> irecv:      0.000      0.000      0.000   0.000000 (7 calls)
+             -> pack:      0.000      0.000      0.000   0.000056 (7 calls)
+            -> isend:      0.000      0.000      0.000   0.000000 (7 calls)
+          -> waitall:      0.000      0.000      0.000   0.000000 (7 calls)
+           -> unpack:      0.000      0.000      0.000   0.000040 (7 calls)
+              Forces:      0.000      0.000      0.000   0.000006 (2 calls)
+             Rebuild:      0.000      0.001      0.001   0.000495 (2 calls)
+                 BBL:      0.000      0.000      0.000   0.000088 (2 calls)
+      Particle halos:      0.000      0.000      0.000   0.000014 (2 calls)
+   Force calculation:      0.002      0.002      0.004   0.001835 (2 calls)
+   Phi force (krnl) :      0.001      0.001      0.003   0.001448 (2 calls)
+          phi update:      0.001      0.001      0.002   0.001144 (2 calls)
+     Advectn (krnl) :      0.000      0.000      0.001   0.000482 (2 calls)
+ Advectn BCS (krnl) :      0.000      0.000      0.000   0.000077 (2 calls)
+Diagnostics / output:      0.005      0.005      0.009   0.004633 (2 calls)
+End time: Sat Feb 21 17:45:41 2026
+Ludwig finished normally.

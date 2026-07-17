@@ -5,7 +5,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2023-2024 The University of Edinburgh
+ *  (c) 2023-2026 The University of Edinburgh
  *
  *  Contributing authors:
  *  Sumesh Thampi introduced ellipsoids.
@@ -17,14 +17,11 @@
 #define LUDWIG_UTIL_ELLIPSOID_H
 
 void util_q4_product(const double a[4], const double b[4], double c[4]);
-void util_q4_rotate_vector(const double q[4], const double a[3], double b[3]);
 void util_q4_from_omega(const double omega[3], double dt, double q[4]);
 int  util_q4_from_euler_angles(double phi, double theta, double psi,
 			       double q[4]);
 int  util_q4_to_euler_angles(const double q[4], double * phi, double * theta,
 			     double * psi);
-int  util_q4_is_inside_ellipsoid(const double q[4], const double elabc[3],
-				 const double r[3]);
 void util_q4_inertia_tensor(const double q[4], const double moment[3],
 			    double mI[3][3]);
 
@@ -34,10 +31,6 @@ int util_ellipsoid_prolate_settling_velocity(double a, double b, double eta,
 					     double f, double u[2]);
 int util_discrete_volume_ellipsoid(const double abc[3], const double r0[3],
 				   const double q[4], double * vol);
-
-void matrix_product(const double a[3][3], const double b[3][3],
-		    double result[3][3]);
-void matrix_transpose(const double a[3][3], double result[3][3]);
 
 void util_q4_to_r(const double q[4], double r[3][3]);
 double util_q4_distance_to_tangent_plane(const double abc[3],
@@ -55,6 +48,46 @@ double util_q4_distance_to_tangent_plane(const double abc[3],
 
 #include "target.h"
 #include "util_vector.h"
+
+/*****************************************************************************
+ *
+ *  matrix_product
+ *
+ *****************************************************************************/
+
+__host__ __device__
+static inline void util_matrix_product(const double a[3][3],
+				       const double b[3][3],
+				       double result[3][3]) {
+
+  for (int i = 0; i < 3; i++) {
+    for (int j = 0; j < 3; j++) {
+      result[i][j] = 0.0;
+      for (int k = 0; k < 3; k++) {
+        result[i][j] += a[i][k]*b[k][j];
+      }
+    }
+  }
+
+  return;
+}
+
+/*****************************************************************************
+ *
+ *  util_matrix_transpose
+ *
+ *****************************************************************************/
+
+__host__ __device__
+static inline void util_matrix_transpose(const double a[3][3],
+					 double result[3][3]) {
+  for (int i = 0; i < 3; i++) {
+    for (int j = 0; j < 3; j++) {
+      result[i][j] = a[j][i];
+    }
+  }
+  return;
+}
 
 /*****************************************************************************
  *
@@ -226,6 +259,107 @@ static inline int util_spheroid_surface_tangent(const double elabc[3],
 						double vt[3]) {
 
   return util_spheroid_normal_tangent(elabc, m, r, 1, vt);
+}
+
+/*****************************************************************************
+ *
+ *  util_q4_rotate_vector
+ *
+ *  Rotate vector a[3] by the quaternion to give vector b.
+ *
+ *  E.g., Rapaport Eq 8.2.8 with q = [q_0, q = (q_1, q_2, q_3)]
+ *  that is, b = (2q_0^2 - 1)a + 2(q.a)q + 2q_0 q x a
+ *
+ ****************************************************************************/
+
+__host__ __device__
+static inline void util_q4_rotate_vector(const double q[4],
+					 const double a[3], double b[3]) {
+
+  double q0    = q[0];
+  double qdota = util_vector_dot_product(q + 1, a);
+  double qxa[3] = {0};
+
+  util_vector_cross_product(qxa, q + 1, a);
+
+  for (int i = 0; i < 3; i++) {
+    b[i] = (2.0*q0*q0 - 1.0)*a[i] + 2.0*qdota*q[i+1] + 2.0*q0*qxa[i];
+  }
+
+  return;
+}
+
+/*****************************************************************************
+ *
+ *  util_q4_is_inside_ellispoid
+ *
+ *  Is position r inside the ellpsoid (a,b,c) with orientation described by
+ *  unit quaternion q4 (in the body frame)?
+ *
+ *  Position r is relative to the centre of the ellipsoid in the lab
+ *  or world frame.
+ *
+ *  Returns 0 if r is outside.
+ *
+ *  NEEDS REFERENCE TO PROVIDE MEANING TO COMMENTS
+ *
+ *****************************************************************************/
+
+__host__ __device__
+static inline int util_q4_is_inside_ellipsoid(const double q[4],
+					      const double elabc[3],
+					      const double r[3]) {
+  int inside = 0;
+
+  double elev1[3] = {0};
+  double elev2[3] = {0};
+  double elev3[3] = {0};
+
+  double worldv1[3] = {1.0, 0.0, 0.0};
+  double worldv2[3] = {0.0, 1.0, 0.0};
+
+  double elL[3][3] = {0};
+  double elA[3][3] = {0};
+  double elQ[3][3] = {0};
+
+  /* Construct Lambda matrix */
+  for (int i = 0; i < 3; i++) {
+    elL[i][i] = 1.0/(elabc[i]*elabc[i]);
+  }
+
+  /* Construct Q matrix */
+  util_q4_rotate_vector(q, worldv1, elev1);
+  util_q4_rotate_vector(q, worldv2, elev2);
+
+  util_vector_cross_product(elev3, elev1, elev2);
+  util_vector_normalise(3, elev3);
+
+  for (int i = 0; i < 3; i++) {
+    elQ[i][0] = elev1[i];
+    elQ[i][1] = elev2[i];
+    elQ[i][2] = elev3[i];
+  }
+
+  /* Construct A matrix */
+  {
+    double elAp[3][3] = {0};
+    double elQT[3][3] = {0};
+    util_matrix_product(elQ, elL, elAp);
+    util_matrix_transpose(elQ, elQT);
+    util_matrix_product(elAp, elQT, elA);
+  }
+
+  /* Evaluate quadratic equation */
+  {
+    double x = elA[0][0]*r[X]*r[X] + elA[1][1]*r[Y]*r[Y] + elA[2][2]*r[Z]*r[Z]
+      + (elA[0][1] + elA[1][0])*r[X]*r[Y]
+      + (elA[0][2] + elA[2][0])*r[X]*r[Z]
+      + (elA[1][2] + elA[2][1])*r[Y]*r[Z];
+
+    inside = (x < 1.0);
+  }
+
+  return inside;
 }
 
 #endif

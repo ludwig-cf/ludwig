@@ -27,7 +27,7 @@ int main(int argc, char ** argv) {
 
   int ndevice;
   int id;
-  
+
   MPI_Init(&argc, &argv);
 
   MPI_Comm_rank(MPI_COMM_WORLD, &rank);
@@ -46,8 +46,8 @@ int main(int argc, char ** argv) {
     printf("Rank %d set device id %d\n", rank, id);
     tdpGetDeviceProperties(&prop, id);
   }
-  
+
   MPI_Finalize();
-  
+
   return 0;
 }

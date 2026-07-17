@@ -8,7 +8,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2022 The University of Edinburgh
+ *  (c) 2022-2026 The University of Edinburgh
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *
@@ -19,7 +19,11 @@
 #include "pe.h"
 #include "cs_limits.h"
 
-int test_cs_limits(int imin, int imax, int jmin, int jmax, int kmin, int kmax);
+int test_cs_limits_driver(int imin, int imax, int jmin, int jmax, int kmin,
+                          int kmax);
+
+int test_cs_limits(cs_limits_t lim);
+int test_cs_limits_with_halo(cs_limits_t lim);
 int test_cs_limits_size(cs_limits_t lim);
 int test_cs_limits_ic(cs_limits_t lim);
 int test_cs_limits_jc(cs_limits_t lim);
@@ -39,11 +43,11 @@ int test_cs_limits_suite(void) {
   pe_create(MPI_COMM_WORLD, PE_QUIET, &pe);
 
   /* A selection of (imin, imax, jmin, jmax, kmin, kmax) */
-  test_cs_limits( 1, 16, 1,  1, 1,  1);
-  test_cs_limits( 1, 16, 1,  8, 1,  4);
-  test_cs_limits(-1, 18, 0,  9, 1,  1);
-  test_cs_limits( 1,  1, 0,  0, 1, 16);
-  test_cs_limits(-3, -1, 1,  1, 2, 16);
+  test_cs_limits_driver(1, 16, 1, 1, 1, 1);
+  test_cs_limits_driver(1, 16, 1, 8, 1, 4);
+  test_cs_limits_driver(-1, 18, 0, 9, 1, 1);
+  test_cs_limits_driver(1, 1, 0, 0, 1, 16);
+  test_cs_limits_driver(-3, -1, 1, 1, 2, 16);
 
   pe_info(pe, "PASS     ./unit/test_cs_limits\n");
 
@@ -54,14 +58,17 @@ int test_cs_limits_suite(void) {
 
 /*****************************************************************************
  *
- *  test_cs_limits
+ *  test_cs_limits_driver
  *
  *****************************************************************************/
 
-int test_cs_limits(int imin, int imax, int jmin, int jmax, int kmin, int kmax) {
+int test_cs_limits_driver(int imin, int imax, int jmin, int jmax, int kmin,
+                          int kmax) {
 
   cs_limits_t lim = {imin, imax, jmin, jmax, kmin, kmax};
 
+  test_cs_limits(lim);
+  test_cs_limits_with_halo(lim);
   test_cs_limits_size(lim);
   test_cs_limits_kc(lim);
   test_cs_limits_jc(lim);
@@ -70,6 +77,86 @@ int test_cs_limits(int imin, int imax, int jmin, int jmax, int kmin, int kmax) {
 
   return 0;
 }
+
+/*****************************************************************************
+ *
+ *  test_cs_limits
+ *
+ *****************************************************************************/
+
+int test_cs_limits(cs_limits_t lim) {
+
+  int ifail = 0;
+  int nlocal[3] = {lim.imax, lim.jmax, lim.kmax};
+
+  cs_limits_t t = cs_limits(nlocal);
+
+  if (t.imin != 1) ifail = -1;
+  assert(ifail == 0);
+  if (t.imax != lim.imax) ifail = -1;
+  assert(ifail == 0);
+
+  assert(t.jmin == 1);
+  assert(t.jmax == lim.jmax);
+  assert(t.kmin == 1);
+  assert(t.kmax == lim.kmax);
+
+  return ifail;
+}
+
+/*****************************************************************************
+ *
+ *  test_cs_limits_with_halo
+ *
+ *****************************************************************************/
+
+int test_cs_limits_with_halo(cs_limits_t lim) {
+
+  int ifail = 0;
+
+  /* No halo */
+  {
+    int nhalo     = 0;
+    int nlocal[3] = {lim.imax, lim.jmax, lim.kmax};
+
+    cs_limits_t t = cs_limits_with_halo(nlocal, nhalo);
+
+    if (t.imin != 1) ifail = -1;
+    assert(ifail == 0);
+    if (t.imax != lim.imax) ifail = -1;
+    assert(ifail == 0);
+
+    assert(t.imin == 1);
+    assert(t.imax == lim.imax);
+    assert(t.jmin == 1);
+    assert(t.jmax == lim.jmax);
+    assert(t.kmin == 1);
+    assert(t.kmax == lim.kmax);
+  }
+
+  /* ... with halo */
+  {
+    int nhalo     = 2;
+    int nlocal[3] = {lim.imax, lim.jmax, lim.kmax};
+
+    cs_limits_t t = cs_limits_with_halo(nlocal, nhalo);
+
+    if (t.imin != 1 - nhalo) ifail = -1;
+    assert(ifail == 0);
+    if (t.imax != lim.imax + nhalo) ifail = -1;
+    assert(ifail == 0);
+
+    assert(t.imin == 1 - nhalo);
+    assert(t.imax == lim.imax + nhalo);
+    assert(t.jmin == 1 - nhalo);
+    assert(t.jmax == lim.jmax + nhalo);
+    assert(t.kmin == 1 - nhalo);
+    assert(t.kmax == lim.kmax + nhalo);
+  }
+
+  return ifail;
+}
+
 /*****************************************************************************
  *
  *  test_cs_limits_size
@@ -163,7 +250,7 @@ int test_cs_limits_kc(cs_limits_t lim) {
   }
 
   {
-    /* Modular arithemtic check ...  */
+    /* Modular aritheetic check ...  */
     int kc = cs_limits_kc(lim, cs_limits_size(lim) - 1);
     assert(kc == lim.kmax);
     if (kc != lim.kmax) ifail += 1;

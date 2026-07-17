@@ -10,7 +10,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2021-2024 The University of Edinburgh
+ *  (c) 2021-2026 The University of Edinburgh
  *
  *  Contributing authors
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -709,10 +709,10 @@ __global__ void phi_grad_mu_correction_kernel(kernel_3d_t k3d,
       fyb += fy[TARGET_PAD*it];
       fzb += fz[TARGET_PAD*it];
     }
-    tdpAtomicAddDouble(fcorrect, fvb);           /* Volume */
-    tdpAtomicAddDouble(fcorrect + 1 + X, fxb);   /* force[X] */
-    tdpAtomicAddDouble(fcorrect + 1 + Y, fyb);   /* force[Y] */
-    tdpAtomicAddDouble(fcorrect + 1 + Z, fzb);   /* force[Z] */
+    atomicAdd(fcorrect, fvb);            /* Volume */
+    atomicAdd(fcorrect + 1 + X, fxb);   /* force[X] */
+    atomicAdd(fcorrect + 1 + Y, fyb);   /* force[Y] */
+    atomicAdd(fcorrect + 1 + Z, fzb);   /* force[Z] */
   }
 
   return;

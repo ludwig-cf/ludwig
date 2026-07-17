@@ -9,7 +9,7 @@
  *  Edinburgh Soft Matter and Statisitical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2006-2025 The University of Edinburgh
+ *  (c) 2006-2026 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -31,6 +31,7 @@
 #include "util_vector.h"
 #include "wall.h"
 #include "build.h"
+#include "build_remove_replace.h"
 #include "blue_phase.h"
 
 
@@ -41,10 +42,6 @@ int build_replace_q_local(fe_t * fe, colloids_info_t * info, colloid_t * pc, int
 			  field_t * q);
 
 static int build_remove_fluid(lb_t * lb, int index, colloid_t * pc);
-static int build_replace_fluid(lb_t * lb, colloids_info_t * info, int index,
-			       colloid_t * pc, map_t * map);
-static int build_remove_order_parameter(lb_t * lb, field_t * f, int index,
-					colloid_t * pc);
 static int build_replace_order_parameter(fe_t * fe, lb_t * lb, colloids_info_t * cinfo,
 					 field_t * f, int index,
 					 colloid_t * pc, map_t * map);
@@ -64,6 +61,9 @@ int build_conservation_phi(colloids_info_t * cinfo, field_t * phi,
 int build_conservation_psi(colloids_info_t * cinfo, psi_t * psi,
 			   const lb_model_t * model);
 
+int build_update_map_driver(map_t * map);
+int build_update_map_colloids_driver(colloids_info_t * info, map_t * map);
+
 /*****************************************************************************
  *
  *  build_update_map
@@ -74,156 +74,21 @@ int build_conservation_psi(colloids_info_t * cinfo, psi_t * psi,
  *
  ****************************************************************************/
 
-int build_update_map(cs_t * cs, colloids_info_t * cinfo, map_t * map) {
+int build_update_map(colloids_info_t * cinfo, map_t * map) {
 
-  int nlocal[3];
-  int noffset[3];
-  int ncell[3];
-  int ic, jc, kc;
-
-  int i, j, k;
-  int i_min, i_max, j_min, j_max, k_min, k_max;
-  int index;
-  int nhalo;
-  int status;
-
-  colloid_t * p_colloid = NULL;
-
-  double  r0[3];
-  double  rsite0[3];
-  double  rsep[3];
-
-  double   largestdimn;
-  double   cosine, mod;
-
-  /* To set the wetting data in the map, we assume C, H zero at moment */
-  double wet[2];
-
-  assert(cs);
-  assert(cinfo);
-  assert(map);
-
-  assert(map->ndata <= 2);
-
-  cs_nlocal(cs, nlocal);
-  cs_nlocal_offset(cs, noffset);
-  cs_nhalo(cs, &nhalo);
-
-  colloids_info_ncell(cinfo, ncell);
-
-  /* First, set any existing colloid sites to fluid */
-
-  for (ic = 1 - nhalo; ic <= nlocal[X] + nhalo; ic++) {
-    for (jc = 1 - nhalo; jc <= nlocal[Y] + nhalo; jc++) {
-      for (kc = 1 - nhalo; kc <= nlocal[Z] + nhalo; kc++) {
-
-	/* This avoids setting BOUNDARY to FLUID */
-	index = cs_index(cs, ic, jc, kc);
-	map_status(map, index, &status);
-	if (status == MAP_COLLOID) {
-	  /* Set wetting properties to zero. */
-	  map_status_set(map, index, MAP_FLUID);
-	  wet[0] = 0.0;
-	  wet[1] = 0.0;
-	  map_data_set(map, index, wet);
-	}
-
-      }
-    }
-  }
-
+  /* Reset the solid/fluid status map */
+  build_update_map_driver(map);
   colloids_info_map_update(cinfo);
 
-  /* Loop through all cells (including the halo cells) */
+  /* Update the current colloid map */
+  colloids_info_list_all_build(cinfo);
+  build_update_map_colloids_driver(cinfo, map);
 
-  for (ic = 0; ic <= ncell[X] + 1; ic++) {
-    for (jc = 0; jc <= ncell[Y] + 1; jc++) {
-      for (kc = 0; kc <= ncell[Z] + 1; kc++) {
+  /* __NVCC__ temporary, we need to return the map status etc to host */
+  /* ... before the link construction on the host can occur */
 
-	/* Set the cell index */
-
-	colloids_info_cell_list_head(cinfo, ic, jc, kc, &p_colloid);
-
-	/* For each colloid in this cell, check solid/fluid status */
-
-	for ( ; p_colloid; p_colloid = p_colloid->next) {
-
-	  if (p_colloid->s.bc != COLLOID_BC_BBL) continue;
-
-	  /* Set actual position and size of the cube to be checked */
-
-	  largestdimn = colloid_principal_radius(&p_colloid->s);
-
-	  /* Need to translate the colloid position to "local"
-	   * coordinates, so that the correct range of lattice
-	   * nodes is found */
-
-	  r0[X] = p_colloid->s.r[X] - 1.0*noffset[X];
-	  r0[Y] = p_colloid->s.r[Y] - 1.0*noffset[Y];
-	  r0[Z] = p_colloid->s.r[Z] - 1.0*noffset[Z];
-
-	  /* Compute appropriate range of sites that require checks, i.e.,
-	   * a cubic box around the centre of the colloid. However, this
-	   * should not extend beyond the boundary of the current domain
-	   * (but include halos). */
-
-	  i_min = imax(1 - nhalo,         (int) floor(r0[X] - largestdimn));
-	  i_max = imin(nlocal[X] + nhalo, (int) ceil (r0[X] + largestdimn));
-	  j_min = imax(1 - nhalo,         (int) floor(r0[Y] - largestdimn));
-	  j_max = imin(nlocal[Y] + nhalo, (int) ceil (r0[Y] + largestdimn));
-	  k_min = imax(1 - nhalo,         (int) floor(r0[Z] - largestdimn));
-	  k_max = imin(nlocal[Z] + nhalo, (int) ceil (r0[Z] + largestdimn));
-
-	  /* Check each site to see whether it is inside or not */
-
-	  for (i = i_min; i <= i_max; i++)
-	    for (j = j_min; j <= j_max; j++)
-	      for (k = k_min; k <= k_max; k++) {
-
-		/* rsite0 is the coordinate position of the site */
-
-		rsite0[X] = 1.0*i;
-		rsite0[Y] = 1.0*j;
-		rsite0[Z] = 1.0*k;
-		cs_minimum_distance(cs, rsite0, r0, rsep);
-
-		/* Are we inside? */
-
-		if (colloid_r_inside(&p_colloid->s, rsep)) {
-
-		  /* Set index */
-		  index = cs_index(cs, i, j, k);
-
-		  colloids_info_map_set(cinfo, index, p_colloid);
-		  map_status_set(map, index, MAP_COLLOID);
-
-		  /* Janus particles have h = h_0 cos (theta)
-		   * with s[3] pointing to the 'north pole' */
-
-		  cosine = 1.0;
-
-		  if (p_colloid->s.attr & COLLOID_ATTR_JANUS) {
-		    mod = modulus(rsep);
-		    if (mod > 0.0) {
-		      cosine = dot_product(p_colloid->s.s, rsep)/mod;
-		    }
-		  }
-
-		  wet[0] = p_colloid->s.c;
-		  wet[1] = cosine*p_colloid->s.h;
-
-		  map_data_set(map, index, wet);
-		}
-		/* Next site */
-	      }
-
-	  /* Next colloid */
-	}
-
-	/* Next cell */
-      }
-    }
-  }
+  map_memcpy(map, tdpMemcpyDeviceToHost);
+  colloids_memcpy(cinfo, tdpMemcpyDeviceToHost);
 
   return 0;
 }
@@ -578,8 +443,8 @@ int build_reset_links(cs_t * cs, colloid_t * p_colloid, map_t * map,
  *****************************************************************************/
 
 int build_remove_replace(fe_t * fe, colloids_info_t * cinfo, lb_t * lb,
-			 field_t * phi,
-			 field_t * p, field_t * q, psi_t * psi, map_t * map) {
+			 field_t * phi, field_t * q, psi_t * psi,
+			 map_t * map) {
 
   int ic, jc, kc, index;
   int is_halo;
@@ -590,6 +455,15 @@ int build_remove_replace(fe_t * fe, colloids_info_t * cinfo, lb_t * lb,
 
   assert(lb);
   assert(cinfo);
+
+
+  /* These are the parallel versions ... */
+  build_bbl_rebuild_flags_driver(cinfo);
+  build_remove_replace_fluid_driver(lb, cinfo, map);
+  build_remove_replace_order_parameter_driver(lb, cinfo, map, phi);
+
+  /* Which are not yet available for Q_ab or charge */
+  if (q == NULL && psi == NULL) return 0;
 
   cs_nlocal(lb->cs, nlocal);
   cs_nhalo(lb->cs, &nhalo);
@@ -608,70 +482,19 @@ int build_remove_replace(fe_t * fe, colloids_info_t * cinfo, lb_t * lb,
 
 	if (pcold == NULL && pcnew != NULL) {
 
-	  pcnew->s.rebuild = 1;
-
 	  if (!is_halo) {
-	    build_remove_fluid(lb, index, pcnew);
-	    if (phi) build_remove_order_parameter(lb, phi, index, pcnew);
 	    if (psi)  psi_colloid_remove_charge(psi, pcnew, index);
 	  }
 	}
 
 	if (pcold != NULL && pcnew == NULL) {
 
-	  pcold->s.rebuild = 1;
-
 	  if (!is_halo) {
-	    build_replace_fluid(lb, cinfo, index, pcold, map);
-	    if (phi) build_replace_order_parameter(fe, lb, cinfo, phi, index, pcold, map);
-	    if (p) build_replace_order_parameter(fe, lb, cinfo, p, index, pcold, map);
 	    if (q) build_replace_order_parameter(fe, lb, cinfo, q, index, pcold, map);
 	    if (psi) psi_colloid_replace_charge(psi, cinfo, pcold, index);
 	  }
 	}
 
-      }
-    }
-  }
-
-  return 0;
-}
-
-/*****************************************************************************
- *
- *  build_bbl_rebuild_flag
- *
- *  Looks for changes in the status map and sets the rebuild flag (only).
- *
- *  Not currently used.
- *
- *****************************************************************************/
-
-int build_bbl_rebuild_flag(cs_t * cs, colloids_info_t * cinfo) {
-
-  int ic, jc, kc, index;
-  int nlocal[3];
-  int nhalo;
-  colloid_t * pcold;
-  colloid_t * pcnew;
-
-  assert(cs);
-  assert(cinfo);
-
-  cs_nhalo(cs, &nhalo);
-  cs_nlocal(cs, nlocal);
-
-  for (ic = 1 - nhalo; ic <= nlocal[X] + nhalo; ic++) {
-    for (jc = 1 - nhalo; jc <= nlocal[Y] + nhalo; jc++) {
-      for (kc = 1 - nhalo; kc <= nlocal[Z] + nhalo; kc++) {
-
-	index = cs_index(cs, ic, jc, kc);
-
-	colloids_info_map_old(cinfo, index, &pcold);
-	colloids_info_map(cinfo, index, &pcnew);
-
-	if (pcold == NULL && pcnew != NULL) pcnew->s.rebuild = 1;
-	if (pcold != NULL && pcnew == NULL) pcold->s.rebuild = 1;
       }
     }
   }
@@ -780,169 +603,6 @@ static int build_remove_fluid(lb_t * lb, int index, colloid_t * p_colloid) {
 
   for (ia = 0; ia < 3; ia++) {
     p_colloid->t0[ia] += rtmp[ia];
-  }
-
-  return 0;
-}
-
-/*****************************************************************************
- *
- *  build_remove_order_parameter
- *
- *  Conserved order parameters only.
- *
- *  Remove order parameter(s) at the site inode. The old site information
- *  can be lost inside the particle, but we must record the correction.
- *
- *  A rather cross-cutting routine.
- *
- *****************************************************************************/
-
-static int build_remove_order_parameter(lb_t * lb, field_t * f, int index,
-					colloid_t * pc) {
-  double phi;
-  double phi0;
-  physics_t * phys = NULL;
-
-  assert(f);
-  assert(lb);
-  assert(pc);
-
-  physics_ref(&phys);
-  physics_phi0(phys, &phi0);
-
-  if (lb->ndist == 2) {
-    lb_0th_moment(lb, index, LB_PHI, &phi);
-  }
-  else {
-    field_scalar(f, index, &phi);
-  }
-
-  pc->s.deltaphi += (phi - phi0);
-
-  return 0;
-}
-
-/*****************************************************************************
- *
- *  build_replace_fluid
- *
- *  Replace the distributions when a fluid site (index) is exposed.
- *  This gives rise to corrections on the particle force and torque.
- *
- *****************************************************************************/
-
-static int build_replace_fluid(lb_t * lb, colloids_info_t * cinfo, int index,
-			       colloid_t * p_colloid, map_t * map) {
-
-  int indexn, p, pdash;
-  int ia;
-  int status;
-  int nweight;
-  int ib[3];
-  int noffset[3];
-
-  double newrho;
-  double weight;
-  double g[3];                /* Change in momentum */
-  double r0[3];               /* Centre of colloid in local coordinates */
-  double rb[3];               /* Boundary vector at site index */
-  double rtmp[3];
-  double newf[NVEL];          /* Replacement distributions */
-  double rho0;
-
-  physics_t * phys = NULL;
-  colloid_t * pc = NULL;
-
-  assert(lb);
-  assert(p_colloid);
-  assert(map);
-
-  cs_nlocal_offset(lb->cs, noffset);
-  cs_index_to_ijk(lb->cs, index, ib);
-
-  physics_ref(&phys);
-  physics_rho0(phys, &rho0);
-
-  newrho = 0.0;
-  weight = 0.0;
-  nweight = 0;
-
-  for (ia = 0; ia < 3; ia++) {
-    g[ia] = 0.0;
-  }
-
-  /* Check the surrounding sites that were linked to inode,
-   * and accumulate a (weighted) average distribution. */
-
-  for (p = 0; p < lb->model.nvel; p++) {
-    newf[p] = 0.0;
-  }
-
-  for (p = 1; p < lb->model.nvel; p++) {
-
-    indexn = cs_index(lb->cs, ib[X] + lb->model.cv[p][X],
-		              ib[Y] + lb->model.cv[p][Y],
-		              ib[Z] + lb->model.cv[p][Z]);
-
-    /* Site must have been fluid before position update */
-
-    colloids_info_map_old(cinfo, indexn, &pc);
-    if (pc) continue;
-    map_status(map, indexn, &status);
-    if (status == MAP_BOUNDARY) continue;
-
-    for (pdash = 0; pdash < lb->model.nvel; pdash++) {
-      lb_f(lb, indexn, pdash, 0, rtmp);
-      newf[pdash] += lb->model.wv[p]*rtmp[0];
-    }
-    weight += lb->model.wv[p];
-    nweight += 1;
-  }
-
-  /* Set new fluid distributions */
-
-  if (nweight == 0) {
-    /* Cannot interpolate: fall back to local replacement */
-    build_replace_fluid_local(cinfo, p_colloid, index, lb);
-  }
-  else {
-
-    weight = 1.0/weight;
-
-    for (p = 0; p < lb->model.nvel; p++) {
-      newf[p] *= weight;
-      lb_f_set(lb, index, p, 0, newf[p]);
-
-      /* ... and remember the new fluid properties */
-      newrho += newf[p];
-
-      /* minus sign is appropriate for upcoming ...
-	 ... correction to colloid momentum */
-
-      for (ia = 0; ia < 3; ia++) {
-	g[ia] -= newf[p]*lb->model.cv[p][ia];
-      }
-    }
-
-    /* Set corrections for excess mass and momentum. For the
-     * correction to the torque, we need the appropriate
-     * boundary vector rb */
-
-    p_colloid->deltam += (newrho - rho0);
-
-    for (ia = 0; ia < 3; ia++) {
-      p_colloid->f0[ia] += g[ia];
-      r0[ia] = p_colloid->s.r[ia] - 1.0*noffset[ia];
-      rtmp[ia] = 1.0*ib[ia];
-    }
-
-    cs_minimum_distance(lb->cs, r0, rtmp, rb);
-    cross_product(rb, g, rtmp);
-
-    for (ia = 0; ia < 3; ia++) {
-      p_colloid->t0[ia] += rtmp[ia];
-    }
   }
 
   return 0;
@@ -1660,4 +1320,192 @@ int build_conservation_phi(colloids_info_t * cinfo, field_t * phi,
   }
 
   return 0;
+}
+
+/*****************************************************************************
+ *
+ *  build_update_map_kernel
+ *
+ *****************************************************************************/
+
+__global__ void build_update_map_kernel(kernel_3d_t k3d, map_t * map, double c,
+                                        double h) {
+  int kindex = 0;
+
+  for_simt_parallel(kindex, k3d.kiterations, 1) {
+
+    int ic = kernel_3d_ic(&k3d, kindex);
+    int jc = kernel_3d_jc(&k3d, kindex);
+    int kc = kernel_3d_kc(&k3d, kindex);
+
+    int index  = cs_index(map->cs, ic, jc, kc);
+    int status = MAP_FLUID;
+
+    /* A check is required to ensure we do not, e.g., update boundary
+     * sites */
+
+    map_status(map, index, &status);
+
+    if (status == MAP_COLLOID) {
+      double wet[2] = {c, h};
+      map_status_set(map, index, MAP_FLUID);
+      map_data_set(map, index, wet);
+    }
+  }
+
+  return;
+}
+
+/*****************************************************************************
+ *
+ *  build_update_map_driver
+ *
+ *  We will set both wetting constants {c, h} equal zero.
+ *
+ *****************************************************************************/
+
+int build_update_map_driver(map_t * map) {
+
+  int ifail = 0;
+
+  const double c = 0.0;
+  const double h = 0.0;
+
+  assert(map);
+
+  if (map->ndata == 0) {
+    ifail = -1;
+  }
+  else {
+
+    int  nhalo = map->cs->param->nhalo;
+    dim3 nblk  = {};
+    dim3 ntpb  = {};
+
+    cs_limits_t lim = cs_limits_with_halo(map->cs->param->nlocal,  nhalo);
+    kernel_3d_t k3d = kernel_3d(map->cs, lim);
+
+    kernel_3d_launch_param(k3d.kiterations, &nblk, &ntpb);
+
+    tdpLaunchKernel(build_update_map_kernel, nblk, ntpb, 0, 0,
+                    k3d, map->target, c, h);
+
+    tdpAssert(tdpPeekAtLastError());
+    tdpAssert(tdpStreamSynchronize(0));
+  }
+
+  return ifail;
+}
+
+/*****************************************************************************
+ *
+ *  build_update_map_colloids_kernel
+ *
+ *  At each lattice site, we check all possible colloids. There must
+ *  be at most one particle at each site, or else something has
+ *  failed earlier in "collision avoidance". Hence thread safe.
+ *
+ *****************************************************************************/
+
+__global__ void build_update_map_colloids_kernel(kernel_3d_t       k3d,
+                                                 colloids_info_t * info,
+                                                 map_t *           map) {
+  int kindex = 0;
+
+  for_simt_parallel(kindex, k3d.kiterations, 1) {
+
+    int ic = kernel_3d_ic(&k3d, kindex);
+    int jc = kernel_3d_jc(&k3d, kindex);
+    int kc = kernel_3d_kc(&k3d, kindex);
+
+    /* Fluid site index and position (local) */
+    int    index = cs_index(map->cs, ic, jc, kc);
+    double r0[3] = {1.0 * ic, 1.0 * jc, 1.0 * kc};
+
+    /* All sites are by default to be fluid ... */
+
+    colloids_info_map_set(info, index, NULL);
+
+    /* Loop through all copies locally ... */
+
+    for (colloid_t * pc = info->headall; pc; pc = pc->nextall) {
+
+      double dr[3] = {0}; /* colloid centre -> site */
+
+      if (pc->s.bc != COLLOID_BC_BBL) continue;
+
+      /* Not a minimum image separation as we are potentially checking more
+       * than one copy and need to get the right pointer for this site ... */
+
+      dr[X] = r0[X] - (pc->s.r[X] - 1.0*map->cs->param->noffset[X]);
+      dr[Y] = r0[Y] - (pc->s.r[Y] - 1.0*map->cs->param->noffset[Y]);
+      dr[Z] = r0[Z] - (pc->s.r[Z] - 1.0*map->cs->param->noffset[Z]);
+
+      /* Are we inside? Set status and wetting constants */
+
+      if (colloid_r_inside(&pc->s, dr)) {
+
+        double wet[2] = {pc->s.c, pc->s.h}; /* Wetting c, h */
+
+        colloids_info_map_set(info, index, pc);
+        map_status_set(map, index, MAP_COLLOID);
+
+        /* Janus particles have h = h_0 cos (theta)
+         * with s[3] pointing to the 'north pole' */
+
+        if (pc->s.attr & COLLOID_ATTR_JANUS) {
+          double mod = util_vector_modulus(dr);
+          if (mod > 0.0) {
+            double cosine = util_vector_dot_product(pc->s.s, dr) / mod;
+            wet[1]        = cosine*wet[1]; /* h */
+          }
+        }
+
+        map_data_set(map, index, wet);
+
+        break; /* Can skip any further colloids in pc->nextall loop */
+      }
+    }
+  }
+
+  return;
+}
+
+/*****************************************************************************
+ *
+ *  build_update_map_colloids_driver
+ *
+ *****************************************************************************/
+
+int build_update_map_colloids_driver(colloids_info_t * info, map_t * map) {
+
+  int ifail = 0;
+
+  assert(map);
+
+  if (map->ndata == 0) {
+    ifail = -1;
+  }
+  else {
+
+    int  nhalo = map->cs->param->nhalo;
+    dim3 nblk  = {};
+    dim3 ntpb  = {};
+
+    cs_limits_t lim = cs_limits_with_halo(map->cs->param->nlocal, nhalo);
+    kernel_3d_t k3d = kernel_3d(map->cs, lim);
+
+    kernel_3d_launch_param(k3d.kiterations, &nblk, &ntpb);
+
+    /* Make sure the target copy is up-to-date ... */
+    info->target->headall = info->headall;
+
+    tdpLaunchKernel(build_update_map_colloids_kernel, nblk, ntpb, 0, 0, k3d,
+                    info->target, map->target);
+
+    tdpAssert(tdpPeekAtLastError());
+    tdpAssert(tdpStreamSynchronize(0));
+  }
+
+  return ifail;
 }

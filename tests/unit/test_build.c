@@ -245,9 +245,10 @@ static int test_build_update_map_sph(pe_t * pe, cs_t * cs, double a0,
                                      const double r0[3]) {
 
   int ifail    = 0;
+  int ndata    = 2;
   int ncell[3] = {8, 8, 8};
 
-  map_options_t opts = map_options_default();
+  map_options_t opts = map_options_ndata(ndata);
   map_t *       map  = NULL;
   colloid_t *   pc   = NULL;
 
@@ -330,7 +331,7 @@ static int test_build_update_map_sph_with_state(pe_t * pe, cs_t * cs, double a0,
   colloids_info_ntotal_set(cinfo);
   colloids_halo_state(cinfo);
 
-  build_update_map(cs, cinfo, map);
+  build_update_map(cinfo, map);
 
   {
     /* All ranks compute total and check */
@@ -358,9 +359,10 @@ static int test_build_update_map_sph_with_state(pe_t * pe, cs_t * cs, double a0,
 static int test_build_update_map_ell(pe_t * pe, cs_t * cs, const double abc[3],
                                      const double r0[3], const double q[4]) {
   int ifail    = 0;
+  int ndata    = 2;
   int ncell[3] = {8, 8, 8};
 
-  map_options_t opts = map_options_default();
+  map_options_t opts = map_options_ndata(ndata);
   map_t *       map  = NULL;
   colloid_t *   pc   = NULL;
 
@@ -445,7 +447,7 @@ static int test_build_update_map_ell_with_state(pe_t * pe, cs_t * cs, const doub
   colloids_info_ntotal_set(cinfo);
   colloids_halo_state(cinfo);
 
-  build_update_map(cs, cinfo, map);
+  build_update_map(cinfo, map);
 
   {
     /* All ranks compute total and check ... */
@@ -476,9 +478,10 @@ static int test_build_update_map_ell_with_state(pe_t * pe, cs_t * cs, const doub
 static int test_build_update_links_sph(pe_t * pe, cs_t * cs, double a0,
                                        const double r0[3], int nvel) {
   int ifail    = 0;
+  int ndata    = 2;
   int ncell[3] = {8, 8, 8};
 
-  map_options_t opts = map_options_default();
+  map_options_t opts = map_options_ndata(ndata);
   map_t *       map  = NULL;
   lb_model_t    lb   = {0};
 
@@ -586,7 +589,7 @@ static int test_build_update_links_sph_with_state(pe_t * pe, cs_t * cs, double a
   colloids_halo_state(cinfo);
   colloids_info_update_lists(cinfo);
 
-  build_update_map(cs, cinfo, map);
+  build_update_map(cinfo, map);
   build_update_links(cs, cinfo, NULL, map, &lb);
 
   {

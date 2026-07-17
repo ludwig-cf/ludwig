@@ -15,7 +15,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2010-2025 The University of Edinburgh
+ *  (c) 2010-2026 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -34,13 +34,13 @@
 #include "util_string.h"
 
 struct pe_s {
-  int unquiet;                       /* Print version information etc */
-  int mpi_rank;                      /* Rank in dup'd comm */
-  int mpi_size;                      /* Size of comm */
-  int nref;                          /* Retained reference count */
-  MPI_Comm parent_comm;              /* Reference to parent communicator */
-  MPI_Comm comm;                     /* Communicator for pe itself */
-  char subdirectory[FILENAME_MAX];
+  int      unquiet;     /* Print version information etc */
+  int      mpi_rank;    /* Rank in dup'd comm */
+  int      mpi_size;    /* Size of comm */
+  int      nref;        /* Retained reference count */
+  MPI_Comm parent_comm; /* Reference to parent communicator */
+  MPI_Comm comm;        /* Communicator for pe itself */
+  char     subdirectory[FILENAME_MAX];
 };
 
 /*****************************************************************************
@@ -55,6 +55,7 @@ __host__ int pe_create(MPI_Comm parent, pe_enum_t flag, pe_t ** ppe) {
 
   int ifail_local = 0;
   int ifail;
+
   pe_t * pe = NULL;
 
   assert(ppe);
@@ -67,7 +68,9 @@ __host__ int pe_create(MPI_Comm parent, pe_enum_t flag, pe_t ** ppe) {
   }
 
   pe = (pe_t *) calloc(1, sizeof(pe_t));
-  if (pe == NULL) ifail_local = 1;
+  if (pe == NULL) {
+    ifail_local = 1;
+  }
   MPI_Allreduce(&ifail_local, &ifail, 1, MPI_INT, MPI_SUM, parent);
 
   if (ifail != 0) {
@@ -76,9 +79,9 @@ __host__ int pe_create(MPI_Comm parent, pe_enum_t flag, pe_t ** ppe) {
   }
 
   assert(pe);
-  pe->unquiet = 0; /* Quiet */
+  pe->unquiet     = 0; /* Quiet */
   pe->parent_comm = parent;
-  pe->nref = 1;
+  pe->nref        = 1;
   strcpy(pe->subdirectory, "");
 
   MPI_Comm_dup(parent, &pe->comm);
@@ -159,11 +162,12 @@ __host__ int pe_message(pe_t * pe) {
 
   compiler_id(&compiler);
 
-  pe_info(pe,
-       "Welcome to: Ludwig v%d.%d.%d (%s version running on %d process%s)\n",
-       LUDWIG_MAJOR_VERSION, LUDWIG_MINOR_VERSION, LUDWIG_PATCH_VERSION,
-       (pe->mpi_size > 1) ? "MPI" : "Serial", pe->mpi_size,
-       (pe->mpi_size == 1) ? "" : "es");
+  pe_info(
+      pe,
+      "Welcome to: Ludwig v%d.%d.%d (%s version running on %d process%s)\n",
+      LUDWIG_MAJOR_VERSION, LUDWIG_MINOR_VERSION, LUDWIG_PATCH_VERSION,
+      (pe->mpi_size > 1) ? "MPI" : "Serial", pe->mpi_size,
+      (pe->mpi_size == 1) ? "" : "es");
 
   /* Git */
   pe_info(pe, "Git commit: %s\n\n", compiler.commit);
@@ -178,15 +182,34 @@ __host__ int pe_message(pe_t * pe) {
 
     printf("Compiler:\n");
     printf("  name:           %s %d.%d.%d\n", compiler.name, compiler.major,
-	   compiler.minor, compiler.patchlevel);
+           compiler.minor, compiler.patchlevel);
     printf("  version-string: %s\n", compiler.version);
     printf("  options:        %s\n", compiler.options);
     printf("\n");
     /* Compilation */
     assert(printf("Note assertions via standard C assert() are on.\n\n"));
 
-    /* Thread model */
-    tdpAssert( tdpThreadModelInfo(stdout) );
+    /* Thread model information depends on TARGET */
+
+    /* Not quite, if GPU and OpenMP; could try to separate host
+     * model and target model ... */
+#ifdef _OPENMP
+    /* Report OMP_NUM_THREADS, and hardware cores */
+    pe_info(pe, "Target thread model: %s\n", "OpenMP");
+    pe_info(pe, "OpenMP threads: %d; maximum number of threads %d\n",
+            omp_get_max_threads(), omp_get_num_procs());
+#endif
+#ifdef __NVCC__
+    pe_info(pe, "Target thread model: %s\n", "CUDA");
+    pe_info(pe, "Default threads per block: %d; max. threads per block: %d\n",
+            TARGET_MAX_THREADS_PER_BLOCK, 1024);
+#endif
+#ifdef __HIPCC__
+    pe_info(pe, "Target thread model: %s\n", "HIP");
+    pe_info(pe, "Default threads per block: %d; max. threads per block: %d\n",
+            TARGET_MAX_THREADS_PER_BLOCK, 1024);
+#endif
+
     printf("\n");
   }
 
@@ -323,7 +346,9 @@ __host__ int pe_warn(pe_t * pe, const char * fmt, ...) {
 __host__ int pe_subdirectory_set(pe_t * pe, const char * name) {
 
   assert(pe);
-  if (name != NULL) sprintf(pe->subdirectory, "%s/", name);
+  if (name != NULL) {
+    sprintf(pe->subdirectory, "%s/", name);
+  }
 
   return 0;
 }
@@ -422,15 +447,16 @@ __host__ int pe_mpi_size(pe_t * pe) {
 __host__ int pe_time(char * str, int bufsiz) {
 
   static const char * strdefault = "Unavailable\n";
-  time_t now = time(NULL);
-  int ierr = -1;
+
+  time_t now  = time(NULL);
+  int    ierr = -1;
 
   assert(str);
   strncat(str, strdefault, bufsiz - 1);
 
   if (now != (time_t) -1) {
-    char buf[BUFSIZ] = {0};
-    char * c_time = ctime_r(&now, buf);
+    char   buf[BUFSIZ] = {0};
+    char * c_time      = ctime_r(&now, buf);
     if (c_time != NULL) {
       strncpy(str, buf, util_strnlen(buf, bufsiz - 1));
       ierr = 0;

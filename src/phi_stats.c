@@ -18,7 +18,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2008-2025 The University of Edinburgh
+ *  (c) 2008-2026 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -114,7 +114,7 @@ int stats_field_info(field_t * field, map_t * map) {
     q = q5; /* symmetric, traceless Q_ab */
     break;
   default:
-    q = q1; /* scalar (possiblity more than one...) */
+    q = q1; /* scalar (possibility more than one...) */
   }
 
   if (field->opts.istat == FIELD_STAT_FLOAT) {
@@ -302,10 +302,10 @@ __global__ void stats_field_q_kernel(kernel_3d_t k3d, field_t * field,
     __threadfence();
     atomicExch(&sum->qsum.lock, 0);
 
-    tdpAtomicAddDouble(&sum->qvar, bsum.qvar);
-    tdpAtomicMinDouble(&sum->qmin, bsum.qmin);
-    tdpAtomicMaxDouble(&sum->qmax, bsum.qmax);
-    tdpAtomicAddDouble(&sum->vol,  bsum.vol);
+    atomicAdd(&sum->qvar, bsum.qvar);
+    atomicMin(&sum->qmin, bsum.qmin);
+    atomicMax(&sum->qmax, bsum.qmax);
+    atomicAdd(&sum->vol,  bsum.vol);
   }
 
   return;
@@ -643,12 +643,12 @@ __global__ void field_stats_float_kernel(kernel_3d_t k3d, field_t * field,
 
     /* Accumulate to final result */
 
-    tdpAtomicAddDouble(sum + 0, bvol);
-    tdpAtomicAddDouble(sum + 1, bsum);
-    tdpAtomicAddDouble(sum + 2, bvar);
+    atomicAdd(sum + 0, bvol);
+    atomicAdd(sum + 1, bsum);
+    atomicAdd(sum + 2, bvar);
 
-    tdpAtomicMinDouble(sum + 3, bmin);
-    tdpAtomicMaxDouble(sum + 4, bmax);
+    atomicMin(sum + 3, bmin);
+    atomicMax(sum + 4, bmax);
   }
 
   return;
