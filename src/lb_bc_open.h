@@ -45,7 +45,9 @@ struct lb_bc_open_vtable_s {
 /* Implementations */
 
 typedef enum lb_bc_open_enum {LB_BC_INVALID,
+			      LB_BC_INFLOW_U,
                               LB_BC_INFLOW_RHOU,
+			      LB_BC_OUTFLOW_P,
 			      LB_BC_OUTFLOW_RHOU,
 			      LB_BC_MAX} lb_bc_open_enum_t;
 

@@ -13,9 +13,9 @@
  *  Edinburgh Parallel Computing Centre
  *
  *
- *  (c) 2021-2022 The University of Edinburgh
+ *  (c) 2021-2026 The University of Edinburgh
  *
- *  Contibuting authors:
+ *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *
  *****************************************************************************/
@@ -28,8 +28,12 @@
 
 /* Available implementations */
 
+#include "lb_bc_inflow_u.h"
 #include "lb_bc_inflow_rhou.h"
+
+#include "lb_bc_outflow_p.h"
 #include "lb_bc_outflow_rhou.h"
+
 
 /*****************************************************************************
  *
@@ -127,6 +131,30 @@ __host__ int lb_bc_open_rt(pe_t * pe, rt_t * rt, cs_t * cs, lb_t * lb,
       pe_info(pe, "Inflow flow value u0:    %14.7e %14.7e %14.7e\n",
 	      u0[X], u0[Y], u0[Z]);
     }
+    else if (strncmp(intype, "u", BUFSIZ) == 0) {
+      /* Give me a u inflow */
+      lb_bc_inflow_u_t * u = NULL;
+      lb_bc_inflow_opts_t options = {.nvel = lb->model.nvel,
+	                             .flow = {flow[X], flow[Y], flow[Z]},
+	                             .u0   = {u0[X],u0[Y],u0[Z]}};
+
+      /* Check options are valid */
+      if (lb_bc_inflow_opts_valid(options) == 0) {
+	/* Print them out */
+	pe_fatal(pe, "Please check inflow options and try again\n.");
+      }
+
+      lb_bc_inflow_u_create(pe, cs, &options, &u);
+      *inflow = (lb_bc_open_t *) u;
+
+      /* Might be nice to delegate this elsewhere ... */
+      pe_info(pe, "Inflow type:              %s\n", "Velocity");
+      pe_info(pe, "Inflow flow profile:      %s\n", "Poiseuille");
+      pe_info(pe, "Inflow flow direction:    %d %d %d\n",
+	      flow[X], flow[Y], flow[Z]);
+      pe_info(pe, "Inflow flow maximum u0:  %14.7e %14.7e %14.7e\n",
+	      u0[X], u0[Y], u0[Z]);
+    }
     else {
       /* Not recognised */
       pe_fatal(pe, "lb_bc_inflow_type not recognised\n");
@@ -161,6 +189,25 @@ __host__ int lb_bc_open_rt(pe_t * pe, rt_t * rt, cs_t * cs, lb_t * lb,
       *outflow = (lb_bc_open_t *) rhou;
 
       pe_info(pe, "Outflow type:             %s\n", "rhou");
+      pe_info(pe, "Outflow flow direction:   %d %d %d\n",
+	      flow[X], flow[Y], flow[Z]);
+      pe_info(pe, "Outflow flow rho0:       %14.7e\n", rho0);
+    }
+    else if (strncmp(outtype, "pressure", BUFSIZ) == 0) {
+      lb_bc_outflow_p_t * p = NULL;
+      lb_bc_outflow_opts_t options = {.nvel = lb->model.nvel,
+	                              .flow = {flow[X], flow[Y], flow[Z]},
+	                              .rho0 = rho0};
+      /* Check options valid */
+      if (lb_bc_outflow_opts_valid(options) == 0) {
+	/* Print out? */
+	pe_fatal(pe, "Please check outflow options and try again\n");
+      }
+
+      lb_bc_outflow_p_create(pe, cs, &options, &p);
+      *outflow = (lb_bc_open_t *) p;
+
+      pe_info(pe, "Outflow type:             %s\n", "Pressure (density)");
       pe_info(pe, "Outflow flow direction:   %d %d %d\n",
 	      flow[X], flow[Y], flow[Z]);
       pe_info(pe, "Outflow flow rho0:       %14.7e\n", rho0);
