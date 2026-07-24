@@ -97,6 +97,7 @@ int lb_data_create(pe_t * pe, cs_t * cs, const lb_data_options_t * options,
   /* ... which should really be rationalised. */
   obj->opts = *options;
   use_managed_ = options->use_managed_memory;
+  // use_managed_ = 1;
 
   lb_model_create(obj->nvel, &obj->model);
 
@@ -525,6 +526,15 @@ int lb_memcpy(lb_t * lb, tdpMemcpyKind flag) {
   else {
     if (use_managed_) {
       size_t nsz = (size_t) lb->model.nvel*lb->nsite*lb->ndist*sizeof(double);
+
+      // printf("[lb_memcpy managed] flag=%d lb->f=%p lb->target->f=%p "
+	    //    "lb->fprime=%p lb->target->fprime=%p lb->f[0]=%g\n",
+	    //    (int) flag, (void *) lb->f, (void *) lb->target->f,
+	    //    (void *) lb->fprime, (void *) lb->target->fprime, lb->f[0]);
+
+      lb->f      = lb->target->f;
+      lb->fprime = lb->target->fprime;
+      
       if (flag == tdpMemcpyDeviceToHost) {
 #ifdef __NVCC__
         /* Prefetch pages to CPU before host reads, then sync */
