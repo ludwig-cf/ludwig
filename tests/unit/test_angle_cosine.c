@@ -372,6 +372,7 @@ int test_create_trimer_with_state(colloids_info_t * cinfo, double a, double r1[3
     pc[0]->s.ah      = a;
     pc[0]->s.nbonds  = 1;
     pc[0]->s.bond[0] = 2;
+    pc[0]->s.nangles = 0;
   }
 
   create_dummy_state(&state2, 2, a, r2);
@@ -392,6 +393,7 @@ int test_create_trimer_with_state(colloids_info_t * cinfo, double a, double r1[3
     pc[2]->s.ah      = a;
     pc[2]->s.nbonds  = 1;
     pc[2]->s.bond[0] = 2;
+    pc[2]->s.nangles = 0;
   }
 
   colloids_info_ntotal_set(cinfo);
