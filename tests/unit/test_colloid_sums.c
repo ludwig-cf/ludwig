@@ -31,8 +31,8 @@ static int dim_; /* Current direction */
 static int test_colloid_sums_1d(pe_t * pe);
 static int test_colloid_sums_reference_set(colloid_t * cref, int seed);
 static int test_colloid_sums_copy(const colloid_t * ref, colloid_t * pc);
-static int test_colloid_sums_edge(pe_t * pe, cs_t * cs, int ncell[3],
-				  const double r0[3]);
+//static int test_colloid_sums_edge(pe_t * pe, cs_t * cs, int ncell[3],
+//				  const double r0[3]);
 static int test_colloid_sums_edge_with_state(pe_t * pe, cs_t * cs, int ncell[3],
 				  const double r0[3]);
 static int test_colloid_sums_move(pe_t * pe);
@@ -141,85 +141,85 @@ static int test_colloid_sums_1d(pe_t * pe) {
  *
  *****************************************************************************/
 
-static int test_colloid_sums_edge(pe_t * pe, cs_t * cs, int ncell[3],
-				  const double r0[3]) {
-  int index;
-  int ic, jc, kc;
-
-  colloid_t * pc = NULL;
-  colloid_t   cref1;   /* All ranks get the same reference colloids */
-  colloid_t   cref2;
-  colloid_sum_t * halosum = NULL;
-
-  colloid_options_t opts  = colloid_options_ncell(ncell);
-  colloids_info_t * cinfo = NULL;
-
-  test_colloid_sums_reference_set(&cref1, 1);
-  test_colloid_sums_reference_set(&cref2, 2);
-
-  colloids_info_create(pe, cs, &opts, &cinfo);
-  assert(cinfo);
-  colloid_sums_create(cinfo, &halosum);
-  assert(halosum);
-
-  /* This must work in parallel to initialise only a single particle
-   * which only gets swapped in the x-direction. */
-
-  index = 1;
-  colloids_info_add_local(cinfo, index, r0, 0.0, &pc);
-  if (pc) {
-    test_colloid_sums_copy(&cref1, pc);
-  }
-
-  index = 2;
-  colloids_info_add_local(cinfo, index, r0, 0.0, &pc);
-  if (pc) {
-    test_colloid_sums_copy(&cref2, pc);
-  }
-
-  MPI_Barrier(MPI_COMM_WORLD);
-  colloids_halo_state(cinfo);
-  colloid_sums_1d(halosum, X, COLLOID_SUM_STRUCTURE);
-  colloid_sums_1d(halosum, X, COLLOID_SUM_DYNAMICS);
-  colloid_sums_1d(halosum, X, COLLOID_SUM_ACTIVE);
-
-  if (dim_ == Y || dim_ == Z) {
-    colloid_sums_1d(halosum, Y, COLLOID_SUM_STRUCTURE);
-    colloid_sums_1d(halosum, Y, COLLOID_SUM_DYNAMICS);
-    colloid_sums_1d(halosum, Y, COLLOID_SUM_ACTIVE);
-  }
-
-  if (dim_ == Z) {
-    colloid_sums_1d(halosum, Z, COLLOID_SUM_STRUCTURE);
-    colloid_sums_1d(halosum, Z, COLLOID_SUM_DYNAMICS);
-    colloid_sums_1d(halosum, Z, COLLOID_SUM_ACTIVE);
-  }
-
-  /* Everywhere check colloid index = 1 has the correct sum */
-
-  for (ic = 0; ic <= ncell[X] + 1; ic++) {
-    for (jc = 0; jc <= ncell[Y] + 1; jc++) {
-      for (kc = 0; kc <= ncell[Z] + 1; kc++) {
-
-	colloids_info_cell_list_head(cinfo, ic, jc, kc, &pc);
-
-	if (pc) {
-	  /* Check the totals */
-	  if (pc->s.index == 1) test_colloid_sums_assert(&cref1, pc);
-	  if (pc->s.index == 2) test_colloid_sums_assert(&cref2, pc);
-	}
-	/* Next cell */
-      }
-    }
-  }
-
-  /* Finish */
-
-  colloid_sums_free(halosum);
-  colloids_info_free(&cinfo);
-
-  return 0;
-}
+//static int test_colloid_sums_edge(pe_t * pe, cs_t * cs, int ncell[3],
+//				  const double r0[3]) {
+//  int index;
+//  int ic, jc, kc;
+//
+//  colloid_t * pc = NULL;
+//  colloid_t   cref1;   /* All ranks get the same reference colloids */
+//  colloid_t   cref2;
+//  colloid_sum_t * halosum = NULL;
+//
+//  colloid_options_t opts  = colloid_options_ncell(ncell);
+//  colloids_info_t * cinfo = NULL;
+//
+//  test_colloid_sums_reference_set(&cref1, 1);
+//  test_colloid_sums_reference_set(&cref2, 2);
+//
+//  colloids_info_create(pe, cs, &opts, &cinfo);
+//  assert(cinfo);
+//  colloid_sums_create(cinfo, &halosum);
+//  assert(halosum);
+//
+//  /* This must work in parallel to initialise only a single particle
+//   * which only gets swapped in the x-direction. */
+//
+//  index = 1;
+//  colloids_info_add_local(cinfo, index, r0, 0.0, &pc);
+//  if (pc) {
+//    test_colloid_sums_copy(&cref1, pc);
+//  }
+//
+//  index = 2;
+//  colloids_info_add_local(cinfo, index, r0, 0.0, &pc);
+//  if (pc) {
+//    test_colloid_sums_copy(&cref2, pc);
+//  }
+//
+//  MPI_Barrier(MPI_COMM_WORLD);
+//  colloids_halo_state(cinfo);
+//  colloid_sums_1d(halosum, X, COLLOID_SUM_STRUCTURE);
+//  colloid_sums_1d(halosum, X, COLLOID_SUM_DYNAMICS);
+//  colloid_sums_1d(halosum, X, COLLOID_SUM_ACTIVE);
+//
+//  if (dim_ == Y || dim_ == Z) {
+//    colloid_sums_1d(halosum, Y, COLLOID_SUM_STRUCTURE);
+//    colloid_sums_1d(halosum, Y, COLLOID_SUM_DYNAMICS);
+//    colloid_sums_1d(halosum, Y, COLLOID_SUM_ACTIVE);
+//  }
+//
+//  if (dim_ == Z) {
+//    colloid_sums_1d(halosum, Z, COLLOID_SUM_STRUCTURE);
+//    colloid_sums_1d(halosum, Z, COLLOID_SUM_DYNAMICS);
+//    colloid_sums_1d(halosum, Z, COLLOID_SUM_ACTIVE);
+//  }
+//
+//  /* Everywhere check colloid index = 1 has the correct sum */
+//
+//  for (ic = 0; ic <= ncell[X] + 1; ic++) {
+//    for (jc = 0; jc <= ncell[Y] + 1; jc++) {
+//      for (kc = 0; kc <= ncell[Z] + 1; kc++) {
+//
+//	colloids_info_cell_list_head(cinfo, ic, jc, kc, &pc);
+//
+//	if (pc) {
+//	  /* Check the totals */
+//	  if (pc->s.index == 1) test_colloid_sums_assert(&cref1, pc);
+//	  if (pc->s.index == 2) test_colloid_sums_assert(&cref2, pc);
+//	}
+//	/* Next cell */
+//      }
+//    }
+//  }
+//
+//  /* Finish */
+//
+//  colloid_sums_free(halosum);
+//  colloids_info_free(&cinfo);
+//
+//  return 0;
+//}
 
 /*****************************************************************************
  *

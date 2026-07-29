@@ -36,8 +36,6 @@ int test_pair_config1(colloids_info_t * cinfo, interact_t * interact,
 int test_pair_config1_with_state(colloids_info_t * cinfo, interact_t * interact,
 		      pair_lj_cut_t * lj);
 
-void print_colloid_data(colloid_t *pc1);
-
 /*****************************************************************************
  *
  *  test_pair_lj_cut_suite
@@ -300,8 +298,6 @@ int test_pair_config1_with_state(colloids_info_t * cinfo,
 
   colloid_t * pc1 = NULL;
   colloid_t * pc2 = NULL;
-  colloid_t * pc3 = NULL;
-  colloid_t * pc4 = NULL;
 
   assert(cinfo);
   assert(interact);
@@ -318,7 +314,6 @@ int test_pair_config1_with_state(colloids_info_t * cinfo,
   create_dummy_state(&state1, 1, a0, r1);
 
   colloids_info_add_local_with_state(cinfo, &state1, &pc1);
-  //print_colloid_data(pc1);
   if (pc1) {
     pc1->s.a0 = a0;
     pc1->s.ah = ah;
@@ -331,7 +326,6 @@ int test_pair_config1_with_state(colloids_info_t * cinfo,
   create_dummy_state(&state2, 2, a0, r2);
 
   colloids_info_add_local_with_state(cinfo, &state2, &pc2);
-  //print_colloid_data(pc2);
   if (pc2) {
     pc2->s.a0 = a0;
     pc2->s.ah = ah;
@@ -363,7 +357,6 @@ int test_pair_config1_with_state(colloids_info_t * cinfo,
   MPI_Allreduce(stats_local, stats, INTERACT_STAT_MAX, MPI_DOUBLE, MPI_SUM,
 		comm);
 
-  //printf("stats - v %f %f diff %f epsilon %f\n", stats[INTERACT_STAT_VLOCAL], v, fabs(stats[INTERACT_STAT_VLOCAL] - v), FLT_EPSILON);
   assert(fabs(stats[INTERACT_STAT_VLOCAL] - v) < FLT_EPSILON);
 
   MPI_Allreduce(stats_local, stats, INTERACT_STAT_MAX, MPI_DOUBLE, MPI_MIN,
@@ -373,32 +366,4 @@ int test_pair_config1_with_state(colloids_info_t * cinfo,
   assert(fabs(stats[INTERACT_STAT_HMINLOCAL] - dh) < FLT_EPSILON);
 
   return 0;
-}
-
-// Print the colloid state and other properties.
-void print_colloid_data(colloid_t *pc1) {
-
-  //assert(pc1);
-
-  printf("Colloid index: %d\n", pc1->s.index);
-  printf("Colloid a0: %f\n", pc1->s.a0);
-  printf("Colloid ah: %f\n", pc1->s.ah);
-  printf("Colloid position: (%f, %f, %f)\n", pc1->s.r[0], pc1->s.r[1], pc1->s.r[2]);
-  //printf("Colloid force: (%f, %f, %f)\n", pc1->force[0], pc1->force[1], pc1->force[2]);
-  //printf("Colloid torque: (%f, %f, %f)\n", pc1->torque[0], pc1->torque[1], pc1->torque[2]);
-  //printf("Colloid f0: (%f, %f, %f)\n", pc1->f0[0], pc1->f0[1], pc1->f0[2]);
-  //printf("Colloid t0: (%f, %f, %f)\n", pc1->t0[0], pc1->t0[1], pc1->t0[2]);
-  //printf("Colloid cbar: (%f, %f, %f)\n", pc1->cbar[0], pc1->cbar[1], pc1->cbar[2]);
-  //printf("Colloid rxcbar: (%f, %f, %f)\n", pc1->rxcbar[0], pc1->rxcbar[1], pc1->rxcbar[2]);
-  //printf("Colloid deltam: %f\n", pc1->deltam);
-  //printf("Colloid sumw: %f\n", pc1->sumw);
-  //printf("Colloid sump: %f\n", pc1->sump);
-  //printf("Colloid dq: (%f, %f)\n", pc1->dq[0], pc1->dq[1]);
-  //printf("Colloid zeta: \n");
-  //for (int i = 0; i < 21; i++) {
-  //  printf("%d %f\n", i, pc1->zeta[i]);
-  //}
-  //printf("\n");
-
-  return;
 }

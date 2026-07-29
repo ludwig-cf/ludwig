@@ -83,7 +83,6 @@ static int colloids_init_random_set(colloids_info_t * cinfo, int npart,
 				    const colloid_state_t * s,  double amax) {
   int n;
   int periodic[3];
-  double r0[3];
   double lmin[3];
   double ltot[3];
   double lex[3];
