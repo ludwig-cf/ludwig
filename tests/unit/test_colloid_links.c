@@ -389,6 +389,12 @@ int test_links_arrays_accessors(pe_t * pe) {
   cs_init(cs);
   colloids_info_create(pe, cs, &opts, &cinfo);
   colloids_info_add_local(cinfo, 1, r, 1.0, &pc);
+
+  // If the colloid doesn't exist on this rank don't bother with the test
+  if (!pc) {
+    return 0;
+  }
+
   pc->lnk = colloid_link_allocate();
   pc->lnk->next = NULL;
   
@@ -444,6 +450,12 @@ int test_links_arrays_accessors_with_state(pe_t * pe) {
   colloids_info_create(pe, cs, &opts, &cinfo);
   create_dummy_state(&state, 1, 1.0, r);
   colloids_info_add_local_with_state(cinfo, &state, &pc);
+  
+  // If the colloid doesn't exist on this rank don't bother with the test
+  if (!pc) {
+    return 0;
+  }
+
   pc->lnk = colloid_link_allocate();
   pc->lnk->next = NULL;
   
