@@ -264,6 +264,7 @@ int colloids_rt_init_few(pe_t * pe, rt_t * rt, colloids_info_t * cinfo,
     assert(state1 != NULL);
 
     colloids_rt_state_stub(pe, rt, cinfo, "colloid_one", state1);
+    state1->index = 1;
     colloids_info_add_local_with_state(cinfo, state1, &pc);
     free(state1);
   }
@@ -273,6 +274,7 @@ int colloids_rt_init_few(pe_t * pe, rt_t * rt, colloids_info_t * cinfo,
     state2 = (colloid_state_t *) calloc(1, sizeof(colloid_state_t));
     assert(state2 != NULL);
     colloids_rt_state_stub(pe, rt, cinfo, "colloid_two", state2);
+    state2->index = 2;
     colloids_info_add_local_with_state(cinfo, state2, &pc);
     free(state2);
   }
@@ -282,6 +284,7 @@ int colloids_rt_init_few(pe_t * pe, rt_t * rt, colloids_info_t * cinfo,
     state3 = (colloid_state_t *) calloc(1, sizeof(colloid_state_t));
     assert(state3 != NULL);
     colloids_rt_state_stub(pe, rt, cinfo, "colloid_three", state3);
+    state3->index = 3;
     colloids_info_add_local_with_state(cinfo, state3, &pc);
     free(state3);
   }
