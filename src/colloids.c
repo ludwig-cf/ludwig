@@ -284,7 +284,6 @@ int colloids_info_recreate(const colloid_options_t * newopts,
   /* Need to copy all colloid state across */
 
   for ( ; pc; pc = pc->nextlocal) {
-    //colloids_info_add_local(newinfo, pc->s.index, pc->s.r, pc->s.a0, &pcnew);
     colloids_info_add_local_with_state(newinfo, &pc->s, &pcnew);
     if (pcnew == NULL) {
       /* We have dropped a colloid, probably at the new cell list boundary;
@@ -292,7 +291,6 @@ int colloids_info_recreate(const colloid_options_t * newopts,
       pc->s.r[X] += DBL_EPSILON*pc->s.r[X];
       pc->s.r[Y] += DBL_EPSILON*pc->s.r[Y];
       pc->s.r[Z] += DBL_EPSILON*pc->s.r[Z];
-      //colloids_info_add_local(newinfo, pc->s.index, pc->s.r, pc->s.a0, &pcnew);
       colloids_info_add_local_with_state(newinfo, &pc->s, &pcnew);
     }
     /* If we've still failed, then we need to stop under control */
