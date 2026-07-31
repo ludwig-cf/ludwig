@@ -217,7 +217,6 @@ int test_pair_config1(colloids_info_t * cinfo,
   r1[Z] = 0.5*ltot[Z];
 
   colloids_info_add_local(cinfo, 1, r1, a0, &pc1);
-  //print_colloid_data(pc1);
   if (pc1) {
     pc1->s.a0 = a0;
     pc1->s.ah = ah;
@@ -228,7 +227,6 @@ int test_pair_config1(colloids_info_t * cinfo,
   r2[Z] = r1[Z];
 
   colloids_info_add_local(cinfo, 2, r2, a0, &pc2);
-  //print_colloid_data(pc2);
   if (pc2) {
     pc2->s.a0 = a0;
     pc2->s.ah = ah;
@@ -260,7 +258,6 @@ int test_pair_config1(colloids_info_t * cinfo,
   MPI_Allreduce(stats_local, stats, INTERACT_STAT_MAX, MPI_DOUBLE, MPI_SUM,
 		comm);
 
-  //printf("stats - v %f %f diff %f epsilon %f\n", stats[INTERACT_STAT_VLOCAL], v, fabs(stats[INTERACT_STAT_VLOCAL] - v), FLT_EPSILON);
   assert(fabs(stats[INTERACT_STAT_VLOCAL] - v) < FLT_EPSILON);
 
   MPI_Allreduce(stats_local, stats, INTERACT_STAT_MAX, MPI_DOUBLE, MPI_MIN,

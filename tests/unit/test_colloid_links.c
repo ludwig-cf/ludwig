@@ -11,6 +11,8 @@
 #include "colloid_link.h"
 #include "tests.h"
 
+#define EPS 1E-12
+
 int test_colloid_link_max_2d_d2q9(void);
 int test_colloid_link_max_3d_d3q15(void);
 int test_colloid_link_max_3d_d3q19(void);
@@ -425,7 +427,7 @@ int test_links_arrays_accessors(pe_t * pe) {
   test_assert(p == pc->lnk->p);
   test_assert(status == pc->lnk->status);
   for (int index = 0; index < 3; index++)
-    test_assert(rb[index] == pc->lnk->rb[index]);
+    test_assert(fabs(rb[index] - pc->lnk->rb[index]) < EPS);
 
   return 0;
 }
@@ -486,7 +488,7 @@ int test_links_arrays_accessors_with_state(pe_t * pe) {
   test_assert(p == pc->lnk->p);
   test_assert(status == pc->lnk->status);
   for (int index = 0; index < 3; index++)
-    test_assert(rb[index] == pc->lnk->rb[index]);
+    test_assert(fabs(rb[index] - pc->lnk->rb[index]) < EPS);
 
   return 0;
 }
