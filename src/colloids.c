@@ -1922,30 +1922,23 @@ void colloids_array_resize(colloids_arrays_t * colloids_array, size_t new_size) 
  *****************************************************************************/
 void set_colloids_array(colloids_info_t * cinfo, int n_colloids) {
     colloid_t * colloid;
-    printf("setting colloids array\n");
     colloids_info_all_head(cinfo, &colloid);
     int i = 0;
     for (; colloid; colloid = colloid->nextall) {
-	printf("here 1 i %d\n", i);
         if (cinfo->colloid_array.colloids) {
-	  printf("here 2\n");
           if (i >= cinfo->colloid_array.max_colloids) {
             printf("Colloids array overflow: i %d max %d n_colloids %d\n",
                      i, cinfo->colloid_array.max_colloids, n_colloids);
           }
-	  printf("here 3\n");
           assert(i < cinfo->colloid_array.max_colloids);
           if (i < cinfo->colloid_array.max_colloids) {
             cinfo->colloid_array.colloids[i] = colloid;
           }
-	  printf("here 4\n");
           i++;
         }
     }
-    printf("here 5\n");
 
     cinfo->colloid_array.n_colloids = i;
-    printf("done setting colloids array\n");
 }
 
 /*****************************************************************************
@@ -1962,10 +1955,8 @@ void update_colloids_array(colloids_info_t * cinfo) {
   colloids_info_n_all(cinfo, &n_total);
   if (n_total > cinfo->colloid_array.max_colloids) {
     if (cinfo->colloid_array.max_colloids > 0) {
-      printf("would need to resize colloids array: n_total %d max %d\n", n_total, cinfo->colloid_array.max_colloids);
       colloids_array_resize(&cinfo->colloid_array, n_total);
     } else {
-      printf("Would need to create colloids array: n_total %d max %d\n", n_total);
       colloids_array_create(&cinfo->colloid_array, n_total);
     }
   }

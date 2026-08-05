@@ -462,14 +462,27 @@ int test_colloids_array(pe_t * pe, cs_t * cs) {
   colloid_state_t state;
   colloid_t *pc = NULL;
 
+  double r[3];
+  double lmin[3];
+  double delta = FLT_EPSILON;
+  int noffset[3];
+  int index = 1;
+
+  cs_nlocal_offset(cs, noffset);
+  cs_lmin(cs, lmin);
+
+  r[X] = lmin[X] + 1.0*noffset[X] + 0.5*delta;
+  r[Y] = lmin[Y] + 1.0*noffset[Y] + 0.5*delta;
+  r[Z] = lmin[Z] + 1.0*noffset[Z] + 0.5*delta;
+
   colloid_options_t options = colloid_options_default();
 
   options.have_colloids = 1;
-  colloids_info_create(pe, cs, & options, cinfo)
+  colloids_info_create(pe, cs, &options, &cinfo);
 
-  create_dummy_state(&state, index, a0, r);
+  create_dummy_state(&state, index, 0.0, r);
 
-  colloids_info_add_local_with_state(cinfo, &state, &pc)
+  colloids_info_add_local_with_state(cinfo, &state, &pc);
   
   update_colloids_array(cinfo);
   return 0;
