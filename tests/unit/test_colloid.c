@@ -20,6 +20,7 @@
 
 #include "mpi.h"
 #include "colloid.h"
+#include "colloids.h"
 #include "util.h"
 #include "util_fopen.h"
 #include "tests.h"
@@ -36,6 +37,8 @@ int test_colloid_state_mass(void);
 int test_colloid_type_check(void);
 int test_colloid_principal_radius(void);
 int test_colloid_r_inside(void);
+ 
+int test_create_links_arrays(void);
 
 /*****************************************************************************
  *
@@ -65,8 +68,8 @@ int test_colloid_suite(void) {
 			  {37.0, 38.0, 39.0, 40.0}, {41.0, 42.0, 43.0, 44.0},
 			  {45.0, 46.0, 47.0}};
 
-  const char * tmp_ascii = "/tmp/temp-test-io-file-ascii";
-  const char * tmp_binary = "/tmp/temp-test-io-file-binary";
+  const char * tmp_ascii = "temp-test-io-file-ascii";
+  const char * tmp_binary = "temp-test-io-file-binary";
 
   assert(tmp_ascii);
   assert(tmp_binary);
@@ -91,6 +94,7 @@ int test_colloid_suite(void) {
   test_colloid_type_check();
   test_colloid_principal_radius();
   test_colloid_r_inside();
+  test_create_links_arrays();
 
   if (rank == 0) printf("PASS     ./unit/test_colloid\n");
 
@@ -474,3 +478,110 @@ int test_colloid_r_inside(void) {
 
   return ifail;
 }
+
+/*****************************************************************************
+ *
+ *  test_links_allocated
+ *
+ *****************************************************************************/
+
+ void test_links_allocated(colloid_t * pc, int nlinks) {
+    test_assert(pc->links != NULL);
+    test_assert(pc->links->max_links == nlinks);
+    
+    pc->links->i[0] = 1;
+    pc->links->j[0] = 1;
+    pc->links->p[0] = 1;
+    pc->links->status[0] = 1;
+    for (int j = 0; j < 3; j++) 
+      pc->links->rb[j][0] = 1;
+    
+    pc->links->i[nlinks-1] = 1;
+    pc->links->j[nlinks-1] = 1;
+    pc->links->p[nlinks-1] = 1;
+    pc->links->status[nlinks-1] = 1;
+    for (int j = 0; j < 3; j++) 
+      pc->links->rb[j][nlinks-1] = 1;
+ }
+
+/*****************************************************************************
+ *
+ *  test_links_array
+ *
+ *****************************************************************************/
+
+int test_links_array(pe_t *pe, double a0) {
+
+  cs_t * cs = NULL;
+  colloids_info_t * cinfo = NULL;
+  colloid_options_t opts = colloid_options_default();
+  colloid_t * pc;
+  double r[3] = {0.5, 0.5, 0.5};
+
+  cs_create(pe, &cs);
+  cs_init(cs);
+  colloids_info_create(pe, cs, &opts, &cinfo);
+  colloids_info_add_local(cinfo, 1, r, a0, &pc);
+
+  // We've only initialised one colloid, so if a rank doesn't have a colloid don't do the test.
+  if (pc) {
+    int nlinks = colloid_link_max_3d(a0, cinfo->options.nvel);
+  
+    test_links_allocated(pc, nlinks);
+
+    colloid_free_links_arrays(pc);
+  }
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  test_links_array_with_state
+ *
+ *****************************************************************************/
+
+int test_links_array_with_state(pe_t *pe, double a0) {
+
+  cs_t * cs = NULL;
+  colloids_info_t * cinfo = NULL;
+  colloid_options_t opts = colloid_options_default();
+  colloid_t * pc;
+  colloid_state_t state;
+  double r[3] = {0.5, 0.5, 0.5};
+
+  cs_create(pe, &cs);
+  cs_init(cs);
+  colloids_info_create(pe, cs, &opts, &cinfo);
+  create_dummy_state(&state, 1, a0, r);
+  colloids_info_add_local_with_state(cinfo, &state, &pc);
+
+  // We've only initialised one colloid, so if a rank doesn't have a colloid don't do the test.
+  if (pc) {
+    int nlinks = colloid_link_max_3d(a0, cinfo->options.nvel);
+  
+    test_links_allocated(pc, nlinks);
+
+    colloid_free_links_arrays(pc);
+  }
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  test_create_links_arrays_suite
+ *
+ *****************************************************************************/
+
+ int test_create_links_arrays(void) {
+   pe_t * pe = NULL;
+   pe_create(MPI_COMM_WORLD, PE_QUIET, &pe);
+
+   test_links_array(pe, 0.0);
+   test_links_array(pe, 2.3);
+   test_links_array_with_state(pe, 0.0);
+   test_links_array_with_state(pe, 2.3);
+
+   return 0;
+ }

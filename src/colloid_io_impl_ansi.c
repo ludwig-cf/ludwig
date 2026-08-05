@@ -414,8 +414,7 @@ int colloid_io_ansi_read_ascii(colloid_io_ansi_t * io, FILE * fp) {
     ifail = colloid_state_read_ascii(&s, fp);
     if (ifail != 0) goto err;
 
-    colloids_info_add_local(io->info, s.index, s.r, &pc);
-    if (pc) pc->s = s;
+    colloids_info_add_local_with_state(io->info, &s, &pc);
   }
 
 err:
@@ -449,8 +448,7 @@ int colloid_io_ansi_read_binary(colloid_io_ansi_t * io, FILE * fp) {
     ifail = colloid_state_read_binary(&s, fp);
     if (ifail != 0) goto err;
 
-    colloids_info_add_local(io->info, s.index, s.r, &pc);
-    if (pc) pc->s = s;
+    colloids_info_add_local_with_state(io->info, &s, &pc);
   }
 
   /* Collective, so cannot be by-passed. Fall through... */
