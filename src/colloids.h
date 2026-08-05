@@ -94,7 +94,7 @@ struct colloid {
 
   colloid_t * bonded[NBOND_MAX];
 
-  colloid_links_array_t * links; /* Arrays of links for this colloid. */ // XXX: Check that this is copied between host and device versions correctly.
+  colloid_links_array_t * links; /* Arrays of links for this colloid. */ 
 };
 
 
