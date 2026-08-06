@@ -30,6 +30,7 @@ int test_colloids_info_cell_coords(colloids_info_t * cinfo);
 
 int test_colloids_info_initialise(pe_t * pe, cs_t * cs);
 int test_colloids_info_finalise(pe_t * pe, cs_t * cs);
+int test_colloids_array(pe_t * pe, cs_t * cs);
 
 
 /*****************************************************************************

@@ -598,7 +598,6 @@ __host__ int colloids_info_nlocal(colloids_info_t * cinfo, int * nlocal) {
 
 __host__ int colloids_info_n_all(colloids_info_t * cinfo, int * n_all) {
 
-  int ic, jc, kc;
   colloid_t * pc = NULL;
 
   assert(cinfo);
