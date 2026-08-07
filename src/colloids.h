@@ -139,7 +139,7 @@ struct colloids_info_s {
   cs_t * cs;                  /* Coordinate system */
   colloids_info_t * target;   /* Copy of this structure on target */
 
-  colloids_arrays_t colloid_array;  /* Array of local colloids */
+  colloids_arrays_t *colloid_array;  /* Array of local colloids */
 };
 
 

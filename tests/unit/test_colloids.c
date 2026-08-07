@@ -486,6 +486,8 @@ int test_colloids_array(pe_t * pe, cs_t * cs) {
   colloids_info_add_local_with_state(cinfo, &state, &pc);
   
   update_colloids_array(cinfo);
+  
+  colloids_array_check(cinfo);
   return 0;
 }
 

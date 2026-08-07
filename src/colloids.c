@@ -1859,6 +1859,8 @@ void colloid_free_links_arrays(colloid_t * pc) {
     tdpAssert( tdpFree(pc->links) );
   }
 }
+
+// Add another initialisation fuction for allocating the colloids_array_t in colloids info
  
 /*****************************************************************************
  *
