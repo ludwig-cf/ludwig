@@ -15,6 +15,7 @@
 #define LUDWIG_UNIT_TESTS_H
 
 #include "target.h"
+#include "colloid.h"
 
 __host__ __device__ void test_assert_info(const int lvalue, int line,
                                           const char * file);
@@ -46,7 +47,9 @@ int test_colloids_info_suite(void);
 int test_colloids_halo_suite(void);
 int test_colloids_file_io_suite(void);
 int test_coords_suite(void);
+int test_create_links_arrays_suite(void);
 int test_cs_limits_suite(void);
+int test_device_memcpy_colloid_links_array(void);
 int test_ewald_suite(void);
 int test_fe_null_suite(void);
 int test_fe_electro_suite(void);
@@ -85,6 +88,7 @@ int test_lb_bc_outflow_opts_suite(void);
 int test_lb_bc_outflow_rhou_suite(void);
 int test_lc_anchoring_suite(void);
 int test_le_suite(void);
+int test_links_arrays_accessors_suite(void);
 int test_kernel_suite(void);
 int test_kernel_3d_suite(void);
 int test_kernel_3d_v_suite(void);

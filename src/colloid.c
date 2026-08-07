@@ -370,3 +370,20 @@ double colloid_principal_radius(const colloid_state_t * s) {
 
   return amax;
 }
+
+/*****************************************************************************
+ * 
+ *  create_dummy_state 
+ * 
+ *  Creates a colloid state with specified index and radius for testing
+ * 
+ ****************************************************************************/
+
+void create_dummy_state(colloid_state_t * state, const int index, const double a0, const double *r) {
+  state->index = index;
+  state->a0 = a0;
+  for (int i = 0; i < 3; i++)
+    state->r[i] = r[i];
+
+  return;
+}

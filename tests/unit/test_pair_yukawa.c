@@ -19,6 +19,7 @@
 
 #include "pe.h"
 #include "coords.h"
+#include "colloid.h"
 #include "colloids_halo.h"
 #include "pair_yukawa.h"
 #include "tests.h"
@@ -30,6 +31,9 @@
 int test_pair_yukawa1(pe_t * pe, cs_t * cs);
 int test_pair_yukawa2(pe_t * pe, cs_t * cs);
 int test_pair_yukawa_config1(pe_t * pe, cs_t * cs, colloids_info_t * cinfo,
+			     interact_t * interact,
+			     pair_yukawa_t * pair);
+int test_pair_yukawa_config1_with_state(pe_t * pe, cs_t * cs, colloids_info_t * cinfo,
 			     interact_t * interact,
 			     pair_yukawa_t * pair);
 
@@ -116,6 +120,10 @@ int test_pair_yukawa2(pe_t * pe, cs_t * cs) {
   pair_yukawa_register(pair, interact);
 
   test_pair_yukawa_config1(pe, cs, cinfo, interact, pair);
+  
+  colloids_info_free(&cinfo);
+  colloids_info_create(pe, cs, &opts, &cinfo);
+  test_pair_yukawa_config1_with_state(pe, cs, cinfo, interact, pair);
 
   pair_yukawa_free(pair);
   interact_free(interact);
@@ -166,8 +174,92 @@ int test_pair_yukawa_config1(pe_t * pe, cs_t * cs, colloids_info_t * cinfo,
   r2[Y] = lmin[Y] + ltot[Y] - 0.5*sqrt(1.0/3.0)*r;
   r2[Z] = lmin[Z] + ltot[Z] - 0.5*sqrt(1.0/3.0)*r;
 
-  colloids_info_add_local(cinfo, 1, r1, &pc1);
-  colloids_info_add_local(cinfo, 2, r2, &pc2);
+  colloids_info_add_local(cinfo, 1, r1, 0.0, &pc1);
+  colloids_info_add_local(cinfo, 2, r2, 0.0, &pc2);
+  colloids_info_ntotal_set(cinfo);
+  colloids_info_ntotal(cinfo, &nc);
+  assert(nc == 2);
+
+  colloids_halo_state(cinfo);
+
+  interact_pairwise(interact, cinfo);
+  pair_yukawa_single(pair, r, &v, &f);
+
+  f = f/sqrt(3.0); /* To get components */
+
+  if (pe_mpi_size(pe) == 1) {
+    assert(fabs(pc1->force[X] - f) < FLT_EPSILON);
+    assert(fabs(pc1->force[Y] - f) < FLT_EPSILON);
+    assert(fabs(pc1->force[Z] - f) < FLT_EPSILON);
+    assert(fabs(pc2->force[X] + f) < FLT_EPSILON);
+    assert(fabs(pc2->force[Y] + f) < FLT_EPSILON);
+    assert(fabs(pc2->force[Z] + f) < FLT_EPSILON);
+  }
+
+  pair_yukawa_stats(pair, stats_local);
+
+  /* This is slightly over-the-top; I just really want one sum and
+   * one minimum */
+
+  MPI_Allreduce(stats_local, stats, INTERACT_STAT_MAX, MPI_DOUBLE, MPI_SUM,
+		comm);
+  assert(fabs(stats[INTERACT_STAT_VLOCAL] - v) < FLT_EPSILON);
+
+  MPI_Allreduce(stats_local, stats, INTERACT_STAT_MAX, MPI_DOUBLE, MPI_MIN,
+		comm);
+  assert(fabs(stats[INTERACT_STAT_RMINLOCAL] - r) < FLT_EPSILON);
+
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  test_pair_yukawa_config1_with_state
+ *
+ *****************************************************************************/
+
+int test_pair_yukawa_config1_with_state(pe_t * pe, cs_t * cs, colloids_info_t * cinfo,
+			     interact_t * interact,
+			     pair_yukawa_t * pair) {
+
+  int nc;
+  double r  = 7.0;
+  double f, v;
+  double r1[3];
+  double r2[3];
+  double lmin[3];
+  double ltot[3];
+  double stats[INTERACT_STAT_MAX];
+  double stats_local[INTERACT_STAT_MAX];
+
+  colloid_t * pc1 = NULL;
+  colloid_t * pc2 = NULL;
+  colloid_state_t state1, state2;
+  MPI_Comm comm;
+
+  assert(pe);
+  assert(cs);
+  assert(cinfo);
+  assert(interact);
+  assert(pair);
+
+  cs_lmin(cs, lmin);
+  cs_ltot(cs, ltot);
+  cs_cart_comm(cs, &comm);
+
+  r1[X] = lmin[X] + 0.5*sqrt(1.0/3.0)*r;
+  r1[Y] = lmin[Y] + 0.5*sqrt(1.0/3.0)*r;
+  r1[Z] = lmin[Z] + 0.5*sqrt(1.0/3.0)*r;
+
+  r2[X] = lmin[X] + ltot[X] - 0.5*sqrt(1.0/3.0)*r;
+  r2[Y] = lmin[Y] + ltot[Y] - 0.5*sqrt(1.0/3.0)*r;
+  r2[Z] = lmin[Z] + ltot[Z] - 0.5*sqrt(1.0/3.0)*r;
+
+  create_dummy_state(&state1, 1, 0.0, r1);
+  create_dummy_state(&state2, 2, 0.0, r2);
+  colloids_info_add_local_with_state(cinfo, &state1, &pc1);
+  colloids_info_add_local_with_state(cinfo, &state2, &pc2);
   colloids_info_ntotal_set(cinfo);
   colloids_info_ntotal(cinfo, &nc);
   assert(nc == 2);

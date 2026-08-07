@@ -139,6 +139,9 @@ int build_update_links(cs_t * cs, colloids_info_t * cinfo, wall_t * wall,
 
 	  build_count_faces_local(pc, model, &pc->s.sa, &pc->s.saf);
 
+    /* Copy links to array */
+    copy_links_to_array(pc);
+
 	  /* Next colloid */
 
 	  pc->s.rebuild = 0;

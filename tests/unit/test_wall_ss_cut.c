@@ -17,11 +17,13 @@
 #include <float.h>
 #include <math.h>
 
+#include "colloid.h"
 #include "wall_ss_cut.h"
 
 int test_wall_ss_cut_create(pe_t * pe, cs_t * cs, wall_t * wall);
 int test_wall_ss_cut_single(pe_t * pe, cs_t * cs, wall_t * wall);
 int test_wall_ss_cut_compute(pe_t * pe, cs_t * cs, wall_t * wall);
+int test_wall_ss_cut_compute_with_state(pe_t * pe, cs_t * cs, wall_t * wall);
 
 /*****************************************************************************
  *
@@ -55,6 +57,7 @@ int test_wall_ss_cut_suite(void) {
     test_wall_ss_cut_create(pe, cs, wall);
     test_wall_ss_cut_single(pe, cs, wall);
     test_wall_ss_cut_compute(pe, cs, wall);
+    test_wall_ss_cut_compute_with_state(pe, cs, wall);
 
     wall_free(wall);
     map_free(&map);
@@ -156,7 +159,64 @@ int test_wall_ss_cut_compute(pe_t * pe, cs_t * cs, wall_t * wall) {
     double r[3] = {0.5 + a0 + h, 0.5 + a0 + opts.hc, 0.5 + a0 + opts.hc};
     colloid_t * pc = NULL;
 
-    colloids_info_add_local(cinfo, 1, r, &pc);
+    colloids_info_add_local(cinfo, 1, r, a0, &pc);
+    if (pc) {
+      pc->s.a0 = a0;
+      pc->s.ah = ah;
+    }
+    /* Need the local list up-to-date... */
+    colloids_info_list_local_build(cinfo);
+
+    wall_ss_cut_compute(cinfo, wall_ss_cut);
+    if (pc) {
+      assert(fabs(pc->force[X] - 655.27808) < FLT_EPSILON);
+      assert(fabs(pc->force[Y] - 0.0)       < DBL_EPSILON);
+      assert(fabs(pc->force[Z] - 0.0)       < DBL_EPSILON);
+    }
+  }
+
+  wall_ss_cut_free(wall_ss_cut);
+  colloids_info_free(&cinfo);
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  test_wall_ss_cut_compute_with_state
+ *
+ *****************************************************************************/
+
+int test_wall_ss_cut_compute_with_state(pe_t * pe, cs_t * cs, wall_t * wall) {
+
+  colloid_options_t options = colloid_options_default();
+  colloids_info_t * cinfo   = NULL;
+
+  wall_ss_cut_t * wall_ss_cut = NULL;
+  wall_ss_cut_options_t opts = {.epsilon = 0.001,
+                                .sigma = 0.8,
+				.nu = 2.0,
+				.hc = 0.25};
+
+  assert(pe);
+  assert(cs);
+  assert(wall);
+
+  colloids_info_create(pe, cs, &options, &cinfo);
+  wall_ss_cut_create(pe, cs, wall, &opts, &wall_ss_cut);
+
+  {
+    /* Add a colloid at a suitable position */
+    double a0 = 1.0;
+    double ah = 1.0;
+    double h  = 0.0125;
+    double r[3] = {0.5 + a0 + h, 0.5 + a0 + opts.hc, 0.5 + a0 + opts.hc};
+    colloid_t * pc = NULL;
+
+    colloid_state_t state;
+
+    create_dummy_state(&state, 1, a0, r);
+    colloids_info_add_local_with_state(cinfo, &state, &pc);
     if (pc) {
       pc->s.a0 = a0;
       pc->s.ah = ah;

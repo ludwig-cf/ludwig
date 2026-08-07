@@ -143,3 +143,84 @@ int colloid_link_max_3d(double a, int nvel) {
 
   return 4*pi*ai*ai*(nvel - 1)/2;
 }
+
+/***************************************************************************
+ * 
+ * copy_link_to_array
+ * 
+ * Copies provided link to specified links array at the specified index
+ * 
+ ***************************************************************************/
+void copy_link_to_array(colloid_link_t *link, colloid_links_array_t *links_array, int index) {
+  assert(link);
+  assert(link->i);
+  assert(links_array);
+  assert(links_array->i);
+  assert(index < links_array->max_links);
+  if (index > links_array->active_links) {
+    assert(index == links_array->active_links + 1);
+    links_array->active_links++;
+  }
+  links_array->i[index] = link->i;
+  links_array->j[index] = link->j;
+  links_array->p[index] = link->p;
+  for (int i = 0; i < 3; i++) 
+    links_array->rb[i][index] = link->rb[i];
+  links_array->status[index] = link->status;
+}
+
+/***************************************************************************
+ * 
+ * colloid_link_i
+ * 
+ * Retrieves the i link at given index
+ * 
+ ***************************************************************************/
+__host__ __device__ void colloid_link_i(colloid_links_array_t *links_array, size_t index, int *i) {
+  *i = links_array->i[index];
+}
+
+/***************************************************************************
+ * 
+ * colloid_link_j
+ * 
+ * Retrieves the j link at given index
+ * 
+ ***************************************************************************/
+__host__ __device__ void colloid_link_j(colloid_links_array_t *links_array, size_t index, int *j) {
+  *j = links_array->j[index];
+}
+
+/***************************************************************************
+ * 
+ * colloid_link_p
+ * 
+ * Retrieves the p link at given index
+ * 
+ ***************************************************************************/
+__host__ __device__ void colloid_link_p(colloid_links_array_t *links_array, size_t index, int *p) {
+  *p = links_array->p[index];
+}
+
+/***************************************************************************
+ * 
+ * colloid_link_status
+ * 
+ * Retrieves the link status at given index
+ * 
+ ***************************************************************************/
+__host__ __device__ void colloid_link_status(colloid_links_array_t *links_array, size_t index, int *status) {
+  *status = links_array->status[index];
+}
+
+/***************************************************************************
+ * 
+ * colloid_link_rb
+ * 
+ * Retrieves the rb link at given index
+ * 
+ ***************************************************************************/
+__host__ __device__ void colloid_link_rb(colloid_links_array_t *links_array, size_t index, double *rb) {
+  for (int i = 0; i < 3; i++)
+    rb[i] = links_array->rb[i][index];
+}
