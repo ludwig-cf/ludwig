@@ -31,8 +31,6 @@
 __host__ int colloid_create(colloids_info_t * cinfo, const double a0, colloid_t ** pc);
 __host__ int colloid_create_with_state(colloids_info_t * cinfo, const colloid_state_t * state, colloid_t ** pc);
 
-void copy_colloid_links(colloids_info_t *cinfo, colloid_t *pc_new, colloid_t *pc);
-
 /*****************************************************************************
  *
  *  colloids_info_create
@@ -1792,6 +1790,13 @@ void create_links_arrays_with_state(colloids_info_t * cinfo, const colloid_state
   for (int i = 0; i < pc->links->max_links; i++) pc->links->status[i] = 0;
 }
     
+/*****************************************************************************
+ * 
+ * copy_links_to_array
+ * 
+ * Copy the links linked list to the links array
+ * 
+ *****************************************************************************/
 void copy_links_to_array(colloid_t *pc) {
   colloid_link_t *link = pc->lnk;
   int index = 0;
@@ -1801,21 +1806,13 @@ void copy_links_to_array(colloid_t *pc) {
   }
 }
 
-void copy_colloid_links(colloids_info_t *cinfo, colloid_t *pc_new, colloid_t *pc) {
-  create_links_arrays(cinfo, pc_new);
-
-  colloid_link_t *link = pc->lnk;
-  int index = 0;
-  for (; link; link = link->next) {
-    copy_link_to_array(link, pc_new->links, index);
-    index++;
-  }
-
-}
-
-/**
+/*****************************************************************************
+ *
+ * colloid_free_links_arrays
+ *  
  * Free the links arrays
- */
+ * 
+ *****************************************************************************/
 void colloid_free_links_arrays(colloid_t * pc) {
   if (pc->links) {
     assert(pc->links);
