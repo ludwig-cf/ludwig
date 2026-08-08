@@ -108,7 +108,7 @@ static int colloids_init_random_set(colloids_info_t * cinfo, int npart,
     s_temp.index = n;
     s_temp.rng = n;
     
-    colloids_info_add_local_with_state(cinfo, &s_temp, &pc);
+    colloids_info_add_local(cinfo, &s_temp, &pc);
   }
 
   return 0;

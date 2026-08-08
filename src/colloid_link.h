@@ -5,10 +5,11 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2010-2025 The University of Edinburgh
+ *  (c) 2010-2026 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
+ *  Alexei Borissov for managed memory version.
  *
  *****************************************************************************/
 
@@ -27,7 +28,7 @@ struct colloid_links_array_s {
   int * j;                    /* Array of inside (solid) site indices */
   int * p;                    /* Array of LB basis vectors for links */
   int * status;               /* Array of link statuses */
-  double ** rb;               /* Array of vectors connecting centre of colloid and centre of the boundary link*/
+  double ** rb;               /* Array of vectors: centre -> boundary link */
 };
 
 struct colloid_link_type {
@@ -53,12 +54,26 @@ int              colloid_link_total(void);
 int colloid_link_max_2d(double a, int nvel);
 int colloid_link_max_3d(double a, int nvel);
 
-__host__ __device__ void colloid_link_i(colloid_links_array_t *links_array, size_t index, int *i);
-__host__ __device__ void colloid_link_j(colloid_links_array_t *links_array, size_t index, int *j);
-__host__ __device__ void colloid_link_p(colloid_links_array_t *links_array, size_t index, int *p);
-__host__ __device__ void colloid_link_status(colloid_links_array_t *links_array, size_t index, int *status);
-__host__ __device__ void colloid_link_rb(colloid_links_array_t *links_array, size_t index, double *rb);
+int colloid_links_array_create(int maxlinks, colloid_links_array_t ** a);
+int colloid_links_array_free(colloid_links_array_t ** a);
+int colloid_links_array_initialise(int maxlinks, colloid_links_array_t * a);
+int colloid_links_array_finalise(colloid_links_array_t * a);
 
-void copy_link_to_array(colloid_link_t *link, colloid_links_array_t *links_array, int index);
+int colloid_link_to_array(const colloid_link_t * link,
+			  colloid_links_array_t * array, int index);
+
+/* inline implementations */
+
+#define HDSI_ __host__ __device__ static inline
+
+HDSI_ int colloid_links_array_i(const colloid_links_array_t * a, size_t index);
+HDSI_ int colloid_links_array_j(const colloid_links_array_t * a, size_t index);
+HDSI_ int colloid_links_array_p(const colloid_links_array_t * a, size_t index);
+HDSI_ int colloid_links_array_status(const colloid_links_array_t * a, size_t index);
+HDSI_ void colloid_links_array_rb(const colloid_links_array_t * a, size_t index, double rb[3]);
+
+#undef HDSI_
+
+#include "colloid_link_impl.h"
 
 #endif

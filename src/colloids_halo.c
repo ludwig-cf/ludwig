@@ -7,7 +7,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2010-2021 The University of Edinburgh
+ *  (c) 2010-2026 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -408,7 +408,7 @@ static int colloids_halo_unload(colloid_halo_t * halo, int nrecv) {
     }
 
     if (exists == 0) {
-      colloids_info_add_with_state(halo->cinfo, &halo->recv[n], &pc);
+      colloids_info_add(halo->cinfo, &halo->recv[n], &pc);
     }
   }
 

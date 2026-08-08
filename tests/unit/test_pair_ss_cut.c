@@ -5,7 +5,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2014-2025 The University of Edinburgh
+ *  (c) 2014-2026 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -33,8 +33,6 @@
 static int test_pair_ss_cut1(pe_t * pe, cs_t * cs);
 static int test_pair_ss_cut2(pe_t * pe, cs_t * cs);
 static int test_pair_config1(colloids_info_t * cinfo, interact_t * interact,
-			     pair_ss_cut_t * pair);
-static int test_pair_config1_with_state(colloids_info_t * cinfo, interact_t * interact,
 			     pair_ss_cut_t * pair);
 
 /*****************************************************************************
@@ -128,7 +126,7 @@ static int test_pair_ss_cut2(pe_t * pe, cs_t * cs) {
   colloids_info_free(&cinfo);
   
   colloids_info_create(pe, cs, &opts, &cinfo);
-  test_pair_config1_with_state(cinfo, interact, pair);
+  test_pair_config1(cinfo, interact, pair);
 
   /* Finish */
 
@@ -179,20 +177,20 @@ static int test_pair_config1(colloids_info_t * cinfo, interact_t * interact,
   r1[Y] = lmin[Y] + h/sqrt(12.0);
   r1[Z] = lmin[Z] + h/sqrt(12.0);
 
-  colloids_info_add_local(cinfo, 1, r1, a0, &pc1);
-  if (pc1) {
-    pc1->s.a0 = a0;
-    pc1->s.ah = ah;
+  {
+    colloid_state_t s1 = {};
+    colloid_state_init_sphere(1, a0, ah, r1, &s1);
+    colloids_info_add_local(cinfo, &s1, &pc1);
   }
 
   r2[X] = lmin[X] + ltot[X] - h/sqrt(12.0);
   r2[Y] = lmin[Y] + ltot[Y] - h/sqrt(12.0);
   r2[Z] = lmin[Z] + ltot[Z] - h/sqrt(12.0);
 
-  colloids_info_add_local(cinfo, 2, r2, a0, &pc2);
-  if (pc2) {
-    pc2->s.a0 = a0;
-    pc2->s.ah = ah;
+  {
+    colloid_state_t s2 = {};
+    colloid_state_init_sphere(2, a0, ah, r2, &s2);
+    colloids_info_add_local(cinfo, &s2, &pc2);
   }
 
   colloids_info_ntotal_set(cinfo);
@@ -224,97 +222,5 @@ static int test_pair_config1(colloids_info_t * cinfo, interact_t * interact,
 		comm);
   assert(fabs(stats[INTERACT_STAT_VLOCAL] - v) < FLT_EPSILON);
   
-  return 0;
-}
-
-/*****************************************************************************
- *
- *  test_pair_config1_with_state
- *
- *****************************************************************************/
-
-static int test_pair_config1_with_state(colloids_info_t * cinfo, interact_t * interact,
-			     pair_ss_cut_t * pair) {
-
-  int nc;
-  double a0 = 2.3;
-  double ah = 2.3;
-  double dh = 0.1;
-  double h, f, v;
-  double r1[3];
-  double r2[3];
-  double lmin[3];
-  double ltot[3];
-  double stats[INTERACT_STAT_MAX];
-  double stats_local[INTERACT_STAT_MAX];
-
-  MPI_Comm comm;
-
-  colloid_t * pc1 = NULL;
-  colloid_t * pc2 = NULL;
-
-  colloid_state_t state1, state2;
-
-  assert(cinfo);
-  assert(interact);
-  assert(pair);
-
-  cs_lmin(cinfo->cs, lmin);
-  cs_ltot(cinfo->cs, ltot);
-  cs_cart_comm(cinfo->cs, &comm);
-
-  h = 2*ah + dh;
-  /* The sqrt(3)*sqrt(4) gives separation h in 3d */
-  r1[X] = lmin[X] + h/sqrt(12.0);
-  r1[Y] = lmin[Y] + h/sqrt(12.0);
-  r1[Z] = lmin[Z] + h/sqrt(12.0);
-
-  create_dummy_state(&state1, 1, a0, r1);
-  colloids_info_add_local_with_state(cinfo, &state1, &pc1);
-  if (pc1) {
-    pc1->s.a0 = a0;
-    pc1->s.ah = ah;
-  }
-
-  r2[X] = lmin[X] + ltot[X] - h/sqrt(12.0);
-  r2[Y] = lmin[Y] + ltot[Y] - h/sqrt(12.0);
-  r2[Z] = lmin[Z] + ltot[Z] - h/sqrt(12.0);
-
-  create_dummy_state(&state2, 2, a0, r2);
-  colloids_info_add_local_with_state(cinfo, &state2, &pc2);
-  if (pc2) {
-    pc2->s.a0 = a0;
-    pc2->s.ah = ah;
-  }
-
-  colloids_info_ntotal_set(cinfo);
-  colloids_info_ntotal(cinfo, &nc);
-  assert(nc == 2);
-
-  colloids_halo_state(cinfo);
-
-  /* Compute interactions and compare against single version */
-
-  interact_pairwise(interact, cinfo);
-  pair_ss_cut_single(pair, dh, &f, &v);
-
-  f = f/sqrt(3.0);
-
-  if (pe_mpi_size(cinfo->pe) == 1) {
-    assert(fabs(pc1->force[X] - f) < FLT_EPSILON);
-    assert(fabs(pc1->force[Y] - f) < FLT_EPSILON);
-    assert(fabs(pc1->force[Z] - f) < FLT_EPSILON);
-
-    assert(fabs(pc2->force[X] + f) < FLT_EPSILON);
-    assert(fabs(pc2->force[Y] + f) < FLT_EPSILON);
-    assert(fabs(pc2->force[Z] + f) < FLT_EPSILON);
-  }
-
-  pair_ss_cut_stats(pair, stats_local);
-
-  MPI_Allreduce(stats_local, stats, INTERACT_STAT_MAX, MPI_DOUBLE, MPI_SUM,
-		comm);
-  assert(fabs(stats[INTERACT_STAT_VLOCAL] - v) < FLT_EPSILON);
-
   return 0;
 }

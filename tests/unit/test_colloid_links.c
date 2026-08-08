@@ -9,7 +9,6 @@
 
 #include "pe.h"
 #include "colloid_link.h"
-#include "tests.h"
 
 #define EPS 1E-12
 
@@ -17,8 +16,12 @@ int test_colloid_link_max_2d_d2q9(void);
 int test_colloid_link_max_3d_d3q15(void);
 int test_colloid_link_max_3d_d3q19(void);
 int test_colloid_link_max_3d_d3q27(void);
-int test_links_arrays_accessors(pe_t * pe);
-int test_links_arrays_accessors_with_state(pe_t * pe);
+
+int test_colloid_link_array_initialise(void);
+int test_colloid_link_array_create(void);
+int test_colloid_link_to_array(void);
+
+int test_colloid_link_array_rb(void);
 
 
 /*****************************************************************************
@@ -37,8 +40,11 @@ int test_colloid_link_suite(void) {
   test_colloid_link_max_3d_d3q15();
   test_colloid_link_max_3d_d3q19();
   test_colloid_link_max_3d_d3q27();
-  test_links_arrays_accessors(pe);
-  test_links_arrays_accessors_with_state(pe);
+
+  test_colloid_link_array_initialise();
+  test_colloid_link_array_create();
+  test_colloid_link_to_array();
+  test_colloid_link_array_rb();
   
   pe_info(pe, "PASS     ./unit/test_colloid_links\n");
 
@@ -364,131 +370,150 @@ int test_colloid_link_max_3d_d3q27(void) {
 
 /*****************************************************************************
  *
- *  test_links_arrays_accessors_suite
+ *  test_colloid_link_array_initialise
  *
  *****************************************************************************/
 
-int test_links_arrays_accessors_suite(void) {
-  
-  return 0;
+int test_colloid_link_array_initialise(void) {
+
+  int ifail = 0;
+
+  /* Zero links is a fail */
+  {
+    int maxlinks = 0;
+    colloid_links_array_t a = {};
+
+    ifail = colloid_links_array_initialise(maxlinks, &a);
+    assert(ifail != 0);
+  }
+
+  /* Check allocations are present */
+  {
+    int maxlinks = 10;
+    colloid_links_array_t a = {};
+
+    ifail = colloid_links_array_initialise(maxlinks, &a);
+    assert(ifail == 0);
+
+    assert(a.i);
+    assert(a.j);
+    assert(a.p);
+    assert(a.status);
+    assert(a.rb);
+
+    for (int i = 0; i < maxlinks; ++i) {
+      if (a.status[i] != LINK_UNUSED) ifail += 1;
+    }
+    assert(ifail == 0);
+    assert(a.max_links == maxlinks);
+
+    ifail = colloid_links_array_finalise(&a);
+  }
+
+  return ifail;
 }
 
 /*****************************************************************************
  *
- *  test_links_arrays_accessors
+ *  test_colloid_link_array_create
  *
  *****************************************************************************/
 
-int test_links_arrays_accessors(pe_t * pe) {
-  cs_t * cs = NULL;
-  colloids_info_t * cinfo = NULL;
-  colloid_options_t opts = colloid_options_default();
-  colloid_t * pc;
-  double r[3] = {0.5, 0.5, 0.5};
+int test_colloid_link_array_create(void) {
 
-  pe_create(MPI_COMM_WORLD, PE_QUIET, &pe);
-  cs_create(pe, &cs);
-  cs_init(cs);
-  colloids_info_create(pe, cs, &opts, &cinfo);
-  colloids_info_add_local(cinfo, 1, r, 1.0, &pc);
+  int ifail = 0;
 
-  // If the colloid doesn't exist on this rank don't bother with the test
-  if (!pc) {
-    return 0;
+  {
+    int maxlinks = 1024;
+    colloid_links_array_t * a = NULL;
+
+    ifail = colloid_links_array_create(maxlinks, &a);
+    assert(ifail == 0);
+    if (a->max_links != maxlinks) ifail = -1;
+    assert(ifail == 0);
+    ifail = colloid_links_array_free(&a);
+    assert(a == NULL);
   }
 
-  pc->lnk = colloid_link_allocate();
-  pc->lnk->next = NULL;
-  
-  pc->lnk->i = 3;
-  pc->lnk->j = 2;
-  pc->lnk->p = 1;
-  pc->lnk->status = 0;
-  for (int i = 0; i < 3; i++)
-    pc->lnk->rb[i] = i;
-
-  assert(pc->links != NULL);
-  assert(pc);
-  assert(pc->lnk);
-  assert(pc->lnk->next == NULL);
-  copy_links_to_array(pc);
-
-  int i, j, p, status;
-  double rb[3];
-
-  colloid_link_i(pc->links, 0, &i);
-  colloid_link_j(pc->links, 0, &j);
-  colloid_link_p(pc->links, 0, &p);
-  colloid_link_status(pc->links, 0, &status);
-  colloid_link_rb(pc->links, 0, rb);
-
-  test_assert(i == pc->lnk->i);
-  test_assert(j == pc->lnk->j);
-  test_assert(p == pc->lnk->p);
-  test_assert(status == pc->lnk->status);
-  for (int index = 0; index < 3; index++)
-    test_assert(fabs(rb[index] - pc->lnk->rb[index]) < EPS);
-
-  return 0;
+  return ifail;
 }
 
 /*****************************************************************************
  *
- *  test_links_arrays_accessors_with_state
+ *  test_colloid_link_to_array
  *
  *****************************************************************************/
 
-int test_links_arrays_accessors_with_state(pe_t * pe) {
-  cs_t * cs = NULL;
-  colloids_info_t * cinfo = NULL;
-  colloid_options_t opts = colloid_options_default();
-  colloid_t * pc;
-  colloid_state_t state;
-  double r[3] = {0.5, 0.5, 0.5};
+int test_colloid_link_to_array(void) {
 
-  pe_create(MPI_COMM_WORLD, PE_QUIET, &pe);
-  cs_create(pe, &cs);
-  cs_init(cs);
-  colloids_info_create(pe, cs, &opts, &cinfo);
-  create_dummy_state(&state, 1, 1.0, r);
-  colloids_info_add_local_with_state(cinfo, &state, &pc);
-  
-  // If the colloid doesn't exist on this rank don't bother with the test
-  if (!pc) {
-    return 0;
+  int ifail = 0;
+
+  {
+    int maxlink = 1;
+    int index   = 0;
+
+    colloid_links_array_t a = {};
+
+    /* test data (pointers not relevant) */
+    colloid_link_t link = {.i = 1, .j = 2, .p = 3, .status = LINK_COLLOID,
+      .rb = {1.0, 2.0, 3.0}, .spare = NULL, .next = NULL};
+
+    colloid_links_array_initialise(maxlink, &a);
+    colloid_link_to_array(&link, &a, index);
+
+    if (a.i[index] != link.i) ifail = 1;
+    if (a.j[index] != link.j) ifail = 2;
+    if (a.p[index] != link.p) ifail = 3;
+    assert(ifail == 0);
+
+    if (a.status[index] != link.status) ifail = 4;
+    assert(ifail == 0);
+
+    if (fabs(a.rb[X][index] - link.rb[X]) > DBL_EPSILON) ifail = 5;
+    if (fabs(a.rb[Y][index] - link.rb[Y]) > DBL_EPSILON) ifail = 6;
+    if (fabs(a.rb[Z][index] - link.rb[Z]) > DBL_EPSILON) ifail = 7;
+    assert(ifail == 0);
+
+    colloid_links_array_finalise(&a);
   }
 
-  pc->lnk = colloid_link_allocate();
-  pc->lnk->next = NULL;
-  
-  pc->lnk->i = 3;
-  pc->lnk->j = 2;
-  pc->lnk->p = 1;
-  pc->lnk->status = 0;
-  for (int i = 0; i < 3; i++)
-    pc->lnk->rb[i] = i;
+  return ifail;
+}
 
-  assert(pc->links != NULL);
-  assert(pc);
-  assert(pc->lnk);
-  assert(pc->lnk->next == NULL);
-  copy_links_to_array(pc);
+/*****************************************************************************
+ *
+ *  test_colloid_link_array_rb
+ *
+ *****************************************************************************/
 
-  int i, j, p, status;
-  double rb[3];
+int test_colloid_link_array_rb(void) {
 
-  colloid_link_i(pc->links, 0, &i);
-  colloid_link_j(pc->links, 0, &j);
-  colloid_link_p(pc->links, 0, &p);
-  colloid_link_status(pc->links, 0, &status);
-  colloid_link_rb(pc->links, 0, rb);
+  int ifail = 0;
 
-  test_assert(i == pc->lnk->i);
-  test_assert(j == pc->lnk->j);
-  test_assert(p == pc->lnk->p);
-  test_assert(status == pc->lnk->status);
-  for (int index = 0; index < 3; index++)
-    test_assert(fabs(rb[index] - pc->lnk->rb[index]) < EPS);
+  {
+    int maxlinks = 10;
+    int index    = 9;
 
-  return 0;
+    colloid_links_array_t a = {};
+
+    /* test data (pointers not relevant) */
+    colloid_link_t link = {.i = 1, .j = 2, .p = 3, .status = LINK_COLLOID,
+      .rb = {1.0, 2.0, 3.0}, .spare = NULL, .next = NULL};
+
+    colloid_links_array_initialise(maxlinks, &a);
+    colloid_link_to_array(&link, &a, index);
+
+    {
+      double rb[3] = {};
+      colloid_links_array_rb(&a, index, rb);
+      if (fabs(rb[X] - link.rb[X]) > DBL_EPSILON) ifail = -1;
+      if (fabs(rb[Y] - link.rb[Y]) > DBL_EPSILON) ifail = -1;
+      if (fabs(rb[Z] - link.rb[Z]) > DBL_EPSILON) ifail = -1;
+      assert(ifail == 0);
+    }
+
+    colloid_links_array_finalise(&a);
+  }
+
+  return ifail;
 }

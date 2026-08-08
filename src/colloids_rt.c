@@ -265,7 +265,7 @@ int colloids_rt_init_few(pe_t * pe, rt_t * rt, colloids_info_t * cinfo,
 
     colloids_rt_state_stub(pe, rt, cinfo, "colloid_one", state1);
     state1->index = 1;
-    colloids_info_add_local_with_state(cinfo, state1, &pc);
+    colloids_info_add_local(cinfo, state1, &pc);
     free(state1);
   }
 
@@ -275,7 +275,7 @@ int colloids_rt_init_few(pe_t * pe, rt_t * rt, colloids_info_t * cinfo,
     assert(state2 != NULL);
     colloids_rt_state_stub(pe, rt, cinfo, "colloid_two", state2);
     state2->index = 2;
-    colloids_info_add_local_with_state(cinfo, state2, &pc);
+    colloids_info_add_local(cinfo, state2, &pc);
     free(state2);
   }
 
@@ -285,7 +285,7 @@ int colloids_rt_init_few(pe_t * pe, rt_t * rt, colloids_info_t * cinfo,
     assert(state3 != NULL);
     colloids_rt_state_stub(pe, rt, cinfo, "colloid_three", state3);
     state3->index = 3;
-    colloids_info_add_local_with_state(cinfo, state3, &pc);
+    colloids_info_add_local(cinfo, state3, &pc);
     free(state3);
   }
 
@@ -362,9 +362,9 @@ int colloids_rt_state_stub(pe_t * pe, rt_t * rt, colloids_info_t * cinfo,
   int nrteuler = 0;
   int nrtv1    = 0;
   int nrtv2    = 0;
-  double elev1[3] = {0};
-  double elev2[3] = {0};
-  double euler[3] = {0};
+  double elev1[3] = {};
+  double elev2[3] = {};
+  double euler[3] = {};
 
   assert(pe);
   assert(rt);
@@ -717,7 +717,7 @@ int colloids_rt_gravity(pe_t * pe, rt_t * rt, colloids_info_t * cinfo) {
   }
 
   {
-    double b[3] = {0};
+    double b[3] = {};
     int isb = rt_double_parameter_vector(rt, "colloid_buoyancy", b);
 
     colloids_buoyancy_set(cinfo, b);
@@ -990,10 +990,10 @@ int pair_ss_cut_ij_init(pe_t * pe, cs_t * cs, rt_t * rt, interact_t * intrct) {
   if (ison) {
     int ntypes = 0;
     int nsymm  = 0;
-    double epsilon[BUFSIZ] = {0};
-    double sigma[BUFSIZ] = {0};
-    double nu[BUFSIZ] = {0};
-    double hc[BUFSIZ] = {0};
+    double epsilon[BUFSIZ] = {};
+    double sigma[BUFSIZ] = {};
+    double nu[BUFSIZ] = {};
+    double hc[BUFSIZ] = {};
     pair_ss_cut_ij_t * pair = NULL;
 
     rt_key_required(rt, "pair_ss_cut_ij_ntypes",  RT_FATAL);
@@ -1199,11 +1199,11 @@ int colloids_init_halo_range_check(pe_t * pe, cs_t * cs,
 
   int ifail = 0;
   int ncolloid = 0;
-  int ncell[3] = {0};
-  int nlocal[3] = {0};
+  int ncell[3] = {};
+  int nlocal[3] = {};
   int nhalo = 1;       /* Always, for purpose of BBL. */
 
-  int nar[3] = {0};    /* See point (a) above */
+  int nar[3] = {};    /* See point (a) above */
 
   double a0max = 0.0;  /* Maximum colloid a0 present */
   double lcell[3];
@@ -1281,7 +1281,7 @@ int wall_ss_cut_init(pe_t * pe, cs_t * cs, rt_t * rt, wall_t * wall,
   if (have_wall_ss_cut) {
 
     wall_ss_cut_t * wall_ss_cut = NULL;
-    wall_ss_cut_options_t opts = {0};
+    wall_ss_cut_options_t opts = {};
 
     rt_key_required(rt, "wall_ss_cut_epsilon", RT_FATAL);
     rt_key_required(rt, "wall_ss_cut_sigma", RT_FATAL);
@@ -1314,8 +1314,8 @@ int colloids_rt_from_file(rt_t * rt, int nstep, colloids_info_t * info) {
 
   int ifail = 0;
 
-  char filename[BUFSIZ]   = {0};
-  colloids_file_io_t fio  = {0};
+  char filename[BUFSIZ]   = {};
+  colloids_file_io_t fio  = {};
 
   if (0 <= nstep && nstep < 1000000000) {
     snprintf(filename, BUFSIZ-1, "colloids-%9.9d.dat", nstep);

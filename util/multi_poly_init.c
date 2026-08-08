@@ -340,7 +340,8 @@ int colloid_init_write_file_mpio(pe_t * pe, cs_t * cs, int nc,
 
   /* Insert the colloids into the cell list ... */
   for (int ic = 0; ic < nc; ic++) {
-    ifail = colloids_info_add_state_local(&info, state + ic);
+    colloid_t * pc = NULL;
+    ifail = colloids_info_add_local(&info, state + ic, &pc);
     assert(ifail == 0);
   }
   colloids_info_ntotal_set(&info);

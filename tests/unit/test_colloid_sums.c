@@ -7,7 +7,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2010-2025 The University of Edinburgh
+ *  (c) 2010-2026 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -31,7 +31,7 @@ static int dim_; /* Current direction */
 static int test_colloid_sums_1d(pe_t * pe);
 static int test_colloid_sums_reference_set(colloid_t * cref, int seed);
 static int test_colloid_sums_copy(const colloid_t * ref, colloid_t * pc);
-static int test_colloid_sums_edge_with_state(pe_t * pe, cs_t * cs, int ncell[3],
+static int test_colloid_sums_edge(pe_t * pe, cs_t * cs, int ncell[3],
 				  const double r0[3]);
 static int test_colloid_sums_move(pe_t * pe);
 static int test_colloid_sums_conservation(pe_t * pe);
@@ -100,27 +100,27 @@ static int test_colloid_sums_1d(pe_t * pe) {
   r0[Y] = lmin[Y] + 0.5*nlocal[Y];
   r0[Z] = lmin[Z] + 0.5*nlocal[Z];
 
-  test_colloid_sums_edge_with_state(pe, cs, ncell, r0);
+  test_colloid_sums_edge(pe, cs, ncell, r0);
 
   ncell[X] = 2;
   ncell[Y] = 4;
   ncell[Z] = 3;
 
-  test_colloid_sums_edge_with_state(pe, cs, ncell, r0);
+  test_colloid_sums_edge(pe, cs, ncell, r0);
 
   dim_ = Y;
   r0[X] = lmin[X] + 0.5*nlocal[X];
   r0[Y] = lmin[Y] + 0.5;
   r0[Z] = lmin[Z] + 0.5*nlocal[Z];
 
-  test_colloid_sums_edge_with_state(pe, cs, ncell, r0);
+  test_colloid_sums_edge(pe, cs, ncell, r0);
 
   dim_ = Z;
   r0[X] = lmin[X] + 0.5*nlocal[X];
   r0[Y] = lmin[Y] + 0.5*nlocal[Y];
   r0[Z] = lmin[Z] + 0.5;
 
-  test_colloid_sums_edge_with_state(pe, cs, ncell, r0);
+  test_colloid_sums_edge(pe, cs, ncell, r0);
 
   cs_free(cs);
 
@@ -129,13 +129,13 @@ static int test_colloid_sums_1d(pe_t * pe) {
 
 /*****************************************************************************
  *
- *  test_colloid_sums_edge_with_state
+ *  test_colloid_sums_edge
  *
  *  Place a single particle at r0 to test the communication.
  *
  *****************************************************************************/
 
-static int test_colloid_sums_edge_with_state(pe_t * pe, cs_t * cs, int ncell[3],
+static int test_colloid_sums_edge(pe_t * pe, cs_t * cs, int ncell[3],
 				  const double r0[3]) {
   int index;
   int ic, jc, kc;
@@ -145,7 +145,10 @@ static int test_colloid_sums_edge_with_state(pe_t * pe, cs_t * cs, int ncell[3],
   colloid_t   cref2;
   colloid_sum_t * halosum = NULL;
 
-  colloid_state_t state1, state2;
+  double a0 = 2.3;
+  double ah = 2.3;
+  colloid_state_t state1 = {};
+  colloid_state_t state2 = {};
 
   colloid_options_t opts  = colloid_options_ncell(ncell);
   colloids_info_t * cinfo = NULL;
@@ -162,15 +165,17 @@ static int test_colloid_sums_edge_with_state(pe_t * pe, cs_t * cs, int ncell[3],
    * which only gets swapped in the x-direction. */
 
   index = 1;
-  create_dummy_state(&state1, index, 0.0, r0);
-  colloids_info_add_local_with_state(cinfo, &state1, &pc);
+
+  colloid_state_init_sphere(index, a0, ah, r0, &state1);
+  colloids_info_add_local(cinfo, &state1, &pc);
   if (pc) {
     test_colloid_sums_copy(&cref1, pc);
   }
 
   index = 2;
-  create_dummy_state(&state2, index, 0.0, r0);
-  colloids_info_add_local_with_state(cinfo, &state2, &pc);
+
+  colloid_state_init_sphere(index, a0, ah, r0, &state2);
+  colloids_info_add_local(cinfo, &state2, &pc);
   if (pc) {
     test_colloid_sums_copy(&cref2, pc);
   }
@@ -371,7 +376,11 @@ static int test_colloid_sums_move(pe_t * pe) {
   int ntotal[3] = {64, 64, 64};
   int n, nstep = 100;
   int ncell[3] = {8, 8, 8};
+
+  double a0 = 2.3;
+  double ah = 2.4;
   double r0[3] = {56.55, 8.55, 3.0};
+
   double dx;
 
   cs_t * cs = NULL;
@@ -379,6 +388,7 @@ static int test_colloid_sums_move(pe_t * pe) {
 
   colloid_options_t opts  = colloid_options_ncell(ncell);
   colloids_info_t * cinfo = NULL;
+  colloid_state_t s = {};
 
   assert(pe);
 
@@ -392,7 +402,8 @@ static int test_colloid_sums_move(pe_t * pe) {
   dx = 1.0*ntotal[X]/nstep;
 
   index = 1;
-  colloids_info_add_local(cinfo, index, r0, 0.0, &pc);
+  colloid_state_init_sphere(index, a0, ah, r0, &s);
+  colloids_info_add_local(cinfo, &s, &pc);
 
   colloids_halo_state(cinfo);
   colloid_sums_halo(cinfo, COLLOID_SUM_STRUCTURE);
@@ -444,6 +455,9 @@ int test_colloid_sums_conservation(pe_t * pe) {
   int ic, jc, kc;
   int ntotal[3] = {64, 64, 64};
   int ncell[3] = {8, 8, 8};
+
+  double a0 = 2.3;
+  double ah = 2.4;
   double r0[3] = {32.0, 32.0, 32.0};
 
   cs_t * cs = NULL;
@@ -451,6 +465,7 @@ int test_colloid_sums_conservation(pe_t * pe) {
 
   colloid_options_t opts  = colloid_options_ncell(ncell);
   colloids_info_t * cinfo = NULL;
+  colloid_state_t s = {};
 
   assert(pe);
 
@@ -462,7 +477,8 @@ int test_colloid_sums_conservation(pe_t * pe) {
   assert(cinfo);
 
   index = 1;
-  colloids_info_add_local(cinfo, index, r0, 0.0, &pc);
+  colloid_state_init_sphere(index, a0, ah, r0, &s);
+  colloids_info_add_local(cinfo, &s, &pc);
 
   /* Swap the halo with zero information before setting the
    * test quantities locally. */

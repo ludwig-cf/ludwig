@@ -373,17 +373,73 @@ double colloid_principal_radius(const colloid_state_t * s) {
 
 /*****************************************************************************
  * 
- *  create_dummy_state 
+ *  colloid_state_init_sphere
  * 
  *  Creates a colloid state with specified index and radius for testing
  * 
  ****************************************************************************/
 
-void create_dummy_state(colloid_state_t * state, const int index, const double a0, const double *r) {
-  state->index = index;
-  state->a0 = a0;
-  for (int i = 0; i < 3; i++)
-    state->r[i] = r[i];
+int colloid_state_init_sphere(int index, double a0, double ah,
+			      const double r[3], colloid_state_t * state) {
 
-  return;
+  assert(index > 0);
+  assert(state);
+
+  colloid_state_t s = {};
+
+  s.index = index;
+  s.a0    = a0;
+  s.ah    = ah;
+  s.r[X]  = r[X];
+  s.r[Y]  = r[Y];
+  s.r[Z]  = r[Z];
+
+  s.bc    = COLLOID_BC_BBL;
+  s.shape = COLLOID_SHAPE_SPHERE;
+
+  s.rebuild = 1; /* BBL */
+
+  *state = s;
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  colloid_state_init_sllipsoid
+ *
+ *  Initialise an ellipsoid with abc, quaternion, and position.
+ *
+ ****************************************************************************/
+
+int colloid_state_init_ellipsoid(int index, const double abc[3],
+			         const double q[4],
+			         const double r[3], colloid_state_t * state) {
+
+  assert(index > 0);
+  assert(state);
+
+  colloid_state_t s = {};
+
+  s.index    = index;
+  s.elabc[X] = abc[X];
+  s.elabc[Y] = abc[Y];
+  s.elabc[Z] = abc[Z];
+  s.quat[0]  = q[0];
+  s.quat[1]  = q[1];
+  s.quat[2]  = q[2];
+  s.quat[3]  = q[3];
+
+  s.r[X]     = r[X];
+  s.r[Y]     = r[Y];
+  s.r[Z]     = r[Z];
+
+  s.bc    = COLLOID_BC_BBL;
+  s.shape = COLLOID_SHAPE_ELLIPSOID;
+
+  s.rebuild = 1; /* BBL */
+
+  *state = s;
+
+  return 0;
 }

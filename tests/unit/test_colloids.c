@@ -7,7 +7,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2010-2025 The University of Edinburgh
+ *  (c) 2010-2026 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -25,7 +25,6 @@
 
 int test_colloids_info_with_ncell(pe_t * pe, cs_t * cs, int ncellref[3]);
 int test_colloids_info_add_local(colloids_info_t * cinfo);
-int test_colloids_info_add_local_with_state(colloids_info_t * cinfo);
 int test_colloids_info_cell_coords(colloids_info_t * cinfo);
 
 int test_colloids_info_initialise(pe_t * pe, cs_t * cs);
@@ -227,10 +226,6 @@ int test_colloids_info_with_ncell(pe_t * pe, cs_t * cs, int ncellref[3]) {
   test_colloids_info_add_local(cinfo);
 
   colloids_info_free(&cinfo);
-  colloids_info_create(pe, cs, &opts, &cinfo);
-  test_colloids_info_add_local_with_state(cinfo);
-
-  colloids_info_free(&cinfo);
 
   return 0;
 }
@@ -251,6 +246,10 @@ int test_colloids_info_add_local(colloids_info_t * cinfo) {
   double r[3];
   double lmin[3];
 
+  double a0 = 2.3;
+  double ah = 2.3;
+  colloid_state_t s = {};
+
   colloid_t * pcref = NULL;
   colloid_t * pc = NULL;
 
@@ -267,8 +266,9 @@ int test_colloids_info_add_local(colloids_info_t * cinfo) {
   r[Y] = lmin[Y] + 1.0*(noffset[Y] - 1);
   r[Z] = lmin[Z] + 1.0*(noffset[Z] - 1);
 
-  colloids_info_add_local(cinfo, index, r, 0.0, &pcref);
-  test_assert(pcref == NULL);
+  colloid_state_init_sphere(index, a0, ah, r, &s);
+  colloids_info_add_local(cinfo, &s, &pcref);
+  assert(pcref == NULL);
 
   /* This one will, giving one colloid per MPI task */
 
@@ -276,79 +276,15 @@ int test_colloids_info_add_local(colloids_info_t * cinfo) {
   r[Y] = lmin[Y] + 1.0*(noffset[Y] + 1);
   r[Z] = lmin[Z] + 1.0*(noffset[Z] + 1);
 
-  colloids_info_add_local(cinfo, index, r, 0.0, &pcref);
-  test_assert(pcref != NULL);
+  colloid_state_init_sphere(index, a0, ah, r, &s);
+  colloids_info_add_local(cinfo, &s, &pcref);
+  assert(pcref != NULL);
+
   colloids_info_nlocal(cinfo, &ncolloid);
   test_assert(ncolloid == 1);
 
   colloids_info_ntotal_set(cinfo);
   colloids_info_ntotal(cinfo, &ncolloid);
-  /* ncolloi should be pe_size() */
-
-  /* Check the colloid is in the cell */
-
-  colloids_info_cell_coords(cinfo, r, icell);
-  colloids_info_cell_count(cinfo, icell[X], icell[Y], icell[Z], &ncount);
-  test_assert(ncount == 1);
-
-  colloids_info_cell_list_head(cinfo, icell[X], icell[Y], icell[Z], &pc);
-  test_assert(pc == pcref);
-
-  return 0;
-}
-
-/*****************************************************************************
- *
- *  test_colloids_info_add_local_with_state
- *
- *****************************************************************************/
-
-int test_colloids_info_add_local_with_state(colloids_info_t * cinfo) {
-
-  int index;
-  int ncount;
-  int ncolloid;
-  int noffset[3];
-  int icell[3];
-  double r[3];
-  double lmin[3];
-
-  colloid_t * pcref = NULL;
-  colloid_t * pc = NULL;
-  colloid_state_t state; 
-
-  assert(cinfo);
-
-  cs_lmin(cinfo->cs, lmin);
-  cs_nlocal_offset(cinfo->cs, noffset);
-
-  index = 1 + pe_mpi_rank(cinfo->pe);
-
-  /* This should not go in locally */
-
-  r[X] = lmin[X] + 1.0*(noffset[X] - 1);
-  r[Y] = lmin[Y] + 1.0*(noffset[Y] - 1);
-  r[Z] = lmin[Z] + 1.0*(noffset[Z] - 1);
-
-  create_dummy_state(&state, index, 0.0, r);
-  colloids_info_add_local_with_state(cinfo, &state, &pcref);
-  test_assert(pcref == NULL);
-
-  /* This one will, giving one colloid per MPI task */
-
-  r[X] = lmin[X] + 1.0*(noffset[X] + 1);
-  r[Y] = lmin[Y] + 1.0*(noffset[Y] + 1);
-  r[Z] = lmin[Z] + 1.0*(noffset[Z] + 1);
-
-  create_dummy_state(&state, index, 0.0, r);
-  colloids_info_add_local_with_state(cinfo, &state, &pcref);
-  test_assert(pcref != NULL);
-  colloids_info_nlocal(cinfo, &ncolloid);
-  test_assert(ncolloid == 1);
-
-  colloids_info_ntotal_set(cinfo);
-  colloids_info_ntotal(cinfo, &ncolloid);
-  /* ncolloi should be pe_size() */
 
   /* Check the colloid is in the cell */
 

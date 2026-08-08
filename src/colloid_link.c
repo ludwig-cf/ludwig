@@ -7,8 +7,11 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
+ *  (c) 2010-2026 The University of Edinburgh
+ *
+ *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
- *  (c) 2010-2025 The University of Edinburgh
+ *  Alexei Borissov
  *
  *****************************************************************************/
 
@@ -18,7 +21,7 @@
 
 #include "colloid_link.h"
 
-static int nlinks_ = 0;   /* Total currently allocated */
+static int nlinks_ = 0;   /* Total currently allocated (linked list) */
 
 /*****************************************************************************
  *
@@ -47,10 +50,8 @@ colloid_link_t * colloid_link_allocate(void) {
 
 void colloid_link_free_list(colloid_link_t * p) {
 
-  colloid_link_t * tmp;
-
   while (p) {
-    tmp = p->next;
+    colloid_link_t * tmp = p->next;
     free(p);
     p = tmp;
     nlinks_--;
@@ -144,83 +145,151 @@ int colloid_link_max_3d(double a, int nvel) {
   return 4*pi*ai*ai*(nvel - 1)/2;
 }
 
-/***************************************************************************
- * 
- * copy_link_to_array
- * 
- * Copies provided link to specified links array at the specified index
- * 
- ***************************************************************************/
-void copy_link_to_array(colloid_link_t *link, colloid_links_array_t *links_array, int index) {
-  assert(link);
-  assert(link->i);
-  assert(links_array);
-  assert(links_array->i);
-  assert(index < links_array->max_links);
-  if (index > links_array->active_links) {
-    assert(index == links_array->active_links + 1);
-    links_array->active_links++;
+/*****************************************************************************
+ *
+ *  colloid_links_array_create
+ *
+ *  All managed memory.
+ *  The boundary vector array is flattened as rb[3][maxlinks].
+ *
+ *****************************************************************************/
+
+int colloid_links_array_create(int maxlinks, colloid_links_array_t ** array) {
+
+  int ifail = 0;
+  colloid_links_array_t * links = NULL;
+
+  tdpAssert(tdpMallocManaged((void **) &links, sizeof(colloid_links_array_t),
+			     tdpMemAttachGlobal));
+  tdpAssert(tdpMemset(links, 0, sizeof(colloid_links_array_t)));
+
+  ifail = colloid_links_array_initialise(maxlinks, links);
+
+  if (ifail == 0) {
+    *array = links;
   }
-  links_array->i[index] = link->i;
-  links_array->j[index] = link->j;
-  links_array->p[index] = link->p;
-  for (int i = 0; i < 3; i++) 
-    links_array->rb[i][index] = link->rb[i];
-  links_array->status[index] = link->status;
+  else {
+    tdpAssert( tdpFree(links) );
+  }
+
+  return ifail;
+}
+
+/*****************************************************************************
+ *
+ *  colloid_links_array_initialise
+ *
+ *****************************************************************************/
+
+int colloid_links_array_initialise(int maxlinks, colloid_links_array_t * a) {
+
+  int ifail = 0;
+
+  if (a == NULL || maxlinks <= 0) {
+    ifail = -1;
+  }
+  else {
+    size_t sz = 0;
+
+    a->max_links = maxlinks;
+    a->active_links = 0;
+  
+    sz = maxlinks*sizeof(int);
+    tdpAssert(tdpMallocManaged((void **) &a->i, sz, tdpMemAttachGlobal));
+    tdpAssert(tdpMallocManaged((void **) &a->j, sz, tdpMemAttachGlobal));
+    tdpAssert(tdpMallocManaged((void **) &a->p, sz, tdpMemAttachGlobal));
+    tdpAssert(tdpMallocManaged((void **) &a->status, sz, tdpMemAttachGlobal));
+
+    for (int i = 0; i < maxlinks; i++) a->i[i] = 0;
+    for (int i = 0; i < maxlinks; i++) a->j[i] = 0;
+    for (int i = 0; i < maxlinks; i++) a->p[i] = 0;
+    for (int i = 0; i < maxlinks; i++) a->status[i] = LINK_UNUSED;
+
+    sz = 3*sizeof(double *);
+    tdpAssert(tdpMallocManaged((void **) &a->rb, sz, tdpMemAttachGlobal));
+    sz = 3*maxlinks*sizeof(double);
+    tdpAssert(tdpMallocManaged((void **) &a->rb[0], sz, tdpMemAttachGlobal));
+
+    a->rb[1] = a->rb[0] + maxlinks;
+    a->rb[2] = a->rb[1] + maxlinks;
+
+    for (int j = 0; j < 3; j++) {
+      tdpAssert( tdpMemset(a->rb[j], 0, maxlinks*sizeof(double)) );
+    }
+  }
+  
+  return ifail;
+}
+
+/*****************************************************************************
+ *
+ *  colloid_links_array_finalise
+ *
+ *****************************************************************************/
+
+int colloid_links_array_finalise(colloid_links_array_t * links) {
+
+  if (links) {
+    tdpAssert( tdpFree(links->i) );
+    tdpAssert( tdpFree(links->j) );
+    tdpAssert( tdpFree(links->p) );
+    tdpAssert( tdpFree(links->status) );
+    tdpAssert( tdpFree(links->rb[0]) );
+    tdpAssert( tdpFree(links->rb ) );
+    *links = (colloid_links_array_t) {};
+  }
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  colloid_links_array_free
+ *
+ *****************************************************************************/
+
+int colloid_links_array_free(colloid_links_array_t ** links) {
+
+  assert(links);
+
+  if (links) {
+    colloid_links_array_finalise(*links);
+    tdpAssert( tdpFree(*links) );
+    *links = NULL;
+  }
+
+  return 0;
 }
 
 /***************************************************************************
  * 
- * colloid_link_i
+ *  colloid_link_to_array
  * 
- * Retrieves the i link at given index
+ *  Copies single link to array at the specified index.
  * 
  ***************************************************************************/
-__host__ __device__ void colloid_link_i(colloid_links_array_t *links_array, size_t index, int *i) {
-  *i = links_array->i[index];
+
+int colloid_link_to_array(const colloid_link_t * link,
+			  colloid_links_array_t * array, int index) {
+
+  assert(link);
+  assert(array);
+  assert(0 <= index && index < array->max_links);
+
+  if (index > array->active_links) {
+    /* FIXME revist. Should this be here? */
+    /* assert(index == array->active_links + 1); */
+    array->active_links++;
+  }
+
+  array->i[index] = link->i;
+  array->j[index] = link->j;
+  array->p[index] = link->p;
+  array->status[index] = link->status;
+  array->rb[X][index] = link->rb[X];
+  array->rb[Y][index] = link->rb[Y];
+  array->rb[Z][index] = link->rb[Z]; 
+
+  return array->active_links;
 }
 
-/***************************************************************************
- * 
- * colloid_link_j
- * 
- * Retrieves the j link at given index
- * 
- ***************************************************************************/
-__host__ __device__ void colloid_link_j(colloid_links_array_t *links_array, size_t index, int *j) {
-  *j = links_array->j[index];
-}
-
-/***************************************************************************
- * 
- * colloid_link_p
- * 
- * Retrieves the p link at given index
- * 
- ***************************************************************************/
-__host__ __device__ void colloid_link_p(colloid_links_array_t *links_array, size_t index, int *p) {
-  *p = links_array->p[index];
-}
-
-/***************************************************************************
- * 
- * colloid_link_status
- * 
- * Retrieves the link status at given index
- * 
- ***************************************************************************/
-__host__ __device__ void colloid_link_status(colloid_links_array_t *links_array, size_t index, int *status) {
-  *status = links_array->status[index];
-}
-
-/***************************************************************************
- * 
- * colloid_link_rb
- * 
- * Retrieves the rb link at given index
- * 
- ***************************************************************************/
-__host__ __device__ void colloid_link_rb(colloid_links_array_t *links_array, size_t index, double *rb) {
-  for (int i = 0; i < 3; i++)
-    rb[i] = links_array->rb[i][index];
-}

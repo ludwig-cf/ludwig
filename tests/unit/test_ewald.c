@@ -10,7 +10,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2010-2025 The University of Edinburgh
+ *  (c) 2010-2026 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -30,7 +30,6 @@
 #define TOLERANCE 1.0e-07
 
 int test_ewald(void);
-int test_ewald_with_state(void);
 
 /*****************************************************************************
  *
@@ -39,8 +38,8 @@ int test_ewald_with_state(void);
  *****************************************************************************/
 
 int test_ewald_suite(void) {
+
   test_ewald();
-  test_ewald_with_state();
 
   return 0;
 }
@@ -114,318 +113,22 @@ int test_ewald(void) {
   r2[Y] = 3.0;
   r2[Z] = 13.0;
 
-  colloids_info_add_local(cinfo, 1, r1, a0, &p_c1);
-  colloids_info_add_local(cinfo, 2, r2, a0, &p_c2);
-  assert(p_c1 != NULL);
-  assert(p_c2 != NULL);
-  colloids_info_ntotal_set(cinfo);
-  colloids_info_list_local_build(cinfo);
-
-  /* First colloid .... */
-
-  p_c1->s.a0 = a0;
-  p_c1->s.ah = a0;
-
-  p_c1->s.s[X] = 0.0;
-  p_c1->s.s[Y] = 0.0;
-  p_c1->s.s[Z] = 1.0;
-  p_c1->s.magnetic = 1;
-
-  /* Second colloid ... */
-
-  p_c2->s.a0 = a0;
-  p_c2->s.ah = a0;
-
-  p_c2->s.s[X] = 0.0;
-  p_c2->s.s[Y] = 0.0;
-  p_c2->s.s[Z] = -1.0;
-  p_c2->s.magnetic = 1;
-  cs_minimum_distance(cs, r1, r2, r12);
-
-
-  ewald_real_space_energy(ewald, p_c1->s.s, p_c2->s.s, r12, &e);
-  test_assert(fabs(e - 0.000168995) < TOLERANCE);
-
-  ewald_fourier_space_energy(ewald, &e);
-  test_assert(fabs(e - 2.25831e-05) < TOLERANCE);
-
-  ewald_self_energy(ewald, &e);
-  test_assert(fabs(e - -2.91356e-05) < TOLERANCE);
-
-  /* Now forces */
-
-  ewald_real_space_sum(ewald);
-  ewald_total_energy(ewald, &ereal, &efourier, &eself);
-
-  test_assert(fabs(ereal - 0.000168995) < TOLERANCE);
-
-  test_assert(fabs(p_c1->force[X] - 0.0) < TOLERANCE);
-  test_assert(fabs(p_c1->force[Y] - 0.0) < TOLERANCE);
-  test_assert(fabs(p_c1->force[Z] - -5.17464e-05) < TOLERANCE);
-
-  test_assert(fabs(p_c2->force[X] - 0.0) < TOLERANCE);
-  test_assert(fabs(p_c2->force[Y] - 0.0) < TOLERANCE);
-  test_assert(fabs(p_c2->force[Z] - 5.17464e-05) < TOLERANCE);
-
-  test_assert(fabs(p_c1->force[Z] + p_c2->force[Z]) < TOLERANCE);
-
-
-  test_assert(fabs(p_c1->torque[X] - 0.0) < TOLERANCE);
-  test_assert(fabs(p_c1->torque[Y] - 0.0) < TOLERANCE);
-  test_assert(fabs(p_c1->torque[Z] - 0.0) < TOLERANCE);
-
-  test_assert(fabs(p_c2->torque[X] - 0.0) < TOLERANCE);
-  test_assert(fabs(p_c2->torque[Y] - 0.0) < TOLERANCE);
-  test_assert(fabs(p_c2->torque[Z] - 0.0) < TOLERANCE);
-
-
-  /* Fourier space */
-  p_c1->force[X] = 0.0; p_c1->force[Y] = 0.0; p_c1->force[Z] = 0.0;
-  p_c2->force[X] = 0.0; p_c2->force[Y] = 0.0; p_c2->force[Z] = 0.0;
-
-  ewald_fourier_space_sum(ewald);
-  ewald_total_energy(ewald, &ereal, &efourier, &eself);
-
-  test_assert(fabs(efourier - 2.25831e-05) < TOLERANCE);
-  test_assert(fabs(p_c1->force[X] - 0.0) < TOLERANCE);
-  test_assert(fabs(p_c1->force[Y] - 0.0) < TOLERANCE);
-  test_assert(fabs(p_c1->force[Z] - 3.08611e-06) < TOLERANCE);
-
-  test_assert(fabs(p_c2->force[X] - 0.0) < TOLERANCE);
-  test_assert(fabs(p_c2->force[Y] - 0.0) < TOLERANCE);
-  test_assert(fabs(p_c2->force[Z] - -3.08611e-06) < TOLERANCE);
-
-  test_assert(fabs(p_c1->force[Z] + p_c2->force[Z]) < TOLERANCE);
-
-  test_assert(fabs(p_c1->torque[X] - 0.0) < TOLERANCE);
-  test_assert(fabs(p_c1->torque[Y] - 0.0) < TOLERANCE);
-  test_assert(fabs(p_c1->torque[Z] - 0.0) < TOLERANCE);
-
-  test_assert(fabs(p_c2->torque[X] - 0.0) < TOLERANCE);
-  test_assert(fabs(p_c2->torque[Y] - 0.0) < TOLERANCE);
-  test_assert(fabs(p_c2->torque[Z] - 0.0) < TOLERANCE);
-
-
-  /* New orientation (non-zero torques). */
-
-  p_c2->s.s[X] = 1.0;
-  p_c2->s.s[Y] = 0.0;
-  p_c2->s.s[Z] = 0.0;
-
-  p_c1->force[X] = 0.0; p_c1->force[Y] = 0.0; p_c1->force[Z] = 0.0;
-  p_c2->force[X] = 0.0; p_c2->force[Y] = 0.0; p_c2->force[Z] = 0.0;
-
-  /* Energy */
-
-  ewald_real_space_energy(ewald, p_c1->s.s, p_c2->s.s, r12, &e);
-  test_assert(fabs(e - 0.0) < TOLERANCE);
-
-  ewald_fourier_space_energy(ewald, &e);
-  test_assert(fabs(e - 2.76633e-05) < TOLERANCE);
-
-  ewald_self_energy(ewald, &e);
-  test_assert(fabs(e - -2.91356e-05) < TOLERANCE);
-
-  /* Forces */
-
-  ewald_real_space_sum(ewald);
-  ewald_total_energy(ewald, &ereal, &efourier, &eself);
-
-  test_assert(fabs(ereal - 0.0) < TOLERANCE);
-  test_assert(fabs(p_c1->force[X] - -2.29755e-05) < TOLERANCE);
-  test_assert(fabs(p_c1->force[Y] - 0.0) < TOLERANCE);
-  test_assert(fabs(p_c1->force[Z] - 0.0) < TOLERANCE);
-
-  test_assert(fabs(p_c2->force[X] - 2.29755e-05) < TOLERANCE);
-  test_assert(fabs(p_c2->force[Y] - 0.0) < TOLERANCE);
-  test_assert(fabs(p_c2->force[Z] - 0.0) < TOLERANCE);
-
-  test_assert(fabs(p_c1->force[X] + p_c2->force[X]) < TOLERANCE);
-
-  test_assert(fabs(p_c1->torque[X] - 0.0) < TOLERANCE);
-  test_assert(fabs(p_c1->torque[Y] - -6.07598e-05) < TOLERANCE);
-  test_assert(fabs(p_c1->torque[Z] - 0.0) < TOLERANCE);
-
-  test_assert(fabs(p_c2->torque[X] - 0.0) < TOLERANCE);
-  test_assert(fabs(p_c2->torque[Y] - -0.000168995) < TOLERANCE);
-  test_assert(fabs(p_c2->torque[Z] - 0.0) < TOLERANCE);
-
-
-  /* Fourier space */
-  p_c1->force[X] = 0.0; p_c1->force[Y] = 0.0; p_c1->force[Z] = 0.0;
-  p_c2->force[X] = 0.0; p_c2->force[Y] = 0.0; p_c2->force[Z] = 0.0;
-  p_c1->torque[X] = 0.0; p_c1->torque[Y] = 0.0; p_c1->torque[Z] = 0.0;
-  p_c2->torque[X] = 0.0; p_c2->torque[Y] = 0.0; p_c2->torque[Z] = 0.0;
-
-
-  ewald_fourier_space_sum(ewald);
-  ewald_total_energy(ewald, &ereal, &efourier, &eself);
-
-  test_assert(fabs(efourier - 2.76633e-05) < TOLERANCE);
-
-  test_assert(fabs(p_c1->force[X] - -1.35013e-06) < TOLERANCE);
-  test_assert(fabs(p_c1->force[Y] - 0.0) < TOLERANCE);
-  test_assert(fabs(p_c1->force[Z] - 0.0) < TOLERANCE);
-
-  test_assert(fabs(p_c2->force[X] - 1.35013e-06) < TOLERANCE);
-  test_assert(fabs(p_c2->force[Y] - 0.0) < TOLERANCE);
-  test_assert(fabs(p_c2->force[Z] - 0.0) < TOLERANCE);
-
-  test_assert(fabs(p_c1->force[X] + p_c2->force[X]) < TOLERANCE);
-
-  test_assert(fabs(p_c1->torque[X] - 0.0) < TOLERANCE);
-  test_assert(fabs(p_c1->torque[Y] - -1.92945e-05) < TOLERANCE);
-  test_assert(fabs(p_c1->torque[Z] - 0.0) < TOLERANCE);
-
-  test_assert(fabs(p_c2->torque[X] - 0.0) < TOLERANCE);
-  test_assert(fabs(p_c2->torque[Y] - 5.08024e-06) < TOLERANCE);
-  test_assert(fabs(p_c2->torque[Z] - 0.0) < TOLERANCE);
-
-  /* New orientation (non-zero torques). */
-
-  p_c1->s.r[X] = 3.0;
-  p_c1->s.r[Y] = 3.0;
-  p_c1->s.r[Z] = 3.0;
-
-  p_c1->s.s[X] = 0.0;
-  p_c1->s.s[Y] = 0.0;
-  p_c1->s.s[Z] = 1.0;
-
-
-  p_c2->s.r[X] = 3.0;
-  p_c2->s.r[Y] = 13.0;
-  p_c2->s.r[Z] = 3.0;
-
-  p_c2->s.s[X] =  0.0;
-  p_c2->s.s[Y] = 1.0;
-  p_c2->s.s[Z] = 0.0;
-
-  p_c1->force[X] = 0.0; p_c1->force[Y] = 0.0; p_c1->force[Z] = 0.0;
-  p_c2->force[X] = 0.0; p_c2->force[Y] = 0.0; p_c2->force[Z] = 0.0;
-  p_c1->torque[X] = 0.0; p_c1->torque[Y] = 0.0; p_c1->torque[Z] = 0.0;
-  p_c2->torque[X] = 0.0; p_c2->torque[Y] = 0.0; p_c2->torque[Z] = 0.0;
-
-  ewald_real_space_sum(ewald);
-  ewald_total_energy(ewald, &ereal, &efourier, &eself);
-
-  p_c1->force[X] = 0.0; p_c1->force[Y] = 0.0; p_c1->force[Z] = 0.0;
-  p_c2->force[X] = 0.0; p_c2->force[Y] = 0.0; p_c2->force[Z] = 0.0;
-
-  ewald_fourier_space_sum(ewald);
-
-  ewald_free(ewald);
-  ewald = NULL;
-
-
-
-  /* Now set cut-off = 8.0. */
-
-  ewald_create(pe, cs, 0.285, 8.0, cinfo, &ewald);
-  test_assert(ewald != NULL);
-
-  ewald_real_space_energy(ewald, p_c1->s.s, p_c2->s.s, r12, &e);
-  test_assert(fabs(e - 0.0) < TOLERANCE);
-
-  ewald_fourier_space_energy(ewald, &e);
-  ewald_self_energy(ewald, &e);
-  /* No test available. */
-
-  ewald_free(ewald);
-
-  pe_info(pe, "PASS     ./unit/test_ewald\n");
-
-  colloids_info_free(&cinfo);
-  cs_free(cs);
-  pe_free(pe);
-
-  return 0;
-}
-
-/*****************************************************************************
- *
- *  test_ewald_with_state
- *
- *****************************************************************************/
-
-int test_ewald_with_state(void) {
-
-  double mu = 0.285;  /* dipole strength */
-  double rc = 32.0;   /* real space cut off (default L / 2) */
-  double r1[3];
-  double r2[3];
-  double r12[3];
-
-  double e;
-  double ereal;
-  double efourier;
-  double eself;
-  double kappa;
-  double ltot[3];
-  double a0 = 2.3;
-
-  colloid_t * p_c1;
-  colloid_t * p_c2;
-
-  colloid_options_t opts  = colloid_options_default();
-  colloids_info_t * cinfo = NULL;
-
-  pe_t * pe = NULL;
-  cs_t * cs = NULL;
-  ewald_t * ewald = NULL;
-
-  colloid_state_t state1, state2;
-
-  pe_create(MPI_COMM_WORLD, PE_QUIET, &pe);
-
-  if (pe_mpi_size(pe) > 1) {
-    pe_info(pe, "SKIP     ./unit/test_ewald\n");
-    pe_free(pe);
-    return 0;
+  {
+    colloid_state_t s1 = {};
+    colloid_state_t s2 = {};
+
+    colloid_state_init_sphere(1, a0, a0, r1, &s1);
+    colloid_state_init_sphere(2, a0, a0, r2, &s2);
+    colloids_info_add_local(cinfo, &s1, &p_c1);
+    colloids_info_add_local(cinfo, &s2, &p_c2);
+    assert(p_c1 != NULL);
+    assert(p_c2 != NULL);
   }
 
-  cs_create(pe, &cs);
-  cs_init(cs);
-  cs_ltot(cs, ltot);
-
-  test_assert(fabs(ltot[X] - 64.0) < TEST_DOUBLE_TOLERANCE);
-  test_assert(fabs(ltot[Y] - 64.0) < TEST_DOUBLE_TOLERANCE);
-  test_assert(fabs(ltot[Z] - 64.0) < TEST_DOUBLE_TOLERANCE);
-
-  colloids_info_create(pe, cs, &opts, &cinfo);
-  test_assert(cinfo != NULL);
-
-  ewald_create(pe, cs, mu, rc, cinfo, &ewald);
-  test_assert(ewald != NULL);
-  ewald_kappa(ewald, &kappa);
-
-  /* First test */
-
-  test_assert(fabs(rc - 32.0) < TOLERANCE);
-  test_assert(fabs(mu - 0.285) < TOLERANCE);
-  test_assert(fabs(kappa - 0.078125) < TOLERANCE);
-
-  r1[X] = 3.0;
-  r1[Y] = 3.0;
-  r1[Z] = 3.0;
-
-  r2[X] = 3.0;
-  r2[Y] = 3.0;
-  r2[Z] = 13.0;
-
-  create_dummy_state(&state1, 1, a0, r1);
-  create_dummy_state(&state2, 2, a0, r2);
-
-  colloids_info_add_local_with_state(cinfo, &state1, &p_c1);
-  colloids_info_add_local_with_state(cinfo, &state2, &p_c2);
-  assert(p_c1 != NULL);
-  assert(p_c2 != NULL);
   colloids_info_ntotal_set(cinfo);
   colloids_info_list_local_build(cinfo);
 
   /* First colloid .... */
-
-  p_c1->s.a0 = a0;
-  p_c1->s.ah = a0;
 
   p_c1->s.s[X] = 0.0;
   p_c1->s.s[Y] = 0.0;
@@ -433,9 +136,6 @@ int test_ewald_with_state(void) {
   p_c1->s.magnetic = 1;
 
   /* Second colloid ... */
-
-  p_c2->s.a0 = a0;
-  p_c2->s.ah = a0;
 
   p_c2->s.s[X] = 0.0;
   p_c2->s.s[Y] = 0.0;
