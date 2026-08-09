@@ -30,6 +30,7 @@
 #include "colloid_link.h"
 
 int colloid_create(colloids_info_t * cinfo, const colloid_state_t * state, colloid_t ** pc);
+void colloid_free(colloids_info_t * cinfo, colloid_t * pc);
 
 /*****************************************************************************
  *
@@ -842,41 +843,6 @@ __host__ int colloids_info_update_cell_list(colloids_info_t * cinfo) {
 
   return 0;
 }
-#ifdef OLD
-/*****************************************************************************
- *
- *  colloids_info_add_local
- *
- *  Return a pointer to a new colloid, if r is in the local domain.
- *  Index is the (unique) id for the new colloid.
- *
- *  If r[3] is not in the local domain, no colloid is added, and
- *  *pc is returned unchanged (NULL).
- *
- *****************************************************************************/
-
-__host__ int colloids_info_add_local(colloids_info_t * cinfo, int index,
-			    const double r[3], double a0, colloid_t ** pc) {
-  int is_local = 1;
-  int icell[3];
-
-  assert(cinfo);
-  assert(pc);
-
-  colloids_info_cell_coords(cinfo, r, icell);
-
-  assert(cinfo->nhalo == 1); /* Following would need to be adjusted */
-
-  if (icell[X] < 1 || icell[X] > cinfo->ncell[X]) is_local = 0;
-  if (icell[Y] < 1 || icell[Y] > cinfo->ncell[Y]) is_local = 0;
-  if (icell[Z] < 1 || icell[Z] > cinfo->ncell[Z]) is_local = 0;
-
-  *pc = NULL;
-  if (is_local) colloids_info_add(cinfo, index, r, a0, pc);
-
-  return 0;
-}
-#endif
 
 /*****************************************************************************
  *

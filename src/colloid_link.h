@@ -66,11 +66,11 @@ int colloid_link_to_array(const colloid_link_t * link,
 
 #define HDSI_ __host__ __device__ static inline
 
-HDSI_ int colloid_links_array_i(const colloid_links_array_t * a, size_t index);
-HDSI_ int colloid_links_array_j(const colloid_links_array_t * a, size_t index);
-HDSI_ int colloid_links_array_p(const colloid_links_array_t * a, size_t index);
-HDSI_ int colloid_links_array_status(const colloid_links_array_t * a, size_t index);
-HDSI_ void colloid_links_array_rb(const colloid_links_array_t * a, size_t index, double rb[3]);
+HDSI_ int colloid_links_array_i(const colloid_links_array_t * a, int index);
+HDSI_ int colloid_links_array_j(const colloid_links_array_t * a, int index);
+HDSI_ int colloid_links_array_p(const colloid_links_array_t * a, int index);
+HDSI_ int colloid_links_array_status(const colloid_links_array_t * a, int index);
+HDSI_ void colloid_links_array_rb(const colloid_links_array_t * a, int index, double rb[3]);
 
 #undef HDSI_
 

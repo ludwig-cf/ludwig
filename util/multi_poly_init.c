@@ -331,7 +331,7 @@ int colloid_init_write_file_mpio(pe_t * pe, cs_t * cs, int nc,
   int               ifail    = 0;
   int               ncell[3] = {8, 8, 8};
   colloid_options_t opts     = colloid_options_ncell(ncell);
-  colloids_info_t   info     = {0};
+  colloids_info_t   info     = {};
 
   opts.output.mode      = COLLOID_IO_MODE_MPIIO;
   opts.output.iorformat = ioformat;

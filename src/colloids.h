@@ -7,7 +7,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2010-2025 The University of Edinburgh
+ *  (c) 2010-2026 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -94,7 +94,7 @@ struct colloid {
 
   colloid_t * bonded[NBOND_MAX];
 
-  colloid_links_array_t * links; /* Arrays of links for this colloid. */ 
+  colloid_links_array_t * links; /* Arrays of links for this colloid. */
 };
 
 
@@ -185,7 +185,6 @@ __host__ int colloids_ellipsoid_abc_check(colloids_info_t * info);
 __host__ int colloids_buoyancy_set(colloids_info_t * cinfo, const double b[3]);
 __host__ int colloids_gravity_set(colloids_info_t * cinfo, const double g[3]);
 
-__host__ void colloid_free(colloids_info_t * cinfo, colloid_t * pc);
 
 int colloids_info_add_local(colloids_info_t * cinfo, const colloid_state_t * state, colloid_t ** pc);
 int colloids_info_add(colloids_info_t * confo, const colloid_state_t * state, colloid_t ** pc);

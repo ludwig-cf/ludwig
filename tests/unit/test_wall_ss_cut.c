@@ -44,14 +44,19 @@ int test_wall_ss_cut_suite(void) {
     map_t * map = NULL;
     wall_t * wall = NULL;
 
-    wall_param_t param = {.iswall = 1, .isboundary = {1,1,1}};
     map_options_t mapopts = map_options_default();
     lb_data_options_t opts = lb_data_options_default();
+
+    wall_param_t wall_param = {};
+    wall_param.iswall = 1;
+    wall_param.isboundary[X] = 1;
+    wall_param.isboundary[Y] = 1;
+    wall_param.isboundary[Z] = 1;
 
     lb_data_create(pe, cs, &opts, &lb);
     map_create(pe, cs, &mapopts, &map);
     wall_create(pe, cs, map, lb, &wall);
-    wall_commit(wall, &param);
+    wall_commit(wall, &wall_param);
 
     test_wall_ss_cut_create(pe, cs, wall);
     test_wall_ss_cut_single(pe, cs, wall);
@@ -159,7 +164,7 @@ int test_wall_ss_cut_compute(pe_t * pe, cs_t * cs, wall_t * wall) {
 
     colloid_t * pc = NULL;
     colloid_state_t state = {};
-    
+
     colloid_state_init_sphere(index, a0, ah, r, &state);
     colloids_info_add_local(cinfo, &state, &pc);
 

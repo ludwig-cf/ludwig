@@ -94,7 +94,7 @@ int test_colloids_info_initialise(pe_t * pe, cs_t * cs) {
 
   {
     colloid_options_t options = colloid_options_default();
-    colloids_info_t info = {0};
+    colloids_info_t info = {};
 
     ifail = colloids_info_initialise(pe, cs, &options, &info);
     assert(ifail == 0);
@@ -138,7 +138,7 @@ int test_colloids_info_initialise(pe_t * pe, cs_t * cs) {
 
   {
     colloid_options_t opts = colloid_options_have_colloids(1);
-    colloids_info_t info   = {0};
+    colloids_info_t info   = {};
 
     ifail = colloids_info_initialise(pe, cs, &opts, &info);
     assert(ifail == 0);
@@ -163,7 +163,7 @@ int test_colloids_info_finalise(pe_t * pe, cs_t * cs) {
 
   {
     colloid_options_t opts = colloid_options_default();
-    colloids_info_t   info = {0};
+    colloids_info_t   info = {};
 
     ifail = colloids_info_initialise(pe, cs, &opts, &info);
     ifail = colloids_info_finalise(&info);
