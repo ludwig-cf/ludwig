@@ -21,10 +21,12 @@
 #include "colloid.h"
 
 /* Old type definitions for backwards compatibility */
-enum colloid_type_enum {COLLOID_TYPE_DEFAULT = 0,
-                        COLLOID_TYPE_ACTIVE,
-                        COLLOID_TYPE_SUBGRID,
-                        COLLOID_TYPE_JANUS};
+enum colloid_type_enum {
+  COLLOID_TYPE_DEFAULT = 0,
+  COLLOID_TYPE_ACTIVE,
+  COLLOID_TYPE_SUBGRID,
+  COLLOID_TYPE_JANUS
+};
 
 /*****************************************************************************
  *
@@ -125,7 +127,9 @@ int colloid_state_read_ascii(colloid_state_t * ps, FILE * fp) {
     nread += fscanf(fp, sformat, &ps->dpad[n]);
   }
 
-  if (nread != NTOT_VAR) ifail = 1;
+  if (nread != NTOT_VAR) {
+    ifail = 1;
+  }
 
   /* Always set the rebuild flag (even if file has zero) */
 
@@ -168,9 +172,8 @@ int colloid_state_read_binary(colloid_state_t * ps, FILE * fp) {
 
 int colloid_state_write_ascii(const colloid_state_t * s, FILE * fp) {
 
-  int n;
   int nwrite = 0;
-  int ifail = 0;
+  int ifail  = 0;
 
   const char * isformat = "%24d\n";
   const char * sformat  = "%24.15e\n";
@@ -189,7 +192,7 @@ int colloid_state_write_ascii(const colloid_state_t * s, FILE * fp) {
   nwrite += fprintf(fp, isformat, s->isfixeds);
   nwrite += fprintf(fp, isformat, s->type);
 
-  for (n = 0; n < NBOND_MAX; n++) {
+  for (int n = 0; n < NBOND_MAX; n++) {
     nwrite += fprintf(fp, isformat, s->bond[n]);
   }
 
@@ -198,10 +201,10 @@ int colloid_state_write_ascii(const colloid_state_t * s, FILE * fp) {
   /* isfixedrxyz and isfixedvxyz are written as 3 x scalars as they
    * have replaced padding */
 
-  for (n = 0; n < 3; n++) {
+  for (int n = 0; n < 3; n++) {
     nwrite += fprintf(fp, isformat, s->isfixedrxyz[n]);
   }
-  for (n = 0; n < 3; n++) {
+  for (int n = 0; n < 3; n++) {
     nwrite += fprintf(fp, isformat, s->isfixedvxyz[n]);
   }
 
@@ -213,7 +216,7 @@ int colloid_state_write_ascii(const colloid_state_t * s, FILE * fp) {
   nwrite += fprintf(fp, isformat, s->magnetic);
   nwrite += fprintf(fp, isformat, s->attr);
 
-  for (n = 0; n < NPAD_INT; n++) {
+  for (int n = 0; n < NPAD_INT; n++) {
     nwrite += fprintf(fp, isformat, s->intpad[n]);
   }
 
@@ -259,12 +262,14 @@ int colloid_state_write_ascii(const colloid_state_t * s, FILE * fp) {
 
   /* Padding */
 
-  for (n = 0; n < NPAD_DBL; n++) {
+  for (int n = 0; n < NPAD_DBL; n++) {
     nwrite += fprintf(fp, sformat, s->dpad[n]);
   }
 
   /* ... should be NTOT_VAR items of format + 1 characters */
-  if (nwrite != NTOT_VAR*25) ifail = 1;
+  if (nwrite != NTOT_VAR * 25) {
+    ifail = 1;
+  }
 
   return ifail;
 }
@@ -300,19 +305,20 @@ int colloid_state_write_binary(const colloid_state_t * s, FILE * fp) {
 int colloid_state_mass(const colloid_state_t * s, double rho0, double * mass) {
 
   int ifail = 0;
-  const double pi = 4.0*atan(1.0);
+
+  const double pi = 4.0 * atan(1.0);
 
   assert(s);
   assert(mass);
 
   if (s->shape == COLLOID_SHAPE_SPHERE) {
-    *mass = 4.0*pi*pow(s->a0, 3)*rho0/3.0;
+    *mass = 4.0 * pi * pow(s->a0, 3) * rho0 / 3.0;
   }
   else if (s->shape == COLLOID_SHAPE_ELLIPSOID) {
-    *mass = (4.0/3.0)*pi*rho0*s->elabc[0]*s->elabc[1]*s->elabc[2];
+    *mass = (4.0 / 3.0) * pi * rho0 * s->elabc[0] * s->elabc[1] * s->elabc[2];
   }
   else if (s->shape == COLLOID_SHAPE_DISK) {
-    *mass = pi*rho0*pow(s->a0, 2);
+    *mass = pi * rho0 * pow(s->a0, 2);
   }
   else {
     ifail = -1;
@@ -340,11 +346,15 @@ int colloid_type_check(colloid_state_t * s) {
   int is_updated = 0;
 
   if (s->shape == COLLOID_SHAPE_INVALID) {
-    s->shape   = COLLOID_SHAPE_SPHERE;
-    s->bc      = COLLOID_BC_BBL;
-    s->active  = 0;
-    if (s->type == COLLOID_TYPE_ACTIVE) s->active = 1;
-    if (s->type == COLLOID_TYPE_SUBGRID) s->bc = COLLOID_BC_SUBGRID;
+    s->shape  = COLLOID_SHAPE_SPHERE;
+    s->bc     = COLLOID_BC_BBL;
+    s->active = 0;
+    if (s->type == COLLOID_TYPE_ACTIVE) {
+      s->active = 1;
+    }
+    if (s->type == COLLOID_TYPE_SUBGRID) {
+      s->bc = COLLOID_BC_SUBGRID;
+    }
     is_updated = 1;
   }
 
@@ -366,21 +376,23 @@ double colloid_principal_radius(const colloid_state_t * s) {
   assert(s);
 
   amax = s->a0;
-  if (s->shape == COLLOID_SHAPE_ELLIPSOID) amax = s->elabc[0];
+  if (s->shape == COLLOID_SHAPE_ELLIPSOID) {
+    amax = s->elabc[0];
+  }
 
   return amax;
 }
 
 /*****************************************************************************
- * 
+ *
  *  colloid_state_init_sphere
- * 
+ *
  *  Creates a colloid state with specified index and radius for testing
- * 
+ *
  ****************************************************************************/
 
 int colloid_state_init_sphere(int index, double a0, double ah,
-			      const double r[3], colloid_state_t * state) {
+                              const double r[3], colloid_state_t * state) {
 
   assert(index > 0);
   assert(state);
@@ -413,8 +425,8 @@ int colloid_state_init_sphere(int index, double a0, double ah,
  ****************************************************************************/
 
 int colloid_state_init_ellipsoid(int index, const double abc[3],
-			         const double q[4],
-			         const double r[3], colloid_state_t * state) {
+                                 const double q[4], const double r[3],
+                                 colloid_state_t * state) {
 
   assert(index > 0);
   assert(state);
@@ -430,9 +442,9 @@ int colloid_state_init_ellipsoid(int index, const double abc[3],
   s.quat[2]  = q[2];
   s.quat[3]  = q[3];
 
-  s.r[X]     = r[X];
-  s.r[Y]     = r[Y];
-  s.r[Z]     = r[Z];
+  s.r[X] = r[X];
+  s.r[Y] = r[Y];
+  s.r[Z] = r[Z];
 
   s.bc    = COLLOID_BC_BBL;
   s.shape = COLLOID_SHAPE_ELLIPSOID;

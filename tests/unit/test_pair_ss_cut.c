@@ -124,7 +124,7 @@ static int test_pair_ss_cut2(pe_t * pe, cs_t * cs) {
 
   test_pair_config1(cinfo, interact, pair);
   colloids_info_free(&cinfo);
-  
+
   colloids_info_create(pe, cs, &opts, &cinfo);
   test_pair_config1(cinfo, interact, pair);
 
@@ -221,6 +221,6 @@ static int test_pair_config1(colloids_info_t * cinfo, interact_t * interact,
   MPI_Allreduce(stats_local, stats, INTERACT_STAT_MAX, MPI_DOUBLE, MPI_SUM,
 		comm);
   assert(fabs(stats[INTERACT_STAT_VLOCAL] - v) < FLT_EPSILON);
-  
+
   return 0;
 }

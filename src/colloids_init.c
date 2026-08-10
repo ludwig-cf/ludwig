@@ -107,7 +107,7 @@ static int colloids_init_random_set(colloids_info_t * cinfo, int npart,
     s_temp.r[Z] = lmin[Z] + lex[Z] + ran_serial_uniform()*(ltot[Z] - 2.0*lex[Z]);
     s_temp.index = n;
     s_temp.rng = n;
-    
+
     colloids_info_add_local(cinfo, &s_temp, &pc);
   }
 
@@ -243,4 +243,3 @@ static int colloids_init_check_wall(pe_t * pe, cs_t * cs,
 
   return 0;
 }
-

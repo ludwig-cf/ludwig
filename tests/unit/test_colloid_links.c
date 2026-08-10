@@ -45,7 +45,7 @@ int test_colloid_link_suite(void) {
   test_colloid_link_array_create();
   test_colloid_link_to_array();
   test_colloid_link_array_rb();
-  
+
   pe_info(pe, "PASS     ./unit/test_colloid_links\n");
 
   pe_free(pe);

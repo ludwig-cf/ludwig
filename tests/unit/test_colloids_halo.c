@@ -50,7 +50,7 @@ int test_colloids_halo_suite(void) {
   test_colloids_halo111(pe, cs);
   test_colloids_halo211(pe, cs);
   test_colloids_halo_repeat(pe, cs);
-  
+
   pe_info(pe, "PASS     ./unit/test_colloids_halo\n");
   cs_free(cs);
   pe_free(pe);

@@ -21,7 +21,7 @@
 
 #include "colloid_link.h"
 
-static int nlinks_ = 0;   /* Total currently allocated (linked list) */
+static int nlinks_ = 0; /* Total currently allocated (linked list) */
 
 /*****************************************************************************
  *
@@ -89,10 +89,7 @@ int colloid_link_count(colloid_link_t * p) {
  *
  *****************************************************************************/
 
-int colloid_link_total(void) {
-
-  return nlinks_;
-}
+int colloid_link_total(void) { return nlinks_; }
 
 /*****************************************************************************
  *
@@ -120,8 +117,8 @@ int colloid_link_total(void) {
 
 int colloid_link_max_2d(double a, int nvel) {
 
-  int    pi = 4;                        /* This is approximate */
-  double ai = fmax(4.0, ceil(a));       /* A minimum reasonable a ~ 4 */
+  int    pi = 4;                  /* This is approximate */
+  double ai = fmax(4.0, ceil(a)); /* A minimum reasonable a ~ 4 */
 
   return 2*pi*ai*(nvel - 1)/2;
 }
@@ -139,8 +136,8 @@ int colloid_link_max_2d(double a, int nvel) {
 
 int colloid_link_max_3d(double a, int nvel) {
 
-  int    pi = 4;                          /* This is approximate */
-  double ai = fmax(1.0, ceil(a));         /* A minimum reasonable a ~ 1.0 */
+  int    pi = 4;                  /* This is approximate */
+  double ai = fmax(1.0, ceil(a)); /* A minimum reasonable a ~ 1.0 */
 
   return 4*pi*ai*ai*(nvel - 1)/2;
 }
@@ -156,11 +153,11 @@ int colloid_link_max_3d(double a, int nvel) {
 
 int colloid_links_array_create(int maxlinks, colloid_links_array_t ** array) {
 
-  int ifail = 0;
+  int                     ifail = 0;
   colloid_links_array_t * links = NULL;
 
   tdpAssert(tdpMallocManaged((void **) &links, sizeof(colloid_links_array_t),
-			     tdpMemAttachGlobal));
+                             tdpMemAttachGlobal));
   tdpAssert(tdpMemset(links, 0, sizeof(colloid_links_array_t)));
 
   ifail = colloid_links_array_initialise(maxlinks, links);
@@ -169,7 +166,7 @@ int colloid_links_array_create(int maxlinks, colloid_links_array_t ** array) {
     *array = links;
   }
   else {
-    tdpAssert( tdpFree(links) );
+    tdpAssert(tdpFree(links));
   }
 
   return ifail;
@@ -191,33 +188,41 @@ int colloid_links_array_initialise(int maxlinks, colloid_links_array_t * a) {
   else {
     size_t sz = 0;
 
-    a->max_links = maxlinks;
+    a->max_links    = maxlinks;
     a->active_links = 0;
-  
-    sz = maxlinks*sizeof(int);
+
+    sz = maxlinks * sizeof(int);
     tdpAssert(tdpMallocManaged((void **) &a->i, sz, tdpMemAttachGlobal));
     tdpAssert(tdpMallocManaged((void **) &a->j, sz, tdpMemAttachGlobal));
     tdpAssert(tdpMallocManaged((void **) &a->p, sz, tdpMemAttachGlobal));
     tdpAssert(tdpMallocManaged((void **) &a->status, sz, tdpMemAttachGlobal));
 
-    for (int i = 0; i < maxlinks; i++) a->i[i] = 0;
-    for (int i = 0; i < maxlinks; i++) a->j[i] = 0;
-    for (int i = 0; i < maxlinks; i++) a->p[i] = 0;
-    for (int i = 0; i < maxlinks; i++) a->status[i] = LINK_UNUSED;
+    for (int i = 0; i < maxlinks; i++) {
+      a->i[i] = 0;
+    }
+    for (int i = 0; i < maxlinks; i++) {
+      a->j[i] = 0;
+    }
+    for (int i = 0; i < maxlinks; i++) {
+      a->p[i] = 0;
+    }
+    for (int i = 0; i < maxlinks; i++) {
+      a->status[i] = LINK_UNUSED;
+    }
 
-    sz = 3*sizeof(double *);
+    sz = 3 * sizeof(double *);
     tdpAssert(tdpMallocManaged((void **) &a->rb, sz, tdpMemAttachGlobal));
-    sz = 3*maxlinks*sizeof(double);
+    sz = 3 * maxlinks * sizeof(double);
     tdpAssert(tdpMallocManaged((void **) &a->rb[0], sz, tdpMemAttachGlobal));
 
     a->rb[1] = a->rb[0] + maxlinks;
     a->rb[2] = a->rb[1] + maxlinks;
 
     for (int j = 0; j < 3; j++) {
-      tdpAssert( tdpMemset(a->rb[j], 0, maxlinks*sizeof(double)) );
+      tdpAssert(tdpMemset(a->rb[j], 0, maxlinks * sizeof(double)));
     }
   }
-  
+
   return ifail;
 }
 
@@ -230,12 +235,12 @@ int colloid_links_array_initialise(int maxlinks, colloid_links_array_t * a) {
 int colloid_links_array_finalise(colloid_links_array_t * links) {
 
   if (links) {
-    tdpAssert( tdpFree(links->i) );
-    tdpAssert( tdpFree(links->j) );
-    tdpAssert( tdpFree(links->p) );
-    tdpAssert( tdpFree(links->status) );
-    tdpAssert( tdpFree(links->rb[0]) );
-    tdpAssert( tdpFree(links->rb ) );
+    tdpAssert(tdpFree(links->i));
+    tdpAssert(tdpFree(links->j));
+    tdpAssert(tdpFree(links->p));
+    tdpAssert(tdpFree(links->status));
+    tdpAssert(tdpFree(links->rb[0]));
+    tdpAssert(tdpFree(links->rb));
     *links = (colloid_links_array_t) {};
   }
 
@@ -254,7 +259,7 @@ int colloid_links_array_free(colloid_links_array_t ** links) {
 
   if (links) {
     colloid_links_array_finalise(*links);
-    tdpAssert( tdpFree(*links) );
+    tdpAssert(tdpFree(*links));
     *links = NULL;
   }
 
@@ -262,34 +267,27 @@ int colloid_links_array_free(colloid_links_array_t ** links) {
 }
 
 /***************************************************************************
- * 
+ *
  *  colloid_link_to_array
- * 
+ *
  *  Copies single link to array at the specified index.
- * 
+ *
  ***************************************************************************/
 
-int colloid_link_to_array(const colloid_link_t * link,
-			  colloid_links_array_t * array, int index) {
+int colloid_link_to_array(const colloid_link_t *  link,
+                          colloid_links_array_t * array, int index) {
 
   assert(link);
   assert(array);
   assert(0 <= index && index < array->max_links);
 
-  if (index > array->active_links) {
-    /* FIXME revist. Should this be here? */
-    /* assert(index == array->active_links + 1); */
-    array->active_links++;
-  }
-
-  array->i[index] = link->i;
-  array->j[index] = link->j;
-  array->p[index] = link->p;
+  array->i[index]      = link->i;
+  array->j[index]      = link->j;
+  array->p[index]      = link->p;
   array->status[index] = link->status;
-  array->rb[X][index] = link->rb[X];
-  array->rb[Y][index] = link->rb[Y];
-  array->rb[Z][index] = link->rb[Z]; 
+  array->rb[X][index]  = link->rb[X];
+  array->rb[Y][index]  = link->rb[Y];
+  array->rb[Z][index]  = link->rb[Z];
 
-  return array->active_links;
+  return 0;
 }
-

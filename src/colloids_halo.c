@@ -305,7 +305,7 @@ static int colloids_halo_load(colloid_halo_t * halo, int dim) {
 	noff = nsent_back;
 	nsent_back += colloids_halo_load_list(halo, ic, 1, kc, rback, noff);
 	noff = halo->nsend[BACKWARD] + nsent_forw;
-	nsent_forw += colloids_halo_load_list(halo, ic, ncell[Y], kc, rforw, noff); 
+	nsent_forw += colloids_halo_load_list(halo, ic, ncell[Y], kc, rforw, noff);
       }
     }
   }
@@ -316,7 +316,7 @@ static int colloids_halo_load(colloid_halo_t * halo, int dim) {
 	noff = nsent_back;
 	nsent_back += colloids_halo_load_list(halo, ic, jc, 1, rback, noff);
 	noff = halo->nsend[BACKWARD] + nsent_forw;
-	nsent_forw += colloids_halo_load_list(halo, ic, jc, ncell[Z], rforw, noff); 
+	nsent_forw += colloids_halo_load_list(halo, ic, jc, ncell[Z], rforw, noff);
       }
     }
   }

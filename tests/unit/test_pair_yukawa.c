@@ -117,7 +117,7 @@ int test_pair_yukawa2(pe_t * pe, cs_t * cs) {
   pair_yukawa_register(pair, interact);
 
   test_pair_yukawa_config1(pe, cs, cinfo, interact, pair);
-  
+
   colloids_info_free(&cinfo);
   colloids_info_create(pe, cs, &opts, &cinfo);
   test_pair_yukawa_config1(pe, cs, cinfo, interact, pair);

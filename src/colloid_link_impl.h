@@ -31,7 +31,8 @@
  *
  *****************************************************************************/
 
-HDSI_ int colloid_links_array_i(const colloid_links_array_t * array, int index) {
+HDSI_ int colloid_links_array_i(const colloid_links_array_t * array,
+                                int                           index) {
 
   assert(0 <= index && index < array->max_links);
   return array->i[index];
@@ -45,7 +46,8 @@ HDSI_ int colloid_links_array_i(const colloid_links_array_t * array, int index) 
  *
  *****************************************************************************/
 
-HDSI_ int colloid_links_array_j(const colloid_links_array_t * array, int index) {
+HDSI_ int colloid_links_array_j(const colloid_links_array_t * array,
+                                int                           index) {
 
   assert(0 <= index && index < array->max_links);
   return array->j[index];
@@ -59,7 +61,8 @@ HDSI_ int colloid_links_array_j(const colloid_links_array_t * array, int index) 
  *
  ***************************************************************************/
 
-HDSI_ int colloid_links_array_p(const colloid_links_array_t * array, int index) {
+HDSI_ int colloid_links_array_p(const colloid_links_array_t * array,
+                                int                           index) {
 
   assert(0 <= index && index < array->max_links);
   return array->p[index];
@@ -73,7 +76,8 @@ HDSI_ int colloid_links_array_p(const colloid_links_array_t * array, int index) 
  *
  ***************************************************************************/
 
-HDSI_ int colloid_links_array_status(const colloid_links_array_t * array, int index) {
+HDSI_ int colloid_links_array_status(const colloid_links_array_t * array,
+                                     int                           index) {
 
   assert(0 <= index && index < array->max_links);
 
@@ -88,7 +92,8 @@ HDSI_ int colloid_links_array_status(const colloid_links_array_t * array, int in
  *
  ***************************************************************************/
 
-HDSI_ void colloid_links_array_rb(const colloid_links_array_t * array, int index, double * rb) {
+HDSI_ void colloid_links_array_rb(const colloid_links_array_t * array,
+                                  int index, double rb[3]) {
 
   assert(0 <= index && index < array->max_links);
 
