@@ -19,12 +19,8 @@
 
 #include "coords.h"
 #include "colloid.h"
-#include "colloid_options.h"
-
-typedef struct colloid colloid_t;
-typedef struct colloids_info_s colloids_info_t;
-
 #include "colloid_link.h"
+#include "colloid_options.h"
 
 /* Auxiliary for diagnostic quantities (for output) */
 
@@ -51,6 +47,7 @@ struct colloid_diagnostic_s {
 
 /* Colloid structure */
 
+typedef struct colloid colloid_t;
 
 struct colloid {
 
@@ -97,6 +94,7 @@ struct colloid {
   colloid_links_array_t * links; /* Arrays of links for this colloid. */
 };
 
+typedef struct colloids_info_s colloids_info_t;
 
 struct colloids_info_s {
 

@@ -548,7 +548,7 @@ int test_colloid_state_init_sphere(void) {
     colloid_state_t s = {};
 
     colloid_state_init_sphere(index, a0, ah, r, &s);
-    assert(s.index = index);
+    assert(s.index == index);
     assert(fabs(s.a0 - a0) < DBL_EPSILON);
     assert(fabs(s.ah - ah) < DBL_EPSILON);
     assert(fabs(s.r[X] - r[X]) < DBL_EPSILON);
