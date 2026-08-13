@@ -204,7 +204,7 @@ __host__ int colloids_ellipsoid_abc_check(colloids_info_t * info);
 __host__ int colloids_buoyancy_set(colloids_info_t * cinfo, const double b[3]);
 __host__ int colloids_gravity_set(colloids_info_t * cinfo, const double g[3]);
 
-__host__ void colloids_array_create(colloids_arrays_t * colloids_array, int n_colloids);
+__host__ void colloids_array_create(colloids_info_t *cinfo, int n_colloids);
 __host__ void colloids_array_free(colloids_arrays_t * colloids_array);
 __host__ void colloids_array_resize(colloids_arrays_t * colloids_array, size_t new_size);
 __host__ void set_colloids_array(colloids_info_t * cinfo, int n_colloids);

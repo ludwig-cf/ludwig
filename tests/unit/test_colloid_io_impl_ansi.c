@@ -151,14 +151,14 @@ int test_colloid_io_ansi_read(pe_t * pe) {
   {
     int                 ncell[3] = {3, 3, 3};
     colloid_options_t   opts     = colloid_options_ncell(ncell);
-    colloids_info_t     info     = {0};
+    colloids_info_t   * info     = NULL;
     colloid_io_ansi_t * io       = NULL;
 
-    colloids_info_initialise(pe, cs, &opts, &info);
+    colloids_info_create(pe, cs, &opts, &info);
 
     /* ASCII read ... */
 
-    ifail = colloid_io_ansi_create(&info, &io);
+    ifail = colloid_io_ansi_create(info, &io);
     assert(ifail == 0);
 
     ifail = colloid_io_ansi_read(io, "colloid-io-ansi-read-ascii.dat");
@@ -166,34 +166,34 @@ int test_colloid_io_ansi_read(pe_t * pe) {
     assert(io->info->ntotal == 102); /* Total after read, all ranks */
 
     colloid_io_ansi_free(&io);
-    colloids_info_finalise(&info);
+    colloids_info_finalise(info);
   }
 
   /* Read from existing binary file */
   {
     int               ncell[3] = {3, 3, 3};
     colloid_options_t opts     = colloid_options_ncell(ncell);
-    colloids_info_t   info     = {0};
+    colloids_info_t   * info     = NULL;
 
     /* Switch input record format to non-default binary ... */
     opts.input.iorformat = IO_RECORD_BINARY;
-    colloids_info_initialise(pe, cs, &opts, &info);
+    colloids_info_create(pe, cs, &opts, &info);
 
     /* ... and read via abstract type */
     {
       colloid_io_impl_t * io = NULL;
 
-      ifail = colloid_io_impl_input(&info, &io);
+      ifail = colloid_io_impl_input(info, &io);
       assert(ifail == 0);
 
       ifail = io->impl->read(io, "colloid-io-ansi-read-binary.dat");
       assert(ifail == 0);
-      assert(info.ntotal == 49); /* Total after read, all ranks */
+      assert(info->ntotal == 49); /* Total after read, all ranks */
 
       io->impl->free(&io);
     }
 
-    colloids_info_finalise(&info);
+    colloids_info_finalise(info);
   }
 
   cs_free(cs);
@@ -219,11 +219,11 @@ int test_colloid_io_ansi_write(pe_t * pe) {
   {
     int                 ncell[3] = {3, 3, 3};
     colloid_options_t   opts     = colloid_options_ncell(ncell);
-    colloids_info_t     info     = {0};
+    colloids_info_t   * info     = NULL;
     colloid_io_ansi_t * io       = NULL;
 
-    colloids_info_initialise(pe, cs, &opts, &info);
-    ifail = colloid_io_ansi_create(&info, &io);
+    colloids_info_create(pe, cs, &opts, &info);
+    ifail = colloid_io_ansi_create(info, &io);
 
     ifail = colloid_io_ansi_read(io, "colloid-io-ansi-read-ascii.dat");
     assert(ifail == 0);
@@ -232,23 +232,23 @@ int test_colloid_io_ansi_write(pe_t * pe) {
     assert(ifail == 0);
 
     colloid_io_ansi_free(&io);
-    colloids_info_finalise(&info);
+    colloids_info_finalise(info);
   }
 
   /* Binary */
   {
     int               ncell[3] = {3, 3, 3};
     colloid_options_t opts     = colloid_options_ncell(ncell);
-    colloids_info_t   info     = {0};
+    colloids_info_t   * info     = NULL;
 
     opts.output.iorformat = IO_RECORD_BINARY;
-    ifail                 = colloids_info_initialise(pe, cs, &opts, &info);
+    ifail                 = colloids_info_create(pe, cs, &opts, &info);
 
     /* Input, to generate some data ... */
     {
       colloid_io_ansi_t * input = NULL;
 
-      ifail = colloid_io_ansi_create(&info, &input);
+      ifail = colloid_io_ansi_create(info, &input);
       ifail = colloid_io_ansi_read(input, "colloid-io-ansi-read-ascii.dat");
       colloid_io_ansi_free(&input);
       assert(ifail == 0);
@@ -258,7 +258,7 @@ int test_colloid_io_ansi_write(pe_t * pe) {
     {
       colloid_io_impl_t * output = NULL;
 
-      ifail = colloid_io_impl_output(&info, &output);
+      ifail = colloid_io_impl_output(info, &output);
       assert(ifail == 0);
 
       ifail = output->impl->write(output, "colloid-ansi-write-binary.dat");
@@ -266,7 +266,7 @@ int test_colloid_io_ansi_write(pe_t * pe) {
       output->impl->free(&output);
     }
 
-    colloids_info_finalise(&info);
+    colloids_info_finalise(info);
   }
 
   cs_free(cs);
