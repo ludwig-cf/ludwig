@@ -234,7 +234,9 @@ int colloids_info_finalise(colloids_info_t * info) {
     }
   }
 
-  colloids_array_free(info->colloid_array);
+  if (info->colloid_array) {
+    colloids_array_free(info->colloid_array);
+  }
 
   *info = (colloids_info_t) {0};
 
