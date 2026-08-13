@@ -219,14 +219,14 @@ int test_colloid_io_mpio_read(pe_t * pe) {
   {
     int                 ncell[3] = {3, 3, 3};
     colloid_options_t   opts     = colloid_options_ncell(ncell);
-    colloids_info_t   * info     = NULL;
+    colloids_info_t     info     = {0};
     colloid_io_mpio_t * io       = NULL;
 
-    colloids_info_create(pe, cs, &opts, &info);
+    colloids_info_initialise(pe, cs, &opts, &info);
 
     /* ASCII read ... */
 
-    ifail = colloid_io_mpio_create(info, &io);
+    ifail = colloid_io_mpio_create(&info, &io);
     assert(ifail == 0);
 
     ifail = colloid_io_mpio_read(io, "colloid-io-mpio-read-ascii.dat");
@@ -234,7 +234,7 @@ int test_colloid_io_mpio_read(pe_t * pe) {
     assert(io->info->ntotal == 102); /* Total after read, all ranks */
 
     colloid_io_mpio_free(&io);
-    colloids_info_free(&info);
+    colloids_info_finalise(&info);
   }
 
   /* Read from existing binary file */
@@ -242,28 +242,28 @@ int test_colloid_io_mpio_read(pe_t * pe) {
   {
     int               ncell[3] = {3, 3, 3};
     colloid_options_t opts     = colloid_options_ncell(ncell);
-    colloids_info_t   * info     = NULL;
+    colloids_info_t   info     = {0};
 
     /* Switch input mode and record format to non-default binary ... */
     opts.input.mode      = COLLOID_IO_MODE_MPIIO;
     opts.input.iorformat = IO_RECORD_BINARY;
-    colloids_info_create(pe, cs, &opts, &info);
+    colloids_info_initialise(pe, cs, &opts, &info);
 
     /* ... and read via abstract type */
     {
       colloid_io_impl_t * io = NULL;
 
-      ifail = colloid_io_impl_input(info, &io);
+      ifail = colloid_io_impl_input(&info, &io);
       assert(ifail == 0);
 
       ifail = io->impl->read(io, "colloid-io-mpio-read-binary.dat");
       assert(ifail == 0);
-      assert(info->ntotal == 49); /* Total after read, all ranks */
+      assert(info.ntotal == 49); /* Total after read, all ranks */
 
       io->impl->free(&io);
     }
 
-    colloids_info_free(&info);
+    colloids_info_finalise(&info);
   }
 
   cs_free(cs);
@@ -289,11 +289,11 @@ int test_colloid_io_mpio_write(pe_t * pe) {
   {
     int                 ncell[3] = {3, 3, 3};
     colloid_options_t   opts     = colloid_options_ncell(ncell);
-    colloids_info_t   * info     = NULL;
+    colloids_info_t     info     = {0};
     colloid_io_mpio_t * io       = NULL;
 
-    colloids_info_create(pe, cs, &opts, &info);
-    ifail = colloid_io_mpio_create(info, &io);
+    colloids_info_initialise(pe, cs, &opts, &info);
+    ifail = colloid_io_mpio_create(&info, &io);
 
     ifail = colloid_io_mpio_read(io, "colloid-io-mpio-read-ascii.dat");
     assert(ifail == 0);
@@ -302,23 +302,23 @@ int test_colloid_io_mpio_write(pe_t * pe) {
     assert(ifail == 0);
 
     colloid_io_mpio_free(&io);
-    colloids_info_free(&info);
+    colloids_info_finalise(&info);
   }
 
   /* Binary */
   {
     int               ncell[3] = {3, 3, 3};
     colloid_options_t opts     = colloid_options_ncell(ncell);
-    colloids_info_t   * info     = NULL;
+    colloids_info_t   info     = {0};
 
     opts.output.iorformat = IO_RECORD_BINARY;
-    ifail                 = colloids_info_create(pe, cs, &opts, &info);
+    ifail                 = colloids_info_initialise(pe, cs, &opts, &info);
 
     /* Input, to generate some data ... */
     {
       colloid_io_mpio_t * input = NULL;
 
-      ifail = colloid_io_mpio_create(info, &input);
+      ifail = colloid_io_mpio_create(&info, &input);
       ifail = colloid_io_mpio_read(input, "colloid-io-mpio-read-ascii.dat");
       colloid_io_mpio_free(&input);
       assert(ifail == 0);
@@ -327,13 +327,13 @@ int test_colloid_io_mpio_write(pe_t * pe) {
     /* Now output, via the abstract type ... */
     /* Need to set non-default output options ... */
 
-    info->options.output.mode      = COLLOID_IO_MODE_MPIIO;
-    info->options.output.iorformat = IO_RECORD_BINARY;
+    info.options.output.mode      = COLLOID_IO_MODE_MPIIO;
+    info.options.output.iorformat = IO_RECORD_BINARY;
 
     {
       colloid_io_impl_t * output = NULL;
 
-      ifail = colloid_io_impl_output(info, &output);
+      ifail = colloid_io_impl_output(&info, &output);
       assert(ifail == 0);
 
       ifail = output->impl->write(output, "colloid-mpio-write-binary.dat");
@@ -341,7 +341,7 @@ int test_colloid_io_mpio_write(pe_t * pe) {
       output->impl->free(&output);
     }
 
-    colloids_info_free(&info);
+    colloids_info_finalise(&info);
   }
 
   cs_free(cs);

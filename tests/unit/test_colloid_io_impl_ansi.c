@@ -166,7 +166,7 @@ int test_colloid_io_ansi_read(pe_t * pe) {
     assert(io->info->ntotal == 102); /* Total after read, all ranks */
 
     colloid_io_ansi_free(&io);
-    colloids_info_free(&info);
+    colloids_info_finalise(info);
   }
 
   /* Read from existing binary file */
@@ -193,7 +193,7 @@ int test_colloid_io_ansi_read(pe_t * pe) {
       io->impl->free(&io);
     }
 
-    colloids_info_free(&info);
+    colloids_info_finalise(info);
   }
 
   cs_free(cs);
@@ -232,7 +232,7 @@ int test_colloid_io_ansi_write(pe_t * pe) {
     assert(ifail == 0);
 
     colloid_io_ansi_free(&io);
-    colloids_info_free(&info);
+    colloids_info_finalise(info);
   }
 
   /* Binary */
@@ -266,7 +266,7 @@ int test_colloid_io_ansi_write(pe_t * pe) {
       output->impl->free(&output);
     }
 
-    colloids_info_free(&info);
+    colloids_info_finalise(info);
   }
 
   cs_free(cs);
