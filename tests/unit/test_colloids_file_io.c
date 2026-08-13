@@ -45,7 +45,6 @@ int test_colloids_file_io_suite(void) {
 
   test_colloids_file_io_read(pe);
   test_colloids_file_io_write(pe);
-
   pe_free(pe);
 
   return ifail;
