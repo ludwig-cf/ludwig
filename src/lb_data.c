@@ -527,11 +527,6 @@ int lb_memcpy(lb_t * lb, tdpMemcpyKind flag) {
     if (use_managed_) {
       size_t nsz = (size_t) lb->model.nvel*lb->nsite*lb->ndist*sizeof(double);
 
-      // printf("[lb_memcpy managed] flag=%d lb->f=%p lb->target->f=%p "
-	    //    "lb->fprime=%p lb->target->fprime=%p lb->f[0]=%g\n",
-	    //    (int) flag, (void *) lb->f, (void *) lb->target->f,
-	    //    (void *) lb->fprime, (void *) lb->target->fprime, lb->f[0]);
-
       lb->f      = lb->target->f;
       lb->fprime = lb->target->fprime;
       
@@ -541,6 +536,10 @@ int lb_memcpy(lb_t * lb, tdpMemcpyKind flag) {
         cudaMemLocation cpuLoc = {cudaMemLocationTypeHost, 0};
         tdpAssert( cudaMemPrefetchAsync(lb->f,      nsz, cpuLoc, 0, NULL) );
         tdpAssert( cudaMemPrefetchAsync(lb->fprime, nsz, cpuLoc, 0, NULL) );
+#elif defined(__HIPCC__)
+        /* Prefetch pages to CPU before host reads, then sync */
+        tdpAssert( hipMemPrefetchAsync(lb->f,      nsz, hipCpuDeviceId, 0) );
+        tdpAssert( hipMemPrefetchAsync(lb->fprime, nsz, hipCpuDeviceId, 0) );
 #endif
         tdpAssert( tdpDeviceSynchronize() );
       }
@@ -552,6 +551,12 @@ int lb_memcpy(lb_t * lb, tdpMemcpyKind flag) {
         cudaMemLocation gpuLoc = {cudaMemLocationTypeDevice, device};
         tdpAssert( cudaMemPrefetchAsync(lb->f,      nsz, gpuLoc, 0, NULL) );
         tdpAssert( cudaMemPrefetchAsync(lb->fprime, nsz, gpuLoc, 0, NULL) );
+#elif defined(__HIPCC__)
+        /* Prefetch pages back to GPU before kernel runs */
+        int device = 0;
+        tdpAssert( tdpGetDevice(&device) );
+        tdpAssert( hipMemPrefetchAsync(lb->f,      nsz, device, 0) );
+        tdpAssert( hipMemPrefetchAsync(lb->fprime, nsz, device, 0) );
 #endif
         tdpAssert( tdpDeviceSynchronize() );
       }
@@ -655,6 +660,13 @@ static int lb_init(lb_t * lb) {
         tdpAssert( cudaMemAdvise(lb->fprime, fsz, cudaMemAdviseSetPreferredLocation, gpuLoc) );
         tdpAssert( cudaMemPrefetchAsync(lb->f,      fsz, gpuLoc, 0, NULL) );
         tdpAssert( cudaMemPrefetchAsync(lb->fprime, fsz, gpuLoc, 0, NULL) );
+      }
+#elif defined(__HIPCC__)
+      {
+        tdpAssert( hipMemAdvise(lb->f,      fsz, hipMemAdviseSetPreferredLocation, device) );
+        tdpAssert( hipMemAdvise(lb->fprime, fsz, hipMemAdviseSetPreferredLocation, device) );
+        tdpAssert( hipMemPrefetchAsync(lb->f,      fsz, device, 0) );
+        tdpAssert( hipMemPrefetchAsync(lb->fprime, fsz, device, 0) );
       }
 #endif
     }
