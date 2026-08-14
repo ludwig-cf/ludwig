@@ -64,6 +64,8 @@ static int bbl_wall_lubrication_account(bbl_t * bbl, wall_t * wall,
 
 __global__ void bbl_pass0_kernel(kernel_3d_t k3d, cs_t * cs, lb_t * lb,
 				 colloids_info_t * cinfo);
+__global__ void bbl_colloid_test_kernel(kernel_3d_t k3d, cs_t * cs, lb_t * lb,
+				 colloids_info_t * cinfo);
 
 static __constant__ lb_collide_param_t lbp;
 
@@ -350,6 +352,8 @@ int bbl_pass0(bbl_t * bbl, lb_t * lb, colloids_info_t * cinfo) {
 
     kernel_3d_launch_param(k3d.kiterations, &nblk, &ntpb);
 
+    tdpLaunchKernel(bbl_colloid_test_kernel, nblk, ntpb, 0, 0, 
+        k3d, cstarget, lb->target, cinfo->target);
     tdpLaunchKernel(bbl_pass0_kernel, nblk, ntpb, 0, 0,
 		    k3d, cstarget, lb->target, cinfo->target);
     tdpAssert(tdpPeekAtLastError());
@@ -359,6 +363,33 @@ int bbl_pass0(bbl_t * bbl, lb_t * lb, colloids_info_t * cinfo) {
   return 0;
 }
 
+/*****************************************************************************
+ *
+ *  bbl_colloid_test_kernel
+ *
+ *****************************************************************************/
+
+__global__ void bbl_colloid_test_kernel(kernel_3d_t k3d, cs_t * cs, lb_t * lb,
+				 colloids_info_t * cinfo) {
+
+  int index;
+  assert(cs);
+  assert(lb);
+  assert(cinfo);
+
+  // Translate these loops to use for_simt_parallel later
+  index = blockIdx.x;
+  colloid_t *pc = cinfo->colloid_array->colloids[index];
+  int n_threads = blockDim.x;
+  int n_iterations = ceil(pc->links->active_links/n_threads);
+  int link_sum = 0;
+  for (int i = 0; i < n_iterations; i++) {
+    int link_index = i * n_threads;
+    atomicAdd(&link_sum, pc->links->i[link_index]);
+  }
+  printf("colloid %d sum_links %d\n", index, link_sum);
+
+}
 /*****************************************************************************
  *
  *  bbl_pass0_kernel
