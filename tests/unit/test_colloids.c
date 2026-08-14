@@ -29,6 +29,7 @@ int test_colloids_info_cell_coords(colloids_info_t * cinfo);
 
 int test_colloids_info_initialise(pe_t * pe, cs_t * cs);
 int test_colloids_info_finalise(pe_t * pe, cs_t * cs);
+int test_colloids_array(pe_t * pe, cs_t * cs);
 
 
 /*****************************************************************************
@@ -71,6 +72,8 @@ int test_colloids_info_suite(void) {
   ncell[Y] = 6;
   ncell[Z] = 8;
   test_colloids_info_with_ncell(pe, cs, ncell);
+
+   test_colloids_array(pe, cs);
 
   pe_info(pe, "PASS     ./unit/test_colloids\n");
 
@@ -376,5 +379,40 @@ int test_colloids_info_cell_coords(colloids_info_t * cinfo) {
   test_assert(icell[Y] == ncell[Y] + 1);
   test_assert(icell[Z] == ncell[Z] + 1);
 
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  test_colloids_array
+ *
+ *****************************************************************************/
+
+int test_colloids_array(pe_t * pe, cs_t * cs) {
+  colloids_info_t *cinfo = NULL;
+  colloid_t *pc = NULL;
+
+  double r[3];
+  double lmin[3];
+  double delta = FLT_EPSILON;
+  int noffset[3];
+
+  cs_nlocal_offset(cs, noffset);
+  cs_lmin(cs, lmin);
+
+  r[X] = lmin[X] + 1.0*noffset[X] + 0.5*delta;
+  r[Y] = lmin[Y] + 1.0*noffset[Y] + 0.5*delta;
+  r[Z] = lmin[Z] + 1.0*noffset[Z] + 0.5*delta;
+
+  colloid_options_t options = colloid_options_default();
+
+  options.have_colloids = 1;
+  colloids_info_create(pe, cs, &options, &cinfo);
+
+  colloids_info_add_local(cinfo, 0, r, &pc);
+
+  update_colloids_array(cinfo);
+
+  colloids_array_check(cinfo);
   return 0;
 }
