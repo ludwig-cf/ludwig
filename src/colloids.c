@@ -1778,9 +1778,8 @@ void update_colloids_array(colloids_info_t * cinfo) {
  *
  *****************************************************************************/
 void copy_colloids_array_info(colloids_info_t * oldinfo, colloids_info_t * newinfo) {
+  colloids_array_create(newinfo, oldinfo->colloid_array->max_colloids);
   newinfo->colloid_array->n_colloids = oldinfo->colloid_array->n_colloids;
-  newinfo->colloid_array->max_colloids = oldinfo->colloid_array->max_colloids;
-  colloids_array_create(newinfo, newinfo->colloid_array->max_colloids);
 
   for (int i = 0; i < newinfo->colloid_array->n_colloids; i++) {
     newinfo->colloid_array->colloids[i] = oldinfo->colloid_array->colloids[i];
