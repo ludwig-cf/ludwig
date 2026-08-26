@@ -1680,8 +1680,14 @@ void colloids_array_allocate(colloids_arrays_t * colloids_array, int n) {
 void colloids_array_create(colloids_info_t *cinfo, int n) {
   if (n > 0) {
     tdpAssert(tdpMallocManaged((void **) &cinfo->colloid_array, sizeof(colloids_arrays_t), tdpMemAttachGlobal));
-    //cinfo->colloid_array->max_colloids = n;
     colloids_array_allocate(cinfo->colloid_array, n);
+
+    int n_devices;
+    tdpGetDeviceCount(&n_devices);
+    if (n_devices > 0) {
+      tdpAssert(tdpMallocManaged((void **) &cinfo->target->colloid_array, sizeof(colloids_arrays_t), tdpMemAttachGlobal));
+      colloids_array_allocate(cinfo->target->colloid_array, n);
+    }
   }
 }
 
@@ -1731,6 +1737,7 @@ void colloids_array_resize(colloids_arrays_t * colloids_array, size_t new_size) 
  *
  *****************************************************************************/
 void set_colloids_array(colloids_info_t * cinfo, int n_colloids) {
+    int n_devices;
     colloid_t * colloid;
     colloids_info_all_head(cinfo, &colloid);
     int i = 0;
@@ -1749,6 +1756,12 @@ void set_colloids_array(colloids_info_t * cinfo, int n_colloids) {
     }
 
     cinfo->colloid_array->n_colloids = i;
+
+    tdpGetDeviceCount(&n_devices);
+    if (n_devices > 0) {
+      memcpy(cinfo->target->colloid_array->colloids, cinfo->colloid_array->colloids, cinfo->colloid_array->max_colloids * sizeof(colloid_t *));
+      cinfo->target->colloid_array->n_colloids = cinfo->colloid_array->n_colloids;
+    }
 }
 
 /*****************************************************************************
@@ -1766,6 +1779,12 @@ void update_colloids_array(colloids_info_t * cinfo) {
   if (n_total > cinfo->colloid_array->max_colloids) {
     assert(cinfo->colloid_array);
     colloids_array_resize(cinfo->colloid_array, n_total);
+    
+    int n_devices;
+    tdpGetDeviceCount(&n_devices);
+    if (n_devices > 0) {
+      colloids_array_resize(cinfo->target->colloid_array, n_total);
+    }
   }
   set_colloids_array(cinfo, n_total);
 }
@@ -1778,11 +1797,22 @@ void update_colloids_array(colloids_info_t * cinfo) {
  *
  *****************************************************************************/
 void copy_colloids_array_info(colloids_info_t * oldinfo, colloids_info_t * newinfo) {
+  int n_devices;
+  tdpGetDeviceCount(&n_devices);
+
   colloids_array_create(newinfo, oldinfo->colloid_array->max_colloids);
   newinfo->colloid_array->n_colloids = oldinfo->colloid_array->n_colloids;
+  
+  if (n_devices > 0) {
+    newinfo->target->colloid_array->n_colloids = oldinfo->colloid_array->n_colloids;
+  }
 
   for (int i = 0; i < newinfo->colloid_array->n_colloids; i++) {
     newinfo->colloid_array->colloids[i] = oldinfo->colloid_array->colloids[i];
+  }
+
+  if (n_devices > 0) {
+    memcpy(newinfo->target->colloid_array->colloids, newinfo->colloid_array->colloids, newinfo->colloid_array->max_colloids * sizeof(colloid_t *));
   }
 }
 
