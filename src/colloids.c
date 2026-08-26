@@ -1709,16 +1709,16 @@ void colloids_array_resize(colloids_arrays_t * colloids_array, size_t new_size) 
   int n_devices;
   tdpGetDeviceCount(&n_devices);
 
+  size_t old_size = colloids_array->max_colloids;
   colloids_array->max_colloids = new_size;
   if (n_devices == 0) {
     colloids_array->colloids = (colloid_t **) realloc(colloids_array->colloids, colloids_array->max_colloids * sizeof(colloid_t *));
   } else if (n_devices > 0) {
     void *newptr;
     tdpMallocManaged(&newptr, colloids_array->max_colloids * sizeof(colloid_t *), tdpMemAttachGlobal);
-    tdpMemcpy(newptr, colloids_array->colloids, colloids_array->max_colloids, tdpMemcpyDeviceToDevice);
-    //memcpy(newptr, colloids_array->colloids, colloids_array->max_colloids * sizeof(colloid_t *));
+    tdpMemcpy(newptr, colloids_array->colloids, old_size * sizeof(colloid_t *), tdpMemcpyDeviceToDevice);
     tdpFree(colloids_array->colloids);
-    colloids_array->colloids = (colloid_t **) &newptr;
+    colloids_array->colloids = (colloid_t **) newptr;
   }
 }
 
