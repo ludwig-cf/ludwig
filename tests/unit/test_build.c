@@ -21,6 +21,7 @@
 
 #include "pe.h"
 #include "coords.h"
+#include "colloid.h"
 #include "colloids_halo.h"
 #include "colloid_sums.h"
 #include "build.h"
@@ -37,6 +38,7 @@ static int test_build_update_map_ell(pe_t * pe, cs_t * cs, const double abc[3],
                                      const double r0[3], const double q[4]);
 static int test_build_update_links_sph(pe_t * pe, cs_t * cs, double a0,
                                        const double r0[3], int nvel);
+
 
 /*****************************************************************************
  *
@@ -170,15 +172,10 @@ static int test_build_update_map_sph(pe_t * pe, cs_t * cs, double a0,
   colloids_info_create(pe, cs, &options, &cinfo);
 
   {
-    colloid_state_t s = {.index   = 1,
-                         .rebuild = 1,
-                         .bc      = COLLOID_BC_BBL,
-                         .shape   = COLLOID_SHAPE_SPHERE,
-                         .a0      = a0,
-                         .r       = {r0[X], r0[Y], r0[Z]}
-    };
-    colloids_info_add_local(cinfo, 1, r0, &pc);
-    if (pc) pc->s = s;
+    double ah = a0;
+    colloid_state_t s = {};
+    colloid_state_init_sphere(1, a0, ah, r0, &s);
+    colloids_info_add_local(cinfo, &s, &pc);
   }
 
   colloids_info_ntotal_set(cinfo);
@@ -227,16 +224,9 @@ static int test_build_update_map_ell(pe_t * pe, cs_t * cs, const double abc[3],
   colloids_info_create(pe, cs, &options, &cinfo);
 
   {
-    colloid_state_t s = {.index   = 1,
-                         .rebuild = 1,
-                         .bc      = COLLOID_BC_BBL,
-                         .shape   = COLLOID_SHAPE_ELLIPSOID,
-                         .r       = {r0[X], r0[Y], r0[Z]},
-                         .elabc   = {abc[X], abc[Y], abc[Z]},
-                         .quat    = {q[0], q[1], q[2], q[3]}
-    };
-    colloids_info_add_local(cinfo, 1, r0, &pc);
-    if (pc) pc->s = s;
+    colloid_state_t s = {};
+    colloid_state_init_ellipsoid(1, abc, q, r0, &s);
+    colloids_info_add_local(cinfo, &s, &pc);
   }
 
   colloids_info_ntotal_set(cinfo);
@@ -290,16 +280,12 @@ static int test_build_update_links_sph(pe_t * pe, cs_t * cs, double a0,
   lb_model_create(nvel, &lb);
 
   {
+    double ah          = a0;
     colloid_t *     pc = NULL;
-    colloid_state_t s  = {.index   = 1,
-                          .rebuild = 1,
-                          .bc      = COLLOID_BC_BBL,
-                          .shape   = COLLOID_SHAPE_SPHERE,
-                          .a0      = a0,
-                          .r       = {r0[X], r0[Y], r0[Z]}
-    };
-    colloids_info_add_local(cinfo, 1, r0, &pc);
-    if (pc) pc->s = s;
+    colloid_state_t s  = {};
+
+    colloid_state_init_sphere(1, a0, ah, r0, &s);
+    colloids_info_add_local(cinfo, &s, &pc);
   }
 
   colloids_info_ntotal_set(cinfo);

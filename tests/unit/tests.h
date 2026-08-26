@@ -15,6 +15,7 @@
 #define LUDWIG_UNIT_TESTS_H
 
 #include "target.h"
+#include "colloid.h"
 
 __host__ __device__ void test_assert_info(const int lvalue, int line,
                                           const char * file);

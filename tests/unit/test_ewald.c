@@ -10,7 +10,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2010-2025 The University of Edinburgh
+ *  (c) 2010-2026 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -29,6 +29,8 @@
 
 #define TOLERANCE 1.0e-07
 
+int test_ewald(void);
+
 /*****************************************************************************
  *
  *  test_ewald_suite
@@ -36,6 +38,19 @@
  *****************************************************************************/
 
 int test_ewald_suite(void) {
+
+  test_ewald();
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  test_ewald
+ *
+ *****************************************************************************/
+
+int test_ewald(void) {
 
   double mu = 0.285;  /* dipole strength */
   double rc = 32.0;   /* real space cut off (default L / 2) */
@@ -49,6 +64,7 @@ int test_ewald_suite(void) {
   double eself;
   double kappa;
   double ltot[3];
+  double a0 = 2.3;
 
   colloid_t * p_c1;
   colloid_t * p_c2;
@@ -97,17 +113,22 @@ int test_ewald_suite(void) {
   r2[Y] = 3.0;
   r2[Z] = 13.0;
 
-  colloids_info_add_local(cinfo, 1, r1, &p_c1);
-  colloids_info_add_local(cinfo, 2, r2, &p_c2);
-  assert(p_c1 != NULL);
-  assert(p_c2 != NULL);
+  {
+    colloid_state_t s1 = {};
+    colloid_state_t s2 = {};
+
+    colloid_state_init_sphere(1, a0, a0, r1, &s1);
+    colloid_state_init_sphere(2, a0, a0, r2, &s2);
+    colloids_info_add_local(cinfo, &s1, &p_c1);
+    colloids_info_add_local(cinfo, &s2, &p_c2);
+    assert(p_c1 != NULL);
+    assert(p_c2 != NULL);
+  }
+
   colloids_info_ntotal_set(cinfo);
   colloids_info_list_local_build(cinfo);
 
   /* First colloid .... */
-
-  p_c1->s.a0 = 2.3;
-  p_c1->s.ah = 2.3;
 
   p_c1->s.s[X] = 0.0;
   p_c1->s.s[Y] = 0.0;
@@ -115,9 +136,6 @@ int test_ewald_suite(void) {
   p_c1->s.magnetic = 1;
 
   /* Second colloid ... */
-
-  p_c2->s.a0 = 2.3;
-  p_c2->s.ah = 2.3;
 
   p_c2->s.s[X] = 0.0;
   p_c2->s.s[Y] = 0.0;

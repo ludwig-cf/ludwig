@@ -83,7 +83,6 @@ static int colloids_init_random_set(colloids_info_t * cinfo, int npart,
 				    const colloid_state_t * s,  double amax) {
   int n;
   int periodic[3];
-  double r0[3];
   double lmin[3];
   double ltot[3];
   double lex[3];
@@ -102,21 +101,14 @@ static int colloids_init_random_set(colloids_info_t * cinfo, int npart,
   lex[Z] = amax*(1.0 - periodic[Z]);
 
   for (n = 1; n <= npart; n++) {
-    r0[X] = lmin[X] + lex[X] + ran_serial_uniform()*(ltot[X] - 2.0*lex[X]);
-    r0[Y] = lmin[Y] + lex[Y] + ran_serial_uniform()*(ltot[Y] - 2.0*lex[Y]);
-    r0[Z] = lmin[Z] + lex[Z] + ran_serial_uniform()*(ltot[Z] - 2.0*lex[Z]);
-    colloids_info_add_local(cinfo, n, r0, &pc);
+    colloid_state_t s_temp = *s;
+    s_temp.r[X] = lmin[X] + lex[X] + ran_serial_uniform()*(ltot[X] - 2.0*lex[X]);
+    s_temp.r[Y] = lmin[Y] + lex[Y] + ran_serial_uniform()*(ltot[Y] - 2.0*lex[Y]);
+    s_temp.r[Z] = lmin[Z] + lex[Z] + ran_serial_uniform()*(ltot[Z] - 2.0*lex[Z]);
+    s_temp.index = n;
+    s_temp.rng = n;
 
-    if (pc) {
-      /* Copy the state in, except the index and position, and rebuild */
-      pc->s = *s;
-      pc->s.index = n;
-      pc->s.rng = n;
-      pc->s.rebuild = 1;
-      pc->s.r[X] = r0[X];
-      pc->s.r[Y] = r0[Y];
-      pc->s.r[Z] = r0[Z];
-    }
+    colloids_info_add_local(cinfo, &s_temp, &pc);
   }
 
   return 0;
@@ -251,4 +243,3 @@ static int colloids_init_check_wall(pe_t * pe, cs_t * cs,
 
   return 0;
 }
-
