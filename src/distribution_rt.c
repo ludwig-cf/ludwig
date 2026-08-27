@@ -181,8 +181,9 @@ int lb_run_time_prev(pe_t * pe, cs_t * cs, rt_t * rt, lb_t ** lb) {
       pe_fatal(pe, "lb_halo_scheme not recognised\n");
     }
 
-    options.reportimbalance = rt_switch(rt, "lb_halo_report_imbalance");
-    options.usefirsttouch   = rt_switch(rt, "lb_data_use_first_touch");
+    options.reportimbalance    = rt_switch(rt, "lb_halo_report_imbalance");
+    options.usefirsttouch      = rt_switch(rt, "lb_data_use_first_touch");
+    options.use_managed_memory = rt_switch(rt, "lb_managed_memory");
 
     if (lb_data_options_valid(&options) == 0) {
       pe_fatal(pe, "lb_data_options are invalid. Please check halo.\n");
@@ -225,6 +226,7 @@ int lb_run_time_prev(pe_t * pe, cs_t * cs, rt_t * rt, lb_t ** lb) {
   if (options.usefirsttouch) {
     pe_info(pe, "First touch:      %s\n", "yes");
   }
+  pe_info(pe, "Memory mode:      %s\n", options.use_managed_memory ? "managed" : "explicit");
 
   /* distribution_io_format */
   /* i/o grid */
