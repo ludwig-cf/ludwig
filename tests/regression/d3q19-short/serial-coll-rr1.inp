@@ -1,16 +1,23 @@
 ##############################################################################
 #
-#  Cholesteric normal anchoring isotropy test (Z).
+#  serial-coll-rr1.inp
 #
-#  This test is not very robust to threads so use a relaxed tolerance
+#  This test is set up to test a situation where fluid must be replaced
+#  following a change in discrete shape of a colloid, but no interpolation
+#  is available.
 #
-#  test_tolerance 2.0e-09
+#  This is arranged by placing an oblate spheroid next to a wall (with
+#  the minor axis perpendicular to the wall) and moving the colloid
+#  away from the wall. The initial position etc are arranged so that
+#  there are nine solid sites (3x3) next to the wall, all of which
+#  are exposed in a single time step.
 #
-#  See comments in serial-chol-no2.inp, which has the same problem.
+#  Note the initial colloid velcoity is rather large cf. the Mach number
+#  constraint, and fixed. This is acceptable for a short test.
 #
 ##############################################################################
 
-N_cycles 5
+N_cycles 2
 
 ##############################################################################
 #
@@ -18,8 +25,7 @@ N_cycles 5
 #
 ##############################################################################
 
-size 64_64_64
-grid 2_2_2
+size 32_32_16
 
 ##############################################################################
 #
@@ -27,10 +33,7 @@ grid 2_2_2
 #
 ##############################################################################
 
-viscosity 1.0
-
 isothermal_fluctuations off
-temperature 0.00002133333
 
 ##############################################################################
 #
@@ -38,29 +41,7 @@ temperature 0.00002133333
 #
 ###############################################################################
 
-free_energy lc_blue_phase
-
-fd_advection_scheme_order 1
-fd_gradient_calculation 3d_7pt_solid
-
-lc_a0      0.01
-lc_gamma   3.0
-lc_q0      0.19635
-lc_kappa0  0.000648456
-lc_kappa1  0.000648456
-lc_xi      0.7
-
-lc_Gamma   0.5
-lc_activity no
-
-lc_q_initialisation cholesteric_z
-lc_q_init_amplitude 0.333333333333333
-lc_init_redshift 1.0
-
-lc_anchoring_method two
-lc_wall_anchoring normal
-lc_coll_anchoring normal
-lc_anchoring_strength_colloid 0.002593824
+free_energy none
 
 ###############################################################################
 #
@@ -68,21 +49,15 @@ lc_anchoring_strength_colloid 0.002593824
 #
 ###############################################################################
 
-colloid_init     input_two
+colloid_init          input_one
 
-colloid_one_a0   7.25
-colloid_one_ah   7.25
-colloid_one_r    32.0_32.0_32.0
-colloid_one_v    0.0_0.0_0.0
+colloid_one_shape     ellipsoid
+colloid_one_elabc     7.5_7.5_2.5
+colloid_one_euler     0.0_0.0_0.0
+colloid_one_r         16.0_16.0_13.55
 
-colloid_two_a0   7.25
-colloid_two_ah   7.25
-colloid_two_r    32.0_32.0_48.0
-colloid_two_v    0.0_0.0_0.0
-
-# Constant body force on all colloids ("gravity")
-
-colloid_gravity 0.0_0.0_0.0
+colloid_one_v         0.0_0.0_-0.1
+colloid_one_isfixedv  1
 
 ###############################################################################
 #
@@ -90,7 +65,9 @@ colloid_gravity 0.0_0.0_0.0
 #
 ###############################################################################
 
-periodicity 1_1_1
+periodicity     1_1_0
+boundary_walls  0_0_1
+
 
 ###############################################################################
 #
@@ -98,13 +75,8 @@ periodicity 1_1_1
 #
 ###############################################################################
 
-freq_statistics 5
-config_at_end no
-
-colloid_io_freq 10000000
-
-# Make sure the GPU uses default statistics ..
-lb_data_stat_rho  default
+freq_statistics  1
+config_at_end    no
 
 ###############################################################################
 #

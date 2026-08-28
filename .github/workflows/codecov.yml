@@ -1,5 +1,5 @@
 name: Codecov
-on: [push, pull_request]
+on: [pull_request]
 jobs:
   run:
     runs-on: ubuntu-latest
@@ -9,6 +9,7 @@ jobs:
       - name: Build and run the unit tests
         run: |
           cp config/coverage-gcc.mk config.mk
+          gcc --version
           make serial
           make
           make unit

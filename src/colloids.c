@@ -7,11 +7,12 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2010-2025 The University of Edinburgh
+ *  (c) 2010-2026 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *  Alan Gray (alang@epcc.ed.ac.uk)
+ *  Alexei Borissov (alexei@epcc.ed.ac.uk) Colloid GPU implementation
  *
  *****************************************************************************/
 
@@ -26,9 +27,10 @@
 #include "util_vector.h"
 #include "util_ellipsoid.h"
 #include "colloids.h"
+#include "colloid_link.h"
 
-__host__ int colloid_create(colloids_info_t * cinfo, colloid_t ** pc);
-__host__ void colloid_free(colloids_info_t * cinfo, colloid_t * pc);
+int colloid_create(colloids_info_t * cinfo, const colloid_state_t * state, colloid_t ** pc);
+void colloid_free(colloids_info_t * cinfo, colloid_t * pc);
 
 /*****************************************************************************
  *
@@ -286,14 +288,14 @@ int colloids_info_recreate(const colloid_options_t * newopts,
   /* Need to copy all colloid state across */
 
   for ( ; pc; pc = pc->nextlocal) {
-    colloids_info_add_local(newinfo, pc->s.index, pc->s.r, &pcnew);
+    colloids_info_add_local(newinfo, &pc->s, &pcnew);
     if (pcnew == NULL) {
       /* We have dropped a colloid, probably at the new cell list boundary;
        * try adjusting the position by a small amount... */
       pc->s.r[X] += DBL_EPSILON*pc->s.r[X];
       pc->s.r[Y] += DBL_EPSILON*pc->s.r[Y];
       pc->s.r[Z] += DBL_EPSILON*pc->s.r[Z];
-      colloids_info_add_local(newinfo, pc->s.index, pc->s.r, &pcnew);
+      colloids_info_add_local(newinfo, &pc->s, &pcnew);
     }
     /* If we've still failed, then we need to stop under control */
     if (pcnew == NULL) {
@@ -301,6 +303,7 @@ int colloids_info_recreate(const colloid_options_t * newopts,
       pe_fatal(oldinfo->pe, "Colloid position causes cell list failure\n");
     }
     pcnew->s = pc->s;
+
   }
 
   copy_colloids_array_info(oldinfo, newinfo);
@@ -887,15 +890,15 @@ __host__ int colloids_info_update_cell_list(colloids_info_t * cinfo) {
  *
  *****************************************************************************/
 
-__host__ int colloids_info_add_local(colloids_info_t * cinfo, int index,
-			    const double r[3], colloid_t ** pc) {
+int colloids_info_add_local(colloids_info_t * cinfo, const colloid_state_t * state, colloid_t ** pc) {
+
   int is_local = 1;
-  int icell[3];
+  int icell[3] = {};
 
   assert(cinfo);
   assert(pc);
 
-  colloids_info_cell_coords(cinfo, r, icell);
+  colloids_info_cell_coords(cinfo, state->r, icell);
 
   assert(cinfo->nhalo == 1); /* Following would need to be adjusted */
 
@@ -904,49 +907,29 @@ __host__ int colloids_info_add_local(colloids_info_t * cinfo, int index,
   if (icell[Z] < 1 || icell[Z] > cinfo->ncell[Z]) is_local = 0;
 
   *pc = NULL;
-  if (is_local) colloids_info_add(cinfo, index, r, pc);
+  if (is_local) colloids_info_add(cinfo, state, pc);
 
   return 0;
 }
 
 /*****************************************************************************
  *
- *  colloids_info_add_state_local
- *
- *  Returns zero success. May be called on all ranks, but a colloid will
- *  only be added to the list if the position ("r") is local.
- *
- *****************************************************************************/
-
-int colloids_info_add_state_local(colloids_info_t * info,
-				  const colloid_state_t * state) {
-  int ifail = 0;
-  colloid_t * pc = NULL;
-
-  ifail = colloids_info_add_local(info, state->index, state->r, &pc);
-  if (state->index < 1) ifail = -1;
-  if (pc) pc->s = *state;
-
-  return ifail;
-}
-
-/*****************************************************************************
- *
  *  colloids_info_add
  *
- *  The colloid must have an index, and it must have a position.
+ *  Unconditionally allocate, and add the colloid to the cell list.
+ *  It follows that the colloid state must be valid for the local
+ *  domain.
  *
  *****************************************************************************/
 
-__host__ int colloids_info_add(colloids_info_t * cinfo, int index,
-				     const double r[3], colloid_t ** pc) {
+int colloids_info_add(colloids_info_t * cinfo, const colloid_state_t * state, colloid_t ** pc) {
 
-  int icell[3];
+  int icell[3] = {};
 
   assert(cinfo);
   assert(pc);
 
-  colloids_info_cell_coords(cinfo, r, icell);
+  colloids_info_cell_coords(cinfo, state->r, icell);
 
   assert(icell[X] >= 1 - cinfo->nhalo);
   assert(icell[Y] >= 1 - cinfo->nhalo);
@@ -955,13 +938,7 @@ __host__ int colloids_info_add(colloids_info_t * cinfo, int index,
   assert(icell[Y] < cinfo->ncell[Y] + 2*cinfo->nhalo);
   assert(icell[Z] < cinfo->ncell[Z] + 2*cinfo->nhalo);
 
-  colloid_create(cinfo, pc);
-  (*pc)->s.index = index;
-
-  (*pc)->s.r[X] = r[X];
-  (*pc)->s.r[Y] = r[Y];
-  (*pc)->s.r[Z] = r[Z];
-
+  colloid_create(cinfo, state, pc);
   (*pc)->s.rebuild = 1;
 
   colloids_info_insert_colloid(cinfo, *pc);
@@ -973,31 +950,47 @@ __host__ int colloids_info_add(colloids_info_t * cinfo, int index,
  *
  *  colloid_create
  *
- *  Allocate space for a colloid structure and return a pointer to
- *  it (or fail gracefully). Use calloc to ensure everything is
- *  zero and pointers are NULL.
+ *  Allocate space for a colloid structure and return a pointer.
+ *  The state should be initialised with index > 0.
+ *
+ *  This is the only place in the code where colloid memory is
+ *  allocated. Release with "colloid_free()". For GPU, purposes,
+ *  this is managed memory.
  *
  *****************************************************************************/
 
-__host__ int colloid_create(colloids_info_t * cinfo, colloid_t ** pc) {
+int colloid_create(colloids_info_t * cinfo, const colloid_state_t * state, colloid_t ** pc) {
 
-  colloid_state_t s = {0};
+  int ifail = 0;
   colloid_t * obj = NULL;
 
   assert(cinfo);
+  assert(state);
+  assert(pc);
 
   tdpAssert(tdpMallocManaged((void **) &obj, sizeof(colloid_t),
 			     tdpMemAttachGlobal));
-
-  /* Important .. remember to nullify pointers. */
-
   tdpAssert(tdpMemset((void *) obj, 0, sizeof(colloid_t)));
-  obj->s = s;
+
+  /* Initial state. */
+  /* An array of links is allocated based on the lb model etc */
+  /* This step could be restricted to bbl particles. */
+
+  assert(state->index > 0);
+  obj->s = *state;
+
+  {
+    double a0 = colloid_principal_radius(state);
+    int maxlinks = colloid_link_max_3d(a0, cinfo->options.nvel);
+
+    ifail = colloid_links_array_create(maxlinks, &obj->links);
+  }
 
   cinfo->nallocated += 1;
+
   *pc = obj;
 
-  return 0;
+  return ifail;
 }
 
 /*****************************************************************************
@@ -1012,6 +1005,7 @@ __host__ void colloid_free(colloids_info_t * cinfo, colloid_t * pc) {
   assert(pc);
 
   colloid_link_free_list(pc->lnk);
+  colloid_links_array_free(&pc->links);
   tdpAssert(tdpFree(pc));
 
   cinfo->nallocated -= 1;

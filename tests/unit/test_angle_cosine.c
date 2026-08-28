@@ -70,7 +70,7 @@ int test_angle_cosine1(pe_t * pe, cs_t * cs) {
   double r2[3] = {1.0, 1.0, 2.0}; /* position 2 */
   double r3[3] = {1.0, 1.0, 3.0}; /* position 3 */
 
-  colloid_t * pc3[3] = {0};
+  colloid_t * pc3[3] = {};
 
   colloid_options_t options  = colloid_options_default();
   colloids_info_t * cinfo    = NULL;
@@ -127,7 +127,7 @@ int test_angle_cosine2(pe_t * pe, cs_t * cs) {
   double r3[3] = {2.0, 1.0, 1.0}; /* position 3 */
   double fexpect;
 
-  colloid_t * pc3[3];
+  colloid_t * pc3[3] = {};
 
   colloid_options_t options  = colloid_options_default();
   colloids_info_t * cinfo    = NULL;
@@ -184,34 +184,36 @@ int test_create_trimer(colloids_info_t * cinfo, double a, double r1[3],
                        double r2[3], double r3[3], colloid_t * pc[3]) {
 
   int nc = 0;
+  double a0 = a;
+  double ah = a;
+  colloid_state_t s = {};
 
   assert(cinfo);
   assert(pc);
 
-  colloids_info_add_local(cinfo, 1, r1, pc);
+  colloid_state_init_sphere(1, a0, ah, r1, &s);
+  colloids_info_add_local(cinfo, &s, pc + 0);
   if (pc[0]) {
-    pc[0]->s.a0      = a;
-    pc[0]->s.ah      = a;
     pc[0]->s.nbonds  = 1;
     pc[0]->s.bond[0] = 2;
+    pc[0]->s.nangles = 0;
   }
 
-  colloids_info_add_local(cinfo, 2, r2, pc + 1);
+  colloid_state_init_sphere(2, a0, ah, r2, &s);
+  colloids_info_add_local(cinfo, &s, pc + 1);
   if (pc[1]) {
-    pc[1]->s.a0      = a;
-    pc[1]->s.ah      = a;
     pc[1]->s.nbonds  = 2;
     pc[1]->s.bond[0] = 1;
     pc[1]->s.bond[1] = 3;
     pc[1]->s.nangles = 1;
   }
 
-  colloids_info_add_local(cinfo, 3, r3, pc + 2);
+  colloid_state_init_sphere(3, a0, ah, r3, &s);
+  colloids_info_add_local(cinfo, &s, pc + 2);
   if (pc[2]) {
-    pc[2]->s.a0      = a;
-    pc[2]->s.ah      = a;
     pc[2]->s.nbonds  = 1;
     pc[2]->s.bond[0] = 2;
+    pc[2]->s.nangles = 0;
   }
 
   colloids_info_ntotal_set(cinfo);

@@ -7,7 +7,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2010-2025 The University of Edinburgh
+ *  (c) 2010-2026 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -27,6 +27,7 @@
 int test_colloids_halo111(pe_t * pe, cs_t * cs);
 int test_colloids_halo211(pe_t * pe, cs_t * cs);
 int test_colloids_halo_repeat(pe_t * pe, cs_t * cs);
+
 static void test_position(cs_t * cs, const double r1[3], const double r2[3]);
 
 /*****************************************************************************
@@ -78,7 +79,11 @@ int test_colloids_halo111(pe_t * pe, cs_t * cs) {
   double r1[3];
   double lmin[3];
 
-  colloid_t * pc;
+  double a0 = 2.3;
+  double ah = 2.4;
+
+  colloid_t * pc = NULL;
+  colloid_state_t s = {};
 
   int ncell[3] = {2, 2, 2};
   colloid_options_t opts  = colloid_options_ncell(ncell);
@@ -105,7 +110,9 @@ int test_colloids_halo111(pe_t * pe, cs_t * cs) {
   r0[Z] = lmin[Z] + 1.0*(noffset[Z] + 1);
 
   index = 1 + pe_mpi_rank(pe);
-  colloids_info_add_local(cinfo, index, r0, &pc);
+
+  colloid_state_init_sphere(index, a0, ah, r0, &s);
+  colloids_info_add_local(cinfo, &s, &pc);
   assert(pc);
 
   colloids_halo_send_count(halo, X, ncount);
@@ -226,7 +233,11 @@ int test_colloids_halo211(pe_t * pe, cs_t * cs) {
   double lmin[3];
   double lcell[3];
 
+  double a0 = 2.3;
+  double ah = 2.4;
+
   colloid_t * pc = NULL;
+  colloid_state_t s = {};
   colloid_halo_t * halo = NULL;
 
   int ncell[3] = {2, 2, 2};
@@ -254,7 +265,8 @@ int test_colloids_halo211(pe_t * pe, cs_t * cs) {
   r0[Z] = lmin[Z] + 1.0*(noffset[Z] + 1);
 
   index = 1 + pe_mpi_rank(pe);
-  colloids_info_add_local(cinfo, index, r0, &pc);
+  colloid_state_init_sphere(index, a0, ah, r0, &s);
+  colloids_info_add_local(cinfo, &s, &pc);
   assert(pc);
 
   colloids_halo_send_count(halo, X, ncount);
@@ -365,6 +377,10 @@ int test_colloids_halo_repeat(pe_t * pe, cs_t * cs) {
   double r0[3];
   double lmin[3];
 
+  double a0 = 2.3;
+  double ah = 2.4;
+
+  colloid_state_t s = {};
   colloid_t * pc = NULL;
 
   colloid_options_t opts  = colloid_options_default();
@@ -385,13 +401,17 @@ int test_colloids_halo_repeat(pe_t * pe, cs_t * cs) {
   r0[Z] = lmin[Z] + 1.0*(noffset[Z] + 1);
 
   index = 1 + pe_mpi_rank(pe);
-  colloids_info_add_local(cinfo, index, r0, &pc);
+  colloid_state_init_sphere(index, a0, ah, r0, &s);
+  colloids_info_add_local(cinfo, &s, &pc);
   assert(pc);
 
   index = 1 + pe_mpi_size(pe) + pe_mpi_rank(pe);
-  colloids_info_add_local(cinfo, index, r0, &pc);
+  colloid_state_init_sphere(index, a0, ah, r0, &s);
+  colloids_info_add_local(cinfo, &s, &pc);
+
   index = 1 + 2*pe_mpi_size(pe) + pe_mpi_rank(pe);
-  colloids_info_add_local(cinfo, index, r0, &pc);
+  colloid_state_init_sphere(index, a0, ah, r0, &s);
+  colloids_info_add_local(cinfo, &s, &pc);
 
   colloids_halo_state(cinfo);
   colloids_halo_state(cinfo);

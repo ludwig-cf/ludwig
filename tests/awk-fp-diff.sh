@@ -21,10 +21,31 @@ BEGIN {
 
   # "When the music stops... begin!"
 
-  if (ARGC != 3) {
+  TOLERANCE = 1.0e-12
+
+  if (ARGC < 3 || ARGC > 4) {
     # note ARGV[0] will be /usr/bin/awk
-    print "usage: awk-fp-diff.sh file1 file2"
+    print "usage: awk-fp-diff.sh file1 file2 [tolerance]"
     exit -1
+  }
+
+  if (ARGC == 4) {
+    # The last argument is the tolerance (a +ve floating point number)
+    # and zero the ARGV so that it isn't interpreted as a filename in
+    # the body below...
+
+    TOLERANCE = ARGV[3]
+    ARGV[3]=""
+
+    fp = matches_floating_point(TOLERANCE)
+    if (fp != 1) {
+      print "Tolerance argument is present but doesn't look like fp"
+      exit(-1)
+    }
+    if (TOLERANCE <= 0.0) {
+      print "The tolerance must be a positive number"
+      exit(-2)
+    }
   }
 
   # There a a number of global objects in use, including:
@@ -32,9 +53,8 @@ BEGIN {
   # TOLERANCE  the floating point tolerance
   # files1[]   lines of file 1 (1..nlines1 with file1[0] the filename)
   # files2[]   lines of file 2 (1..nlines2 with file2[0] the filename)
-  # lcslen[,]  lowest common subsequence array for diff algorithm 
+  # lcslen[,]  lowest common subsequence array for diff algorithm
 
-  TOLERANCE = 1.0e-12
   nlines1 = 0
   nlines2 = 0
   file1[0] = ARGV[1]
@@ -78,7 +98,7 @@ END {
 
 function fp_lines_equal(line1, line2) {
 
-  if (line1 == line2) return 1; 
+  if (line1 == line2) return 1;
 
   # OK, the lines don't match. Can this be attributed to a floating
   # point mismatch at the level of TOLERANCE?
@@ -95,7 +115,7 @@ function fp_lines_equal(line1, line2) {
   for (it = 1; it <= nt1; it++) {
 
       if (tokens1[it] == tokens2[it]) continue
-      
+
       fp1 = matches_floating_point(tokens1[it])
       fp2 = matches_floating_point(tokens2[it])
 
@@ -139,7 +159,7 @@ function fp_differ(sx, sy) {
 
     delta = sx - sy
     if (delta < 0.0) delta = -delta
-    if (delta < TOLERANCE) return 0 
+    if (delta < TOLERANCE) return 0
 
     return 1
 }

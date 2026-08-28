@@ -5,7 +5,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2014-2025 The University of Edinburgh
+ *  (c) 2014-2026 The University of Edinburgh
  *
  *  Contributing authors;
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -19,6 +19,7 @@
 
 #include "pe.h"
 #include "coords.h"
+#include "colloid.h"
 #include "colloids.h"
 #include "colloids_halo.h"
 #include "pair_lj_cut.h"
@@ -171,20 +172,20 @@ int test_pair_config1(colloids_info_t * cinfo,
   r1[Y] = 0.5*ltot[Y];
   r1[Z] = 0.5*ltot[Z];
 
-  colloids_info_add_local(cinfo, 1, r1, &pc1);
-  if (pc1) {
-    pc1->s.a0 = a0;
-    pc1->s.ah = ah;
+  {
+    colloid_state_t s1 = {};
+    colloid_state_init_sphere(1, a0, ah, r1, &s1);
+    colloids_info_add_local(cinfo, &s1, &pc1);
   }
 
   r2[X] = r1[X] + h;
   r2[Y] = r1[Y];
   r2[Z] = r1[Z];
 
-  colloids_info_add_local(cinfo, 2, r2, &pc2);
-  if (pc2) {
-    pc2->s.a0 = a0;
-    pc2->s.ah = ah;
+  {
+    colloid_state_t s2 = {};
+    colloid_state_init_sphere(2, a0, ah, r2, &s2);
+    colloids_info_add_local(cinfo, &s2, &pc2);
   }
 
   colloids_info_ntotal_set(cinfo);

@@ -19,6 +19,7 @@
 
 #include "pe.h"
 #include "coords.h"
+#include "colloid.h"
 #include "colloids_halo.h"
 #include "bond_fene.h"
 #include "tests.h"
@@ -191,22 +192,23 @@ int test_create_dimer(colloids_info_t * cinfo, double a, double r1[3],
                       double r2[3], colloid_t * pc[2]) {
 
   int nc = 0;
+  double a0 = a;
+  double ah = a;
+  colloid_state_t s = {};
 
   assert(cinfo);
   assert(pc);
 
-  colloids_info_add_local(cinfo, 1, r1, pc);
+  colloid_state_init_sphere(1, a0, ah, r1, &s);
+  colloids_info_add_local(cinfo, &s, pc);
   if (pc[0]) {
-    pc[0]->s.a0      = a;
-    pc[0]->s.ah      = a;
     pc[0]->s.nbonds  = 1;
     pc[0]->s.bond[0] = 2;
   }
 
-  colloids_info_add_local(cinfo, 2, r2, pc + 1);
+  colloid_state_init_sphere(2, a0, ah, r2, &s);
+  colloids_info_add_local(cinfo, &s, pc + 1);
   if (pc[1]) {
-    pc[1]->s.a0      = a;
-    pc[1]->s.ah      = a;
     pc[1]->s.nbonds  = 1;
     pc[1]->s.bond[0] = 1;
   }

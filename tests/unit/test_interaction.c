@@ -8,7 +8,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2023-2025 The University of Edinburgh
+ *  (c) 2023-2026 The University of Edinburgh
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *
@@ -71,9 +71,14 @@ int test_colloids_update_forces_external(pe_t * pe) {
   {
     /* Add a sample colloid to list */
     int index = 1;
+    double a0    = 2.3;
+    double ah    = 2.3;
     double r0[3] = {2.0, 2.0, 2.0};
 
-    colloids_info_add_local(cinfo, index, r0, &pc);
+    colloid_state_t state = {};
+
+    colloid_state_init_sphere(index, a0, ah, r0, &state);
+    colloids_info_add_local(cinfo, &state, &pc);
     if (pc) {
       pc->s.s[X] = s[X]; pc->s.s[Y] = s[Y]; pc->s.s[Z] = s[Z];
     }
@@ -145,11 +150,12 @@ int test_colloids_update_forces_fluid_body_force(pe_t * pe) {
     int index = 1;
     double r0[3] = {2.0, 2.0, 2.0};
     double a0    = 0.5; /* discrete volume should be unity */
-    colloids_info_add_local(cinfo, index, r0, &pc);
-    if (pc) {
-      pc->s.a0 = a0;
-      pc->s.ah = a0;
-    }
+    double ah    = 0.5;
+
+    colloid_state_t s = {};
+
+    colloid_state_init_sphere(index, a0, ah, r0, &s);
+    colloids_info_add_local(cinfo, &s, &pc);
     colloids_info_update_lists(cinfo);
   }
 
@@ -226,12 +232,12 @@ int test_colloids_update_forces_buoyancy(pe_t * pe) {
     int index = 1;
     double r0[3] = {2.0, 2.0, 2.0};
     double a0    = 2.3;
-    colloids_info_add_local(cinfo, index, r0, &pc);
-    if (pc) {
-      pc->s.shape = COLLOID_SHAPE_SPHERE;
-      pc->s.a0 = a0;
-      pc->s.ah = a0;
-    }
+    double ah    = 2.3;
+
+    colloid_state_t s = {};
+
+    colloid_state_init_sphere(index, a0, ah, r0, &s);
+    colloids_info_add_local(cinfo, &s, &pc);
     colloids_info_update_lists(cinfo);
   }
 

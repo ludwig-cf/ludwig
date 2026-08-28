@@ -18,7 +18,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2010-2022 The University of Edinburgh
+ *  (c) 2010-2026 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -76,7 +76,6 @@ static int colloid_sums_irecv(colloid_sum_t * sum, int dim, MPI_Request rq[2]);
 static int colloid_sums_isend(colloid_sum_t * sum, int dim, MPI_Request rq[2]);
 static int colloid_sums_process(colloid_sum_t * sum, int dim);
 
-static int colloid_sums_m0(colloid_sum_t * sum, int, int, int, int);
 static int colloid_sums_m1(colloid_sum_t * sum, int, int, int, int);
 static int colloid_sums_m2(colloid_sum_t * sum, int, int, int, int);
 static int colloid_sums_m3(colloid_sum_t * sum, int, int, int, int);
@@ -179,7 +178,7 @@ int colloid_sums_halo(colloids_info_t * cinfo, colloid_sum_enum_t mtype) {
 int colloid_sums_1d(colloid_sum_t * sum, int dim, colloid_sum_enum_t mtype) {
 
   int n;
- 
+
   MPI_Request recv_req[2];
   MPI_Request send_req[2];
   MPI_Status  status[2];
@@ -200,7 +199,7 @@ int colloid_sums_1d(colloid_sum_t * sum, int dim, colloid_sum_enum_t mtype) {
 
   sum->send = (double *) malloc(n*msize_[mtype]*sizeof(double));
   sum->recv = (double *) malloc(n*msize_[mtype]*sizeof(double));
- 
+
   if (sum->send == NULL) pe_fatal(sum->pe, "malloc(sum->send) failed\n");
   if (sum->recv == NULL) pe_fatal(sum->pe, "malloc(sum->recv) failed\n");
 
@@ -406,46 +405,62 @@ static int colloid_sums_process(colloid_sum_t * sum, int dim) {
     nf = 0;
   }
 
-  /* Eliminate messages at non-perioidic boundaries via dummy loader m0.
+  /* Eliminate messages at non-perioidic boundaries via a null loader.
    * This is where loader_forw and loader_back can differ. */
 
   if (sum->cs->param->periodic[dim] == 0) {
     ic = sum->cs->param->mpi_cartcoords[dim];
-    if (ic == 0) mloader_back = colloid_sums_m0;
-    if (ic == sum->cs->param->mpi_cartsz[dim] - 1) {
-      mloader_forw = colloid_sums_m0;
-    }
+    if (ic == 0) mloader_back = NULL;
+    if (ic == sum->cs->param->mpi_cartsz[dim] - 1) mloader_forw = NULL;
   }
 
-  if (dim == X) {
+  if (dim == X && mloader_back) {
     for (jc = 0; jc <= ncell[Y] + 1; jc++) {
       for (kc = 0; kc <= ncell[Z] + 1; kc++) {
 	nb += mloader_back(sum, 0, jc, kc, nb);
 	nb += mloader_back(sum, 1, jc, kc, nb);
+      }
+    }
+  }
+  if (dim == X && mloader_forw) {
+    for (jc = 0; jc <= ncell[Y] + 1; jc++) {
+      for (kc = 0; kc <= ncell[Z] + 1; kc++) {
 	nf += mloader_forw(sum, ncell[X], jc, kc, nf);
 	nf += mloader_forw(sum, ncell[X] + 1, jc, kc, nf);
       }
     }
   }
 
-  if (dim == Y) {
+  if (dim == Y && mloader_back) {
     for (ic = 0; ic <= ncell[X] + 1; ic++) {
       for (kc = 0; kc <= ncell[Z] + 1; kc++) {
 	nb += mloader_back(sum, ic, 0, kc, nb);
 	nb += mloader_back(sum, ic, 1, kc, nb);
-	nf += mloader_forw(sum, ic, ncell[Y], kc, nf); 
-	nf += mloader_forw(sum, ic, ncell[Y] + 1, kc, nf); 
+      }
+    }
+  }
+  if (dim == Y && mloader_forw) {
+    for (ic = 0; ic <= ncell[X] + 1; ic++) {
+      for (kc = 0; kc <= ncell[Z] + 1; kc++) {
+	nf += mloader_forw(sum, ic, ncell[Y], kc, nf);
+	nf += mloader_forw(sum, ic, ncell[Y] + 1, kc, nf);
       }
     }
   }
 
-  if (dim == Z) {
+  if (dim == Z && mloader_back) {
     for (ic = 0; ic <= ncell[X] + 1; ic++) {
       for (jc = 0; jc <= ncell[Y] + 1; jc++) {
 	nb += mloader_back(sum, ic, jc, 0, nb);
 	nb += mloader_back(sum, ic, jc, 1, nb);
-	nf += mloader_forw(sum, ic, jc, ncell[Z], nf); 
-	nf += mloader_forw(sum, ic, jc, ncell[Z] + 1, nf); 
+      }
+    }
+  }
+  if (dim == Z && mloader_forw) {
+    for (ic = 0; ic <= ncell[X] + 1; ic++) {
+      for (jc = 0; jc <= ncell[Y] + 1; jc++) {
+	nf += mloader_forw(sum, ic, jc, ncell[Z], nf);
+	nf += mloader_forw(sum, ic, jc, ncell[Z] + 1, nf);
       }
     }
   }
@@ -458,20 +473,6 @@ static int colloid_sums_process(colloid_sum_t * sum, int dim) {
     assert(nb == sum->ncount[FORWARD] + sum->ncount[BACKWARD]);
     assert(nf == sum->ncount[FORWARD]);
   }
-
-  return 0;
-}
-
-/*****************************************************************************
- *
- *  colloid_sums_m0
- *
- *  Null message for non-perioidic boundaries.
- *
- *****************************************************************************/
-
-static int colloid_sums_m0(colloid_sum_t * sum, int ic, int jc, int kc,
-			   int noff) {
 
   return 0;
 }

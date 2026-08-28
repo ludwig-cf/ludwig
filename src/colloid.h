@@ -7,7 +7,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2010-2023 The University of Edinburgh
+ *  (c) 2010-2026 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -138,6 +138,11 @@ int colloid_state_write_ascii(const colloid_state_t * ps, FILE * fp);
 int colloid_state_write_binary(const colloid_state_t * ps, FILE * fp);
 int colloid_state_mass(const colloid_state_t * s, double rho0, double * mass);
 int colloid_type_check(colloid_state_t * s);
+int colloid_state_init_sphere(int index, double a0, double ah,
+			      const double r[3], colloid_state_t * state);
+int colloid_state_init_ellipsoid(int index, const double abc[3],
+				 const double q[4], const double r0[3],
+				 colloid_state_t * state);
 
 double colloid_principal_radius(const colloid_state_t * s);
 

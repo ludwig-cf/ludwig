@@ -7,7 +7,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2010-2025 The University of Edinburgh
+ *  (c) 2010-2026 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -97,7 +97,7 @@ int test_colloids_info_initialise(pe_t * pe, cs_t * cs) {
 
   {
     colloid_options_t options = colloid_options_default();
-    colloids_info_t info = {0};
+    colloids_info_t info = {};
 
     ifail = colloids_info_initialise(pe, cs, &options, &info);
     assert(ifail == 0);
@@ -141,7 +141,7 @@ int test_colloids_info_initialise(pe_t * pe, cs_t * cs) {
 
   {
     colloid_options_t opts = colloid_options_have_colloids(1);
-    colloids_info_t info   = {0};
+    colloids_info_t info   = {};
 
     ifail = colloids_info_initialise(pe, cs, &opts, &info);
     assert(ifail == 0);
@@ -166,7 +166,7 @@ int test_colloids_info_finalise(pe_t * pe, cs_t * cs) {
 
   {
     colloid_options_t opts = colloid_options_default();
-    colloids_info_t   info = {0};
+    colloids_info_t   info = {};
 
     ifail = colloids_info_initialise(pe, cs, &opts, &info);
     ifail = colloids_info_finalise(&info);
@@ -249,6 +249,10 @@ int test_colloids_info_add_local(colloids_info_t * cinfo) {
   double r[3];
   double lmin[3];
 
+  double a0 = 2.3;
+  double ah = 2.3;
+  colloid_state_t s = {};
+
   colloid_t * pcref = NULL;
   colloid_t * pc = NULL;
 
@@ -265,8 +269,9 @@ int test_colloids_info_add_local(colloids_info_t * cinfo) {
   r[Y] = lmin[Y] + 1.0*(noffset[Y] - 1);
   r[Z] = lmin[Z] + 1.0*(noffset[Z] - 1);
 
-  colloids_info_add_local(cinfo, index, r, &pcref);
-  test_assert(pcref == NULL);
+  colloid_state_init_sphere(index, a0, ah, r, &s);
+  colloids_info_add_local(cinfo, &s, &pcref);
+  assert(pcref == NULL);
 
   /* This one will, giving one colloid per MPI task */
 
@@ -274,14 +279,15 @@ int test_colloids_info_add_local(colloids_info_t * cinfo) {
   r[Y] = lmin[Y] + 1.0*(noffset[Y] + 1);
   r[Z] = lmin[Z] + 1.0*(noffset[Z] + 1);
 
-  colloids_info_add_local(cinfo, index, r, &pcref);
-  test_assert(pcref != NULL);
+  colloid_state_init_sphere(index, a0, ah, r, &s);
+  colloids_info_add_local(cinfo, &s, &pcref);
+  assert(pcref != NULL);
+
   colloids_info_nlocal(cinfo, &ncolloid);
   test_assert(ncolloid == 1);
 
   colloids_info_ntotal_set(cinfo);
   colloids_info_ntotal(cinfo, &ncolloid);
-  /* ncolloi should be pe_size() */
 
   /* Check the colloid is in the cell */
 
