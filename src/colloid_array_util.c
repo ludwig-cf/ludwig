@@ -6,13 +6,13 @@
  *    - colloid_state_t      host, managed
  *    - colloid_state_t *    host, managed
  *    - colloid_t
- *    - colloid_t *
+ *    - colloid_t *          host, managed
  *
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2025 The University of Edinburgh
+ *  (c) 2025-2026 The University of Edinburgh
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *
@@ -27,6 +27,9 @@
 
 colloid_state_t * colloid_state_allocator(int managed, size_t size);
 void colloid_state_deallocator(int managed, colloid_state_t * data);
+
+colloid_t ** colloid_pointer_array_allocator(int managed, size_t size);
+void colloid_pointer_array_deallocator(int managed, colloid_t ** ptr);
 
 /*****************************************************************************
  *
@@ -105,7 +108,7 @@ void colloid_array_free(colloid_array_t * ptr) {
 
   if (ptr) {
     colloid_state_deallocator(ptr->managed, ptr->data);
-    *ptr = (colloid_array_t) {0};
+    *ptr = (colloid_array_t) {};
   }
 
   return;
@@ -146,6 +149,130 @@ void colloid_state_deallocator(int managed, colloid_state_t * ptr) {
 
   if (managed) {
     tdpAssert(tdpFree(ptr));
+  }
+  else {
+    free(ptr);
+  }
+
+  return;
+}
+
+/*****************************************************************************
+ *
+ *  colloid_pointer_array_alloc
+ *
+ *****************************************************************************/
+
+int colloid_pointer_array_alloc(int managed, int ntotal,
+				colloid_pointer_array_t * ptr) {
+  int ifail = 0;
+
+  assert(ptr);
+
+  if (ptr == NULL || ntotal <= 0) {
+    ifail = -1;
+  }
+  else {
+    ptr->managed = managed;
+    ptr->ntotal  = ntotal;
+    ptr->colloid = colloid_pointer_array_allocator(managed, ntotal);
+    if (ptr->colloid == NULL) ifail = -2;
+  }
+
+  return ifail;
+}
+
+/*****************************************************************************
+ *
+ *  colloid_pointer_array_realloc
+ *
+ *****************************************************************************/
+
+int colloid_pointer_array_realloc(int newtotal, colloid_pointer_array_t * ptr) {
+
+  int ifail = 0;
+
+  assert(ptr);
+
+  if (newtotal <= 0 || ptr == NULL) {
+    ifail = -1;
+  }
+  else {
+    if (ptr->colloid == NULL) {
+      /* Just allocate. We assme managed is set. */
+      ifail = colloid_pointer_array_alloc(ptr->managed, newtotal, ptr);
+    }
+    else {
+      /* Re-allocate, copy, free ... */
+      colloid_t ** tmp = colloid_pointer_array_allocator(ptr->managed, newtotal);
+      if (tmp) {
+        /* Allow that newtotal is smaller ... */
+        int ncopy = (newtotal < ptr->ntotal) ? newtotal : ptr->ntotal;
+        memcpy(tmp, ptr->colloid, ncopy*sizeof(colloid_t *));
+        colloid_pointer_array_deallocator(ptr->managed, ptr->colloid);
+        ptr->ntotal = newtotal;
+        ptr->colloid = tmp;
+      }
+      ifail = (tmp) ? 0 : 1;
+    }
+  }
+
+  return ifail;
+}
+
+/*****************************************************************************
+ *
+ *  colloid_pointer_array_free
+ *
+ *****************************************************************************/
+
+void colloid_pointer_array_free(colloid_pointer_array_t * ptr) {
+
+  assert(ptr);
+
+  if (ptr) {
+    colloid_pointer_array_deallocator(ptr->managed, ptr->colloid);
+    *ptr = (colloid_pointer_array_t) {};
+  }
+
+  return;
+}
+
+/*****************************************************************************
+ *
+ *  colloid_pointer_array_allocator
+ *
+ *****************************************************************************/
+
+colloid_t ** colloid_pointer_array_allocator(int managed, size_t size) {
+
+  colloid_t ** ptr = NULL;
+
+  assert(size > 0);
+
+  if (managed) {
+    tdpAssert(tdpMallocManaged((void **) &ptr, size * sizeof(colloid_t *),
+                               tdpMemAttachGlobal));
+  }
+  else {
+    ptr = (colloid_t **) malloc(size * sizeof(colloid_t *));
+  }
+
+  return ptr;
+}
+
+/*****************************************************************************
+ *
+ *  colloid_pointer_array_deallocator
+ *
+ *****************************************************************************/
+
+void colloid_pointer_array_deallocator(int managed, colloid_t ** ptr) {
+
+  assert(ptr);
+
+  if (managed) {
+    tdpAssert( tdpFree(ptr) );
   }
   else {
     free(ptr);
