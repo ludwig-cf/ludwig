@@ -689,7 +689,10 @@ int test_colloid_pointer_array_realloc_host(void) {
     int newtotal = 64;
 
     colloid_pointer_array_t array = {};
-    colloid_t data[32] = {};
+    colloid_t * data = NULL;
+
+    data = (colloid_t *) malloc(ntotal*sizeof(colloid_t));
+    assert(data);
 
     ifail = colloid_pointer_array_alloc(managed, ntotal, &array);
     assert(ifail == 0);
@@ -714,6 +717,7 @@ int test_colloid_pointer_array_realloc_host(void) {
 
     /* Finish */
     colloid_pointer_array_free(&array);
+    free(data);
   }
 
   return ifail;
