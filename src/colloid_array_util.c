@@ -163,19 +163,19 @@ void colloid_state_deallocator(int managed, colloid_state_t * ptr) {
  *
  *****************************************************************************/
 
-int colloid_pointer_array_alloc(int managed, int ntotal,
+int colloid_pointer_array_alloc(int managed, int nsz,
 				colloid_pointer_array_t * ptr) {
   int ifail = 0;
 
   assert(ptr);
 
-  if (ptr == NULL || ntotal <= 0) {
+  if (ptr == NULL || nsz <= 0) {
     ifail = -1;
   }
   else {
     ptr->managed = managed;
-    ptr->ntotal  = ntotal;
-    ptr->colloid = colloid_pointer_array_allocator(managed, ntotal);
+    ptr->nsz     = nsz;
+    ptr->colloid = colloid_pointer_array_allocator(managed, nsz);
     if (ptr->colloid == NULL) ifail = -2;
   }
 
@@ -188,29 +188,29 @@ int colloid_pointer_array_alloc(int managed, int ntotal,
  *
  *****************************************************************************/
 
-int colloid_pointer_array_realloc(int newtotal, colloid_pointer_array_t * ptr) {
+int colloid_pointer_array_realloc(int newsz, colloid_pointer_array_t * ptr) {
 
   int ifail = 0;
 
   assert(ptr);
 
-  if (newtotal <= 0 || ptr == NULL) {
+  if (newsz <= 0 || ptr == NULL) {
     ifail = -1;
   }
   else {
     if (ptr->colloid == NULL) {
       /* Just allocate. We assme managed is set. */
-      ifail = colloid_pointer_array_alloc(ptr->managed, newtotal, ptr);
+      ifail = colloid_pointer_array_alloc(ptr->managed, newsz, ptr);
     }
     else {
       /* Re-allocate, copy, free ... */
-      colloid_t ** tmp = colloid_pointer_array_allocator(ptr->managed, newtotal);
+      colloid_t ** tmp = colloid_pointer_array_allocator(ptr->managed, newsz);
       if (tmp) {
         /* Allow that newtotal is smaller ... */
-        int ncopy = (newtotal < ptr->ntotal) ? newtotal : ptr->ntotal;
+        int ncopy = (newsz < ptr->nsz) ? newsz : ptr->nsz;
         memcpy(tmp, ptr->colloid, ncopy*sizeof(colloid_t *));
         colloid_pointer_array_deallocator(ptr->managed, ptr->colloid);
-        ptr->ntotal = newtotal;
+        ptr->nsz = newsz;
         ptr->colloid = tmp;
       }
       ifail = (tmp) ? 0 : 1;
@@ -228,10 +228,10 @@ int colloid_pointer_array_realloc(int newtotal, colloid_pointer_array_t * ptr) {
 
 void colloid_pointer_array_free(colloid_pointer_array_t * ptr) {
 
-  assert(ptr);
-
   if (ptr) {
-    colloid_pointer_array_deallocator(ptr->managed, ptr->colloid);
+    if (ptr->colloid) {
+      colloid_pointer_array_deallocator(ptr->managed, ptr->colloid);
+    }
     *ptr = (colloid_pointer_array_t) {};
   }
 
@@ -241,6 +241,8 @@ void colloid_pointer_array_free(colloid_pointer_array_t * ptr) {
 /*****************************************************************************
  *
  *  colloid_pointer_array_allocator
+ *
+ *  And initialise entries to NULL.
  *
  *****************************************************************************/
 
@@ -253,9 +255,10 @@ colloid_t ** colloid_pointer_array_allocator(int managed, size_t size) {
   if (managed) {
     tdpAssert(tdpMallocManaged((void **) &ptr, size * sizeof(colloid_t *),
                                tdpMemAttachGlobal));
+    tdpAssert( tdpMemset(ptr, 0, size*sizeof(colloid_t *)) );
   }
   else {
-    ptr = (colloid_t **) malloc(size * sizeof(colloid_t *));
+    ptr = (colloid_t **) calloc(size, sizeof(colloid_t *));
   }
 
   return ptr;

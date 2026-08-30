@@ -24,7 +24,7 @@ typedef struct colloid colloid_t;
 
 typedef struct colloid_pointer_array_s {
   int managed;                /* true if managed memory */
-  int ntotal;                 /* extent of ... */
+  int nsz;                    /* extent of ... */
   colloid_t ** colloid;       /* array with pointer entries */
 } colloid_pointer_array_t;
 
@@ -32,9 +32,9 @@ int colloid_array_alloc(int managed, int ntotal, colloid_array_t * ptr);
 int colloid_array_realloc(int newtotal, colloid_array_t * ptr);
 void colloid_array_free(colloid_array_t * ptr);
 
-int colloid_pointer_array_alloc(int managed, int ntotal,
+int colloid_pointer_array_alloc(int managed, int nsz,
 				colloid_pointer_array_t * ptr);
-int colloid_pointer_array_realloc(int newtotal, colloid_pointer_array_t * ptr);
+int colloid_pointer_array_realloc(int newsz, colloid_pointer_array_t * ptr);
 void colloid_pointer_array_free(colloid_pointer_array_t * pre);
 
 #endif

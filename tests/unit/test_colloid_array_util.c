@@ -495,27 +495,27 @@ int test_colloid_pointer_array_alloc_host(void) {
   /* Check failure */
   {
     int managed = 0;
-    int ntotal  = 0;
+    int nsz     = 0;
 
     colloid_pointer_array_t array = {};
 
-    ifail = colloid_pointer_array_alloc(managed, ntotal, &array);
+    ifail = colloid_pointer_array_alloc(managed, nsz, &array);
     assert(ifail != 0);
   }
 
   /* Check allocation/assignment */
   {
     int managed = 0;
-    int ntotal  = 32;
+    int nsz     = 32;
 
     colloid_pointer_array_t array = {};
 
-    ifail = colloid_pointer_array_alloc(managed, ntotal, &array);
+    ifail = colloid_pointer_array_alloc(managed, nsz, &array);
     assert(ifail == 0);
     assert(array.managed == managed);
-    assert(array.ntotal  == ntotal);
+    assert(array.nsz     == nsz);
 
-    for (int n = 0; n < ntotal; n++) {
+    for (int n = 0; n < nsz; n++) {
       array.colloid[n] = NULL;
     }
 
@@ -531,12 +531,12 @@ int test_colloid_pointer_array_alloc_host(void) {
  *
  *****************************************************************************/
 
-__global__ void kernel3(int ntotal, colloid_pointer_array_t array) {
+__global__ void kernel3(int nsz, colloid_pointer_array_t array) {
 
   int index = blockIdx.x;  /* Index by block (all threads) */
 
   assert(array.managed == 1);
-  assert(array.ntotal  == ntotal);
+  assert(array.nsz  == nsz);
   assert(array.colloid);
 
   if (array.colloid[index]->s.index != 1 + index) {
@@ -547,15 +547,15 @@ __global__ void kernel3(int ntotal, colloid_pointer_array_t array) {
   return;
 }
 
-__global__ void kernel4(int ntotal, colloid_pointer_array_t array) {
+__global__ void kernel4(int nsz, colloid_pointer_array_t array) {
 
   int index = blockIdx.x;   /* Index by block (all threads) */
 
   assert(array.managed == 1);
-  assert(array.ntotal  == ntotal);
+  assert(array.nsz     == nsz);
   assert(array.colloid != NULL);
 
-  assert(gridDim.x == ntotal);
+  assert(gridDim.x == nsz);
 
   if (threadIdx.x == 0) {
     array.colloid[index]->s.index = 1 + index;
@@ -571,25 +571,25 @@ int test_colloid_pointer_array_alloc_managed(void) {
   /* Host assignment and kernel check */
   {
     int managed = 1;
-    int ntotal  = 32;
+    int nsz     = 32;
 
     colloid_pointer_array_t array = {};
 
     /* Test data */
     colloid_t * data = NULL;
 
-    tdpAssert( tdpMallocManaged((void **) &data, ntotal*sizeof(colloid_t),
+    tdpAssert( tdpMallocManaged((void **) &data, nsz*sizeof(colloid_t),
 				tdpMemAttachGlobal) );
-    for (int n = 0; n < ntotal; n++) {
+    for (int n = 0; n < nsz; n++) {
       data[n] = (colloid_t) {};
       data[n].s.index = 1 + n;
     }
 
     /* Array and initialise pointer elements ... */
-    ifail = colloid_pointer_array_alloc(managed, ntotal, &array);
+    ifail = colloid_pointer_array_alloc(managed, nsz, &array);
     assert(ifail == 0);
 
-    for (int n = 0; n < ntotal; n++) {
+    for (int n = 0; n < nsz; n++) {
       array.colloid[n] = data + n;
     }
 
@@ -598,9 +598,9 @@ int test_colloid_pointer_array_alloc_managed(void) {
       dim3 blocks  = {1, 1, 1};
       dim3 threads = {128, 1, 1};
 
-      blocks.x = ntotal;
+      blocks.x = nsz;
 
-      tdpLaunchKernel(kernel3, blocks, threads, 0, 0, ntotal, array);
+      tdpLaunchKernel(kernel3, blocks, threads, 0, 0, nsz, array);
       tdpAssert( tdpStreamSynchronize(0) );
     }
 
@@ -612,34 +612,34 @@ int test_colloid_pointer_array_alloc_managed(void) {
   /* Kernel assignment; host check */
   {
     int managed = 1;
-    int ntotal  = 32;
+    int nsz     = 32;
 
     colloid_pointer_array_t array = {};
 
     /* Attach the test data storage to the array ... */
     colloid_t * data = NULL;
 
-    tdpAssert( tdpMallocManaged((void **) &data, ntotal*sizeof(colloid_t),
+    tdpAssert( tdpMallocManaged((void **) &data, nsz*sizeof(colloid_t),
 				tdpMemAttachGlobal) );
 
-    ifail = colloid_pointer_array_alloc(managed, ntotal, &array);
+    ifail = colloid_pointer_array_alloc(managed, nsz, &array);
     assert(ifail == 0);
 
-    for (int n = 0; n < ntotal; n++) {
+    for (int n = 0; n < nsz; n++) {
       array.colloid[n] = data + n;
     }
 
     /* Assign (kernel) */
     {
-      dim3 blocks  = {ntotal, 1, 1};
+      dim3 blocks  = {nsz, 1, 1};
       dim3 threads = {128, 1, 1};
 
-      tdpLaunchKernel(kernel4, blocks, threads, 0, 0, ntotal, array);
+      tdpLaunchKernel(kernel4, blocks, threads, 0, 0, nsz, array);
       tdpAssert( tdpStreamSynchronize(0) );
     }
 
     /* Check (host) */
-    for (int n = 0; n < ntotal; n++) {
+    for (int n = 0; n < nsz; n++) {
       if (array.colloid[n]->s.index != 1 + n) printf("Fail at %2d\n", n);
       assert(array.colloid[n]->s.index == 1 + n);
     }
@@ -664,18 +664,18 @@ int test_colloid_pointer_array_realloc_host(void) {
 
   /* Check realloc from nothing */
   {
-    int ntotal  = 32;
+    int nsz = 32;
 
     colloid_pointer_array_t array = {};
 
-    ifail = colloid_pointer_array_realloc(ntotal, &array);
+    ifail = colloid_pointer_array_realloc(nsz, &array);
     assert(ifail == 0);
 
     assert(array.managed == 0);
-    assert(array.ntotal  == ntotal);
+    assert(array.nsz     == nsz);
     assert(array.colloid);
 
-    for (int n = 0; n < ntotal; n++) {
+    for (int n = 0; n < nsz; n++) {
       array.colloid[n] = NULL;
     }
 
@@ -685,34 +685,34 @@ int test_colloid_pointer_array_realloc_host(void) {
   /* Check realloc preserves existing data */
   {
     int managed  = 0;
-    int ntotal   = 32;
-    int newtotal = 64;
+    int nsz      = 32;
+    int newsz    = 64;
 
     colloid_pointer_array_t array = {};
     colloid_t * data = NULL;
 
-    data = (colloid_t *) malloc(ntotal*sizeof(colloid_t));
+    data = (colloid_t *) malloc(nsz*sizeof(colloid_t));
     assert(data);
 
-    ifail = colloid_pointer_array_alloc(managed, ntotal, &array);
+    ifail = colloid_pointer_array_alloc(managed, nsz, &array);
     assert(ifail == 0);
 
-    for (int n = 0; n < ntotal; n++) {
+    for (int n = 0; n < nsz; n++) {
       array.colloid[n] = data + n;
     }
 
     /* Reallocate */
 
-    ifail = colloid_pointer_array_realloc(newtotal, &array);
+    ifail = colloid_pointer_array_realloc(newsz, &array);
     assert(array.managed == managed);
-    assert(array.ntotal  == newtotal);
+    assert(array.nsz     == newsz);
     assert(array.colloid);
 
     /* Check existing are unchanged and access new */
 
-    for (int n = 0; n < ntotal; n++) {
+    for (int n = 0; n < nsz; n++) {
       assert(array.colloid[n] == data + n);
-      array.colloid[ntotal + n] = NULL;
+      array.colloid[nsz + n] = NULL;
     }
 
     /* Finish */
@@ -739,48 +739,48 @@ int test_colloid_pointer_array_realloc_managed(void) {
 
   {
     int managed  = 1;
-    int ntotal   = 32;
-    int newtotal = 64;
+    int nsz      = 32;
+    int newsz    = 64;
 
     colloid_pointer_array_t array = {};
 
     /* Test data (managed) */
     colloid_t * data = NULL;
 
-    tdpAssert( tdpMallocManaged((void **) &data, newtotal*sizeof(colloid_t),
+    tdpAssert( tdpMallocManaged((void **) &data, newsz*sizeof(colloid_t),
 				tdpMemAttachGlobal) );
 
-    ifail = colloid_pointer_array_alloc(managed, ntotal, &array);
+    ifail = colloid_pointer_array_alloc(managed, nsz, &array);
     assert(ifail == 0);
 
-    for (int n = 0; n < ntotal; n++) {
+    for (int n = 0; n < nsz; n++) {
       array.colloid[n] = data + n;
     }
 
     /* Assign (kernel4) */
     {
-      dim3 blocks  = {ntotal, 1, 1};
+      dim3 blocks  = {nsz, 1, 1};
       dim3 threads = {128, 1, 1};
 
-      tdpLaunchKernel(kernel4, blocks, threads, 0, 0, ntotal, array);
+      tdpLaunchKernel(kernel4, blocks, threads, 0, 0, nsz, array);
       tdpAssert( tdpStreamSynchronize(0) );
     }
 
     /* re-allocate and update */
-    ifail = colloid_pointer_array_realloc(newtotal, &array);
+    ifail = colloid_pointer_array_realloc(newsz, &array);
     assert(array.managed == managed);
-    assert(array.ntotal  == newtotal);
+    assert(array.nsz     == newsz);
 
-    for (int n = ntotal; n < newtotal; n++) {
+    for (int n = nsz; n < newsz; n++) {
       data[n].s.index = 1 + n;
       array.colloid[n] = data + n;
     }
 
     /* Check (kernel3) */
     {
-      dim3 blocks  = {newtotal, 1, 1};
+      dim3 blocks  = {newsz, 1, 1};
       dim3 threads = {128, 1, 1};
-      tdpLaunchKernel(kernel3, blocks, threads, 0, 0, newtotal, array);
+      tdpLaunchKernel(kernel3, blocks, threads, 0, 0, newsz, array);
       tdpAssert( tdpStreamSynchronize(0) );
     }
 
@@ -805,32 +805,32 @@ int test_colloid_pointer_array_free(void) {
   /* host */
   {
     int managed = 0;
-    int ntotal  = 128;
+    int nsz     = 128;
 
     colloid_pointer_array_t array = {};
 
-    ifail = colloid_pointer_array_alloc(managed, ntotal, &array);
+    ifail = colloid_pointer_array_alloc(managed, nsz, &array);
     assert(array.colloid);
 
     colloid_pointer_array_free(&array);
     assert(array.managed == 0);
-    assert(array.ntotal  == 0);
+    assert(array.nsz     == 0);
     assert(array.colloid == NULL);
   }
 
   /* managed */
   {
     int managed = 1;
-    int ntotal  = 256;
+    int nsz     = 256;
 
     colloid_pointer_array_t array = {};
 
-    ifail = colloid_pointer_array_alloc(managed, ntotal, &array);
+    ifail = colloid_pointer_array_alloc(managed, nsz, &array);
     assert(array.colloid);
 
     colloid_pointer_array_free(&array);
     assert(array.managed == 0);
-    assert(array.ntotal  == 0);
+    assert(array.nsz     == 0);
     assert(array.colloid == NULL);
   }
 
