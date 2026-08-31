@@ -2,6 +2,12 @@
 #
 #  Cholesteric normal anchoring isotropy test (Y).
 #
+#  This test is not very robust to threads so use a relaxed tolerance
+#
+#  test_tolerance 2.0e-09
+#
+#  See comments in serial-chol-no2.inp, which has the same problem.
+#
 ##############################################################################
 
 N_cycles 5
@@ -9,7 +15,7 @@ N_cycles 5
 ##############################################################################
 #
 #  System and MPI
-# 
+#
 ##############################################################################
 
 size 64_64_64

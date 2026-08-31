@@ -8,14 +8,17 @@
 #  Relaxational dynamics only (no hydrodynamics)
 #
 #  The colloid has normal anchoring and one can identify three cases
-#  for the dimensionless parameter w_1 / kapaa a
+#  for the dimensionless parameter w_1 a / kapaa
 #
-#  lc_coll_anchoring_w1    0.0       => w_1 / kappa a  = 0
-#  lc_coll_anchoring_w1    0.00008   => w_1 / kappa a  = 0.02
-#  lc_coll_anchoring_w1    0.008     => w_1 / kappa a  = 2.0
+#  lc_coll_anchoring_w1    0.0           => w_1 a / kappa  = 0
+#  lc_coll_anchoring_w1    0.000014214   => w_1 a / kappa  = 0.2
+#  lc_coll_anchoring_w1    0.0014214     => w_1 a / kappa  = 20.0
 #
-#  corresponding to no anchoring, weak anchoring, and strong anchoring.
+#  corresponding to no anchoring, "weak" anchoring, and "strong" anchoring.
 #  The value below is for strong anchoring.
+#
+#  The w_1 = zero instance is not very interesting (the initial condition
+#  is an equilibrium).
 #
 #  Run for e.g., 100,000 steps to obtain the fully relaxed profile
 #  as illustrated at https://ludwig.epcc.ed.ac.uk/inputs/colloid.html
@@ -70,7 +73,7 @@ lc_q_init_amplitude   0.333333333333333
 lc_init_redshift      1.0
 
 lc_coll_anchoring     normal
-lc_coll_anchoring_w1  0.008
+lc_coll_anchoring_w1  0.0014214
 
 
 ###############################################################################

@@ -10,10 +10,19 @@
 #include "pe.h"
 #include "colloid_link.h"
 
+#define EPS 1E-12
+
 int test_colloid_link_max_2d_d2q9(void);
 int test_colloid_link_max_3d_d3q15(void);
 int test_colloid_link_max_3d_d3q19(void);
 int test_colloid_link_max_3d_d3q27(void);
+
+int test_colloid_link_array_initialise(void);
+int test_colloid_link_array_create(void);
+int test_colloid_link_to_array(void);
+
+int test_colloid_link_array_rb(void);
+
 
 /*****************************************************************************
  *
@@ -31,6 +40,13 @@ int test_colloid_link_suite(void) {
   test_colloid_link_max_3d_d3q15();
   test_colloid_link_max_3d_d3q19();
   test_colloid_link_max_3d_d3q27();
+
+  test_colloid_link_array_initialise();
+  test_colloid_link_array_create();
+  test_colloid_link_to_array();
+  test_colloid_link_array_rb();
+
+  pe_info(pe, "PASS     ./unit/test_colloid_links\n");
 
   pe_free(pe);
 
@@ -347,6 +363,156 @@ int test_colloid_link_max_3d_d3q27(void) {
     int nmax = colloid_link_max_3d(a, nvel);
     if (nmax < nlink) ifail = -1;
     assert(ifail == 0);
+  }
+
+  return ifail;
+}
+
+/*****************************************************************************
+ *
+ *  test_colloid_link_array_initialise
+ *
+ *****************************************************************************/
+
+int test_colloid_link_array_initialise(void) {
+
+  int ifail = 0;
+
+  /* Zero links is a fail */
+  {
+    int maxlinks = 0;
+    colloid_links_array_t a = {};
+
+    ifail = colloid_links_array_initialise(maxlinks, &a);
+    assert(ifail != 0);
+  }
+
+  /* Check allocations are present */
+  {
+    int maxlinks = 10;
+    colloid_links_array_t a = {};
+
+    ifail = colloid_links_array_initialise(maxlinks, &a);
+    assert(ifail == 0);
+
+    assert(a.i);
+    assert(a.j);
+    assert(a.p);
+    assert(a.status);
+    assert(a.rb);
+
+    for (int i = 0; i < maxlinks; ++i) {
+      if (a.status[i] != LINK_UNUSED) ifail += 1;
+    }
+    assert(ifail == 0);
+    assert(a.max_links == maxlinks);
+
+    ifail = colloid_links_array_finalise(&a);
+  }
+
+  return ifail;
+}
+
+/*****************************************************************************
+ *
+ *  test_colloid_link_array_create
+ *
+ *****************************************************************************/
+
+int test_colloid_link_array_create(void) {
+
+  int ifail = 0;
+
+  {
+    int maxlinks = 1024;
+    colloid_links_array_t * a = NULL;
+
+    ifail = colloid_links_array_create(maxlinks, &a);
+    assert(ifail == 0);
+    if (a->max_links != maxlinks) ifail = -1;
+    assert(ifail == 0);
+    ifail = colloid_links_array_free(&a);
+    assert(a == NULL);
+  }
+
+  return ifail;
+}
+
+/*****************************************************************************
+ *
+ *  test_colloid_link_to_array
+ *
+ *****************************************************************************/
+
+int test_colloid_link_to_array(void) {
+
+  int ifail = 0;
+
+  {
+    int maxlink = 1;
+    int index   = 0;
+
+    colloid_links_array_t a = {};
+
+    /* test data (pointers not relevant) */
+    colloid_link_t link = {.i = 1, .j = 2, .p = 3, .status = LINK_COLLOID,
+      .rb = {1.0, 2.0, 3.0}, .spare = NULL, .next = NULL};
+
+    colloid_links_array_initialise(maxlink, &a);
+    colloid_link_to_array(&link, &a, index);
+
+    if (a.i[index] != link.i) ifail = 1;
+    if (a.j[index] != link.j) ifail = 2;
+    if (a.p[index] != link.p) ifail = 3;
+    assert(ifail == 0);
+
+    if (a.status[index] != link.status) ifail = 4;
+    assert(ifail == 0);
+
+    if (fabs(a.rb[X][index] - link.rb[X]) > DBL_EPSILON) ifail = 5;
+    if (fabs(a.rb[Y][index] - link.rb[Y]) > DBL_EPSILON) ifail = 6;
+    if (fabs(a.rb[Z][index] - link.rb[Z]) > DBL_EPSILON) ifail = 7;
+    assert(ifail == 0);
+
+    colloid_links_array_finalise(&a);
+  }
+
+  return ifail;
+}
+
+/*****************************************************************************
+ *
+ *  test_colloid_link_array_rb
+ *
+ *****************************************************************************/
+
+int test_colloid_link_array_rb(void) {
+
+  int ifail = 0;
+
+  {
+    int maxlinks = 10;
+    int index    = 9;
+
+    colloid_links_array_t a = {};
+
+    /* test data (pointers not relevant) */
+    colloid_link_t link = {.i = 1, .j = 2, .p = 3, .status = LINK_COLLOID,
+      .rb = {1.0, 2.0, 3.0}, .spare = NULL, .next = NULL};
+
+    colloid_links_array_initialise(maxlinks, &a);
+    colloid_link_to_array(&link, &a, index);
+
+    {
+      double rb[3] = {};
+      colloid_links_array_rb(&a, index, rb);
+      if (fabs(rb[X] - link.rb[X]) > DBL_EPSILON) ifail = -1;
+      if (fabs(rb[Y] - link.rb[Y]) > DBL_EPSILON) ifail = -1;
+      if (fabs(rb[Z] - link.rb[Z]) > DBL_EPSILON) ifail = -1;
+      assert(ifail == 0);
+    }
+
+    colloid_links_array_finalise(&a);
   }
 
   return ifail;

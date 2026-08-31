@@ -53,8 +53,10 @@
 #include "../src/util_fopen.h"
 #include "../src/ran.h"
 
+/* Various limits on random steps */
+#define A0_MIN  1.0
 #define NTRYMAX 10000
-#define NMC 10000000
+#define NMC     10000000
 
 const char * filename_ = "colloids-000000000.dat"; /* output file name */
 
@@ -88,12 +90,16 @@ int main(int argc, char ** argv) {
 
   io_record_format_enum_t file_format = IO_RECORD_ASCII;
 
-  const double a0_default = 2.3;  /* Input radius */
-  const double ah_default = 2.3;  /* Hydrodynamic radius */
-  const double vf_default = 0.02; /* Volume fraction */
-  const double dh_default = 0.5;  /* "grace' distance */
-  const double q0_default = 0.0;  /* positive charge */
-  const double q1_default = 0.0;  /* negative charge */
+  /* Default values */
+  /* The -ve ah is used to signal whether the option has been specified
+   * on the command line. It is adjusted accordingly. */
+
+  const double a0_default =  2.3;  /* Input radius */
+  const double ah_default = -2.3;  /* Hydrodynamic radius */
+  const double vf_default = 0.02;  /* Volume fraction */
+  const double dh_default =  0.5;  /* "grace' distance */
+  const double q0_default =  0.0;  /* positive charge */
+  const double q1_default =  0.0;  /* negative charge */
 
   /* At the moment, three quantities can come from the command line */
 
@@ -104,7 +110,7 @@ int main(int argc, char ** argv) {
   double q0 = q0_default;
   double q1 = q1_default;
 
-  const double      pi = 4.0*atan(1.0);
+  const double pi = 4.0*atan(1.0);
   colloid_state_t * state;
 
   pe_t * pe = NULL;
@@ -199,15 +205,42 @@ int main(int argc, char ** argv) {
   cs_periodicity_set(cs, periodic);
   cs_init(cs);
 
+  /* Check a0 and ah are consistent. If no ah has been set, ah = a0. */
+  /* In any case, ah >= a0 so that no hard-sphere overlaps can occur. */
+
+  if (a0 < A0_MIN) {
+    printf("You have set a0 =  %5.2f\n", a0);
+    printf("Please use   a0 >= %5.2f\n", A0_MIN);
+    exit(-1);
+  }
+
+  if (ah < 0.0) {
+    /* If the user has set a -ve value (!), this message won't quite make
+       sense ... */
+    printf("%s: option -h not set: using ah = a0\n", argv[0]);
+    ah = a0;
+  }
+  if (ah < a0) {
+    /* If the user has requested this ... */
+    printf("%s: ah must be >= a0\n", argv[0]);
+    exit(-1);
+  }
+
   /* Allocate required number of state objects, and set state
      to zero; initialise indices (position set later) */
+  /* The volume fraction will be computed on the basis of
+   * an effective radius max(a0, ah), but does not include the
+   * 'grace distance'. */
 
   if (nuser > 0) {
-    vf = (4.0/3.0)*pi*a0*a0*a0*nuser/(ntotal[X]*ntotal[Y]*ntotal[Z]);
+    double aeff = ah; /* ah >= a0 */
+
+    vf = (4.0/3.0)*pi*aeff*aeff*aeff*nuser/(ntotal[X]*ntotal[Y]*ntotal[Z]);
     printf("The system size is: X: %8d\n", ntotal[X]);
     printf("                    Y: %8d\n", ntotal[Y]);
     printf("                    Z: %8d\n", ntotal[Z]);
     printf("Particles requested:   %8d\n", nuser);
+    printf("Effective radius:      %5.2f\n", aeff);
     printf("Volume fraction:       %10.3e\n", vf);
     if (0.0 < vf && vf < 1.0) {
       nrequest = nuser;
@@ -222,6 +255,7 @@ int main(int argc, char ** argv) {
     printf("The system size is: X: %8d\n", ntotal[X]);
     printf("                    Y: %8d\n", ntotal[Y]);
     printf("                    Z: %8d\n", ntotal[Z]);
+    printf("Effective radius:      %5.2f\n", ah);
     printf("Volume fraction %7.3f gives %d colloids\n", vf, nrequest);
   }
 
@@ -335,9 +369,10 @@ void colloid_init_trial(cs_t * cs, double r[3], double dh) {
  *
  ****************************************************************************/
 
-int colloid_init_random(cs_t * cs, int nc, colloid_state_t * state, double dh) {
+int colloid_init_random(cs_t * cs, int nc, colloid_state_t * state,
+                        double dh) {
 
-  int n; /* Current number of positions successfully set */
+  int n = 0; /* Current number of positions successfully set */
   int ok;
   int ncheck;
   int nattempt;
@@ -348,7 +383,6 @@ int colloid_init_random(cs_t * cs, int nc, colloid_state_t * state, double dh) {
 
   assert(cs);
 
-  n           = 0;
   nmaxattempt = nc*NTRYMAX;
 
   for (nattempt = 0; nattempt < nmaxattempt; nattempt++) {
@@ -433,7 +467,7 @@ int colloid_init_mc(cs_t * cs, int nc, colloid_state_t * state, double dh) {
   nbcc += nx*ny*nz;                  // interstitial sites in all ucs
   nbcc += nxe*ny*nz;                 // additional interstitial sites
   nbcc += nye*nx*nz;
-  nbcc += nze * nx * ny;
+  nbcc += nze*nx*ny;
 
   // position of bcc sites
   rbcc = (double **) calloc(nbcc, sizeof(double *));
@@ -654,7 +688,7 @@ int colloid_init_write_file_mpio(pe_t * pe, cs_t * cs, int nc,
   int               ifail    = 0;
   int               ncell[3] = {8, 8, 8};
   colloid_options_t opts     = colloid_options_ncell(ncell);
-  colloids_info_t   info     = {0};
+  colloids_info_t   info     = {};
 
   opts.output.mode      = COLLOID_IO_MODE_MPIIO;
   opts.output.iorformat = ioformat;
@@ -663,7 +697,8 @@ int colloid_init_write_file_mpio(pe_t * pe, cs_t * cs, int nc,
 
   /* Insert the colloids into the cell list ... */
   for (int ic = 0; ic < nc; ic++) {
-    ifail = colloids_info_add_state_local(&info, state + ic);
+    colloid_t * pc = NULL;
+    ifail = colloids_info_add_local(&info, state + ic, &pc);
     assert(ifail == 0);
   }
   colloids_info_ntotal_set(&info);

@@ -7,7 +7,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2010-2021 The University of Edinburgh
+ *  (c) 2010-2026 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -305,7 +305,7 @@ static int colloids_halo_load(colloid_halo_t * halo, int dim) {
 	noff = nsent_back;
 	nsent_back += colloids_halo_load_list(halo, ic, 1, kc, rback, noff);
 	noff = halo->nsend[BACKWARD] + nsent_forw;
-	nsent_forw += colloids_halo_load_list(halo, ic, ncell[Y], kc, rforw, noff); 
+	nsent_forw += colloids_halo_load_list(halo, ic, ncell[Y], kc, rforw, noff);
       }
     }
   }
@@ -316,7 +316,7 @@ static int colloids_halo_load(colloid_halo_t * halo, int dim) {
 	noff = nsent_back;
 	nsent_back += colloids_halo_load_list(halo, ic, jc, 1, rback, noff);
 	noff = halo->nsend[BACKWARD] + nsent_forw;
-	nsent_forw += colloids_halo_load_list(halo, ic, jc, ncell[Z], rforw, noff); 
+	nsent_forw += colloids_halo_load_list(halo, ic, jc, ncell[Z], rforw, noff);
       }
     }
   }
@@ -408,10 +408,7 @@ static int colloids_halo_unload(colloid_halo_t * halo, int nrecv) {
     }
 
     if (exists == 0) {
-      colloids_info_add(halo->cinfo, index, halo->recv[n].r, &pc);
-      assert(pc);
-      pc->s = halo->recv[n];
-      pc->s.rebuild = 1;
+      colloids_info_add(halo->cinfo, &halo->recv[n], &pc);
     }
   }
 

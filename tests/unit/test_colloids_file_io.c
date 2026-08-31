@@ -23,7 +23,7 @@
 #include "colloids_file_io.h"
 
 int test_colloids_file_io_initialise(pe_t * pe);
-int test_colloids_file_io_finalise(pe_t * pe);
+int test_colloids_file_io_finalise(void);
 int test_colloids_file_io_write(pe_t * pe);
 int test_colloids_file_io_read(pe_t * pe);
 
@@ -41,7 +41,7 @@ int test_colloids_file_io_suite(void) {
   pe_create(MPI_COMM_WORLD, PE_QUIET, &pe);
 
   test_colloids_file_io_initialise(pe);
-  test_colloids_file_io_finalise(pe);
+  test_colloids_file_io_finalise();
 
   test_colloids_file_io_read(pe);
   test_colloids_file_io_write(pe);
@@ -64,7 +64,7 @@ int test_colloids_file_io_initialise(pe_t * pe) {
   /* Without on info object (ok as long as no i/o) */
   {
     colloids_info_t *  info = NULL;
-    colloids_file_io_t io   = {0};
+    colloids_file_io_t io   = {};
 
     ifail = colloids_file_io_initialise(info, &io);
     assert(ifail == 0);
@@ -76,7 +76,7 @@ int test_colloids_file_io_initialise(pe_t * pe) {
     cs_t *            cs   = NULL;
     colloids_info_t * info = NULL;
 
-    colloids_file_io_t io   = {0};
+    colloids_file_io_t io   = {};
     colloid_options_t  opts = colloid_options_default();
 
     cs_create(pe, &cs);
@@ -104,13 +104,13 @@ int test_colloids_file_io_initialise(pe_t * pe) {
  *
  *****************************************************************************/
 
-int test_colloids_file_io_finalise(pe_t * pe) {
+int test_colloids_file_io_finalise(void) {
 
   int ifail = 0;
 
   {
     colloids_info_t *  info = NULL;
-    colloids_file_io_t io   = {0};
+    colloids_file_io_t io   = {};
 
     ifail = colloids_file_io_initialise(info, &io);
     colloids_file_io_finalise(&io);
@@ -136,7 +136,7 @@ int test_colloids_file_io_write(pe_t * pe) {
 
   colloids_info_t *  info = NULL;
   colloid_options_t  opts = colloid_options_default();
-  colloids_file_io_t fio  = {0};
+  colloids_file_io_t fio  = {};
 
   cs_create(pe, &cs);
   cs_init(cs);
@@ -145,11 +145,15 @@ int test_colloids_file_io_write(pe_t * pe) {
 
   /* Add a single particle */
   {
-    colloid_state_t s = {
-        .index = 1, .a0 = 2.3, .ah = 2.3, .r = {4.0, 5.0, 6.0}
-    };
+    int index = 1;
+    double a0 = 2.3;
+    double ah = 2.3;
+    double r[3] = {4.0, 5.0, 6.0};
+    colloid_state_t s = {};
+    colloid_t * pc    = NULL;
 
-    ifail = colloids_info_add_state_local(info, &s);
+    colloid_state_init_sphere(index, a0, ah, r, &s);
+    ifail = colloids_info_add_local(info, &s, &pc);
     assert(ifail == 0);
     colloids_info_ntotal_set(info);
   }
@@ -192,7 +196,7 @@ int test_colloids_file_io_read(pe_t * pe) {
   cs_t *             cs   = NULL;
   colloids_info_t *  info = NULL;
   colloid_options_t  opts = colloid_options_default();
-  colloids_file_io_t fio  = {0};
+  colloids_file_io_t fio  = {};
 
   cs_create(pe, &cs);
   cs_init(cs);

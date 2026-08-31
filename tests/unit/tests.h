@@ -5,7 +5,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2010-2025 The University of Edinburgh
+ *  (c) 2010-2026 The University of Edinburgh
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *
@@ -15,13 +15,14 @@
 #define LUDWIG_UNIT_TESTS_H
 
 #include "target.h"
+#include "colloid.h"
 
 __host__ __device__ void test_assert_info(const int lvalue, int line,
-					  const char * file);
+                                          const char * file);
 
 #define test_assert(x) test_assert_info((x), __LINE__, __FILE__)
 
-#define TEST_FLOAT_TOLERANCE  1.0e-07
+#define TEST_FLOAT_TOLERANCE 1.0e-07
 #define TEST_DOUBLE_TOLERANCE 1.0e-14
 
 /* List of test drivers (see relevant file.c) */
@@ -127,6 +128,7 @@ int test_util_ellipsoid_suite(void);
 int test_util_fopen_suite(void);
 int test_util_io_suite(void);
 int test_util_json_suite(void);
+int test_util_random_suite(void);
 int test_util_string_suite(void);
 int test_util_sum_suite(void);
 int test_util_vector_suite(void);

@@ -5,7 +5,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2023-2024 The University of Edinburgh
+ *  (c) 2023-2026 The University of Edinburgh
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *
@@ -26,6 +26,7 @@ int test_util_vector_copy(void);
 int test_util_vector_orthonormalise(void);
 int test_util_vector_basis_to_dcm(void);
 int test_util_vector_dcm_to_euler(void);
+int test_util_vector_random_unit_vector(void);
 
 /*****************************************************************************
  *
@@ -47,6 +48,7 @@ int test_util_vector_suite(void) {
   test_util_vector_orthonormalise();
   test_util_vector_basis_to_dcm();
   test_util_vector_dcm_to_euler();
+  test_util_vector_random_unit_vector();
 
   pe_info(pe, "%-9s %s\n", "PASS", __FILE__);
   pe_free(pe);
@@ -295,6 +297,30 @@ int test_util_vector_dcm_to_euler(void) {
     if (fabs(theta - 0.0)    > DBL_EPSILON) ifail = -1;
     if (fabs(phi   - pi/2.0) > DBL_EPSILON) ifail = -1;
     if (fabs(psi   - 0.0)    > DBL_EPSILON) ifail = -1;
+    assert(ifail == 0);
+  }
+
+  return ifail;
+}
+
+/*****************************************************************************
+ *
+ *  test_util_vector_random_unit_vector
+ *
+ *****************************************************************************/
+
+int test_util_vector_random_unit_vector(void) {
+
+  int ifail = 0;
+
+  {
+    int    seed = 1;
+    double r[3] = {};
+    seed = util_vector_random_unit_vector(seed, r);
+    if (fabs(1.0 - sqrt(r[X]*r[X] + r[Y]*r[Y] + r[Z]*r[Z])) > DBL_EPSILON) {
+      ifail = -1;
+    }
+    assert(seed == 945122963);
     assert(ifail == 0);
   }
 

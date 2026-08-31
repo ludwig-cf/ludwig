@@ -6,7 +6,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2023-2024 The University of Edinburgh
+ *  (c) 2023-2026 The University of Edinburgh
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *
@@ -30,11 +30,11 @@ int stencil_d3q19_create(stencil_t ** stencil) {
   s = (stencil_t *) calloc(1, sizeof(stencil_t));
   assert(s);
 
-  s->ndim          = 3;
-  s->npoints       = NVEL_D3Q19;
-  s->cv            = (int8_t **) calloc(NVEL_D3Q19, sizeof(int8_t *));
-  s->wlaplacian    = (double *)  calloc(NVEL_D3Q19, sizeof(double));
-  s->wgradients    = (double *)  calloc(NVEL_D3Q19, sizeof(double));
+  s->ndim       = 3;
+  s->npoints    = NVEL_D3Q19;
+  s->cv         = (int8_t **) calloc(NVEL_D3Q19, sizeof(int8_t *));
+  s->wlaplacian = (double *)  calloc(NVEL_D3Q19, sizeof(double));
+  s->wgradients = (double *)  calloc(NVEL_D3Q19, sizeof(double));
 
   if (s->cv == NULL) goto err;
   if (s->wlaplacian == NULL) goto err;
@@ -54,9 +54,9 @@ int stencil_d3q19_create(stencil_t ** stencil) {
     LB_WEIGHTS_D3Q19(wv);
     for (int p = 0; p < s->npoints; p++) {
       for (int ia = 0; ia < s->ndim; ia++) {
-	s->cv[p][ia] = cv[p][ia];
+        s->cv[p][ia] = cv[p][ia];
       }
-      s->wlaplacian[p] = -36.0*wv[p];
+      s->wlaplacian[p] =  -6.0*wv[p];
       s->wgradients[p] =  +3.0*wv[p];
       if (p > 0) wlap0 += s->wlaplacian[p];
     }
@@ -67,7 +67,7 @@ int stencil_d3q19_create(stencil_t ** stencil) {
   *stencil = s;
   return 0;
 
- err:
+err:
 
   free(s->wgradients);
   free(s->wlaplacian);

@@ -14,20 +14,26 @@
 #ifndef LUDWIG_UTIL_VECTOR_H
 #define LUDWIG_UTIL_VECTOR_H
 
-int    util_vector_orthonormalise(const double a[3], double b[3]);
-void   util_vector_basis_to_dcm(const double a[3], const double b[3],
-				const double c[3], double r[3][3]);
-void   util_vector_dcm_to_euler(const double r[3][3], double * phi,
-				double * theta, double * psi);
+int  util_vector_orthonormalise(const double a[3], double b[3]);
+void util_vector_basis_to_dcm(const double a[3], const double b[3],
+                              const double c[3], double r[3][3]);
+void util_vector_dcm_to_euler(const double r[3][3], double * phi,
+                              double * theta, double * psi);
 
 /*****************************************************************************
  *
  *  __host__ __device__ static inline functions
  *
+ *  double util_vector_modulus(const double v[3]);
+ *  double util_vector_dot_product(const double a[3], const double b[3]);
+ *  int    util_vector_random_util_vector(int seed, double v[3]);
+ *
  *****************************************************************************/
 
 #include <math.h>
+#include "cartesian.h"
 #include "target.h"
+#include "util_random_impl.h"
 
 /*****************************************************************************
  *
@@ -63,7 +69,7 @@ static inline double util_vector_dot_product(const double a[3],
 
 __host__ __device__
 static inline void util_vector_cross_product(double c[3], const double a[3],
-					     const double b[3]) {
+                                             const double b[3]) {
   c[0] = a[1]*b[2] - a[2]*b[1];
   c[1] = a[2]*b[0] - a[0]*b[2];
   c[2] = a[0]*b[1] - a[1]*b[0];
@@ -138,6 +144,31 @@ static inline void util_vector_normalise(int n, double * a) {
   }
 
   return;
+}
+
+/*****************************************************************************
+ *
+ *  util_vector_random_unit_vector
+ *
+ *  See, e.g., https://mathworld.wolfram.com/SpherePointPicking.html (2026).
+ *
+ *  The return value is the updated seed.
+ *
+ *****************************************************************************/
+
+__host__ __device__
+static inline int util_vector_random_unit_vector(int seed, double r[3]) {
+
+  int s = seed;
+
+  double u = 1.0 - 2.0*util_random_uniform(&s);          /* -1 < u <= 1   */
+  double v = 2.0*4.0*atan(1.0)*util_random_uniform(&s);  /*  0 < v <= 2pi */
+
+  r[X] = sqrt(1.0 - u*u)*cos(v);
+  r[Y] = sqrt(1.0 - u*u)*sin(v);
+  r[Z] = u;
+
+  return s;
 }
 
 #endif
