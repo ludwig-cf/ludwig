@@ -631,8 +631,10 @@ int test_colloid_pointer_array_alloc_managed(void) {
 
     /* Assign (kernel) */
     {
-      dim3 blocks  = {nsz, 1, 1};
+      dim3 blocks  = {  1, 1, 1};
       dim3 threads = {128, 1, 1};
+
+      blocks.x = nsz;
 
       tdpLaunchKernel(kernel4, blocks, threads, 0, 0, nsz, array);
       tdpAssert( tdpStreamSynchronize(0) );
@@ -759,8 +761,10 @@ int test_colloid_pointer_array_realloc_managed(void) {
 
     /* Assign (kernel4) */
     {
-      dim3 blocks  = {nsz, 1, 1};
+      dim3 blocks  = {  1, 1, 1};
       dim3 threads = {128, 1, 1};
+
+      blocks.x = nsz;
 
       tdpLaunchKernel(kernel4, blocks, threads, 0, 0, nsz, array);
       tdpAssert( tdpStreamSynchronize(0) );
@@ -778,8 +782,11 @@ int test_colloid_pointer_array_realloc_managed(void) {
 
     /* Check (kernel3) */
     {
-      dim3 blocks  = {newsz, 1, 1};
+      dim3 blocks  = {  1, 1, 1};
       dim3 threads = {128, 1, 1};
+
+      blocks.x = newsz;
+
       tdpLaunchKernel(kernel3, blocks, threads, 0, 0, newsz, array);
       tdpAssert( tdpStreamSynchronize(0) );
     }
