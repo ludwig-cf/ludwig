@@ -2,7 +2,7 @@
  *
  *  build_links.c
  *
- *  Construct the set of linke which make up a BBL particle.
+ *  Construct the set of links which make up a BBL particle.
  *
  *
  *  (c) 2026 The University of Edinburgh
@@ -81,7 +81,7 @@ int build_links_colloid_fluid(colloids_info_t * info, map_t * map,
   int i_min, i_max;
   int j_min, j_max;
   int k_min, k_max;
-  int nlocal[3] = {0};
+  int nlocal[3] = {};
 
   double amax  = 0.0;
 
@@ -108,7 +108,7 @@ int build_links_colloid_fluid(colloids_info_t * info, map_t * map,
   /* Limits of the search region around the particle. This has to be large
    * enough to capture any local links. Links are "outside to inside" and
    * the outside is not in the halo region. (Such links are captured by the
-   * image particle in a neighbouring procees.) */
+   * image particle in a neighbouring process.) */
 
   cs_nlocal(info->cs, nlocal);
 
@@ -143,7 +143,7 @@ int build_links_colloid_fluid(colloids_info_t * info, map_t * map,
 
         int    indexi = cs_index(info->cs, ic, jc, kc);
         int    status = MAP_FLUID;
-        double r0[3]  = {ic, jc, kc};
+        double r0[3]  = {1.0*ic, 1.0*jc, 1.0*kc};
 
         colloid_t * pchere = NULL;
 
@@ -166,7 +166,7 @@ int build_links_colloid_fluid(colloids_info_t * info, map_t * map,
           int kk = kc + model->cv[p][Z];
 
           int    indexj = cs_index(info->cs, ii, jj, kk);
-          double rb[3]  = {0}; /* centre -> local site (i, j, k) */
+          double rb[3]  = {}; /* centre -> local site (i, j, k) */
 
           colloids_info_map(info, indexj, &pchere);
           if (pchere != pc) {
@@ -232,7 +232,7 @@ int build_links_colloid_wall(colloids_info_t * info, map_t * map,
   int i_min, i_max;
   int j_min, j_max;
   int k_min, k_max;
-  int nlocal[3] = {0};
+  int nlocal[3] = {};
 
   double amax  = 0.0;
 
@@ -245,7 +245,7 @@ int build_links_colloid_wall(colloids_info_t * info, map_t * map,
   /* Limits of the search region around the particle. This has to be large
    * enough to capture any local links. Links are "outside to inside" and
    * the outside is not in the halo region. (Such links are captured by the
-   * image particle in a neighbouring procees.) */
+   * image particle in a neighbouring process.) */
 
   cs_nlocal(info->cs, nlocal);
 
@@ -285,7 +285,7 @@ int build_links_colloid_wall(colloids_info_t * info, map_t * map,
          * inside; i (outside) must be a BOUNDARY */
 
         int   indexj = cs_index(info->cs, ic, jc, kc);
-        double r0[3] = {ic, jc, kc};
+        double r0[3] = {1.0*ic, 1.0*jc, 1.0*kc};
 
 	colloid_t * pchere = NULL;
 
@@ -308,7 +308,7 @@ int build_links_colloid_wall(colloids_info_t * info, map_t * map,
 
           int    indexi = cs_index(info->cs, ii, jj, kk);
 	  int    status = MAP_FLUID;
-          double rb[3]  = {0}; /* centre -> local site (i, j, k) */
+          double rb[3]  = {}; /* centre -> local site (i, j, k) */
 
 	  map_status(map, indexi, &status);
 	  if (status != MAP_BOUNDARY) continue;
@@ -379,8 +379,8 @@ void build_links_reset_colloid(colloid_t * pc, const lb_model_t * model,
 
     int status = MAP_COLLOID;
 
-    double r0[3] = {ic, jc, kc}; /* this site (local) */
-    double rb[3] = {0};          /* colloid centre -> site */
+    double r0[3] = {1.0*ic, 1.0*jc, 1.0*kc}; /* this site (local) */
+    double rb[3] = {};                       /* colloid centre -> site */
 
     rb[X] = r0[X] - (pc->s.r[X] - 1.0 * map->cs->param->noffset[X]);
     rb[Y] = r0[Y] - (pc->s.r[Y] - 1.0 * map->cs->param->noffset[Y]);
@@ -439,8 +439,8 @@ int build_links_evaluate_mean(colloid_t * pc, const lb_model_t * model) {
     if (link->status == LINK_FLUID) {
 
       double wv      = model->wv[link->p];
-      double wvc[3]  = {0};
-      double rbxc[3] = {0};
+      double wvc[3]  = {};
+      double rbxc[3] = {};
 
       pc->sumw += wv;
 
@@ -539,6 +539,38 @@ int build_links_update_links_colloid(colloids_info_t *  info,
 
 /*****************************************************************************
  *
+ *  build_links_update_array_copy
+ *
+ *****************************************************************************/
+
+int build_links_update_array_copy(colloid_t * pc) {
+
+  assert(pc);
+  assert(pc->links);
+
+  int index = 0;
+
+  /* Scrub the existing array (all entries) */
+
+  for (int n = 0; n < pc->links->max_links; n++) {
+    pc->links->status[n] = LINK_UNUSED;
+  }
+
+  /* Copy over the linked list */
+
+  for (colloid_link_t * lnk = pc->lnk; lnk; lnk = lnk->next, index += 1) {
+    colloid_link_to_array(lnk, pc->links, index);
+  }
+
+  /* FIXME This should be a run-time failure at some point. */
+  pc->links->active_links = index;
+  assert(index < pc->links->max_links);
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
  *  build_links_update_driver
  *
  *****************************************************************************/
@@ -549,7 +581,7 @@ int build_links_update_driver(colloids_info_t * info, wall_t * wall,
   assert(map);
   assert(model);
 
-  int ncell[3] = {0};
+  int ncell[3] = {};
   int nhalo    = 0;
 
   colloids_info_ncell(info, ncell);
@@ -567,6 +599,10 @@ int build_links_update_driver(colloids_info_t * info, wall_t * wall,
         for (; pc; pc = pc->next) {
           if (pc->s.bc == COLLOID_BC_BBL) {
 	    build_links_update_links_colloid(info, model, map, wall, pc);
+	    /* Temporary measure to copy from the linked-list format
+	     * which has just been updated to the array format. */
+	    /* Ultimately, we should generate the array directly */
+	    build_links_update_array_copy(pc);
 	  }
         }
 

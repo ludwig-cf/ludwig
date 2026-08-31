@@ -3,7 +3,7 @@
  *  build_links.h
  *
  *  Responsible for construction/reconstruction of link related
- *  proerties for colloids in BBL.
+ *  properties for colloids in BBL.
  *
  *  (c) 2026 The University of Edinburgh
  *
