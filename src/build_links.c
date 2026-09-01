@@ -223,6 +223,8 @@ int build_links_colloid_fluid(colloids_info_t * info, map_t * map,
  *
  ****************************************************************************/
 
+/* No __host__ __device__ until link allocation replaced */
+
 int build_links_colloid_wall(colloids_info_t * info, map_t * map,
 			     wall_t * wall,
 			     const lb_model_t * model, colloid_t * pc) {
@@ -353,9 +355,7 @@ int build_links_colloid_wall(colloids_info_t * info, map_t * map,
  *
  ****************************************************************************/
 
-/* __host__ __device__ */
-void build_links_reset_colloid(colloid_t * pc, const lb_model_t * model,
-                               map_t * map) {
+__host__ __device__ void build_links_reset_colloid(colloid_t * pc, const lb_model_t * model, map_t * map) {
 
   const double lambda = 0.5;
 
@@ -419,8 +419,7 @@ void build_links_reset_colloid(colloid_t * pc, const lb_model_t * model,
  *
  *****************************************************************************/
 
-/* __host_ __device__ */
-int build_links_evaluate_mean(colloid_t * pc, const lb_model_t * model) {
+__host__ __device__ int build_links_evaluate_mean(colloid_t * pc, const lb_model_t * model) {
 
   /* Evaluate sum of link weights */
   /* Evaluate cbar[] and rxcbar[] */
@@ -475,8 +474,7 @@ int build_links_evaluate_mean(colloid_t * pc, const lb_model_t * model) {
  *
  *****************************************************************************/
 
-/* __host__ __device__ */
-int build_links_evaluate_area(colloid_t * pc, const lb_model_t * model) {
+__host__ __device__ int build_links_evaluate_area(colloid_t * pc, const lb_model_t * model) {
 
   assert(pc);
   assert(model);
@@ -508,7 +506,8 @@ int build_links_evaluate_area(colloid_t * pc, const lb_model_t * model) {
  *
  *****************************************************************************/
 
-/* __host__ __device__ */
+/* __host__ __device__ pending all functions calls */
+
 int build_links_update_links_colloid(colloids_info_t *  info,
                                      const lb_model_t * model, map_t * map,
                                      wall_t * wall, colloid_t * pc) {
