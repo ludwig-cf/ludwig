@@ -83,7 +83,7 @@ int build_links_colloid_fluid(colloids_info_t * info, map_t * map,
   int k_min, k_max;
   int nlocal[3] = {};
 
-  double amax  = 0.0;
+  double amax = 0.0;
 
   assert(model);
   assert(pc);
@@ -118,15 +118,15 @@ int build_links_colloid_fluid(colloids_info_t * info, map_t * map,
     /* Local limits require colloid position minus offset */
     double rc[3] = {};
 
-    rc[X] = pc->s.r[X] - 1.0*map->cs->param->noffset[X];
-    rc[Y] = pc->s.r[Y] - 1.0*map->cs->param->noffset[Y];
-    rc[Z] = pc->s.r[Z] - 1.0*map->cs->param->noffset[Z];
+    rc[X] = pc->s.r[X] - 1.0 * map->cs->param->noffset[X];
+    rc[Y] = pc->s.r[Y] - 1.0 * map->cs->param->noffset[Y];
+    rc[Z] = pc->s.r[Z] - 1.0 * map->cs->param->noffset[Z];
 
-    i_min = util_imax(1,        (int) floor(rc[X] - amax));
+    i_min = util_imax(1, (int) floor(rc[X] - amax));
+    j_min = util_imax(1, (int) floor(rc[Y] - amax));
+    k_min = util_imax(1, (int) floor(rc[Z] - amax));
     i_max = util_imin(nlocal[X], (int) ceil(rc[X] + amax));
-    j_min = util_imax(1,        (int) floor(rc[Y] - amax));
     j_max = util_imin(nlocal[Y], (int) ceil(rc[Y] + amax));
-    k_min = util_imax(1,        (int) floor(rc[Z] - amax));
     k_max = util_imin(nlocal[Z], (int) ceil(rc[Z] + amax));
   }
 
@@ -143,7 +143,7 @@ int build_links_colloid_fluid(colloids_info_t * info, map_t * map,
 
         int    indexi = cs_index(info->cs, ic, jc, kc);
         int    status = MAP_FLUID;
-        double r0[3]  = {1.0*ic, 1.0*jc, 1.0*kc};
+        double r0[3]  = {1.0 * ic, 1.0 * jc, 1.0 * kc};
 
         colloid_t * pchere = NULL;
 
@@ -192,7 +192,7 @@ int build_links_colloid_fluid(colloids_info_t * info, map_t * map,
             link->status = LINK_FLUID;
           }
 
-	  /* Add a new unused link here in case we need it next time */
+          /* Add a new unused link here in case we need it next time */
           if (link->next == NULL) {
             link->next = colloid_link_allocate();
           }
@@ -226,8 +226,8 @@ int build_links_colloid_fluid(colloids_info_t * info, map_t * map,
 /* No __host__ __device__ until link allocation replaced */
 
 int build_links_colloid_wall(colloids_info_t * info, map_t * map,
-			     wall_t * wall,
-			     const lb_model_t * model, colloid_t * pc) {
+                             wall_t * wall, const lb_model_t * model,
+                             colloid_t * pc) {
 
   const double lambda = 0.5;
 
@@ -236,7 +236,7 @@ int build_links_colloid_wall(colloids_info_t * info, map_t * map,
   int k_min, k_max;
   int nlocal[3] = {};
 
-  double amax  = 0.0;
+  double amax = 0.0;
 
   assert(model);
   assert(pc);
@@ -257,13 +257,13 @@ int build_links_colloid_wall(colloids_info_t * info, map_t * map,
     /* Local limits require colloid position minus offset */
     double rc[3] = {};
 
-    rc[X] = pc->s.r[X] - 1.0*map->cs->param->noffset[X];
-    rc[Y] = pc->s.r[Y] - 1.0*map->cs->param->noffset[Y];
-    rc[Z] = pc->s.r[Z] - 1.0*map->cs->param->noffset[Z];
+    rc[X] = pc->s.r[X] - 1.0 * map->cs->param->noffset[X];
+    rc[Y] = pc->s.r[Y] - 1.0 * map->cs->param->noffset[Y];
+    rc[Z] = pc->s.r[Z] - 1.0 * map->cs->param->noffset[Z];
 
-    i_min = util_imax(1,         (int) floor(rc[X] - amax));
-    j_min = util_imax(1,         (int) floor(rc[Y] - amax));
-    k_min = util_imax(1,         (int) floor(rc[Z] - amax));
+    i_min = util_imax(1, (int) floor(rc[X] - amax));
+    j_min = util_imax(1, (int) floor(rc[Y] - amax));
+    k_min = util_imax(1, (int) floor(rc[Z] - amax));
     i_max = util_imin(nlocal[X], (int) ceil(rc[X] + amax));
     j_max = util_imin(nlocal[Y], (int) ceil(rc[Y] + amax));
     k_max = util_imin(nlocal[Z], (int) ceil(rc[Z] + amax));
@@ -277,28 +277,32 @@ int build_links_colloid_wall(colloids_info_t * info, map_t * map,
   }
 
   for (int ic = i_min; ic <= i_max; ic++) {
-    int inear = (ic == 1 || ic == nlocal[X])*wall->param->isboundary[X];
+    int inear = (ic == 1 || ic == nlocal[X]) * wall->param->isboundary[X];
     for (int jc = j_min; jc <= j_max; jc++) {
-      int jnear = (jc == 1 || jc == nlocal[Y])*wall->param->isboundary[Y];
+      int jnear = (jc == 1 || jc == nlocal[Y]) * wall->param->isboundary[Y];
       for (int kc = k_min; kc <= k_max; kc++) {
-	int knear = (kc == 1 || kc == nlocal[Z])*wall->param->isboundary[Z];
+        int knear = (kc == 1 || kc == nlocal[Z]) * wall->param->isboundary[Z];
 
         /* We are looking for links i -> j where i is outside and j is
          * inside; i (outside) must be a BOUNDARY */
 
-        int   indexj = cs_index(info->cs, ic, jc, kc);
-        double r0[3] = {1.0*ic, 1.0*jc, 1.0*kc};
+        int    indexj = cs_index(info->cs, ic, jc, kc);
+        double r0[3]  = {1.0 * ic, 1.0 * jc, 1.0 * kc};
 
-	colloid_t * pchere = NULL;
+        colloid_t * pchere = NULL;
 
-	/* We need to be near the perimeter */
-	/* We need indexj inside colloid */
-	if (0 == (inear || jnear || knear)) continue;
+        /* We need to be near the perimeter */
+        /* We need indexj inside colloid */
+        if (0 == (inear || jnear || knear)) {
+          continue;
+        }
 
-	colloids_info_map(info, indexj, &pchere);
-	if (pchere != pc) continue;
+        colloids_info_map(info, indexj, &pchere);
+        if (pchere != pc) {
+          continue;
+        }
 
-	/* The search is now "inside out" ... */
+        /* The search is now "inside out" ... */
 
         for (int p = 1; p < model->nvel; p++) {
 
@@ -309,11 +313,13 @@ int build_links_colloid_wall(colloids_info_t * info, map_t * map,
           int kk = kc + model->cv[p][Z];
 
           int    indexi = cs_index(info->cs, ii, jj, kk);
-	  int    status = MAP_FLUID;
+          int    status = MAP_FLUID;
           double rb[3]  = {}; /* centre -> local site (i, j, k) */
 
-	  map_status(map, indexi, &status);
-	  if (status != MAP_BOUNDARY) continue;
+          map_status(map, indexi, &status);
+          if (status != MAP_BOUNDARY) {
+            continue;
+          }
 
           /* Index i is boundary, so initialise the link */
 
@@ -330,7 +336,7 @@ int build_links_colloid_wall(colloids_info_t * info, map_t * map,
           link->p      = model->nvel - p; /* Opposite of search direction */
           link->status = LINK_BOUNDARY;
 
-	  /* Add a new unused link here in case we need it next time */
+          /* Add a new unused link here in case we need it next time */
           if (link->next == NULL) {
             link->next = colloid_link_allocate();
           }
@@ -355,7 +361,9 @@ int build_links_colloid_wall(colloids_info_t * info, map_t * map,
  *
  ****************************************************************************/
 
-__host__ __device__ void build_links_reset_colloid(colloid_t * pc, const lb_model_t * model, map_t * map) {
+__host__ __device__ void build_links_reset_colloid(colloid_t *        pc,
+                                                   const lb_model_t * model,
+                                                   map_t *            map) {
 
   const double lambda = 0.5;
 
@@ -379,8 +387,8 @@ __host__ __device__ void build_links_reset_colloid(colloid_t * pc, const lb_mode
 
     int status = MAP_COLLOID;
 
-    double r0[3] = {1.0*ic, 1.0*jc, 1.0*kc}; /* this site (local) */
-    double rb[3] = {};                       /* colloid centre -> site */
+    double r0[3] = {1.0 * ic, 1.0 * jc, 1.0 * kc}; /* this site (local) */
+    double rb[3] = {};                             /* colloid centre -> site */
 
     rb[X] = r0[X] - (pc->s.r[X] - 1.0 * map->cs->param->noffset[X]);
     rb[Y] = r0[Y] - (pc->s.r[Y] - 1.0 * map->cs->param->noffset[Y]);
@@ -419,7 +427,8 @@ __host__ __device__ void build_links_reset_colloid(colloid_t * pc, const lb_mode
  *
  *****************************************************************************/
 
-__host__ __device__ int build_links_evaluate_mean(colloid_t * pc, const lb_model_t * model) {
+__host__ __device__ int build_links_evaluate_mean(colloid_t *        pc,
+                                                  const lb_model_t * model) {
 
   /* Evaluate sum of link weights */
   /* Evaluate cbar[] and rxcbar[] */
@@ -450,7 +459,7 @@ __host__ __device__ int build_links_evaluate_mean(colloid_t * pc, const lb_model
       util_vector_cross_product(rbxc, link->rb, wvc);
 
       for (int ia = 0; ia < 3; ia++) {
-        pc->cbar[ia]   += wvc[ia];
+        pc->cbar[ia] += wvc[ia];
         pc->rxcbar[ia] += rbxc[ia];
       }
     }
@@ -474,7 +483,8 @@ __host__ __device__ int build_links_evaluate_mean(colloid_t * pc, const lb_model
  *
  *****************************************************************************/
 
-__host__ __device__ int build_links_evaluate_area(colloid_t * pc, const lb_model_t * model) {
+__host__ __device__ int build_links_evaluate_area(colloid_t *        pc,
+                                                  const lb_model_t * model) {
 
   assert(pc);
   assert(model);
@@ -597,14 +607,13 @@ int build_links_update_driver(colloids_info_t * info, wall_t * wall,
 
         for (; pc; pc = pc->next) {
           if (pc->s.bc == COLLOID_BC_BBL) {
-	    build_links_update_links_colloid(info, model, map, wall, pc);
-	    /* Temporary measure to copy from the linked-list format
-	     * which has just been updated to the array format. */
-	    /* Ultimately, we should generate the array directly */
-	    build_links_update_array_copy(pc);
-	  }
+            build_links_update_links_colloid(info, model, map, wall, pc);
+            /* Temporary measure to copy from the linked-list format
+             * which has just been updated to the array format. */
+            /* Ultimately, we should generate the array directly */
+            build_links_update_array_copy(pc);
+          }
         }
-
       }
     }
   }
