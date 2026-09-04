@@ -31,6 +31,7 @@
 
 int colloid_create(colloids_info_t * cinfo, const colloid_state_t * state, colloid_t ** pc);
 void colloid_free(colloids_info_t * cinfo, colloid_t * pc);
+int colloids_info_pointer_array_update(colloids_info_t * info);
 
 /*****************************************************************************
  *
@@ -83,7 +84,7 @@ int colloids_info_initialise(pe_t * pe, cs_t * cs,
 			     const colloid_options_t * options,
 			     colloids_info_t * info) {
 
-  *info = (colloids_info_t) {0};
+  *info = (colloids_info_t) {};
 
   /* Halo and cell list extent (local) */
   /* Halo extent is never anything other than 1 */
@@ -140,13 +141,34 @@ int colloids_info_initialise(pe_t * pe, cs_t * cs,
     if (info->map_new == NULL) goto err;
   }
 
+  /* Pointer array (always managed) */
+  /* In general, we don't know the size of the list required, but start
+   * with a generous allocation (nsz) */
+
+  {
+    int ifail   = 0;
+    int ndevice = 0;
+    int nsz     = 256;
+
+    tdpAssert(tdpGetDeviceCount(&ndevice));
+
+    info->nplocal = 0;
+    info->npall   = 0;
+    tdpAssert(tdpMallocManaged((void **) &info->pointers,
+                               sizeof(colloid_pointer_array_t),
+                               tdpMemAttachGlobal));
+
+    ifail = colloid_pointer_array_alloc(ndevice, nsz, info->pointers);
+    if (ifail) goto err;
+  }
+
   info->pe = pe;
   info->cs = cs;
 
   /* Device memory */
   {
     int ndevice = 0;
-    tdpAssert( tdpGetDeviceCount(&ndevice) );
+    tdpAssert(tdpGetDeviceCount(&ndevice));
 
     if (ndevice == 0) {
       info->target = info;
@@ -157,9 +179,8 @@ int colloids_info_initialise(pe_t * pe, cs_t * cs,
       /* The lattice quantities map_new and map_old will be device only
        * via cudaMalloc() */
 
-      tdpAssert( tdpMallocManaged((void **) &(info->target),
-				  sizeof(colloids_info_t),
-				  tdpMemAttachGlobal) );
+      tdpAssert(tdpMallocManaged((void **) &(info->target),
+                                 sizeof(colloids_info_t), tdpMemAttachGlobal));
 
       memcpy(info->target, info, sizeof(colloids_info_t));
       info->target->map_new = NULL;
@@ -168,17 +189,21 @@ int colloids_info_initialise(pe_t * pe, cs_t * cs,
       /* Lattice quantities */
 
       if (info->options.have_colloids) {
-	size_t nsz = info->nsites*sizeof(colloid_t *);
-	void * tmp = NULL;
-	tdpAssert( tdpMalloc((void **) &tmp, nsz) );
-	tdpAssert( tdpMemset(tmp, 0, nsz) );
-	tdpAssert( tdpMemcpy(&info->target->map_new, &tmp,
-			     sizeof(colloid_t **), tdpMemcpyHostToDevice) );
-	tdpAssert( tdpMalloc((void **) &tmp, nsz) );
-	tdpAssert( tdpMemset(tmp, 0, nsz) );
-	tdpAssert( tdpMemcpy(&info->target->map_old, &tmp,
-			     sizeof(colloid_t **), tdpMemcpyHostToDevice) );
+        size_t nsz = info->nsites * sizeof(colloid_t *);
+        void * tmp = NULL;
+        tdpAssert(tdpMalloc((void **) &tmp, nsz));
+        tdpAssert(tdpMemset(tmp, 0, nsz));
+        tdpAssert(tdpMemcpy(&info->target->map_new, &tmp, sizeof(colloid_t **),
+                            tdpMemcpyHostToDevice));
+        tdpAssert(tdpMalloc((void **) &tmp, nsz));
+        tdpAssert(tdpMemset(tmp, 0, nsz));
+        tdpAssert(tdpMemcpy(&info->target->map_old, &tmp, sizeof(colloid_t **),
+                            tdpMemcpyHostToDevice));
       }
+
+      /* Pointer array can be aliased (but not the lengths, which should
+       * - must - not be required device side) */
+      info->target->pointers = info->pointers;
 
       /* Finally ... */
       info->target->cs = info->cs->target;
@@ -212,6 +237,9 @@ int colloids_info_finalise(colloids_info_t * info) {
   free(info->map_old);
   free(info->map_new);
 
+  colloid_pointer_array_free(info->pointers);
+  tdpAssert( tdpFree(info->pointers) );
+
   {
     int ndevice = 0;
     tdpAssert( tdpGetDeviceCount(&ndevice) );
@@ -231,7 +259,7 @@ int colloids_info_finalise(colloids_info_t * info) {
     }
   }
 
-  *info = (colloids_info_t) {0};
+  *info = (colloids_info_t) {};
 
   return 0;
 }
@@ -1187,6 +1215,8 @@ __host__ int colloids_info_update_lists(colloids_info_t * cinfo) {
   colloids_info_list_local_build(cinfo);
   colloids_info_list_all_build(cinfo);
 
+  colloids_info_pointer_array_update(cinfo);
+
   return 0;
 }
 
@@ -1435,7 +1465,7 @@ __host__ void colloids_q_boundary_normal(colloids_info_t * cinfo,
     if (pc->s.shape == COLLOID_SHAPE_ELLIPSOID) {
       int isphere = util_ellipsoid_is_sphere(pc->s.elabc);
       if (!isphere) {
-	double rs[3] = {0};
+	double rs[3] = {};
 	util_vector_copy(3, dn, rs);
 	util_spheroid_surface_normal(pc->s.elabc, pc->s.m, rs, dn);
       }
@@ -1613,4 +1643,96 @@ int colloids_gravity_set(colloids_info_t * cinfo, const double g[3]) {
   cinfo->fgravity[Z] = g[Z];
 
   return 0;
+}
+
+/*****************************************************************************
+ *
+ *  colloids_info_pointer_array_update
+ *
+ *  Called from colloid_info_update_lists() (only).
+ *
+ *  We place all the local (domain proper) particles at the start of the
+ *  list 0 .. nplocal-1, and particles in the halo regions at the end
+ *  (entries nplocal .. npall-1).
+ *
+ *****************************************************************************/
+
+int colloids_info_pointer_array_update(colloids_info_t * info) {
+
+  int ifail   = 0;
+  int nplocal = 0;
+  int npall   = 0;
+
+  /* 1. Scrub the existing list */
+
+  for (int n = 0; n < info->pointers->nsz; n++) {
+    info->pointers->colloid[n] = NULL;
+  }
+
+  /* 2. Reset the local entries from current linked list */
+
+  {
+    colloid_t * pc = info->headlocal;
+
+    for (; pc != NULL; pc = pc->nextlocal, nplocal += 1) {
+      if (nplocal >= info->pointers->nsz) {
+        /* We need to re-allocate; just double the size ... */
+        int newsz = 2 * info->pointers->nsz;
+        ifail     = colloid_pointer_array_realloc(newsz, info->pointers);
+        assert(ifail == 0);
+      }
+      info->pointers->colloid[nplocal] = pc;
+    }
+  }
+
+  /* 3. Append entries in the halo region at the end of the list */
+  /*    We need to use the raw cell list to find the halo ... */
+
+  /* If this becomes a large list (n^3 >> n^2) one might want to
+   * refactor to consider only the halo regions */
+
+  {
+    int nh = info->nhalo;
+
+    npall = nplocal; /* First append position */
+
+    for (int ic = 1 - nh; ic <= info->ncell[X] + nh; ic++) {
+      int halox = (ic <= 0 || ic > info->ncell[X]);
+      for (int jc = 1 - nh; jc <= info->ncell[Y] + nh; jc++) {
+        int haloy = (jc <= 0 || jc > info->ncell[Y]);
+        for (int kc = 1 - nh; kc <= info->ncell[Z] + nh; kc++) {
+          int haloz = (kc <= 0 || kc > info->ncell[Z]);
+
+          if (halox || haloy || haloz) {
+
+            /* We are in the halo region ... */
+            int         index = colloids_info_cell_index(info, ic, jc, kc);
+            colloid_t * pc    = info->clist[index];
+
+            for (; pc; pc = pc->next, npall += 1) {
+              if (npall >= info->pointers->nsz) {
+                /* Re-allocate ... */
+                int newsz = 2 * info->pointers->nsz;
+                ifail = colloid_pointer_array_realloc(newsz, info->pointers);
+                assert(ifail == 0);
+              }
+              info->pointers->colloid[npall] = pc;
+            }
+          }
+
+          /* Next cell */
+        }
+      }
+    }
+  }
+
+  /* 4. Update host, and target, values (pointers list is aliased) */
+
+  info->nplocal = nplocal;
+  info->npall   = npall;
+
+  info->target->nplocal = nplocal;
+  info->target->npall   = npall;
+
+  return ifail;
 }

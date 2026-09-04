@@ -82,6 +82,7 @@ __host__ int tests_create(int argc, char ** argv) {
   test_build_suite();
   test_ch_suite();
 
+  test_colloid_array_util_suite();
   test_colloid_options_suite();
   test_colloid_io_options_suite();
   test_colloid_suite();

@@ -15,7 +15,6 @@
 #define LUDWIG_UNIT_TESTS_H
 
 #include "target.h"
-#include "colloid.h"
 
 __host__ __device__ void test_assert_info(const int lvalue, int line,
                                           const char * file);
@@ -35,6 +34,7 @@ int test_bond_fene_suite(void);
 int test_bonds_suite(void);
 int test_build_suite(void);
 int test_ch_suite(void);
+int test_colloid_array_util_suite(void);
 int test_colloid_options_suite(void);
 int test_colloid_io_options_suite(void);
 int test_colloid_io_impl_ansi_suite(void);

@@ -21,6 +21,7 @@
 #include "colloid.h"
 #include "colloid_link.h"
 #include "colloid_options.h"
+#include "colloid_array_util.h"
 
 /* Auxiliary for diagnostic quantities (for output) */
 
@@ -122,6 +123,16 @@ struct colloids_info_s {
   colloid_t ** map_new;       /* Map (current time step) pointers */
   colloid_t * headall;        /* All colloid list (incl. halo) head */
   colloid_t * headlocal;      /* Local list (excl. halo) head */
+
+  /* Pointer array access */
+  /* A loop over local colloids would be (n = 0, n < nlocal; ...) */
+  /* A loop over all   colloids would be (n = 0; n < npall;  ...) */
+
+  int nplocal;                        /* Number in local domain proper */
+  int npall;                          /* Number including halo */
+  colloid_pointer_array_t * pointers; /* Managed memory */
+
+  /* Other */
 
   pe_t * pe;                  /* Parallel environment */
   cs_t * cs;                  /* Coordinate system */
