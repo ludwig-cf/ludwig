@@ -2195,7 +2195,7 @@ int ludwig_colloids_update(ludwig_t * ludwig) {
 		       ludwig->q, ludwig->psi, ludwig->map);
 
   build_links_update_driver(ludwig->collinfo, ludwig->wall, ludwig->map,
-			    &ludwig->lb->model);
+			    ludwig->lb);
 
   TIMER_stop(TIMER_REBUILD);
 

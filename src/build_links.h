@@ -15,11 +15,11 @@
 #define LUDWIG_BUILD_LINKS_H
 
 #include "colloids.h"
-#include "lb_model.h"
+#include "lb_data.h"
 #include "map.h"
 #include "wall.h"
 
 int build_links_update_driver(colloids_info_t * info, wall_t * wall,
-                              map_t * map, const lb_model_t * model);
+                              map_t * map, const lb_t * lb);
 
 #endif
