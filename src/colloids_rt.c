@@ -43,8 +43,6 @@
 #include "colloids_init.h"
 #include "colloids_rt.h"
 
-#include "build.h"
-
 int lubrication_init(pe_t * pe, cs_t * cs, rt_t * rt, interact_t * inter);
 int pair_ss_cut_init(pe_t * pe, cs_t * cs, rt_t * rt, interact_t * inter);
 int pair_yukawa_init(pe_t * pe, cs_t * cs, rt_t * rt, interact_t * inter);
@@ -56,8 +54,7 @@ int pair_ss_cut_ij_init(pe_t * pe, cs_t * cs, rt_t * rt, interact_t * intrct);
 int wall_ss_cut_init(pe_t * pe, cs_t * cs, rt_t * rt, wall_t * wall,
 		     interact_t * inter);
 
-int colloids_rt_dynamics(cs_t * cs, colloids_info_t * cinfo, wall_t * wall,
-			 map_t * map, const lb_model_t * model);
+int colloids_rt_dynamics(cs_t * cs, colloids_info_t * cinfo);
 int colloids_rt_gravity(pe_t * pe, rt_t * rt, colloids_info_t * cinfo);
 int colloids_rt_init_few(pe_t * pe, rt_t * rt, colloids_info_t * cinfo, int nc);
 
@@ -88,7 +85,7 @@ int colloids_rt_from_file(rt_t * rt, int nstep, colloids_info_t * info);
  *****************************************************************************/
 
 int colloids_init_rt(pe_t * pe, rt_t * rt, cs_t * cs, colloids_info_t ** pinfo,
-		     interact_t ** interact, wall_t * wall, map_t * map,
+		     interact_t ** interact, wall_t * wall,
 		     const lb_model_t * model) {
   int nc;
   int init_one = 0;
@@ -186,12 +183,13 @@ int colloids_init_rt(pe_t * pe, rt_t * rt, cs_t * cs, colloids_info_t ** pinfo,
   colloids_init_halo_range_check(pe, cs, *pinfo);
   if (nc > 1) interact_range_check(*interact, *pinfo);
 
-  /* Transfer any particles in the halo regions, initialise the
-   * colloid map and build the particles for the first time. */
+  /* Transfer any particles in the halo regions. */
+  /* Update the lists */
 
   colloids_halo_state(*pinfo);
+  colloids_info_update_lists(*pinfo);
 
-  colloids_rt_dynamics(cs, *pinfo, wall, map, model);
+  colloids_rt_dynamics(cs, *pinfo);
   colloids_rt_gravity(pe, rt, *pinfo);
 
   pe_info(pe, "\n");
@@ -205,8 +203,7 @@ int colloids_init_rt(pe_t * pe, rt_t * rt, cs_t * cs, colloids_info_t ** pinfo,
  *
  *****************************************************************************/
 
-int colloids_rt_dynamics(cs_t * cs, colloids_info_t * cinfo, wall_t * wall,
-			 map_t * map, const lb_model_t * model) {
+int colloids_rt_dynamics(cs_t * cs, colloids_info_t * cinfo) {
 
   int nsubgrid_local = 0;
   int nsubgrid = 0;
@@ -228,12 +225,6 @@ int colloids_rt_dynamics(cs_t * cs, colloids_info_t * cinfo, wall_t * wall,
   MPI_Allreduce(&nsubgrid_local, &nsubgrid, 1, MPI_INT, MPI_SUM, comm);
 
   cinfo->nsubgrid = nsubgrid;
-
-  /* Assume there are always fully-resolved particles */
-
-  build_update_map(cinfo, map);
-  build_update_links(cs, cinfo, wall, map, model);
-  colloids_memcpy(cinfo, tdpMemcpyHostToDevice);
 
   return 0;
 }

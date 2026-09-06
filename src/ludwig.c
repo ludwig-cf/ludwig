@@ -277,12 +277,20 @@ static int ludwig_rt(ludwig_t * ludwig) {
 
   wall_rt_init(pe, cs, rt, ludwig->lb, ludwig->map, &ludwig->wall);
   colloids_init_rt(pe, rt, cs, &ludwig->collinfo,
-		   &ludwig->interact, ludwig->wall, ludwig->map,
-		   &ludwig->lb->model);
+		   &ludwig->interact, ludwig->wall, &ludwig->lb->model);
   colloids_init_ewald_rt(pe, rt, cs, ludwig->collinfo, &ludwig->ewald);
+
+  if (ludwig->collinfo->options.have_colloids) {
+    build_update_map(ludwig->collinfo, ludwig->map);
+    build_links_update_driver(ludwig->collinfo, ludwig->wall, ludwig->map,
+                              ludwig->lb);
+    /* For initial conditions we want the map back on the host */
+    map_memcpy(ludwig->map, tdpMemcpyDeviceToHost);
+  }
 
   bbl_create(pe, ludwig->cs, ludwig->lb, &ludwig->bbl);
   bbl_active_set(ludwig->bbl, ludwig->collinfo);
+
   {
     /* Kludge: this switch is unlikely to be required as the default
      * method of quaternions (ellipsoid_didt = 0) is exact */

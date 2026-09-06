@@ -20,12 +20,11 @@
 #include "runtime.h"
 #include "colloids.h"
 #include "interaction.h"
-#include "map.h"
 #include "ewald.h"
 #include "wall.h"
 
 int colloids_init_rt(pe_t * pe, rt_t * rt, cs_t * cs, colloids_info_t ** pinfo,
-		     interact_t ** interact, wall_t * wall, map_t * map,
+		     interact_t ** interact, wall_t * wall,
 		     const lb_model_t * model);
 int colloids_init_ewald_rt(pe_t * pe, rt_t * rt, cs_t * cs,
 			   colloids_info_t * cinfo, ewald_t ** pewald);

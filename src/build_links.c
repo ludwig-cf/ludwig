@@ -8,7 +8,8 @@
  *    1. host version to use linked list
  *    2. host/device version to use the link array.
  *
- *  The linked list version will be removed at some point in the future.
+ *  The linked list version will be removed at some point in the future
+ *  in favour of the array format.
  *
  *
  *  (c) 2026 The University of Edinburgh
@@ -20,6 +21,9 @@
 #include <assert.h>
 
 #include "build_links.h"
+
+/* If using both implementations do not set colloid properties twice */
+#define USE_LINKED_LIST_AND_ARRAY 1
 
 /* FIXME shift these routines please */
 
@@ -541,7 +545,11 @@ int build_links_update_links_colloid(colloids_info_t *  info,
   build_links_evaluate_mean(pc, model);
   build_links_evaluate_area(pc, model);
 
+#ifdef USE_LINKED_LIST_AND_ARRAY
+  /* don't unset the rebuild flag yet - do it after arrray format is set */
+#else
   pc->s.rebuild = 0;
+#endif
 
   return 0;
 }
@@ -921,12 +929,9 @@ __host__ __device__ int build_links_array_evaluate_mean(colloid_t *        pc,
   /* Evaluate sum of link weights */
   /* Evaluate cbar[] and rxcbar[] */
 
-  pc->sumw = 0.0;
-
-  for (int ia = 0; ia < 3; ia++) {
-    pc->cbar[ia]   = 0.0;
-    pc->rxcbar[ia] = 0.0;
-  }
+  double sumw = 0.0;
+  double cbar[3] = {};
+  double rxcbar[3] = {};
 
   /* Only fluid links count ... */
 
@@ -940,7 +945,7 @@ __host__ __device__ int build_links_array_evaluate_mean(colloid_t *        pc,
       double rb[3]   = {};
       double rbxc[3] = {};
 
-      pc->sumw += wv;
+      sumw += wv;
 
       wvc[X] = wv * model->cv[p][X];
       wvc[Y] = wv * model->cv[p][Y];
@@ -950,14 +955,31 @@ __host__ __device__ int build_links_array_evaluate_mean(colloid_t *        pc,
       util_vector_cross_product(rbxc, rb, wvc);
 
       for (int ia = 0; ia < 3; ia++) {
-        pc->cbar[ia] += wvc[ia];
-        pc->rxcbar[ia] += rbxc[ia];
+        cbar[ia]   += wvc[ia];
+        rxcbar[ia] += rbxc[ia];
       }
     }
 
     /* Next link */
   }
 
+#ifdef USE_LINKED_LIST_AND_ARRAY
+  /* Just check we are consistent */
+  assert(fabs(cbar[X] - pc->cbar[X]) < FLT_EPSILON);
+  assert(fabs(cbar[Y] - pc->cbar[Y]) < FLT_EPSILON);
+  assert(fabs(cbar[Z] - pc->cbar[Z]) < FLT_EPSILON);
+
+  assert(fabs(rxcbar[X] - pc->rxcbar[X]) < FLT_EPSILON);
+  assert(fabs(rxcbar[Y] - pc->rxcbar[Y]) < FLT_EPSILON);
+  assert(fabs(rxcbar[Z] - pc->rxcbar[Z]) < FLT_EPSILON);
+#else
+  pc->cbar[X]   = cbar[X];
+  pc->cbar[Y]   = cbar[Y];
+  pc->cbar[Z]   = cbar[Z];
+  pc->rxcbar[X] = rxcbar[X];
+  pc->rxcbar[Y] = rxcbar[Y];
+  pc->rxcbar[Z] = rxcbar[Z];
+#endif
   return 0;
 }
 
@@ -980,19 +1002,28 @@ __host__ __device__ int build_links_array_evaluate_area(colloid_t *        pc,
   assert(pc);
   assert(model);
 
-  pc->s.sa  = 0.0;
-  pc->s.saf = 0.0;
+  double sa  = 0.0;
+  double saf = 0.0;
 
   for (int n = 0; n < pc->links->active_links; n++) {
     int p  = pc->links->p[n];
     int pp = util_square_modulus_int8(model->cv[p]);
     if (pp == 1) {
-      pc->s.sa += 1.0;
+      sa += 1.0;
       if (pc->links->status[n] == LINK_FLUID) {
-        pc->s.saf += 1.0;
+        saf += 1.0;
       }
     }
   }
+
+#ifdef USE_LINKED_LIST_AND_ARRAY
+  /* just check we are consistent */
+  assert(fabs(sa  - pc->s.sa ) < FLT_EPSILON);
+  assert(fabs(saf - pc->s.saf) < FLT_EPSILON);
+#else
+  pc->s.sa  = sa;
+  pc->s.saf = saf;
+#endif
 
   return 0;
 }
@@ -1000,8 +1031,6 @@ __host__ __device__ int build_links_array_evaluate_area(colloid_t *        pc,
 /******************************************************************************
  *
  *  build_links_arrray_update_links_colloid
- *
- *  Kernel entry executes one colloid per block (single thread).
  *
  *****************************************************************************/
 
@@ -1012,11 +1041,7 @@ __host__ __device__ void build_links_array_update_links_colloid(colloids_info_t 
   assert(wall);
 
   if (pc->s.bc == COLLOID_BC_BBL) {
-    printf("KERNAL has %d\n", pc->s.index);
-    printf("KERNAL has %f\n", pc->s.r[X]);
-    printf("KERNAL has %f\n", pc->s.r[Y]);
-    printf("KERNAL has %f\n", pc->s.r[Z]);
-    printf("KERNAL has %d\n", pc->s.rebuild);
+    /* Re-build or reset */
     if (pc->s.rebuild) {
       /* The shape has changed, so need to reconstruct */
       build_links_array_colloid_fluid(info, map, model, pc);
@@ -1043,6 +1068,8 @@ __host__ __device__ void build_links_array_update_links_colloid(colloids_info_t 
 /*****************************************************************************
  *
  *  build_links_array_kernel
+ *
+ *  Kernel entry executes one colloid per block (single thread).
  *
  *****************************************************************************/
 
@@ -1076,6 +1103,7 @@ int build_links_update_driver(colloids_info_t * info, wall_t * wall,
 
   /* Linked-list version */
 
+  #pragma omp parallel for
   for (int n = 0; n < info->npall; n++) {
     colloid_t * pc = info->pointers->colloid[n];
       if (pc->s.bc == COLLOID_BC_BBL) {
@@ -1090,7 +1118,13 @@ int build_links_update_driver(colloids_info_t * info, wall_t * wall,
   tdpAssert( tdpGetDeviceCount(&ndevice) );
 
   if (ndevice == 0) {
-    /* OpenMP as required */
+#if defined (USE_LINKED_LIST_AND_ARRAY)
+    #pragma omp parallel for
+    for (int n = 0; n < info->npall; n++) {
+      colloid_t * pc = info->pointers->colloid[n];
+      build_links_array_update_links_colloid(info, &lb->model, map, wall, pc);
+    }
+#endif
   }
   else {
     /* One colloid per block, single thread */
@@ -1098,13 +1132,11 @@ int build_links_update_driver(colloids_info_t * info, wall_t * wall,
     dim3 blocks  = {1, 1, 1};
     dim3 threads = {1, 1, 1};
 
-    wall_t * target = NULL;
-    if (wall) target = wall->target;
-
     blocks.x = info->npall;
 
     tdpLaunchKernel(build_links_array_kernel, blocks, threads, 0, 0,
-		    info->target, &lb->target->model, map->target, target);
+		    info->target, &lb->target->model, map->target,
+		    (wall == NULL) ? NULL : wall->target);
 
     tdpAssert(tdpPeekAtLastError());
     tdpAssert(tdpStreamSynchronize(0));
