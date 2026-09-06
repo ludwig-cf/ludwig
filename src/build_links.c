@@ -11,7 +11,6 @@
  *  The linked list version will be removed at some point in the future
  *  in favour of the array format.
  *
- *
  *  (c) 2026 The University of Edinburgh
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -21,59 +20,12 @@
 #include <assert.h>
 
 #include "build_links.h"
+#include "util_math_inline.h"
 
 /* If using both implementations do not set colloid properties twice */
+/* (which include link means and areas, and the rebuild flag). */
+
 #define USE_LINKED_LIST_AND_ARRAY 1
-
-/* FIXME shift these routines please */
-
-__host__ __device__ static inline int util_imax(int a, int b) {
-
-  return (a > b) ? a : b;
-}
-
-__host__ __device__ static inline int util_imin(int a, int b) {
-
-  return (a < b) ? a : b;
-}
-
-__host__ __device__ static inline int
-util_square_modulus_int8(const int8_t cv[3]) {
-
-  return (int) (cv[0] * cv[0] + cv[1] * cv[1] + cv[2] * cv[2]);
-}
-
-__host__ __device__ static inline int cs_index_to_ic(const cs_t * cs,
-                                                     int          index) {
-
-  assert(cs);
-
-  return ((1 - cs->param->nhalo) + index / cs->param->str[X]);
-}
-
-__host__ __device__ static inline int cs_index_to_jc(const cs_t * cs,
-                                                     int          index) {
-
-  int jc = 0;
-  assert(cs);
-
-  jc =
-      (1 - cs->param->nhalo) + (index % cs->param->str[X]) / cs->param->str[Y];
-
-  return jc;
-}
-
-__host__ __device__ static inline int cs_index_to_kc(const cs_t * cs,
-                                                     int          index) {
-
-  int kc = 0;
-
-  assert(cs);
-
-  kc = (1 - cs->param->nhalo) + index % cs->param->str[Y];
-
-  return kc;
-}
 
 /****************************************************************************
  *
@@ -579,7 +531,6 @@ int build_links_update_array_copy(colloid_t * pc) {
     colloid_link_to_array(lnk, pc->links, index);
   }
 
-  /* FIXME This should be a run-time failure at some point. */
   pc->links->active_links = index;
   assert(index < pc->links->max_links);
 
