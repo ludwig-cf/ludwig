@@ -15,6 +15,8 @@
 #ifndef LUDWIG_UTIL_MATH_INLINE_H_
 #define LUDWIG_UTIL_MATH_INLINE_H_
 
+#include <stdint.h>
+
 #define HDSI_ __host__ __device__ static inline
 
 /*****************************************************************************
