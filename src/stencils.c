@@ -83,3 +83,50 @@ int stencil_finalise(stencil_t * s) {
 
   return 0;
 }
+
+/*****************************************************************************
+ *
+ *  stencil_opposite
+ *
+ *****************************************************************************/
+
+int stencil_opp(const stencil_t * s, int p) {
+
+  assert(s);
+  assert(p >= 0);
+  assert(p < s->npoints);
+
+  switch (s->npoints) {
+
+  case NVEL_D3Q7: {
+    static const int opp_d3q7[NVEL_D3Q7] = {
+      0, 6, 5, 4, 3, 2, 1
+    };
+    return opp_d3q7[p];
+  }
+
+  case NVEL_D3Q19: {
+    static const int opp_d3q19[NVEL_D3Q19] = {
+       0,
+      18, 17, 16, 15, 14, 13, 12, 11, 10,
+       9,  8,  7,  6,  5,  4,  3,  2,  1
+    };
+    return opp_d3q19[p];
+  }
+
+  case NVEL_D3Q27: {
+    static const int opp_d3q27[NVEL_D3Q27] = {
+       0,
+      26, 25, 24, 23, 22, 21, 20, 19, 18,
+      17, 16, 15, 14, 13, 12, 11, 10,  9,
+       8,  7,  6,  5,  4,  3,  2,  1
+    };
+    return opp_d3q27[p];
+  }
+
+  default:
+    assert(0);
+  }
+
+  return -1;
+}

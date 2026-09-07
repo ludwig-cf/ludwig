@@ -1,0 +1,82 @@
+##############################################################################
+#
+#  ipnut
+#
+##############################################################################
+N_cycles 501 #40000 #00
+##############################################################################
+#
+#  System and MPI
+# 
+##############################################################################
+size 12_12_12
+grid 1_1_1 
+temperature 1.0e-09
+periodicity 1_1_1
+##############################################################################
+#
+#  Fluid parameters
+#  
+##############################################################################
+viscosity 0.5
+lb_fluctuations off
+#force 2.000000e-5_0_0
+##############################################################################
+#
+#  Free energy parameters
+#
+###############################################################################
+free_energy fe_electro
+electrokinetics_init    point_charges #_fixed_potential 
+electrokinetics_z0      +1
+electrokinetics_z1      -1
+electrokinetics_nu0      5.0e+04
+electrokinetics_nu1      5.0e+04
+electrokinetics_eunit   1.0
+electrokinetics_epsilon  7.0000230e+09 #7.0000230e+11
+electrokinetics_init_rho_el 1.0000000e+03 #1.0000000e+05
+
+#electric_e0 0.02_0.0_0.0
+
+electrokinetics_maxits   10000 
+electrokinetics_solver_type  petsc 
+#electrokinetics_solver_type  sor 
+#electrokinetics_multisteps 1
+#electrokinetics_rel_tol  0.001
+#electrokinetics_diffacc  0.1
+
+fe_force_method phi_gradmu_correction
+
+###############################################################################
+#
+#  Walls / boundaries
+#
+###############################################################################
+porous_media_file     no
+porous_media_io_grid  1_1_1
+porous_media_data     status_only 
+
+boundary_walls 	      0_0_0
+#boundary_walls_slip_active yes
+#boundary_walls_slip_fraction_bot 0.0_0.99_0.0
+#boundary_walls_slip_fraction_top 0.0_0.99_0.0
+###############################################################################
+#
+#  Output frequency and type
+#
+###############################################################################
+vel_io_freq    500
+freq_statistics 500000
+psi_io_freq 100
+
+config_at_end yes
+default_io_mode   mpiio
+default_io_format ascii
+###############################################################################
+#
+#  Miscellaneous
+#
+#  random_seed  +ve integer is the random number generator seed
+#
+################################################################################
+random_seed      227586

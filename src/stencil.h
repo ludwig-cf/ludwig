@@ -35,6 +35,7 @@ struct stencil_s {
 int stencil_create(int npoints, stencil_t ** s);
 int stencil_free(stencil_t ** s);
 int stencil_finalise(stencil_t * s);
+int stencil_opp(const stencil_t * s, int p);
 
 /* Could be part of the lattice Boltzmann definition, but used with stencils */
 /* Table for 1/sqrt(cx^2 + cy^2 + cz^2) indexed by c^2 */

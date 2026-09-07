@@ -289,9 +289,17 @@ static int ludwig_rt(ludwig_t * ludwig) {
     bbl_didt_method_set(ludwig->bbl, ellipsoid_didt);
   }
 
+  //My old version was not taking the seed for fluctuations 
+  // of the liquid from input file, but just set to a default value
+
+  int seed = 0;
+  if (rt_int_parameter(rt, "random_seed", &seed) == 0) {
+    pe_fatal(pe, "random_seed non trovato nell'input\n");
+  }
+
   /* If any noise required ... */
   if (ludwig->lb->param->noise || (ludwig->pch && ludwig->pch->info.noise)) {
-    noise_options_t opts = noise_options_default();
+    noise_options_t opts = noise_options_seed(seed);
     noise_create(pe, cs, &opts, &ludwig->noise);
   }
 
@@ -440,6 +448,12 @@ static int ludwig_rt(ludwig_t * ludwig) {
 
 void ludwig_run(const char * inputfile) {
 
+  // THERMAL FLUCTUATIONS ON IONS
+  int noise_ions_active = 1;
+  if (noise_ions_active == 1){
+    printf("THERMAL FLUCTUATIONS ON IONS ACTIVATED \n");
+  }
+
   char    filename[FILENAME_MAX];
   int     is_porous_media = 0;
   int     step = 0;
@@ -494,6 +508,28 @@ void ludwig_run(const char * inputfile) {
   rt_info(ludwig->rt);
 
   ludwig_rt(ludwig);
+
+  noise_t * noise_ions = NULL;
+
+  if (noise_ions_active == 1) {
+
+    int seed = 0;
+    int has_seed = 0;
+    int ion_seed = 0;
+
+    has_seed = rt_int_parameter(ludwig->rt, "random_seed", &seed);
+
+    if (has_seed == 0) {
+      pe_fatal(ludwig->pe, "random_seed non trovato nell'input\n");
+    }
+
+    ion_seed = seed + 7919;
+
+    pe_info(ludwig->pe, "Base random seed:      %d\n", seed);
+    pe_info(ludwig->pe, "Ion noise random seed: %d\n", ion_seed);
+
+    noise_create_seed(ludwig->pe, ludwig->cs, ion_seed, &noise_ions);
+  }
 
   statvel.print_vol_flux = rt_switch(ludwig->rt, "stats_vel_print_vol_flux");
 
@@ -661,7 +697,7 @@ void ludwig_run(const char * inputfile) {
 
 	TIMER_start(TIMER_ELECTRO_NPEQ);
 	nernst_planck_driver_d3qx(ludwig->psi, ludwig->fe, ludwig->hydro,
-				  ludwig->map, ludwig->collinfo);
+				  ludwig->map, ludwig->collinfo, ludwig->tk.timestep, noise_ions);
 	TIMER_stop(TIMER_ELECTRO_NPEQ);
 
       }
@@ -1041,6 +1077,7 @@ void ludwig_run(const char * inputfile) {
 
   if (ludwig->wall)      wall_free(ludwig->wall);
   if (ludwig->noise)     noise_free(&ludwig->noise);
+  if (noise_ions)        noise_free(&noise_ions);
 
   if (ludwig->be)        beris_edw_free(ludwig->be);
   if (ludwig->map)       map_free(&ludwig->map);

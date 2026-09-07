@@ -42,6 +42,7 @@ psi_options_t psi_options_default(int nhalo) {
                         .epsilon2    = 10000.0,
                         .e0          = {0.0, 0.0, 0.0},
                         .diffusivity = {0.01, 0.01, 0.01, 0.01},
+                        .mobility_elec = {0.01, 0.01, 0.01, 0.01},
                         .valency     = {+1, -1, +1, -1},
 			.solver      = psi_solver_options_default(),
 			.nsolver     = -1,
@@ -80,6 +81,7 @@ int psi_options_to_json(const psi_options_t * opts, cJSON ** json) {
     cJSON * valencies = cJSON_CreateIntArray(opts->valency, nk);
     cJSON * diffusivities = cJSON_CreateDoubleArray(opts->diffusivity, nk);
     cJSON * electric_field = cJSON_CreateDoubleArray(opts->e0, 3);
+    cJSON * mobilities_elec = cJSON_CreateDoubleArray(opts->mobility_elec, nk);
 
     cJSON * solver_options = NULL;
     ifail = psi_solver_options_to_json(&opts->solver, &solver_options);
@@ -92,6 +94,7 @@ int psi_options_to_json(const psi_options_t * opts, cJSON ** json) {
 
     cJSON_AddItemToObject(myjson,   "Valencies", valencies);
     cJSON_AddItemToObject(myjson,   "Diffusivities", diffusivities);
+    cJSON_AddItemToObject(myjson,   "Mobilities", mobilities_elec);
     cJSON_AddItemToObject(myjson,   "External field", electric_field);
     cJSON_AddItemToObject(myjson,   "Solver options", solver_options);
 
@@ -122,6 +125,7 @@ int psi_options_from_json(const cJSON * json, psi_options_t * opts) {
     cJSON * epsilon2 = cJSON_GetObjectItem(json, "Second permittivity");
     cJSON * valencies = cJSON_GetObjectItem(json, "Valencies");
     cJSON * diffs = cJSON_GetObjectItem(json, "Diffusivities");
+    cJSON * mobs = cJSON_GetObjectItem(json, "Mobilities_elec");
     cJSON * electric = cJSON_GetObjectItem(json, "External field");
     cJSON * solver = cJSON_GetObjectItem(json, "Solver options");
 
@@ -133,6 +137,7 @@ int psi_options_from_json(const cJSON * json, psi_options_t * opts) {
 
     if (valencies) util_json_to_int_array(valencies, opts->valency, opts->nk);
     if (diffs) util_json_to_double_array(diffs, opts->diffusivity, opts->nk);
+    if (mobs) util_json_to_double_array(mobs, opts->mobility_elec, opts->nk);
     if (electric) util_json_to_double_array(electric, opts->e0, 3);
 
     if (solver) ifail = psi_solver_options_from_json(solver, &opts->solver);
