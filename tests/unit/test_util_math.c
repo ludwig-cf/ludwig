@@ -85,14 +85,16 @@ int test_util_math_square_modulus_int8(void) {
 
   {
     int8_t cv[3] = {1, 2, 3};
-    int mod = util_square_modulus_int8(cv);
+    int    mod   = util_square_modulus_int8(cv);
     assert(mod == 14);
-    if (mod != 14) ifail = -1;
+    if (mod != 14) {
+      ifail = -1;
+    }
   }
 
   {
     int8_t cv[3] = {0, 0, 0};
-    ifail = util_square_modulus_int8(cv);
+    ifail        = util_square_modulus_int8(cv);
     assert(ifail == 0);
   }
 

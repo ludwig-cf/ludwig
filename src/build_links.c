@@ -498,7 +498,7 @@ int build_links_update_links_colloid(colloids_info_t *  info,
   build_links_evaluate_area(pc, model);
 
 #ifdef USE_LINKED_LIST_AND_ARRAY
-  /* don't unset the rebuild flag yet - do it after arrray format is set */
+  /* don't unset the rebuild flag yet - do it after array format is set */
 #else
   pc->s.rebuild = 0;
 #endif
@@ -541,13 +541,14 @@ int build_links_update_array_copy(colloid_t * pc) {
  *
  *  build_links_array_colloid_fluid
  *
- *  Device version to wrok with link array. Single thread expected to
+ *  Device version to work with link array. Single thread expected to
  *  run over all links.
  *
  *****************************************************************************/
 
-__host__ __device__ void build_links_array_colloid_fluid(colloids_info_t * info, map_t * map,
-				    const lb_model_t * model, colloid_t * pc) {
+__host__ __device__ void
+build_links_array_colloid_fluid(colloids_info_t * info, map_t * map,
+                                const lb_model_t * model, colloid_t * pc) {
 
   const double lambda = 0.5;
 
@@ -642,22 +643,22 @@ __host__ __device__ void build_links_array_colloid_fluid(colloids_info_t * info,
           rb[Z] = r0[Z] - (pc->s.r[Z] - map->cs->param->noffset[Z]);
 
           /* Add the array entry ... */
-	  assert(nlink < pc->links->max_links);
+          assert(nlink < pc->links->max_links);
 
-	  pc->links->i[nlink]      = indexi;
-	  pc->links->j[nlink]      = indexj;
-	  pc->links->p[nlink]      = p;
-	  pc->links->status[nlink] = LINK_COLLOID;
+          pc->links->i[nlink]      = indexi;
+          pc->links->j[nlink]      = indexj;
+          pc->links->p[nlink]      = p;
+          pc->links->status[nlink] = LINK_COLLOID;
 
           if (status == MAP_FLUID) {
-	    pc->links->status[nlink] = LINK_FLUID;
+            pc->links->status[nlink] = LINK_FLUID;
           }
 
-	  pc->links->rb[X][nlink] = rb[X] + lambda * model->cv[p][X];
-	  pc->links->rb[Y][nlink] = rb[Y] + lambda * model->cv[p][Y];
-	  pc->links->rb[Z][nlink] = rb[Z] + lambda * model->cv[p][Z];
+          pc->links->rb[X][nlink] = rb[X] + lambda * model->cv[p][X];
+          pc->links->rb[Y][nlink] = rb[Y] + lambda * model->cv[p][Y];
+          pc->links->rb[Z][nlink] = rb[Z] + lambda * model->cv[p][Z];
 
-	  nlink += 1;
+          nlink += 1;
         }
 
         /* Next site in the search */
@@ -676,9 +677,10 @@ __host__ __device__ void build_links_array_colloid_fluid(colloids_info_t * info,
  *
  *****************************************************************************/
 
-__host__ __device__ void build_links_array_colloid_wall(colloids_info_t * info, map_t * map,
-                             wall_t * wall, const lb_model_t * model,
-                             colloid_t * pc) {
+__host__ __device__ void
+build_links_array_colloid_wall(colloids_info_t * info, map_t * map,
+                               wall_t * wall, const lb_model_t * model,
+                               colloid_t * pc) {
 
   const double lambda = 0.5;
 
@@ -770,9 +772,9 @@ __host__ __device__ void build_links_array_colloid_wall(colloids_info_t * info, 
 
           /* Index i is boundary, so initialise the link */
 
-          pc->links->i[nlink] = indexi;
-          pc->links->j[nlink] = indexj;
-          pc->links->p[nlink] = model->nvel - p; /* Opposite direction */
+          pc->links->i[nlink]      = indexi;
+          pc->links->j[nlink]      = indexj;
+          pc->links->p[nlink]      = model->nvel - p; /* Opposite direction */
           pc->links->status[nlink] = LINK_BOUNDARY;
 
           rb[X] = r0[X] - (pc->s.r[X] - map->cs->param->noffset[X]);
@@ -783,7 +785,7 @@ __host__ __device__ void build_links_array_colloid_wall(colloids_info_t * info, 
           pc->links->rb[Y][nlink] = rb[Y] + lambda * model->cv[p][Y];
           pc->links->rb[Z][nlink] = rb[Z] + lambda * model->cv[p][Z];
 
-	  nlink += 1;
+          nlink += 1;
         }
 
         /* Next site in the search */
@@ -805,9 +807,9 @@ __host__ __device__ void build_links_array_colloid_wall(colloids_info_t * info, 
  *
  ****************************************************************************/
 
-__host__ __device__ void build_links_array_reset_colloid(colloid_t *        pc,
-                                                   const lb_model_t * model,
-                                                   map_t *            map) {
+__host__ __device__ void
+build_links_array_reset_colloid(colloid_t * pc, const lb_model_t * model,
+                                map_t * map) {
 
   const double lambda = 0.5;
 
@@ -825,8 +827,8 @@ __host__ __device__ void build_links_array_reset_colloid(colloid_t *        pc,
      * and the fluid site involved with this link. The position
      * of the outside site is rsite in local coordinates. */
 
-    int i  = pc->links->i[n];
-    int p  = pc->links->p[n];
+    int i = pc->links->i[n];
+    int p = pc->links->p[n];
 
     int ic = cs_index_to_ic(map->cs, i);
     int jc = cs_index_to_jc(map->cs, i);
@@ -874,14 +876,14 @@ __host__ __device__ void build_links_array_reset_colloid(colloid_t *        pc,
  *
  *****************************************************************************/
 
-__host__ __device__ int build_links_array_evaluate_mean(colloid_t *        pc,
-                                                  const lb_model_t * model) {
+__host__ __device__ int
+build_links_array_evaluate_mean(colloid_t * pc, const lb_model_t * model) {
 
   /* Evaluate sum of link weights */
   /* Evaluate cbar[] and rxcbar[] */
 
-  double sumw = 0.0;
-  double cbar[3] = {};
+  double sumw      = 0.0;
+  double cbar[3]   = {};
   double rxcbar[3] = {};
 
   /* Only fluid links count ... */
@@ -890,7 +892,7 @@ __host__ __device__ int build_links_array_evaluate_mean(colloid_t *        pc,
 
     if (pc->links->status[n] == LINK_FLUID) {
 
-      int p          = pc->links->p[n];
+      int    p       = pc->links->p[n];
       double wv      = model->wv[p];
       double wvc[3]  = {};
       double rb[3]   = {};
@@ -906,7 +908,7 @@ __host__ __device__ int build_links_array_evaluate_mean(colloid_t *        pc,
       util_vector_cross_product(rbxc, rb, wvc);
 
       for (int ia = 0; ia < 3; ia++) {
-        cbar[ia]   += wvc[ia];
+        cbar[ia] += wvc[ia];
         rxcbar[ia] += rbxc[ia];
       }
     }
@@ -947,8 +949,8 @@ __host__ __device__ int build_links_array_evaluate_mean(colloid_t *        pc,
  *
  *****************************************************************************/
 
-__host__ __device__ int build_links_array_evaluate_area(colloid_t *        pc,
-                                                  const lb_model_t * model) {
+__host__ __device__ int
+build_links_array_evaluate_area(colloid_t * pc, const lb_model_t * model) {
 
   assert(pc);
   assert(model);
@@ -969,7 +971,7 @@ __host__ __device__ int build_links_array_evaluate_area(colloid_t *        pc,
 
 #ifdef USE_LINKED_LIST_AND_ARRAY
   /* just check we are consistent */
-  assert(fabs(sa  - pc->s.sa ) < FLT_EPSILON);
+  assert(fabs(sa - pc->s.sa) < FLT_EPSILON);
   assert(fabs(saf - pc->s.saf) < FLT_EPSILON);
 #else
   pc->s.sa  = sa;
@@ -985,9 +987,10 @@ __host__ __device__ int build_links_array_evaluate_area(colloid_t *        pc,
  *
  *****************************************************************************/
 
-__host__ __device__ void build_links_array_update_links_colloid(colloids_info_t *  info,
-                                     const lb_model_t * model, map_t * map,
-						       wall_t * wall, colloid_t * pc) {
+__host__ __device__ void
+build_links_array_update_links_colloid(colloids_info_t *  info,
+                                       const lb_model_t * model, map_t * map,
+                                       wall_t * wall, colloid_t * pc) {
   assert(info);
   assert(wall);
 
@@ -997,7 +1000,7 @@ __host__ __device__ void build_links_array_update_links_colloid(colloids_info_t 
       /* The shape has changed, so need to reconstruct */
       build_links_array_colloid_fluid(info, map, model, pc);
       if (wall->param->iswall) {
-	build_links_array_colloid_wall(info, map, wall, model, pc);
+        build_links_array_colloid_wall(info, map, wall, model, pc);
       }
     }
     else {
@@ -1024,10 +1027,9 @@ __host__ __device__ void build_links_array_update_links_colloid(colloids_info_t 
  *
  *****************************************************************************/
 
-__global__ void build_links_array_kernel(colloids_info_t * info,
-					 const lb_model_t * model,
-					 map_t * map,
-					 wall_t * wall) {
+__global__ void build_links_array_kernel(colloids_info_t *  info,
+                                         const lb_model_t * model, map_t * map,
+                                         wall_t * wall) {
   assert(info);
 
   colloid_t * pc = info->pointers->colloid[blockIdx.x];
@@ -1036,13 +1038,13 @@ __global__ void build_links_array_kernel(colloids_info_t * info,
 
   return;
 }
-  
 
 /*****************************************************************************
  *
  *  build_links_update_driver
  *
- *  Need to look at ther model device version for call from colloids_rt().
+ *  Don't actually need the entire lb_t structure but do need the device
+ *  pointer to the model therein.
  *
  *****************************************************************************/
 
@@ -1054,10 +1056,10 @@ int build_links_update_driver(colloids_info_t * info, wall_t * wall,
 
   /* Linked-list version */
 
-  #pragma omp parallel for
+#pragma omp parallel for
   for (int n = 0; n < info->npall; n++) {
     colloid_t * pc = info->pointers->colloid[n];
-      if (pc->s.bc == COLLOID_BC_BBL) {
+    if (pc->s.bc == COLLOID_BC_BBL) {
       build_links_update_links_colloid(info, &lb->model, map, wall, pc);
     }
   }
@@ -1066,11 +1068,11 @@ int build_links_update_driver(colloids_info_t * info, wall_t * wall,
 
   int ndevice = 0;
 
-  tdpAssert( tdpGetDeviceCount(&ndevice) );
+  tdpAssert(tdpGetDeviceCount(&ndevice));
 
   if (ndevice == 0) {
-#if defined (USE_LINKED_LIST_AND_ARRAY)
-    #pragma omp parallel for
+#if defined(USE_LINKED_LIST_AND_ARRAY)
+#pragma omp parallel for
     for (int n = 0; n < info->npall; n++) {
       colloid_t * pc = info->pointers->colloid[n];
       build_links_array_update_links_colloid(info, &lb->model, map, wall, pc);
@@ -1086,8 +1088,8 @@ int build_links_update_driver(colloids_info_t * info, wall_t * wall,
     blocks.x = info->npall;
 
     tdpLaunchKernel(build_links_array_kernel, blocks, threads, 0, 0,
-		    info->target, &lb->target->model, map->target,
-		    (wall == NULL) ? NULL : wall->target);
+                    info->target, &lb->target->model, map->target,
+                    (wall == NULL) ? NULL : wall->target);
 
     tdpAssert(tdpPeekAtLastError());
     tdpAssert(tdpStreamSynchronize(0));

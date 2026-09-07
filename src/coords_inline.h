@@ -4,7 +4,7 @@
  *
  *  __host__ __device__ static inline
  *
- *  To be included via coords.h so that cs_t definition is avaialble.
+ *  To be included via coords.h so that cs_t definition is avaalable.
  *  Note: it is the intention that all HDSI_ function should be here
  *  ultimately; some are still in coords.c
  *
