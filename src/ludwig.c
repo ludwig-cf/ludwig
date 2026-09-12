@@ -2143,7 +2143,6 @@ static int ludwig_colloids_update_low_freq(ludwig_t * ludwig) {
   colloids_info_position_update(ludwig->collinfo);
   colloids_info_update_cell_list(ludwig->collinfo);
   colloids_halo_state(ludwig->collinfo);
-  colloids_info_update_lists(ludwig->collinfo);
 
   interact_compute(ludwig->interact, ludwig->collinfo, ludwig->map,
         	     ludwig->psi, ludwig->ewald);
@@ -2181,7 +2180,6 @@ int ludwig_colloids_update(ludwig_t * ludwig) {
   colloids_info_position_update(ludwig->collinfo);
   colloids_info_update_cell_list(ludwig->collinfo);
   colloids_halo_state(ludwig->collinfo);
-  colloids_info_update_lists(ludwig->collinfo);
 
   TIMER_stop(TIMER_PARTICLE_HALO);
 
@@ -2504,7 +2502,7 @@ int field_options_from_rt(rt_t * rt, rt_enum_t lv, int nfield, int nhalo,
       }
       else {
 	ifail = -1;
-	rt_fatal(rt, lv, "Key field_options_stat not recognied %s\n", stype);
+	rt_fatal(rt, lv, "Key field_options_stat not recognised %s\n", stype);
       }
     }
   }

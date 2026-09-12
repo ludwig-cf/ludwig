@@ -187,7 +187,6 @@ int colloids_init_rt(pe_t * pe, rt_t * rt, cs_t * cs, colloids_info_t ** pinfo,
   /* Update the lists */
 
   colloids_halo_state(*pinfo);
-  colloids_info_update_lists(*pinfo);
 
   colloids_rt_dynamics(cs, *pinfo);
   colloids_rt_gravity(pe, rt, *pinfo);
