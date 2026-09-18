@@ -20,6 +20,7 @@
 #include "io_impl.h"
 #include "io_event.h"
 #include "noise_options.h"
+#include <math.h>
 
 /* NNOISE_MAX                    10 discrete variates per uniform variate */
 /* NNOISE_STATE                  4  int32_t per state */
@@ -28,6 +29,8 @@
 #define NNOISE_MAX 10
 #define NNOISE_STATE 4
 #define NOISE_RECORD_LENGTH_ASCII 11
+#define NITERATIONS 1
+#define M_PI 3.14159265358979323846
 
 typedef struct noise_s noise_t;
 
@@ -187,6 +190,66 @@ __host__ __device__ static inline void noise_reap_n(noise_t * ns,
     iuniform >>= 3;
   }
 
+  for (int ia = 0; ia < NNOISE_STATE; ia++) {
+    ns->state[addr_rank1(ns->nsites, NNOISE_STATE, index, ia)] = state[ia];
+  }
+
+  return;
+}
+
+__host__ __device__ static inline double noise_uniform_01(unsigned int state[4]) {
+  unsigned int u = ns_uniform(state);
+
+  /*
+   * Convert to a double in (0,1), avoiding exactly 0.
+   * 2^32 = 4294967296.
+   */
+  return ((double) u + 0.5) / 4294967296.0;
+}
+
+__host__ __device__ static inline void noise_reap_n_gauss(noise_t * ns,
+                                                    int index,
+                                                    int nmax,
+                                                    double * reap) {
+  unsigned int state[NNOISE_STATE];
+
+  assert(ns);
+  assert(0 <= index && index < ns->nsites);
+  assert(nmax <= NNOISE_MAX);
+  assert(reap);
+
+  /*
+   * Load persistent RNG state for this lattice site.
+   */
+  for (int ia = 0; ia < NNOISE_STATE; ia++) {
+    state[ia] = ns->state[addr_rank1(ns->nsites, NNOISE_STATE, index, ia)];
+    //printf("state[%d] = %d \n", ia , state[ia]);
+    //exit(0);
+  }
+
+  /*
+   * Box-Muller.
+   * Two uniform random numbers generate two independent N(0,1) numbers.
+   */
+  for (int ia = 0; ia < nmax; ia += 2) {
+
+    double u1 = noise_uniform_01(state);
+
+    double u2 = noise_uniform_01(state);
+
+    double radius = sqrt(-2.0*log(u1));
+    double angle  = 2.0*M_PI*u2;
+
+    reap[ia] = radius*cos(angle);
+
+    if (ia + 1 < nmax) {
+      reap[ia + 1] = radius*sin(angle);
+    }
+  }
+
+  /*
+   * Store updated RNG state.
+   */
   for (int ia = 0; ia < NNOISE_STATE; ia++) {
     ns->state[addr_rank1(ns->nsites, NNOISE_STATE, index, ia)] = state[ia];
   }

@@ -1587,7 +1587,7 @@ __global__ static void phi_ch_var_flux_kernel(kernel_3d_t k3d,
     int index0 = kernel_3d_cs_index(&k3d, ic, jc, kc);
 
     double reap[3] = {0};
-    noise_reap_n(noise, index0, 3, reap);
+    noise_reap_n_gauss(noise, index0, 3, reap);
 
     var->data[addr_rank1(var->nsites, 3, index0, X)] = mktvar*reap[X];
     var->data[addr_rank1(var->nsites, 3, index0, Y)] = mktvar*reap[Y];

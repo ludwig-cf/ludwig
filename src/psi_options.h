@@ -45,7 +45,8 @@ struct psi_options_s {
   double epsilon1;                /* First permittivity */
   double epsilon2;                /* Second permittivity (if required) */
   double e0[3];                   /* External electric field */
-  double diffusivity[PSI_NKMAX];  /* Per species diffusivity */
+  double diffusivity[PSI_NKMAX];  /* Per species diffusivity */    
+  double mobility_elec[PSI_NKMAX];     /* Per species mobility ALTERNATIVE TO DIFF*/ 
   int    valency[PSI_NKMAX];      /* Per species charge valency */
 
   /* Solver options */

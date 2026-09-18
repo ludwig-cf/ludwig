@@ -114,6 +114,8 @@ int psi_rt_init_rho(pe_t * pe, rt_t * rt, psi_t * obj, map_t * map) {
       double e      = obj->e;
       double dplus  = obj->diffusivity[0];
       double dminus = obj->diffusivity[1];
+      double nuplus  = obj->mobility_elec[0];
+      double numinus = obj->mobility_elec[1];
       double psi_p  = dplus*dminus*delta_el/(beta*e*(dplus + dminus)*rho_el);
       double tau_e  = obj->epsilon/(beta*e*e*(dplus + dminus)*rho_el);
       pe_info(pe, "Saturation potential:        %14.7e\n", psi_p);
@@ -222,6 +224,9 @@ int psi_options_rt(pe_t * pe, cs_t * cs, rt_t * rt, psi_options_t * popts) {
 
   rt_double_parameter(rt, "electrokinetics_d0", &opts.diffusivity[0]);
   rt_double_parameter(rt, "electrokinetics_d1", &opts.diffusivity[1]);
+
+  rt_double_parameter(rt, "electrokinetics_nu0", &opts.mobility_elec[0]);
+  rt_double_parameter(rt, "electrokinetics_nu1", &opts.mobility_elec[1]);
 
   rt_int_parameter(rt,    "electrokinetics_z0", &opts.valency[0]);
   rt_int_parameter(rt,    "electrokinetics_z1", &opts.valency[1]);
@@ -342,6 +347,8 @@ int psi_info(pe_t * pe, const psi_t * psi) {
   for (int n = 0; n < psi->nk; n++) {
     pe_info(pe, "Valency species %d:         %2d\n", n, psi->valency[n]);
     pe_info(pe, "Diffusivity species %d:     %14.7e\n", n, psi->diffusivity[n]);
+    pe_info(pe, "Mobility species %d:     %14.7e\n", n, psi->mobility_elec[n]);
+
   }
 
   /* Add full information ... */

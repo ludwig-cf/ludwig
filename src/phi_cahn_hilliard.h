@@ -55,4 +55,9 @@ __host__ int phi_cahn_hilliard(phi_ch_t * pch, fe_t * fe, field_t * phi,
 			       hydro_t * hydro, map_t * map,
 			       noise_t * noise);
 
+__host__ int phi_ch_var_flux_driver(field_t * var,
+				    noise_t * noise,
+				    double mobility,
+				    double kt);
+
 #endif
