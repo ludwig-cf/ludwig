@@ -295,7 +295,8 @@ int bounce_back_on_links(bbl_t * bbl, lb_t * lb, wall_t * wall,
   bbl_update_colloids(bbl, wall, cinfo);
 
   //TIMER_start(TIMER_FREE4);
-  //bbl_pass2_openmp(bbl, lb, cinfo);
+  ////bbl_pass2_openmp(bbl, lb, cinfo);
+  //bbl_pass2_original(bbl, lb, cinfo);
   //TIMER_stop(TIMER_FREE4);
 
   /* __NVCC__ TODO: remove */
@@ -836,10 +837,10 @@ static int bbl_pass1(bbl_t * bbl, lb_t * lb, colloids_info_t * cinfo) {
   int n_devices;
   tdpGetDeviceCount(&n_devices);
   if (n_devices == 0) {
-    n_threads.x = (cinfo->target->colloid_array->n_colloids < bbl_get_num_threads()) ?
-                  cinfo->target->colloid_array->n_colloids : bbl_get_num_threads();
+    n_threads.x = (cinfo->target->npall < bbl_get_num_threads()) ?
+                  cinfo->target->npall : bbl_get_num_threads();
   } else {
-    n_blocks.x = cinfo->target->colloid_array->n_colloids;
+    n_blocks.x = cinfo->target->npall;
     n_threads.x = 128;
   }
   tdpLaunchKernel(bbl_pass1_kernel, n_blocks, n_threads, 0, 0, cinfo->target, lb->target, rho0);
@@ -884,8 +885,8 @@ __global__ void bbl_pass1_kernel(colloids_info_t * cinfo, lb_t * lb, double rho0
     colloid_stride = gridDim.x;
   }
   //printf("thread %d threadIdx.x %d blockIdx.x %d blockDim.x %d gridDim.x %d\n", omp_get_thread_num(), threadIdx.x, blockIdx.x, blockDim.x, gridDim.x);
-  for (int colloid_index = colloid_start_index; colloid_index < cinfo->colloid_array->n_colloids; colloid_index += colloid_stride) {
-    colloid_t * pc = cinfo->colloid_array->colloids[colloid_index];
+  for (int colloid_index = colloid_start_index; colloid_index < cinfo->npall; colloid_index += colloid_stride) {
+    colloid_t * pc = cinfo->pointers->colloid[colloid_index];
 
     if (pc->s.bc == COLLOID_BC_BBL) {
 
@@ -1456,10 +1457,10 @@ static int bbl_pass2(bbl_t * bbl, lb_t * lb, colloids_info_t * cinfo) {
   int n_devices;
   tdpGetDeviceCount(&n_devices);
   if (n_devices == 0) {
-    n_threads.x = (cinfo->target->colloid_array->n_colloids < bbl_get_num_threads()) ?
-                  cinfo->target->colloid_array->n_colloids : bbl_get_num_threads();
+    n_threads.x = (cinfo->target->npall < bbl_get_num_threads()) ?
+                  cinfo->target->npall : bbl_get_num_threads();
   } else {
-    n_blocks.x = cinfo->target->colloid_array->n_colloids;
+    n_blocks.x = cinfo->target->npall;
     n_threads.x = 128;
   }
   tdpLaunchKernel(bbl_pass2_kernel, n_blocks, n_threads, 0, 0, cinfo->target, lb->target, rho0);
@@ -1494,8 +1495,8 @@ __global__ void bbl_pass2_kernel(colloids_info_t * cinfo, lb_t * lb, double rho0
     colloid_start_index = blockIdx.x;
     colloid_stride = gridDim.x;
   }
-  for (int colloid_index = colloid_start_index; colloid_index < cinfo->colloid_array->n_colloids; colloid_index += colloid_stride) {
-    pc = cinfo->colloid_array->colloids[colloid_index];
+  for (int colloid_index = colloid_start_index; colloid_index < cinfo->npall; colloid_index += colloid_stride) {
+    pc = cinfo->pointers->colloid[colloid_index];
 
     if (pc->s.bc != COLLOID_BC_BBL) continue;
 
