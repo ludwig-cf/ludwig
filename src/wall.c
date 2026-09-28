@@ -860,6 +860,12 @@ __host__ int wall_memcpy_h2d(wall_t * wall) {
 			tdpMemcpyHostToDevice));
   }
 
+  /* Parameters: this could be a once only at initialisation, unless utop,
+   * ubottom are active and changing at each time step. (At the moment
+   * there is another call each wall_bbl() step.) */
+  tdpMemcpyToSymbol(tdpSymbol(static_param), wall->param,
+                    sizeof(wall_param_t), 0, tdpMemcpyHostToDevice);
+
   return 0;
 }
 

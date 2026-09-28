@@ -28,6 +28,7 @@
 #include "psi_colloid.h"
 #include "util.h"
 #include "util_ellipsoid.h"
+#include "util_math_inline.h"
 #include "util_vector.h"
 #include "wall.h"
 #include "build.h"
@@ -56,6 +57,7 @@ int build_conservation_psi(colloids_info_t * cinfo, psi_t * psi,
 
 int build_update_map_driver(map_t * map);
 int build_update_map_colloids_driver(colloids_info_t * info, map_t * map);
+int build_update_map_additional_driver(colloids_info_t * info, map_t * map);
 
 /*****************************************************************************
  *
@@ -75,7 +77,7 @@ int build_update_map(colloids_info_t * cinfo, map_t * map) {
 
   /* Update the current colloid map */
   colloids_info_list_all_build(cinfo);
-  build_update_map_colloids_driver(cinfo, map);
+  build_update_map_additional_driver(cinfo, map);
 
   /* __NVCC__ temporary, we need to return the map status etc to host */
   /* ... before the link construction on the host can occur */
@@ -1136,7 +1138,7 @@ __global__ void build_update_map_colloids_kernel(kernel_3d_t       k3d,
 
     for (colloid_t * pc = info->headall; pc; pc = pc->nextall) {
 
-      double dr[3] = {0}; /* colloid centre -> site */
+      double dr[3] = {}; /* colloid centre -> site */
 
       if (pc->s.bc != COLLOID_BC_BBL) continue;
 
@@ -1190,6 +1192,8 @@ int build_update_map_colloids_driver(colloids_info_t * info, map_t * map) {
   assert(map);
 
   if (map->ndata == 0) {
+    /* Wetting actually needs to be treated as a separate issue
+     * which would obviate the need for wettting data here */
     ifail = -1;
   }
   else {
@@ -1211,6 +1215,176 @@ int build_update_map_colloids_driver(colloids_info_t * info, map_t * map) {
 
     tdpAssert(tdpPeekAtLastError());
     tdpAssert(tdpStreamSynchronize(0));
+  }
+
+  return ifail;
+}
+
+/*****************************************************************************
+ *
+ *  build_additional_version
+ *
+ *  If number of colloids is small, use the method above, which is
+ *  quicker in this limit.
+ *  If the number of colloids is larger, the method above scales
+ *  adversly (as nsites x ncolloids). Parallel must then be over
+ *  colloids.
+ *
+ *****************************************************************************/
+
+__host__ __device__ void build_additional_version(colloids_info_t * info,
+						  map_t * map,
+						  colloid_t * pc) {
+  int nhalo = 1;
+  int nlocal[3] = {};
+  int i_min, i_max;
+  int j_min, j_max;
+  int k_min, k_max;
+
+  double amax = colloid_principal_radius(&pc->s);
+
+  cs_nlocal(info->cs, nlocal);
+  cs_nhalo(info->cs, &nhalo);
+
+  {
+    /* Local limits require colloid position minus offset */
+    double rc[3] = {};
+
+    rc[X] = pc->s.r[X] - 1.0 * map->cs->param->noffset[X];
+    rc[Y] = pc->s.r[Y] - 1.0 * map->cs->param->noffset[Y];
+    rc[Z] = pc->s.r[Z] - 1.0 * map->cs->param->noffset[Z];
+
+    i_min = util_imax(1 - nhalo, (int) floor(rc[X] - amax));
+    j_min = util_imax(1 - nhalo, (int) floor(rc[Y] - amax));
+    k_min = util_imax(1 - nhalo, (int) floor(rc[Z] - amax));
+    i_max = util_imin(nlocal[X] + nhalo, (int) ceil(rc[X] + amax));
+    j_max = util_imin(nlocal[Y] + nhalo, (int) ceil(rc[Y] + amax));
+    k_max = util_imin(nlocal[Z] + nhalo, (int) ceil(rc[Z] + amax));
+  }
+
+  /* Begin search ... */
+
+  for (int ic = i_min; ic <= i_max; ic++) {
+    for (int jc = j_min; jc <= j_max; jc++) {
+      for (int kc = k_min; kc <= k_max; kc++) {
+
+	int index = cs_index(info->cs, ic, jc, kc);
+
+	double r0[3] = {1.0 * ic, 1.0 * jc, 1.0 * kc};
+	double dr[3] = {}; /* colloid centre -> site */
+
+	/* Not a minimum image separation as we are potentially checking more
+	 * than one copy and need to get the right pointer for this site ... */
+
+	dr[X] = r0[X] - (pc->s.r[X] - 1.0*map->cs->param->noffset[X]);
+	dr[Y] = r0[Y] - (pc->s.r[Y] - 1.0*map->cs->param->noffset[Y]);
+	dr[Z] = r0[Z] - (pc->s.r[Z] - 1.0*map->cs->param->noffset[Z]);
+
+	/* Are we inside? Set status and wetting constants */
+
+	if (colloid_r_inside(&pc->s, dr)) {
+
+	  double wet[2] = {pc->s.c, pc->s.h}; /* Wetting c, h */
+
+	  colloids_info_map_set(info, index, pc);
+	  map_status_set(map, index, MAP_COLLOID);
+
+	  /* Janus particles have h = h_0 cos (theta)
+	   * with s[3] pointing to the 'north pole' */
+
+	  if (pc->s.attr & COLLOID_ATTR_JANUS) {
+	    double mod = util_vector_modulus(dr);
+	    if (mod > 0.0) {
+	      double cosine = util_vector_dot_product(pc->s.s, dr) / mod;
+	      wet[1]        = cosine*wet[1]; /* h */
+	    }
+	  }
+	  map_data_set(map, index, wet);
+	}
+
+	/* Nest search site */
+      }
+    }
+  }
+
+  return;
+}
+
+/*****************************************************************************
+ *
+ *  build_additional_kernel
+ *
+ *****************************************************************************/
+
+__global__ void build_additional_kernel(colloids_info_t * info, map_t * map) {
+
+  assert(info);
+
+  colloid_t * pc = info->pointers->colloid[blockIdx.x];
+
+  if (pc->s.bc == COLLOID_BC_BBL) {
+    build_additional_version(info, map, pc);
+  }
+
+  return;
+}
+
+/*****************************************************************************
+ *
+ *  build_update_map_additional_driver
+ *
+ *  Reconstruct colloid map by either:
+ *  1. "low density" method if the number of colloids is below the limit;
+ *  2. "high density" method.
+ *
+ *****************************************************************************/
+
+int build_update_map_additional_driver(colloids_info_t * info, map_t * map) {
+
+  int ifail = 0;
+
+  if (map->ndata == 0) {
+    ifail = -1;
+  }
+  else {
+
+    int nlimit = 1;
+
+    if (info->nplocal <= nlimit) {
+      build_update_map_colloids_driver(info, map);
+    }
+    else {
+
+      int ndevice = 0;
+      tdpAssert(tdpGetDeviceCount(&ndevice));
+
+      /* Nullify the pointer map */
+      tdpAssert(tdpMemset(info->map_new, 0, info->nsites*sizeof(colloid_t *)));
+
+      if (ndevice == 0) {
+	/* Host only */
+	#pragma omp parallel for
+	for (int n = 0; n < info->npall; n++) {
+	  colloid_t * pc = info->pointers->colloid[n];
+	  if (pc->s.bc == COLLOID_BC_BBL) {
+	    build_additional_version(info, map, pc);
+	  }
+	}
+      }
+      else {
+	/* Kernel */
+	dim3 blocks  = {1, 1, 1};
+	dim3 threads = {1, 1, 1};
+
+	blocks.x = info->npall;
+
+	tdpLaunchKernel(build_additional_kernel, blocks, threads, 0, 0,
+			info->target, map->target)
+
+	tdpAssert(tdpPeekAtLastError());
+	tdpAssert(tdpStreamSynchronize(0));
+      }
+    }
   }
 
   return ifail;

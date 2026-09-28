@@ -86,6 +86,7 @@
 #include "colloids_file_io.h"
 #include "colloids_halo.h"
 #include "build.h"
+#include "build_links.h"
 #include "subgrid.h"
 #include "colloids.h"
 #include "advection_rt.h"
@@ -276,12 +277,20 @@ static int ludwig_rt(ludwig_t * ludwig) {
 
   wall_rt_init(pe, cs, rt, ludwig->lb, ludwig->map, &ludwig->wall);
   colloids_init_rt(pe, rt, cs, &ludwig->collinfo,
-		   &ludwig->interact, ludwig->wall, ludwig->map,
-		   &ludwig->lb->model);
+		   &ludwig->interact, ludwig->wall, &ludwig->lb->model);
   colloids_init_ewald_rt(pe, rt, cs, ludwig->collinfo, &ludwig->ewald);
+
+  if (ludwig->collinfo->options.have_colloids) {
+    build_update_map(ludwig->collinfo, ludwig->map);
+    build_links_update_driver(ludwig->collinfo, ludwig->wall, ludwig->map,
+                              ludwig->lb);
+    /* For initial conditions we want the map back on the host */
+    map_memcpy(ludwig->map, tdpMemcpyDeviceToHost);
+  }
 
   bbl_create(pe, ludwig->cs, ludwig->lb, &ludwig->bbl);
   bbl_active_set(ludwig->bbl, ludwig->collinfo);
+
   {
     /* Kludge: this switch is unlikely to be required as the default
      * method of quaternions (ellipsoid_didt = 0) is exact */
@@ -2134,7 +2143,6 @@ static int ludwig_colloids_update_low_freq(ludwig_t * ludwig) {
   colloids_info_position_update(ludwig->collinfo);
   colloids_info_update_cell_list(ludwig->collinfo);
   colloids_halo_state(ludwig->collinfo);
-  colloids_info_update_lists(ludwig->collinfo);
 
   interact_compute(ludwig->interact, ludwig->collinfo, ludwig->map,
         	     ludwig->psi, ludwig->ewald);
@@ -2172,7 +2180,6 @@ int ludwig_colloids_update(ludwig_t * ludwig) {
   colloids_info_position_update(ludwig->collinfo);
   colloids_info_update_cell_list(ludwig->collinfo);
   colloids_halo_state(ludwig->collinfo);
-  colloids_info_update_lists(ludwig->collinfo);
 
   TIMER_stop(TIMER_PARTICLE_HALO);
 
@@ -2192,8 +2199,9 @@ int ludwig_colloids_update(ludwig_t * ludwig) {
   build_update_map(ludwig->collinfo, ludwig->map);
   build_remove_replace(ludwig->fe, ludwig->collinfo, ludwig->lb, ludwig->phi,
 		       ludwig->q, ludwig->psi, ludwig->map);
-  build_update_links(ludwig->cs, ludwig->collinfo, ludwig->wall, ludwig->map,
-		     &ludwig->lb->model);
+
+  build_links_update_driver(ludwig->collinfo, ludwig->wall, ludwig->map,
+			    ludwig->lb);
 
   TIMER_stop(TIMER_REBUILD);
 
@@ -2494,7 +2502,7 @@ int field_options_from_rt(rt_t * rt, rt_enum_t lv, int nfield, int nhalo,
       }
       else {
 	ifail = -1;
-	rt_fatal(rt, lv, "Key field_options_stat not recognied %s\n", stype);
+	rt_fatal(rt, lv, "Key field_options_stat not recognised %s\n", stype);
       }
     }
   }
