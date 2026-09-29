@@ -1372,6 +1372,8 @@ int build_update_map_additional_driver(colloids_info_t * info, map_t * map) {
 	}
       }
       else {
+  // XXX: fix to make sure map_new is set to zero on device. This change (or similar) should come in from fix in feature-397 branch also.
+  tdpAssert(tdpMemset(info->target->map_new, 0, info->nsites*sizeof(colloid_t *)));
 	/* Kernel */
 	dim3 blocks  = {1, 1, 1};
 	dim3 threads = {1, 1, 1};
