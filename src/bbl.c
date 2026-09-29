@@ -1514,7 +1514,7 @@ __host__ __device__ void bbl_pass2_process_links(colloid_t * pc, lb_t * lb, doub
     
     lb_f(lb, i, ij, LB_RHO, &fdist);
     fdist = fdist - df;
-    lb_f_set(lb, j, ji, LB_RHO, fdist); // XXX: This looks like it ends up being a reduction over threads. Needs to be reduced into fdist then set at the end of the kernel.
+    lb_f_set(lb, j, ji, LB_RHO, fdist); 
 
     /* This is slightly clunky. If the order parameter is
      * via LB, bounce back with correction. */
@@ -1522,12 +1522,12 @@ __host__ __device__ void bbl_pass2_process_links(colloid_t * pc, lb_t * lb, doub
     if (lb->ndist > 1) {
       lb_0th_moment(lb, i, LB_PHI, &dg);
       dg *= vdotc;
-      pc->s.deltaphi += dg; // XXX: This could be a race condition.
+      pc->s.deltaphi += dg; 
       dg -= lb->model.wv[ij]*dgtm1;
     
       lb_f(lb, i, ij, LB_PHI, &fdist);
       fdist = fdist - dg;
-      lb_f_set(lb, j, ji, LB_PHI, fdist); // XXX: This looks like it ends up being a reduction over threads. Needs to be reduced into fdist then set at the end of the kernel.
+      lb_f_set(lb, j, ji, LB_PHI, fdist);
     }
     
   } else if (pc->links->status[link_index] == LINK_COLLOID) {
