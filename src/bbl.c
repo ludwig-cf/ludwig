@@ -63,7 +63,8 @@ __global__ void bbl_pass1_kernel(colloids_info_t * cinfo, lb_t * lb, double rho0
 __host__ __device__ void bbl_pass1_process_links(colloid_t * pc, lb_t * lb, double rho0, int link_index);
 static int bbl_pass2_original(bbl_t * bbl, lb_t * lb, colloids_info_t * cinfo);
 static int bbl_pass2(bbl_t * bbl, lb_t * lb, colloids_info_t * cinfo);
-__global__ void bbl_pass2_kernel(colloids_info_t * cinfo, lb_t * lb, double rho0);
+__global__ void bbl_pass2_kernel(colloids_info_t * cinfo, lb_t * lb, double rho0,
+                                 double * deltag);
 __host__ __device__ void bbl_pass2_process_links(colloid_t * pc, lb_t * lb, double rho0, double dms, double dgtm1, int link_index);
 static int bbl_active_conservation(bbl_t * bbl, lb_t * lb,
 				   colloids_info_t * cinfo);
@@ -1378,14 +1379,27 @@ static int bbl_pass2(bbl_t * bbl, lb_t * lb, colloids_info_t * cinfo) {
     n_blocks.x = cinfo->target->npall;
     n_threads.x = 128;
   }
-  tdpLaunchKernel(bbl_pass2_kernel, n_blocks, n_threads, 0, 0, cinfo->target, lb->target, rho0);
+  double * deltag = &bbl->deltag;
+  if (n_devices > 0) {
+    tdpAssert(tdpMalloc((void **) &deltag, sizeof(double)));
+    tdpAssert(tdpMemset(deltag, 0, sizeof(double)));
+  }
+  tdpLaunchKernel(bbl_pass2_kernel, n_blocks, n_threads, 0, 0,
+                  cinfo->target, lb->target, rho0, deltag);
   tdpAssert(tdpPeekAtLastError());
   tdpAssert(tdpDeviceSynchronize());
+
+  if (n_devices > 0) {
+    tdpAssert(tdpMemcpy(&bbl->deltag, deltag, sizeof(double),
+                        tdpMemcpyDeviceToHost));
+    tdpAssert(tdpFree(deltag));
+  }
 
   return 0;
 }
 
-__global__ void bbl_pass2_kernel(colloids_info_t * cinfo, lb_t * lb, double rho0) {
+__global__ void bbl_pass2_kernel(colloids_info_t * cinfo, lb_t * lb, double rho0,
+                                 double * deltag) {
 
   colloid_t * pc = NULL;
   double dgtm1;
@@ -1412,6 +1426,10 @@ __global__ void bbl_pass2_kernel(colloids_info_t * cinfo, lb_t * lb, double rho0
     /* Set correction for phi arising from previous step */
 
     dgtm1 = pc->s.deltaphi;
+    /* All device threads must read the previous deficit before it is reset. */
+    if (n_devices > 0) {
+      __syncthreads();
+    }
     if ((threadIdx.x == 0 && n_devices > 0) || n_devices == 0) {
       pc->s.deltaphi = 0.0;
     }
@@ -1462,6 +1480,7 @@ __global__ void bbl_pass2_kernel(colloids_info_t * cinfo, lb_t * lb, double rho0
        pc->tc0[ia] = 0.0;
      }
    }
+   bbl_add_double(deltag, pc->s.deltaphi);
   }
 }
 
@@ -1522,7 +1541,7 @@ __host__ __device__ void bbl_pass2_process_links(colloid_t * pc, lb_t * lb, doub
     if (lb->ndist > 1) {
       lb_0th_moment(lb, i, LB_PHI, &dg);
       dg *= vdotc;
-      pc->s.deltaphi += dg; 
+      bbl_add_double(&pc->s.deltaphi, dg);
       dg -= lb->model.wv[ij]*dgtm1;
     
       lb_f(lb, i, ij, LB_PHI, &fdist);
