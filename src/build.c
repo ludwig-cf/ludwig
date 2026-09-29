@@ -1358,8 +1358,8 @@ int build_update_map_additional_driver(colloids_info_t * info, map_t * map) {
       int ndevice = 0;
       tdpAssert(tdpGetDeviceCount(&ndevice));
 
-      /* Nullify the pointer map */
-      tdpAssert(tdpMemset(info->map_new, 0, info->nsites*sizeof(colloid_t *)));
+      /* Nullify the pointer map (device version; or host if alias) */
+      tdpAssert(tdpMemset(info->target->map_new, 0, info->nsites*sizeof(colloid_t *)));
 
       if (ndevice == 0) {
 	/* Host only */
