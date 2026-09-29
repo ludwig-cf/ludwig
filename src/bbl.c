@@ -272,18 +272,7 @@ int bounce_back_on_links(bbl_t * bbl, lb_t * lb, wall_t * wall,
 
   bbl_pass0(bbl, lb, cinfo);
   
-  TIMER_start(TIMER_FREE2);
   bbl_pass1(bbl, lb, cinfo);
-  TIMER_stop(TIMER_FREE2);
-
-  /* __NVCC__ TODO: remove */
-  //TIMER_start(TIMER_FREE3);
-  //lb_memcpy(lb, tdpMemcpyDeviceToHost);
-  //TIMER_stop(TIMER_FREE3);
-
-  //TIMER_start(TIMER_FREE2);
-  //bbl_pass1_original(bbl, lb, cinfo);
-  //TIMER_stop(TIMER_FREE2);
 
   colloid_sums_halo(cinfo, COLLOID_SUM_DYNAMICS);
 
@@ -294,19 +283,7 @@ int bounce_back_on_links(bbl_t * bbl, lb_t * lb, wall_t * wall,
 
   bbl_update_colloids(bbl, wall, cinfo);
 
-  //TIMER_start(TIMER_FREE4);
-  ////bbl_pass2_openmp(bbl, lb, cinfo);
-  //bbl_pass2_original(bbl, lb, cinfo);
-  //TIMER_stop(TIMER_FREE4);
-
-  /* __NVCC__ TODO: remove */
-  //TIMER_start(TIMER_FREE3);
-  //lb_memcpy(lb, tdpMemcpyDeviceToHost);
-  //TIMER_stop(TIMER_FREE3);
-
-  TIMER_start(TIMER_FREE4);
   bbl_pass2(bbl, lb, cinfo);
-  TIMER_stop(TIMER_FREE4);
 
   return 0;
 }
@@ -801,29 +778,8 @@ static int bbl_pass1_original(bbl_t * bbl, lb_t * lb, colloids_info_t * cinfo) {
 
 static int bbl_pass1(bbl_t * bbl, lb_t * lb, colloids_info_t * cinfo) {
 
-  int ia;
-  int i, j, ij, ji;
-
-  double dm;
-  double delta;
-  double rsumw;
-  double c[3];
-  double rbxc[3];
   double rho0;
-  double mod, rmod, cost, plegendre, sint;
-  double tans[3], vector1[3];
-  double fdist;
-  LB_RCS2_DOUBLE(rcs2);
-
-  double *elabc;
-  double elc;
-  double ele,ele2;
-  double ela,ela2;
-  double elz,elz2;
-
   physics_t * phys = NULL;
-  colloid_t * pc = NULL;
-  colloid_link_t * p_link = NULL;
 
   assert(bbl);
   assert(lb);
@@ -852,30 +808,12 @@ static int bbl_pass1(bbl_t * bbl, lb_t * lb, colloids_info_t * cinfo) {
 
 __global__ void bbl_pass1_kernel(colloids_info_t * cinfo, lb_t * lb, double rho0) {
   int ia;
-  int i, j, ij, ji;
-  double fdist;
-  double dm;
-  double delta;
-  LB_RCS2_DOUBLE(rcs2);
-  double mod;
-  double rmod;
-  double cost;
-  double sint;
-  double plegendre;
-  double tans[3], vector1[3];
-  double *elabc;
-  double elc;
-  double ele,ele2;
-  double ela,ela2;
-  double elz,elz2;
-  double c[3];
-  double rbxc[3];
+  int i;
 
   /* All colloids, including halo */
   int colloid_start_index;
   int colloid_stride;
   int n_devices;
-  int thread;
   tdpGetDeviceCount(&n_devices);
   if (n_devices == 0) {
     colloid_start_index = bbl_get_thread_num();
@@ -884,16 +822,10 @@ __global__ void bbl_pass1_kernel(colloids_info_t * cinfo, lb_t * lb, double rho0
     colloid_start_index = blockIdx.x;
     colloid_stride = gridDim.x;
   }
-  //printf("thread %d threadIdx.x %d blockIdx.x %d blockDim.x %d gridDim.x %d\n", omp_get_thread_num(), threadIdx.x, blockIdx.x, blockDim.x, gridDim.x);
   for (int colloid_index = colloid_start_index; colloid_index < cinfo->npall; colloid_index += colloid_stride) {
     colloid_t * pc = cinfo->pointers->colloid[colloid_index];
 
     if (pc->s.bc == COLLOID_BC_BBL) {
-
-      //elabc = pc->s.elabc;
-      //elc = sqrt(elabc[0]*elabc[0] - elabc[1]*elabc[1]);
-      //ele = elc/elabc[0];
-      //ela = colloid_principal_radius(&pc->s);
 
       /* Diagnostic record of f0 before additions are made. */
       /* Really, f0 should not be used for dual purposes... */
@@ -1409,24 +1341,9 @@ static int bbl_pass2_original(bbl_t * bbl, lb_t * lb, colloids_info_t * cinfo) {
 
 static int bbl_pass2(bbl_t * bbl, lb_t * lb, colloids_info_t * cinfo) {
 
-  int i, j, ij, ji;
-  int ia;
-  int ndist;
-
-  double dm;
-  double vdotc;
-  double dms;
-  double df, dg;
-  double fdist;
-  double wxrb[3];
-
-  double dgtm1;
+  int i, j;
   double rho0;
-  LB_RCS2_DOUBLE(rcs2);
-
   physics_t * phys = NULL;
-  colloid_t * pc = NULL;
-  colloid_link_t * p_link;
 
 
   assert(bbl);
@@ -1435,8 +1352,6 @@ static int bbl_pass2(bbl_t * bbl, lb_t * lb, colloids_info_t * cinfo) {
 
   physics_ref(&phys);
   physics_rho0(phys, &rho0);
-
-  ndist=lb->ndist;
 
   /* Account the current phi deficit */
   bbl->deltag = 0.0;
@@ -1477,12 +1392,6 @@ __global__ void bbl_pass2_kernel(colloids_info_t * cinfo, lb_t * lb, double rho0
   double dms;
   int ia;
   LB_RCS2_DOUBLE(rcs2);
-  int i, j, ij, ji;
-  double dm;
-  double vdotc;
-  double df, dg;
-  double fdist;
-  double wxrb[3];
   
   int colloid_start_index;
   int colloid_stride;
