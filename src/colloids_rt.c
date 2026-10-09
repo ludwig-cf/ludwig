@@ -52,21 +52,21 @@ int angle_cosine_init(pe_t * pe, cs_t * cs, rt_t * rt, interact_t * interact);
 int pair_ss_cut_ij_init(pe_t * pe, cs_t * cs, rt_t * rt, interact_t * intrct);
 
 int wall_ss_cut_init(pe_t * pe, cs_t * cs, rt_t * rt, wall_t * wall,
-		     interact_t * inter);
+                     interact_t * inter);
 
 int colloids_rt_dynamics(cs_t * cs, colloids_info_t * cinfo);
 int colloids_rt_gravity(pe_t * pe, rt_t * rt, colloids_info_t * cinfo);
-int colloids_rt_init_few(pe_t * pe, rt_t * rt, colloids_info_t * cinfo, int nc);
+int colloids_rt_init_few(pe_t * pe, rt_t * rt, colloids_info_t * cinfo,
+                         int nc);
 
 int colloids_rt_init_random(pe_t * pe, cs_t * cs, rt_t * rt, wall_t * wall,
-			    colloids_info_t * cinfo);
+                            colloids_info_t * cinfo);
 int colloids_rt_state_stub(pe_t * pe, rt_t * rt, colloids_info_t * cinfo,
-			   const char * stub,
-			   colloid_state_t * state);
+                           const char * stub, colloid_state_t * state);
 int colloids_rt_cell_list_checks(pe_t * pe, cs_t * cs,
-				 const lb_model_t * model,
-				 colloids_info_t ** pinfo,
-				 interact_t * interact);
+                                 const lb_model_t * model,
+                                 colloids_info_t ** pinfo,
+                                 interact_t *       interact);
 
 int colloids_rt_from_file(rt_t * rt, int nstep, colloids_info_t * info);
 

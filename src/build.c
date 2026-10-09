@@ -1088,13 +1088,13 @@ int build_update_map_driver(map_t * map) {
     dim3 nblk  = {};
     dim3 ntpb  = {};
 
-    cs_limits_t lim = cs_limits_with_halo(map->cs->param->nlocal,  nhalo);
+    cs_limits_t lim = cs_limits_with_halo(map->cs->param->nlocal, nhalo);
     kernel_3d_t k3d = kernel_3d(map->cs, lim);
 
     kernel_3d_launch_param(k3d.kiterations, &nblk, &ntpb);
 
-    tdpLaunchKernel(build_update_map_kernel, nblk, ntpb, 0, 0,
-                    k3d, map->target, c, h);
+    tdpLaunchKernel(build_update_map_kernel, nblk, ntpb, 0, 0, k3d,
+                    map->target, c, h);
 
     tdpAssert(tdpPeekAtLastError());
     tdpAssert(tdpStreamSynchronize(0));
@@ -1138,14 +1138,16 @@ __global__ void build_update_map_colloids_kernel(kernel_3d_t       k3d,
 
       double dr[3] = {}; /* colloid centre -> site */
 
-      if (pc->s.bc != COLLOID_BC_BBL) continue;
+      if (pc->s.bc != COLLOID_BC_BBL) {
+        continue;
+      }
 
       /* Not a minimum image separation as we are potentially checking more
        * than one copy and need to get the right pointer for this site ... */
 
-      dr[X] = r0[X] - (pc->s.r[X] - 1.0*map->cs->param->noffset[X]);
-      dr[Y] = r0[Y] - (pc->s.r[Y] - 1.0*map->cs->param->noffset[Y]);
-      dr[Z] = r0[Z] - (pc->s.r[Z] - 1.0*map->cs->param->noffset[Z]);
+      dr[X] = r0[X] - (pc->s.r[X] - 1.0 * map->cs->param->noffset[X]);
+      dr[Y] = r0[Y] - (pc->s.r[Y] - 1.0 * map->cs->param->noffset[Y]);
+      dr[Z] = r0[Z] - (pc->s.r[Z] - 1.0 * map->cs->param->noffset[Z]);
 
       /* Are we inside? Set status and wetting constants */
 
@@ -1163,7 +1165,7 @@ __global__ void build_update_map_colloids_kernel(kernel_3d_t       k3d,
           double mod = util_vector_modulus(dr);
           if (mod > 0.0) {
             double cosine = util_vector_dot_product(pc->s.s, dr) / mod;
-            wet[1]        = cosine*wet[1]; /* h */
+            wet[1]        = cosine * wet[1]; /* h */
           }
         }
 
@@ -1231,9 +1233,9 @@ int build_update_map_colloids_driver(colloids_info_t * info, map_t * map) {
  *****************************************************************************/
 
 __host__ __device__ void build_additional_version(colloids_info_t * info,
-						  map_t * map,
-						  colloid_t * pc) {
-  int nhalo = 1;
+                                                  map_t *           map,
+                                                  colloid_t *       pc) {
+  int nhalo     = 1;
   int nlocal[3] = {};
   int i_min, i_max;
   int j_min, j_max;
@@ -1266,41 +1268,41 @@ __host__ __device__ void build_additional_version(colloids_info_t * info,
     for (int jc = j_min; jc <= j_max; jc++) {
       for (int kc = k_min; kc <= k_max; kc++) {
 
-	int index = cs_index(info->cs, ic, jc, kc);
+        int index = cs_index(info->cs, ic, jc, kc);
 
-	double r0[3] = {1.0 * ic, 1.0 * jc, 1.0 * kc};
-	double dr[3] = {}; /* colloid centre -> site */
+        double r0[3] = {1.0 * ic, 1.0 * jc, 1.0 * kc};
+        double dr[3] = {}; /* colloid centre -> site */
 
-	/* Not a minimum image separation as we are potentially checking more
-	 * than one copy and need to get the right pointer for this site ... */
+        /* Not a minimum image separation as we are potentially checking more
+         * than one copy and need to get the right pointer for this site ... */
 
-	dr[X] = r0[X] - (pc->s.r[X] - 1.0*map->cs->param->noffset[X]);
-	dr[Y] = r0[Y] - (pc->s.r[Y] - 1.0*map->cs->param->noffset[Y]);
-	dr[Z] = r0[Z] - (pc->s.r[Z] - 1.0*map->cs->param->noffset[Z]);
+        dr[X] = r0[X] - (pc->s.r[X] - 1.0 * map->cs->param->noffset[X]);
+        dr[Y] = r0[Y] - (pc->s.r[Y] - 1.0 * map->cs->param->noffset[Y]);
+        dr[Z] = r0[Z] - (pc->s.r[Z] - 1.0 * map->cs->param->noffset[Z]);
 
-	/* Are we inside? Set status and wetting constants */
+        /* Are we inside? Set status and wetting constants */
 
-	if (colloid_r_inside(&pc->s, dr)) {
+        if (colloid_r_inside(&pc->s, dr)) {
 
-	  double wet[2] = {pc->s.c, pc->s.h}; /* Wetting c, h */
+          double wet[2] = {pc->s.c, pc->s.h}; /* Wetting c, h */
 
-	  colloids_info_map_set(info, index, pc);
-	  map_status_set(map, index, MAP_COLLOID);
+          colloids_info_map_set(info, index, pc);
+          map_status_set(map, index, MAP_COLLOID);
 
-	  /* Janus particles have h = h_0 cos (theta)
-	   * with s[3] pointing to the 'north pole' */
+          /* Janus particles have h = h_0 cos (theta)
+           * with s[3] pointing to the 'north pole' */
 
-	  if (pc->s.attr & COLLOID_ATTR_JANUS) {
-	    double mod = util_vector_modulus(dr);
-	    if (mod > 0.0) {
-	      double cosine = util_vector_dot_product(pc->s.s, dr) / mod;
-	      wet[1]        = cosine*wet[1]; /* h */
-	    }
-	  }
-	  map_data_set(map, index, wet);
-	}
+          if (pc->s.attr & COLLOID_ATTR_JANUS) {
+            double mod = util_vector_modulus(dr);
+            if (mod > 0.0) {
+              double cosine = util_vector_dot_product(pc->s.s, dr) / mod;
+              wet[1]        = cosine * wet[1]; /* h */
+            }
+          }
+          map_data_set(map, index, wet);
+        }
 
-	/* Nest search site */
+        /* Nest search site */
       }
     }
   }
@@ -1357,30 +1359,32 @@ int build_update_map_additional_driver(colloids_info_t * info, map_t * map) {
       tdpAssert(tdpGetDeviceCount(&ndevice));
 
       /* Nullify the pointer map (device version; or host if alias) */
-      tdpAssert(tdpMemset(info->target->map_new, 0, info->nsites*sizeof(colloid_t *)));
+      tdpAssert(tdpMemset(info->target->map_new, 0,
+                          info->nsites * sizeof(colloid_t *)));
 
       if (ndevice == 0) {
-	/* Host only */
-	#pragma omp parallel for
-	for (int n = 0; n < info->npall; n++) {
-	  colloid_t * pc = info->pointers->colloid[n];
-	  if (pc->s.bc == COLLOID_BC_BBL) {
-	    build_additional_version(info, map, pc);
-	  }
-	}
+        /* Host only */
+
+#pragma omp parallel for
+        for (int n = 0; n < info->npall; n++) {
+          colloid_t * pc = info->pointers->colloid[n];
+          if (pc->s.bc == COLLOID_BC_BBL) {
+            build_additional_version(info, map, pc);
+          }
+        }
       }
       else {
-	/* Kernel */
-	dim3 blocks  = {1, 1, 1};
-	dim3 threads = {1, 1, 1};
+        /* Kernel */
+        dim3 blocks  = {1, 1, 1};
+        dim3 threads = {1, 1, 1};
 
-	blocks.x = info->npall;
+        blocks.x = info->npall;
 
-	tdpLaunchKernel(build_additional_kernel, blocks, threads, 0, 0,
-			info->target, map->target)
+        tdpLaunchKernel(build_additional_kernel, blocks, threads, 0, 0,
+                        info->target, map->target);
 
-	tdpAssert(tdpPeekAtLastError());
-	tdpAssert(tdpStreamSynchronize(0));
+        tdpAssert(tdpPeekAtLastError());
+        tdpAssert(tdpStreamSynchronize(0));
       }
     }
   }
