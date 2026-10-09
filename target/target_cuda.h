@@ -106,6 +106,7 @@ __host__ struct tdpPitchedPtr make_tdpPitchedPtr(void * d, size_t p,
 
 /* Additional atomic functions */
 
+__device__ double tdpAtomicAddDouble(double * sum, double val);
 __device__ double atomicMin(double *, double);
 __device__ double atomicMax(double *, double);
 

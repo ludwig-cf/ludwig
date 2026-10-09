@@ -257,6 +257,7 @@ void tdp_x86_postlaunch(void);
 /* Kernel launch is a __VA_ARGS__ macro, thus: */
 
 #define tdpLaunchKernel(kernel, nblocks, nthreads, shmem, stream, ...)        \
+  omp_set_num_threads((nthreads).x * (nthreads).y * (nthreads).z);        \
   _Pragma("omp parallel") {                                                   \
     tdp_x86_prelaunch(nblocks, nthreads);                                     \
     for (blockIdx.x = 0; blockIdx.x < gridDim.x; ++blockIdx.x) {              \
