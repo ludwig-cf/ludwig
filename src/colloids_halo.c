@@ -124,7 +124,10 @@ int colloids_halo_state(colloids_info_t * cinfo) {
 
   free(halo);
 
-  return 0;
+  /* Update the various pointers lists to reflect changes */
+  colloids_info_update_lists(cinfo);
+
+    return 0;
 }
 
 /*****************************************************************************

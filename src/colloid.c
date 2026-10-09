@@ -363,28 +363,6 @@ int colloid_type_check(colloid_state_t * s) {
 
 /*****************************************************************************
  *
- *  colloid_principal_radius
- *
- *  The radius; in the case of an ellipsoid, the principal a (a >= b >= c).
- *
- *****************************************************************************/
-
-double colloid_principal_radius(const colloid_state_t * s) {
-
-  double amax = -1.0;
-
-  assert(s);
-
-  amax = s->a0;
-  if (s->shape == COLLOID_SHAPE_ELLIPSOID) {
-    amax = s->elabc[0];
-  }
-
-  return amax;
-}
-
-/*****************************************************************************
- *
  *  colloid_state_init_sphere
  *
  *  Creates a colloid state with specified index and radius for testing

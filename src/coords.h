@@ -117,4 +117,16 @@ int cs_options_from_json(const cJSON * json, cs_param_t * opts);
 int cs_to_json(const cs_t * cs, cJSON ** json);
 int cs_from_json(pe_t * pe, const cJSON * json, cs_t ** cs);
 
+/* Further __host__ __device__ static inline functions */
+
+#define HDSI_ __host__ __device__ static inline
+
+HDSI_ int cs_index_to_ic(const cs_t * cs, int index);
+HDSI_ int cs_index_to_jc(const cs_t * cs, int index);
+HDSI_ int cs_index_to_kc(const cs_t * cs, int index);
+
+#undef HDSI_
+
+#include "coords_inline.h"
+
 #endif

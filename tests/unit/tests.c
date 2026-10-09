@@ -165,6 +165,7 @@ __host__ int tests_create(int argc, char ** argv) {
   test_util_fopen_suite();
   test_util_io_suite();
   test_util_json_suite();
+  test_util_math_suite();
   test_util_random_suite();
   test_util_string_suite();
   test_util_sum_suite();
