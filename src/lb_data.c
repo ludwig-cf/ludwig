@@ -57,6 +57,7 @@ static __constant__ lb_collide_param_t static_param;
 /* We have a switch to CUDA graph API, which is going to get switched
  * on if ndvice > 0. We may remove the non-graph option in furture. */
 static int use_graph_api_ = 0;
+static int use_managed_   = 0;
 
 /*****************************************************************************
  *
@@ -95,6 +96,8 @@ int lb_data_create(pe_t * pe, cs_t * cs, const lb_data_options_t * options,
   /* Note there is some duplication of options/parameters */
   /* ... which should really be rationalised. */
   obj->opts = *options;
+  use_managed_ = options->use_managed_memory;
+  // use_managed_ = 1;
 
   lb_model_create(obj->nvel, &obj->model);
 
@@ -121,8 +124,14 @@ int lb_data_create(pe_t * pe, cs_t * cs, const lb_data_options_t * options,
     else {
       size_t sz = sizeof(double)*obj->nsite*obj->ndist*obj->nvel;
       assert(sz > 0); /* Should not overflow in size_t I hope! */
-      obj->f      = (double *) mem_aligned_malloc(MEM_PAGESIZE, sz);
-      obj->fprime = (double *) mem_aligned_malloc(MEM_PAGESIZE, sz);
+      if (use_managed_) {
+	      tdpAssert( tdpMallocManaged((void **) &obj->f,      sz, tdpMemAttachGlobal) );
+	      tdpAssert( tdpMallocManaged((void **) &obj->fprime, sz, tdpMemAttachGlobal) );
+      }
+      else {
+        obj->f      = (double *) mem_aligned_malloc(MEM_PAGESIZE, sz);
+        obj->fprime = (double *) mem_aligned_malloc(MEM_PAGESIZE, sz);
+      }
       assert(obj->f);
       assert(obj->fprime);
       if (obj->f      == NULL) pe_fatal(pe, "malloc(lb->f) failed\n");
@@ -218,19 +227,34 @@ int lb_data_create(pe_t * pe, cs_t * cs, const lb_data_options_t * options,
       /* Lees Edwards buffer for crossing distributions */
       int nxdist = ndist*nprop*(nlocal[Y] + 1)*nlocal[Z];
       int nxbuff = 2*nplane*nxdist; /* 2 sides for each plane */
-      obj->sbuff = (double *) malloc(nxbuff*sizeof(double));
-      obj->rbuff = (double *) malloc(nxbuff*sizeof(double));
+      if (use_managed_) {
+	tdpAssert( tdpMallocManaged((void **) &obj->sbuff, nxbuff*sizeof(double),
+				    tdpMemAttachGlobal) );
+	tdpAssert( tdpMallocManaged((void **) &obj->rbuff, nxbuff*sizeof(double),
+				    tdpMemAttachGlobal) );
+      }
+      else {
+	obj->sbuff = (double *) malloc(nxbuff*sizeof(double));
+	obj->rbuff = (double *) malloc(nxbuff*sizeof(double));
+      }
 
-      tdpAssert( tdpGetDeviceCount(&ndevice) );
+      tdpGetDeviceCount(&ndevice);
 
       if (ndevice > 0) {
-	double * tmp = NULL;
-	tdpAssert( tdpMalloc((void **) &tmp, nxbuff*sizeof(double)) );
-	tdpAssert( tdpMemcpy(&obj->target->sbuff, &tmp, sizeof(double *),
-			     tdpMemcpyHostToDevice) );
-	tdpAssert( tdpMalloc((void **) &tmp, nxbuff*sizeof(double)) );
-	tdpAssert( tdpMemcpy(&obj->target->rbuff, &tmp, sizeof(double *),
-			     tdpMemcpyHostToDevice) );
+	if (use_managed_) {
+	  /* sbuff/rbuff are managed; share the same pointer in the device struct */
+	  obj->target->sbuff = obj->sbuff;
+	  obj->target->rbuff = obj->rbuff;
+	}
+	else {
+	  double * tmp = NULL;
+	  tdpAssert( tdpMalloc((void **) &tmp, nxbuff*sizeof(double)) );
+	  tdpAssert( tdpMemcpy(&obj->target->sbuff, &tmp, sizeof(double *),
+			       tdpMemcpyHostToDevice) );
+	  tdpAssert( tdpMalloc((void **) &tmp, nxbuff*sizeof(double)) );
+	  tdpAssert( tdpMemcpy(&obj->target->rbuff, &tmp, sizeof(double *),
+			       tdpMemcpyHostToDevice) );
+	}
       }
     }
   }
@@ -259,32 +283,43 @@ int lb_free(lb_t * lb) {
   lb_data_free_device_model(lb);
 
   if (ndevice > 0) {
-    double * tmp = NULL;
-    tdpAssert( tdpMemcpy(&tmp, &lb->target->f, sizeof(double *),
-			 tdpMemcpyDeviceToHost) );
-    tdpAssert( tdpFree(tmp) );
-
-    tdpAssert( tdpMemcpy(&tmp, &lb->target->fprime, sizeof(double *),
-			 tdpMemcpyDeviceToHost) );
-    tdpAssert( tdpFree(tmp) );
-    tdpAssert( tdpMemcpy(&tmp, &lb->target->sbuff, sizeof(double *),
-			 tdpMemcpyDeviceToHost) );
-    tdpAssert( tdpFree(tmp) );
-    tdpAssert( tdpMemcpy(&tmp, &lb->target->rbuff, sizeof(double *),
-			 tdpMemcpyDeviceToHost) );
-    tdpAssert( tdpFree(tmp) );
-
-    tdpAssert( tdpFree(lb->target) );
+    if (use_managed_) {
+      /* f, fprime, sbuff, rbuff are shared managed pointers; freed below */
+      tdpAssert( tdpFree(lb->target) );
+    }
+    else {
+      double * tmp = NULL;
+      tdpAssert( tdpMemcpy(&tmp, &lb->target->f, sizeof(double *),
+			   tdpMemcpyDeviceToHost) );
+      tdpAssert( tdpFree(tmp) );
+      tdpAssert( tdpMemcpy(&tmp, &lb->target->fprime, sizeof(double *),
+			   tdpMemcpyDeviceToHost) );
+      tdpAssert( tdpFree(tmp) );
+      tdpAssert( tdpMemcpy(&tmp, &lb->target->sbuff, sizeof(double *),
+			   tdpMemcpyDeviceToHost) );
+      tdpAssert( tdpFree(tmp) );
+      tdpAssert( tdpMemcpy(&tmp, &lb->target->rbuff, sizeof(double *),
+			   tdpMemcpyDeviceToHost) );
+      tdpAssert( tdpFree(tmp) );
+      tdpAssert( tdpFree(lb->target) );
+    }
   }
 
   io_metadata_finalise(&lb->input);
   io_metadata_finalise(&lb->output);
 
-  free(lb->f);
-  free(lb->fprime);
-
-  free(lb->rbuff);
-  free(lb->sbuff);
+  if (use_managed_) {
+    tdpAssert( tdpFree(lb->f) );
+    tdpAssert( tdpFree(lb->fprime) );
+    tdpAssert( tdpFree(lb->rbuff) );
+    tdpAssert( tdpFree(lb->sbuff) );
+  }
+  else {
+    free(lb->f);
+    free(lb->fprime);
+    free(lb->rbuff);
+    free(lb->sbuff);
+  }
 
   lb_halo_free(lb, &lb->h);
   lb_model_free(&lb->model);
@@ -489,27 +524,62 @@ int lb_memcpy(lb_t * lb, tdpMemcpyKind flag) {
     assert(lb->target == lb);
   }
   else {
+    if (use_managed_) {
+      size_t nsz = (size_t) lb->model.nvel*lb->nsite*lb->ndist*sizeof(double);
 
-    size_t nsz = (size_t) lb->model.nvel*lb->nsite*lb->ndist*sizeof(double);
-
-    assert(lb->target);
-
-    tdpAssert( tdpMemcpy(&tmpf, &lb->target->f, sizeof(double *),
-			 tdpMemcpyDeviceToHost) );
-
-    switch (flag) {
-    case tdpMemcpyHostToDevice:
-      tdpAssert( tdpMemcpy(&lb->target->ndim,  &lb->ndim,  sizeof(int), flag) );
-      tdpAssert( tdpMemcpy(&lb->target->nvel,  &lb->nvel,  sizeof(int), flag) );
-      tdpAssert( tdpMemcpy(&lb->target->ndist, &lb->ndist, sizeof(int), flag) );
-      tdpAssert( tdpMemcpy(&lb->target->nsite, &lb->nsite, sizeof(int), flag) );
-      tdpAssert( tdpMemcpy(tmpf, lb->f, nsz, flag) );
-      break;
-    case tdpMemcpyDeviceToHost:
-      tdpAssert( tdpMemcpy(lb->f, tmpf, nsz, flag) );
-      break;
-    default:
-      pe_fatal(lb->pe, "Bad flag in lb_memcpy\n");
+      lb->f      = lb->target->f;
+      lb->fprime = lb->target->fprime;
+      
+      if (flag == tdpMemcpyDeviceToHost) {
+#ifdef __NVCC__
+        /* Prefetch pages to CPU before host reads, then sync */
+        cudaMemLocation cpuLoc = {cudaMemLocationTypeHost, 0};
+        tdpAssert( cudaMemPrefetchAsync(lb->f,      nsz, cpuLoc, 0, NULL) );
+        tdpAssert( cudaMemPrefetchAsync(lb->fprime, nsz, cpuLoc, 0, NULL) );
+#elif defined(__HIPCC__)
+        /* Prefetch pages to CPU before host reads, then sync */
+        tdpAssert( hipMemPrefetchAsync(lb->f,      nsz, hipCpuDeviceId, 0) );
+        tdpAssert( hipMemPrefetchAsync(lb->fprime, nsz, hipCpuDeviceId, 0) );
+#endif
+        tdpAssert( tdpDeviceSynchronize() );
+      }
+      else if (flag == tdpMemcpyHostToDevice) {
+#ifdef __NVCC__
+        /* Prefetch pages back to GPU before kernel runs */
+        int device = 0;
+        tdpAssert( tdpGetDevice(&device) );
+        cudaMemLocation gpuLoc = {cudaMemLocationTypeDevice, device};
+        tdpAssert( cudaMemPrefetchAsync(lb->f,      nsz, gpuLoc, 0, NULL) );
+        tdpAssert( cudaMemPrefetchAsync(lb->fprime, nsz, gpuLoc, 0, NULL) );
+#elif defined(__HIPCC__)
+        /* Prefetch pages back to GPU before kernel runs */
+        int device = 0;
+        tdpAssert( tdpGetDevice(&device) );
+        tdpAssert( hipMemPrefetchAsync(lb->f,      nsz, device, 0) );
+        tdpAssert( hipMemPrefetchAsync(lb->fprime, nsz, device, 0) );
+#endif
+        tdpAssert( tdpDeviceSynchronize() );
+      }
+    }
+    else {
+      size_t nsz = (size_t) lb->model.nvel*lb->nsite*lb->ndist*sizeof(double);
+      assert(lb->target);
+      tdpAssert( tdpMemcpy(&tmpf, &lb->target->f, sizeof(double *),
+			   tdpMemcpyDeviceToHost) );
+      switch (flag) {
+      case tdpMemcpyHostToDevice:
+	tdpAssert( tdpMemcpy(&lb->target->ndim,  &lb->ndim,  sizeof(int), flag) );
+	tdpAssert( tdpMemcpy(&lb->target->nvel,  &lb->nvel,  sizeof(int), flag) );
+	tdpAssert( tdpMemcpy(&lb->target->ndist, &lb->ndist, sizeof(int), flag) );
+	tdpAssert( tdpMemcpy(&lb->target->nsite, &lb->nsite, sizeof(int), flag) );
+	tdpAssert( tdpMemcpy(tmpf, lb->f, nsz, flag) );
+	break;
+      case tdpMemcpyDeviceToHost:
+	tdpAssert( tdpMemcpy(lb->f, tmpf, nsz, flag) );
+	break;
+      default:
+	pe_fatal(lb->pe, "Bad flag in lb_memcpy\n");
+      }
     }
   }
 
@@ -558,27 +628,72 @@ static int lb_init(lb_t * lb) {
     lb_collide_param_t * ptmp  = NULL;
     cs_t * cstarget = NULL;
 
-    tdpAssert( tdpMalloc((void **) &lb->target, sizeof(lb_t)) );
-    tdpAssert( tdpMemset(lb->target, 0, sizeof(lb_t)) );
+    if (use_managed_) {
+      /* Managed: allocate device struct in unified memory, share data arrays */
+      int device = 0;
+      size_t fsz = (size_t) ndata*sizeof(double);
 
-    tdpAssert( tdpMalloc((void **) &tmp, ndata*sizeof(double)) );
-    tdpAssert( tdpMemset(tmp, 0, ndata*sizeof(double)) );
-    tdpAssert( tdpMemcpy(&lb->target->f, &tmp, sizeof(double *),
-			 tdpMemcpyHostToDevice) );
+      tdpAssert( tdpMallocManaged((void **) &lb->target, sizeof(lb_t),
+				  tdpMemAttachGlobal) );
+      memset(lb->target, 0, sizeof(lb_t));
 
-    tdpAssert( tdpMalloc((void **) &tmp, ndata*sizeof(double)) );
-    tdpAssert( tdpMemset(tmp, 0, ndata*sizeof(double)) );
-    tdpAssert( tdpMemcpy(&lb->target->fprime, &tmp, sizeof(double *),
-			 tdpMemcpyHostToDevice) );
+      lb->target->f      = lb->f;
+      lb->target->fprime = lb->fprime;
 
-    tdpGetSymbolAddress((void **) &ptmp, tdpSymbol(static_param));
-    tdpAssert( tdpMemcpy(&lb->target->param, &ptmp,
-			 sizeof(lb_collide_param_t *), tdpMemcpyHostToDevice));
+      lb->target->ndim  = lb->ndim;
+      lb->target->nvel  = lb->nvel;
+      lb->target->ndist = lb->ndist;
+      lb->target->nsite = lb->nsite;
 
-    cs_target(lb->cs, &cstarget);
-    tdpAssert( tdpMemcpy(&lb->target->cs, &cstarget, sizeof(cs_t *),
-			 tdpMemcpyHostToDevice) );
-  
+      tdpGetSymbolAddress((void **) &ptmp, tdpSymbol(static_param));
+      lb->target->param = ptmp;
+
+      cs_target(lb->cs, &cstarget);
+      lb->target->cs = cstarget;
+
+      /* Prefetch distribution data to GPU and advise preferred location */
+      tdpAssert( tdpGetDevice(&device) );
+#ifdef __NVCC__
+      {
+        cudaMemLocation gpuLoc = {cudaMemLocationTypeDevice, device};
+        tdpAssert( cudaMemAdvise(lb->f,      fsz, cudaMemAdviseSetPreferredLocation, gpuLoc) );
+        tdpAssert( cudaMemAdvise(lb->fprime, fsz, cudaMemAdviseSetPreferredLocation, gpuLoc) );
+        tdpAssert( cudaMemPrefetchAsync(lb->f,      fsz, gpuLoc, 0, NULL) );
+        tdpAssert( cudaMemPrefetchAsync(lb->fprime, fsz, gpuLoc, 0, NULL) );
+      }
+#elif defined(__HIPCC__)
+      {
+        tdpAssert( hipMemAdvise(lb->f,      fsz, hipMemAdviseSetPreferredLocation, device) );
+        tdpAssert( hipMemAdvise(lb->fprime, fsz, hipMemAdviseSetPreferredLocation, device) );
+        tdpAssert( hipMemPrefetchAsync(lb->f,      fsz, device, 0) );
+        tdpAssert( hipMemPrefetchAsync(lb->fprime, fsz, device, 0) );
+      }
+#endif
+    }
+    else {
+      /* Explicit: separate device struct and data arrays with tdpMemcpy */
+      tdpAssert( tdpMalloc((void **) &lb->target, sizeof(lb_t)) );
+      tdpAssert( tdpMemset(lb->target, 0, sizeof(lb_t)) );
+
+      tdpAssert( tdpMalloc((void **) &tmp, ndata*sizeof(double)) );
+      tdpAssert( tdpMemset(tmp, 0, ndata*sizeof(double)) );
+      tdpAssert( tdpMemcpy(&lb->target->f, &tmp, sizeof(double *),
+			   tdpMemcpyHostToDevice) );
+
+      tdpAssert( tdpMalloc((void **) &tmp, ndata*sizeof(double)) );
+      tdpAssert( tdpMemset(tmp, 0, ndata*sizeof(double)) );
+      tdpAssert( tdpMemcpy(&lb->target->fprime, &tmp, sizeof(double *),
+			   tdpMemcpyHostToDevice) );
+
+      tdpGetSymbolAddress((void **) &ptmp, tdpSymbol(static_param));
+      tdpAssert( tdpMemcpy(&lb->target->param, &ptmp,
+			   sizeof(lb_collide_param_t *), tdpMemcpyHostToDevice));
+
+      cs_target(lb->cs, &cstarget);
+      tdpMemcpy(&lb->target->cs, &cstarget, sizeof(cs_t *),
+		tdpMemcpyHostToDevice);
+    }
+
     lb_data_initialise_device_model(lb);
   }
 
@@ -1245,14 +1360,28 @@ int lb_halo_create(const lb_t * lb, lb_halo_t * h, lb_halo_enum_t scheme) {
     if (count > 0) {
       int scount = count*lb_halo_size(h->slim[p]);
       send_count[p] = count;
-      h->send[p] = (double *) calloc(scount, sizeof(double));
+      if (use_managed_) {
+	tdpAssert( tdpMallocManaged((void **) &h->send[p],
+				    scount*sizeof(double), tdpMemAttachGlobal) );
+	memset(h->send[p], 0, scount*sizeof(double));
+      }
+      else {
+	h->send[p] = (double *) calloc(scount, sizeof(double));
+      }
       assert(h->send[p]);
     }
     /* Allocate recv buffer */
     if (count > 0) {
       int rcount = count*lb_halo_size(h->rlim[p]);
       recv_count[p] = count;
-      h->recv[p] = (double *) calloc(rcount, sizeof(double));
+      if (use_managed_) {
+	tdpAssert( tdpMallocManaged((void **) &h->recv[p],
+				    rcount*sizeof(double), tdpMemAttachGlobal) );
+	memset(h->recv[p], 0, rcount*sizeof(double));
+      }
+      else {
+	h->recv[p] = (double *) calloc(rcount, sizeof(double));
+      }
       assert(h->recv[p]);
     }
   }
@@ -1266,34 +1395,50 @@ int lb_halo_create(const lb_t * lb, lb_halo_t * h, lb_halo_enum_t scheme) {
 
   /* Device */
 
-  int ndevice = 0;
-
-  tdpAssert( tdpGetDeviceCount(&ndevice) );
-  tdpAssert( tdpStreamCreate(&h->stream) );
+  int ndevice;
+  tdpGetDeviceCount(&ndevice);
+  tdpStreamCreate(&h->stream);
 
   if (ndevice == 0) {
     h->target = h;
   }
   else {
     use_graph_api_ = 1; /* Always */
-    tdpAssert( tdpMalloc((void **) &h->target, sizeof(lb_halo_t)) );
-    tdpAssert( tdpMemset(h->target, 0, sizeof(lb_halo_t)));
-    tdpAssert( tdpMemcpy(h->target, h, sizeof(lb_halo_t),
-			 tdpMemcpyHostToDevice) );
 
-    for (int p = 0; p < h->map.nvel; p++) {         
-      int scount = send_count[p]*lb_halo_size(h->slim[p]);  
-      int rcount = recv_count[p]*lb_halo_size(h->rlim[p]);
-      if (scount > 0)
-        tdpAssert( tdpMalloc((void**) &h->send_d[p], scount * sizeof(double)) );
-      if (rcount > 0)
-        tdpAssert( tdpMalloc((void**) &h->recv_d[p], rcount * sizeof(double)) );
+    if (use_managed_) {
+      /* Managed: device halo struct in unified memory, send_d/recv_d alias send/recv */
+      tdpAssert( tdpMallocManaged((void **) &h->target, sizeof(lb_halo_t),
+				  tdpMemAttachGlobal) );
+      memset(h->target, 0, sizeof(lb_halo_t));
+
+      for (int p = 0; p < h->map.nvel; p++) {
+	h->send_d[p] = h->send[p];
+	h->recv_d[p] = h->recv[p];
+      }
+
+      memcpy(h->target, h, sizeof(lb_halo_t));
     }
-    /* Slightly tricksy. Could use send_d and recv_d on target copy ...*/
-    tdpAssert( tdpMemcpy(h->target->send, h->send_d, 27*sizeof(double *),     
-			 tdpMemcpyHostToDevice) );
-    tdpAssert( tdpMemcpy(h->target->recv, h->recv_d, 27*sizeof(double *),
-			 tdpMemcpyHostToDevice) );
+    else {
+      /* Explicit: separate device struct and device send/recv buffers */
+      tdpAssert( tdpMalloc((void **) &h->target, sizeof(lb_halo_t)) );
+      tdpAssert( tdpMemset(h->target, 0, sizeof(lb_halo_t)) );
+      tdpAssert( tdpMemcpy(h->target, h, sizeof(lb_halo_t),
+			   tdpMemcpyHostToDevice) );
+
+      for (int p = 0; p < h->map.nvel; p++) {
+	int scount = send_count[p]*lb_halo_size(h->slim[p]);
+	int rcount = recv_count[p]*lb_halo_size(h->rlim[p]);
+	if (scount > 0)
+	  tdpAssert( tdpMalloc((void **) &h->send_d[p], scount*sizeof(double)) );
+	if (rcount > 0)
+	  tdpAssert( tdpMalloc((void **) &h->recv_d[p], rcount*sizeof(double)) );
+      }
+
+      tdpAssert( tdpMemcpy(h->target->send, h->send_d, 27*sizeof(double *),
+			   tdpMemcpyHostToDevice) );
+      tdpAssert( tdpMemcpy(h->target->recv, h->recv_d, 27*sizeof(double *),
+			   tdpMemcpyHostToDevice) );
+    }
 
     halo_initialise_device_model(h);
 
@@ -1357,10 +1502,8 @@ int lb_halo_post(lb_t * lb, lb_halo_t * h) {
 
   TIMER_start(TIMER_LB_HALO_PACK);
 
-  int ndevice = 0;
-
-  tdpAssert( tdpGetDeviceCount(&ndevice) );
-
+  int ndevice;
+  tdpGetDeviceCount(&ndevice);
   if (ndevice > 0) {
     if (use_graph_api_) {
       tdpAssert( tdpGraphLaunch(h->gsend.exec, h->stream) );
@@ -1376,7 +1519,7 @@ int lb_halo_post(lb_t * lb, lb_halo_t * h) {
 			  lb->target, h->target, ireq);
           tdpAssert( tdpDeviceSynchronize());
  
-          if (!have_gpu_aware_mpi_()) {
+          if (!have_gpu_aware_mpi_() && !use_managed_) {
             tdpAssert( tdpMemcpy(h->send[ireq], h->send_d[ireq],
 				 sizeof(double)*scount, tdpMemcpyDeviceToHost));
           }
@@ -1430,8 +1573,6 @@ int lb_halo_post(lb_t * lb, lb_halo_t * h) {
 
 int lb_halo_wait(lb_t * lb, lb_halo_t * h) {
 
-  int ndevice = 0;
-
   assert(lb);
   assert(h);
 
@@ -1443,8 +1584,8 @@ int lb_halo_wait(lb_t * lb, lb_halo_t * h) {
 
   TIMER_start(TIMER_LB_HALO_UNPACK);
 
-  tdpAssert( tdpGetDeviceCount(&ndevice) );
-
+  int ndevice;
+  tdpGetDeviceCount(&ndevice);
   if (ndevice > 0) {
     if (use_graph_api_) {
       tdpAssert( tdpGraphLaunch(h->grecv.exec, h->stream) );
@@ -1454,7 +1595,7 @@ int lb_halo_wait(lb_t * lb, lb_halo_t * h) {
       for (int ireq = 0; ireq < h->map.nvel; ireq++) {
         if (h->count[ireq] > 0) {
           int rcount = h->count[ireq]*lb_halo_size(h->slim[ireq]);
-          if (!have_gpu_aware_mpi_()) {
+          if (!have_gpu_aware_mpi_() && !use_managed_) {
             tdpAssert( tdpMemcpy(h->recv[ireq], h->recv_d[ireq],
 				 sizeof(double)*rcount, tdpMemcpyDeviceToHost));
           }
@@ -1491,30 +1632,41 @@ int lb_halo_wait(lb_t * lb, lb_halo_t * h) {
 
 int lb_halo_free(lb_t * lb, lb_halo_t * h) {
 
-  int ndevice = 0;
-
   assert(lb);
   assert(h);
 
-  tdpAssert( tdpGetDeviceCount(&ndevice) );
+  int ndevice = 0;
+  tdpGetDeviceCount(&ndevice);
 
   halo_free_device_model(h);
 
   if (ndevice > 0) {
-    tdpAssert( tdpMemcpy(h->send_d, h->target->send, 27*sizeof(double *),
-			 tdpMemcpyDeviceToHost) );
-    tdpAssert( tdpMemcpy(h->recv_d, h->target->recv, 27*sizeof(double *),
-			 tdpMemcpyDeviceToHost) );
-    for (int p = 1; p < h->map.nvel; p++) {
-      tdpAssert( tdpFree(h->send_d[p]) );
-      tdpAssert( tdpFree(h->recv_d[p]) );
+    if (use_managed_) {
+      /* send_d/recv_d are aliases for managed send/recv; freed below */
+      tdpAssert( tdpFree(h->target) );
     }
-    tdpAssert( tdpFree(h->target) );
+    else {
+      tdpAssert( tdpMemcpy(h->send_d, h->target->send, 27*sizeof(double *),
+			   tdpMemcpyDeviceToHost) );
+      tdpAssert( tdpMemcpy(h->recv_d, h->target->recv, 27*sizeof(double *),
+			   tdpMemcpyDeviceToHost) );
+      for (int p = 1; p < h->map.nvel; p++) {
+	tdpFree(h->send_d[p]);
+	tdpFree(h->recv_d[p]);
+      }
+      tdpFree(h->target);
+    }
   }
 
   for (int ireq = 0; ireq < 27; ireq++) {
-    free(h->send[ireq]);
-    free(h->recv[ireq]);
+    if (use_managed_) {
+      if (h->send[ireq]) tdpAssert( tdpFree(h->send[ireq]) );
+      if (h->recv[ireq]) tdpAssert( tdpFree(h->recv[ireq]) );
+    }
+    else {
+      free(h->send[ireq]);
+      free(h->recv[ireq]);
+    }
   }
 
   if (use_graph_api_) {
@@ -1864,8 +2016,8 @@ int lb_graph_halo_send_create(const lb_t * lb, lb_halo_t * h) {
     tdpAssert( tdpGraphAddKernelNode(&kernelNode, h->gsend.graph, NULL, 0,
 				     &kernelNodeParams) );
 
-    if (have_gpu_aware_mpi_()) {
-      /* Don't need explicit device -> host copy */
+    if (have_gpu_aware_mpi_() || use_managed_) {
+      /* GPU-aware MPI or managed memory: no explicit device->host copy needed */
     }
     else {
       /* We do need to add the memcpys to the graph definition
@@ -1921,8 +2073,8 @@ int lb_graph_halo_recv_create(const lb_t * lb, lb_halo_t * h) {
     if (h->count[ireq] == 0) continue;
     tdpGraphNode_t memcpyNode = {0};
 
-    if (have_gpu_aware_mpi_()) {
-      /* Don't need explicit copies */
+    if (have_gpu_aware_mpi_() || use_managed_) {
+      /* GPU-aware MPI or managed memory: no explicit host->device copy needed */
     }
     else {
       int i = 1 + h->map.cv[h->map.nvel - ireq][X];
@@ -1969,7 +2121,8 @@ int lb_graph_halo_recv_create(const lb_t * lb, lb_halo_t * h) {
     kernelNodeParams.kernelParams   = (void **) kernelArgs;
     kernelNodeParams.extra          = NULL;
 
-    if (have_gpu_aware_mpi_()) {
+    if (have_gpu_aware_mpi_() || use_managed_) {
+      /* No memcpy node was created above, so kernel has no dependencies */
       tdpAssert( tdpGraphAddKernelNode(&node, h->grecv.graph, NULL,
 				       0, &kernelNodeParams) );
     }
