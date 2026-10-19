@@ -19,6 +19,7 @@
 #define LUDWIG_COLLOID_H
 
 #include <stdio.h>
+#include "target.h"
 
 /* Tag to describe I/O format version appearing in files */
 

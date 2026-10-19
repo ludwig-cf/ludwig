@@ -1618,7 +1618,9 @@ int field_graph_halo_recv_create(const field_t * field, field_halo_t * h) {
 
   for (int ireq = 1; ireq < h->nvel; ireq++) {
     int rcount = field->nf*field_halo_size(h->rlim[ireq]);
-    tdpGraphNode_t memcpyNode = {};
+    //tdpGraphNode_t memcpyNode = {};
+    tdpGraphNode_t memcpyNode = NULL; // gcc complaining about empty scalar initializer
+
 
     if (have_gpu_aware_mpi_()) {
       /* Don't need explicit copies */
