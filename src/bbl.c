@@ -120,6 +120,12 @@ __host__ __device__ static inline int bbl_get_num_threads() {
   return 1;                                     /* host compilation */
 #endif
 }
+
+int bounce_back_on_links_array(bbl_t * bbl, lb_t * lb, wall_t * wall,
+			       colloids_info_t * info);
+
+
+
 /*****************************************************************************
  *
  *  bbl_create
@@ -2415,6 +2421,9 @@ int bbl_wall_lubr_correction_ellipsoid(bbl_t * bbl, wall_t * wall,
 
 int bbl_pass1_array_driver(lb_t * lb, colloids_info_t * info);
 int bbl_pass2_array_driver(lb_t * lb, colloids_info_t * info);
+int bbl_order_parameter_deficit_array(colloids_info_t * info, double * dg);
+int bbl_active_conservation_array(const lb_model_t * model,
+				  colloids_info_t * info);
 
 /*****************************************************************************
  *
@@ -2460,13 +2469,19 @@ int bounce_back_on_links_array(bbl_t * bbl, lb_t * lb, wall_t * wall,
 
   if (bbl->active) {
     /* Additional steps for active particles */
-    bbl_active_conservation(bbl, lb, info); // NEEDS ARRAY VERSION
+    bbl_active_conservation_array(&lb->model, info);
     colloid_sums_halo(info, COLLOID_SUM_ACTIVE);
   }
 
   bbl_update_colloids(bbl, wall, info);
 
   bbl_pass2_array_driver(lb, info);
+
+  /* Required to allow regression tests to pass ... */
+  /* Does not affect the dynamics. */
+  if (bbl->ndist == 2) {
+    bbl_order_parameter_deficit_array(info, &bbl->deltag);
+  }
 
   return 0;
 }
@@ -2483,7 +2498,7 @@ __host__ __device__ void bbl_pass1_array(lb_t * lb, double rho0, colloid_t * pc)
 
   assert(pc->s.bc == COLLOID_BC_BBL);
 
-  /* Really ellipsoid only concern ... */
+  /* Really an ellipsoid only concern ... */
 
   double * elabc = pc->s.elabc;
   double   elc   = sqrt(elabc[0]*elabc[0] - elabc[1]*elabc[1]);
@@ -3020,14 +3035,70 @@ int bbl_pass2_array_driver(lb_t * lb, colloids_info_t * info) {
  *
  *****************************************************************************/
 
-int bbl_order_parameter_deficit_array(bbl_t * bbl, double * delta) {
+int bbl_order_parameter_deficit_array(colloids_info_t * info, double * delta) {
 
-  assert(bbl);
+  assert(info);
   assert(delta);
 
-  delta[0] = 0.0;
+  double sum = 0.0;
 
-  if (bbl->ndist == 2) delta[0] = bbl->deltag;
+  for (int n = 0; n < info->npall; ++n) {
+    colloid_t * pc = info->pointers->colloid[n];
+    sum += pc->s.deltaphi;
+  }
+
+  *delta = sum;
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  bbl_active_conservation_array
+ *
+ *****************************************************************************/
+
+int bbl_active_conservation_array(const lb_model_t * model,
+				  colloids_info_t * info) {
+
+  assert(model);
+  assert(info);
+
+  for (int nc = 0; nc < info->npall; ++nc) {
+
+    colloid_t * pc = info->pointers->colloid[nc];
+
+    if (pc->s.active == 0) continue;
+
+    pc->sump /= pc->sumw;
+
+    /* For each link */
+
+    for (int nl = 0; nl < pc->links->active_links; ++nl) {
+
+      if (pc->links->status[nl] != LINK_FLUID) continue;
+
+      int p = pc->links->p[nl];
+
+      double c[3] = {};
+      double rb[3] = {};
+      double rbxc[3] = {};
+
+      double dm = -model->wv[p]*pc->sump;
+
+      for (int ia = 0; ia < 3; ia++) {
+	c[ia] = 1.0*model->cv[p][ia];
+      }
+
+      colloid_links_array_rb(pc->links, nl, rb);
+      util_vector_cross_product(rbxc, rb, c);
+
+      for (int ia = 0; ia < 3; ia++) {
+	pc->fc0[ia] += dm*c[ia];
+	pc->tc0[ia] += dm*rbxc[ia];
+      }
+    }
+  }
 
   return 0;
 }
