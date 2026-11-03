@@ -107,6 +107,9 @@ int fe_lc_stats_info(pe_t * pe, cs_t * cs, fe_lc_t * fe, wall_t * wall,
     field_memcpy(fe->q, tdpMemcpyDeviceToHost);
     field_grad_memcpy(fe->dq, tdpMemcpyDeviceToHost);
 
+    map_memcpy(map, tdpMemcpyDeviceToHost);
+    colloids_memcpy(cinfo, tdpMemcpyDeviceToHost);
+
     fe_lc_colloid(fe, cs, cinfo, map, fe_local + 3);
 
     MPI_Reduce(fe_local, fe_total, NFE_STAT, MPI_DOUBLE, MPI_SUM, 0, comm);

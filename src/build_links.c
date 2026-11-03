@@ -25,7 +25,8 @@
 /* If using both implementations do not set colloid properties twice */
 /* (which include link means and areas, and the rebuild flag). */
 
-#define USE_LINKED_LIST_AND_ARRAY 1
+/* #define USE_LINKED_LIST 1 */
+#define USE_ARRAY       1
 
 /****************************************************************************
  *
@@ -497,7 +498,7 @@ int build_links_update_links_colloid(colloids_info_t *  info,
   build_links_evaluate_mean(pc, model);
   build_links_evaluate_area(pc, model);
 
-#ifdef USE_LINKED_LIST_AND_ARRAY
+#if defined(USE_LINKED_LIST)
   /* don't unset the rebuild flag yet - do it after array format is set */
 #else
   pc->s.rebuild = 0;
@@ -916,7 +917,7 @@ build_links_array_evaluate_mean(colloid_t * pc, const lb_model_t * model) {
     /* Next link */
   }
 
-#ifdef USE_LINKED_LIST_AND_ARRAY
+#if defined (USE_LINKED_LIST)
   /* Just check we are consistent */
   assert(fabs(cbar[X] - pc->cbar[X]) < FLT_EPSILON);
   assert(fabs(cbar[Y] - pc->cbar[Y]) < FLT_EPSILON);
@@ -926,6 +927,7 @@ build_links_array_evaluate_mean(colloid_t * pc, const lb_model_t * model) {
   assert(fabs(rxcbar[Y] - pc->rxcbar[Y]) < FLT_EPSILON);
   assert(fabs(rxcbar[Z] - pc->rxcbar[Z]) < FLT_EPSILON);
 #else
+  pc->sumw      = sumw;
   pc->cbar[X]   = cbar[X];
   pc->cbar[Y]   = cbar[Y];
   pc->cbar[Z]   = cbar[Z];
@@ -969,7 +971,7 @@ build_links_array_evaluate_area(colloid_t * pc, const lb_model_t * model) {
     }
   }
 
-#ifdef USE_LINKED_LIST_AND_ARRAY
+#if defined (USE_LINKED_LIST)
   /* just check we are consistent */
   assert(fabs(sa - pc->s.sa) < FLT_EPSILON);
   assert(fabs(saf - pc->s.saf) < FLT_EPSILON);
@@ -1056,6 +1058,11 @@ int build_links_update_driver(colloids_info_t * info, wall_t * wall,
 
   /* Linked-list version */
 
+#if defined(USE_LINKED_LIST)
+
+  map_memcpy(map, tdpMemcpyDeviceToHost);
+  colloids_memcpy(info, tdpMemcpyDeviceToHost);
+
 #pragma omp parallel for
   for (int n = 0; n < info->npall; n++) {
     colloid_t * pc = info->pointers->colloid[n];
@@ -1063,6 +1070,7 @@ int build_links_update_driver(colloids_info_t * info, wall_t * wall,
       build_links_update_links_colloid(info, &lb->model, map, wall, pc);
     }
   }
+#endif
 
   /* Array version */
 
@@ -1071,7 +1079,7 @@ int build_links_update_driver(colloids_info_t * info, wall_t * wall,
   tdpAssert(tdpGetDeviceCount(&ndevice));
 
   if (ndevice == 0) {
-#if defined(USE_LINKED_LIST_AND_ARRAY)
+#if defined(USE_ARRAY)
 #pragma omp parallel for
     for (int n = 0; n < info->npall; n++) {
       colloid_t * pc = info->pointers->colloid[n];

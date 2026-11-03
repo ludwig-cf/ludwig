@@ -79,12 +79,6 @@ int build_update_map(colloids_info_t * cinfo, map_t * map) {
   colloids_info_list_all_build(cinfo);
   build_update_map_additional_driver(cinfo, map);
 
-  /* __NVCC__ temporary, we need to return the map status etc to host */
-  /* ... before the link construction on the host can occur */
-
-  map_memcpy(map, tdpMemcpyDeviceToHost);
-  colloids_memcpy(cinfo, tdpMemcpyDeviceToHost);
-
   return 0;
 }
 
@@ -457,6 +451,10 @@ int build_remove_replace(fe_t * fe, colloids_info_t * cinfo, lb_t * lb,
 
   /* Charge is dealt with here. */
 
+  /* Required until there is a device implementation for charge */
+  map_memcpy(map, tdpMemcpyDeviceToHost);
+  colloids_memcpy(cinfo, tdpMemcpyDeviceToHost);
+
   cs_nlocal(lb->cs, nlocal);
   cs_nhalo(lb->cs, &nhalo);
 
@@ -475,14 +473,14 @@ int build_remove_replace(fe_t * fe, colloids_info_t * cinfo, lb_t * lb,
 	if (pcold == NULL && pcnew != NULL) {
 
 	  if (!is_halo) {
-	    if (psi)  psi_colloid_remove_charge(psi, pcnew, index);
+	    psi_colloid_remove_charge(psi, pcnew, index);
 	  }
 	}
 
 	if (pcold != NULL && pcnew == NULL) {
 
 	  if (!is_halo) {
-	    if (psi) psi_colloid_replace_charge(psi, cinfo, pcold, index);
+	    psi_colloid_replace_charge(psi, cinfo, pcold, index);
 	  }
 	}
 
@@ -896,7 +894,7 @@ int build_count_faces_local(colloid_t * colloid, const lb_model_t * model,
 
   *sa = 0.0;
   *saf = 0.0;
-
+#ifdef USE_LINKED_LIST
   for (pl = colloid->lnk; pl != NULL; pl = pl->next) {
     if (pl->status == LINK_UNUSED) continue;
     p = pl->p;
@@ -908,7 +906,17 @@ int build_count_faces_local(colloid_t * colloid, const lb_model_t * model,
       if (pl->status == LINK_FLUID) *saf += 1.0;
     }
   }
-
+#else
+  for (int nl = 0; nl < colloid->links->active_links; ++nl) {
+    if (colloid->links->status[nl] == LINK_UNUSED) continue;
+    p = colloid->links->p[nl];
+    p = util_square_modulus_int8(model->cv[p]);
+    if (p == 1) {
+      *sa += 1.0;
+      if (colloid->links->status[nl] == LINK_FLUID) *saf += 1.0;
+    }
+  }
+#endif
   return 0;
 }
 
@@ -984,7 +992,7 @@ int build_conservation_psi(colloids_info_t * cinfo, psi_t * psi,
     assert(colloid->s.saf > 0.0);
     colloid->dq[0] *= saf_local/colloid->s.saf;
     colloid->dq[1] *= saf_local/colloid->s.saf;
-
+#ifdef USE_LINKED_LIST
     for (pl = colloid->lnk; pl != NULL; pl = pl->next) {
 
       if (pl->status != LINK_FLUID) continue;
@@ -1009,7 +1017,32 @@ int build_conservation_psi(colloids_info_t * cinfo, psi_t * psi,
       }
     }
   }
+#else
+  /* Array */
+  for (int nl = 0; nl < colloid->links->active_links; ++nl) {
 
+      if (colloid->links->status[nl] != LINK_FLUID) continue;
+
+      int pl= colloid->links->p[nl];
+      int pp = util_square_modulus_int8(model->cv[pl]);
+
+      if (pp == 1) {
+	int index = colloid->links->i[nl];
+	/* For charge, do not drop densities below zero. */
+	psi_rho(psi, index, 0, &value);
+	if ((value + dq0) >= 0.0) {
+	  colloid->dq[0] -= dq0;
+	  psi_rho_set(psi, index, 0, value + dq0);
+	}
+	psi_rho(psi, index, 1, &value);
+	if ((value + dq1) >=  0.0) {
+	  colloid->dq[1] -= dq1;
+	  psi_rho_set(psi, index, 1, value + dq1);
+	}
+      }
+    }
+  }
+#endif
   /* Now, repeat the sum of dq so that all copies have a copy
    * of any shortfall in what we have tried to put back.
    * Record this in the state so it is always retained. */

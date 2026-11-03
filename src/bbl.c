@@ -270,6 +270,11 @@ int bounce_back_on_links(bbl_t * bbl, lb_t * lb, wall_t * wall,
   assert(lb);
   assert(cinfo);
 
+  if (1) {
+    bounce_back_on_links_array(bbl, lb, wall, cinfo);
+    return 0;
+  }
+
   cs_nlocal(bbl->cs, nlocal);
 
   colloids_info_ntotal(cinfo, &ntotal);
@@ -2479,6 +2484,7 @@ int bounce_back_on_links_array(bbl_t * bbl, lb_t * lb, wall_t * wall,
 
   /* Required to allow regression tests to pass ... */
   /* Does not affect the dynamics. */
+
   if (bbl->ndist == 2) {
     bbl_order_parameter_deficit_array(info, &bbl->deltag);
   }
@@ -2979,10 +2985,13 @@ __host__ __device__ void bbl_pass2_array(lb_t * lb, double rho0, colloid_t * pc)
 __global__ void bbl_pass2_array_kernel(lb_t * lb, double rho0,
 				       colloids_info_t * info) {
 
-  colloid_t * pc = info->pointers->colloid[blockIdx.x];
+  int nc = blockIdx.x;
+  colloid_t * pc = info->pointers->colloid[nc];
+
   if (pc->s.bc == COLLOID_BC_BBL) {
     bbl_pass2_array(lb, rho0, pc);
   }
+
   return;
 }
 
