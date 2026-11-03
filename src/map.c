@@ -370,15 +370,15 @@ int map_pm_set(map_t * obj, int flag) {
  *****************************************************************************/
 
 __global__ void map_volume_local_kernel(kernel_3d_t k3d, map_t * map,
-					int status_wanted, int * volume) {
+                                        int status_wanted, int * volume) {
   assert(map);
   assert(volume);
 
-  int kindex = 0;
   __shared__ int vsum[TARGET_MAX_THREADS_PER_BLOCK];
 
-  int tid   = threadIdx.x;
-  vsum[tid] = 0;
+  int kindex = 0;
+  int tid    = threadIdx.x;
+  vsum[tid]  = 0;
 
   for_simt_parallel(kindex, k3d.kiterations, 1) {
 
@@ -408,11 +408,11 @@ __global__ void map_volume_local_kernel(kernel_3d_t k3d, map_t * map,
 
 /*****************************************************************************
  *
- *  map_volume_local_driver
+ *  map_volume_local
  *
  *****************************************************************************/
 
-int map_volume_local_driver(map_t * map, int status, int * volume_local) {
+int map_volume_local(map_t * map, int status, int * volume_local) {
 
   int * volume = NULL;
 
@@ -420,21 +420,21 @@ int map_volume_local_driver(map_t * map, int status, int * volume_local) {
   tdpAssert(tdpMemset(volume, 0, sizeof(int)));
 
   {
-    dim3 blocks = {};
-    dim3 threads = {};
-    int * nlocal = map->cs->param->nlocal;
-    cs_limits_t lim = {1, nlocal[X], 1, nlocal[Y], 1, nlocal[Z]};
-    kernel_3d_t k3d = kernel_3d(map->cs, lim);
+    dim3        blocks  = {};
+    dim3        threads = {};
+    int *       nlocal  = map->cs->param->nlocal;
+    cs_limits_t lim     = {1, nlocal[X], 1, nlocal[Y], 1, nlocal[Z]};
+    kernel_3d_t k3d     = kernel_3d(map->cs, lim);
 
     kernel_3d_launch_param(k3d.kiterations, &blocks, &threads);
 
-    tdpLaunchKernel(map_volume_local_kernel, blocks, threads, 0, 0,
-		    k3d, map->target, status, volume);
+    tdpLaunchKernel(map_volume_local_kernel, blocks, threads, 0, 0, k3d,
+                    map->target, status, volume);
 
     tdpAssert(tdpPeekAtLastError());
     tdpAssert(tdpStreamSynchronize(0));
-    tdpAssert(tdpMemcpy(volume_local, volume, sizeof(int),
-			tdpMemcpyDeviceToHost));
+    tdpAssert(
+        tdpMemcpy(volume_local, volume, sizeof(int), tdpMemcpyDeviceToHost));
   }
 
   tdpAssert(tdpFree(volume));
@@ -456,7 +456,7 @@ int map_volume_allreduce(map_t * obj, int status, int * volume) {
   assert(obj);
   assert(volume);
 
-  map_volume_local_driver(obj, status, &vol_local);
+  map_volume_local(obj, status, &vol_local);
 
   cs_cart_comm(obj->cs, &comm);
   MPI_Allreduce(&vol_local, volume, 1, MPI_INT, MPI_SUM, comm);
