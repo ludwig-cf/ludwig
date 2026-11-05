@@ -1353,10 +1353,14 @@ __global__ void build_additional_kernel(colloids_info_t * info, map_t * map) {
 
   assert(info);
 
-  colloid_t * pc = info->pointers->colloid[blockIdx.x];
+  int nc = blockIdx.x;
 
-  if (pc->s.bc == COLLOID_BC_BBL) {
-    build_additional_version(info, map, pc);
+  if (nc < info->npall) {
+    colloid_t * pc = info->pointers->colloid[nc];
+
+    if (pc->s.bc == COLLOID_BC_BBL) {
+      build_additional_version(info, map, pc);
+    }
   }
 
   return;

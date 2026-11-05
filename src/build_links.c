@@ -1034,9 +1034,12 @@ __global__ void build_links_array_kernel(colloids_info_t *  info,
                                          wall_t * wall) {
   assert(info);
 
-  colloid_t * pc = info->pointers->colloid[blockIdx.x];
+  int nc = blockIdx.x;
 
-  build_links_array_update_links_colloid(info, model, map, wall, pc);
+  if (nc < info->npall) {
+    colloid_t * pc = info->pointers->colloid[nc];
+    build_links_array_update_links_colloid(info, model, map, wall, pc);
+  }
 
   return;
 }
