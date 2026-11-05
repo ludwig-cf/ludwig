@@ -2812,9 +2812,13 @@ __host__ __device__ void bbl_pass1_array(lb_t * lb, double rho0, colloid_t * pc)
 __global__ void bbl_pass1_array_kernel(lb_t * lb, double rho0,
 				       colloids_info_t * info) {
 
-  colloid_t * pc = info->pointers->colloid[blockIdx.x];
-  if (pc->s.bc == COLLOID_BC_BBL) {
-    bbl_pass1_array(lb, rho0, pc);
+  int nc = blockIdx.x*blockDim.x + threadIdx.x;
+
+  if (nc < info->npall) {
+    colloid_t * pc = info->pointers->colloid[nc];
+    if (pc->s.bc == COLLOID_BC_BBL) {
+      bbl_pass1_array(lb, rho0, pc);
+    }
   }
 
   return;
@@ -2844,10 +2848,10 @@ int bbl_pass1_array_driver(lb_t * lb, colloids_info_t * info) {
   }
   else {
     /* One colloid per block, all single thread */
-    dim3 blocks  = {1, 1, 1};
-    dim3 threads = {1, 1, 1};
+    dim3 blocks  = { 1, 1, 1};
+    dim3 threads = {64, 1, 1};
 
-    blocks.x = info->npall;
+    blocks.x = 1 + (info->npall - 1)/64;
 
     tdpLaunchKernel(bbl_pass1_array_kernel, blocks, threads, 0, 0,
 		    lb->target, info->rho0, info->target);
@@ -2865,10 +2869,6 @@ int bbl_pass1_array_driver(lb_t * lb, colloids_info_t * info) {
  *
  *  Implement bounce-back on links having updated the colloid
  *  velocities via the implicit method.
- *
- *  The surface stress is also accumulated here (and it really must
- *  done between the colloid velcoity update and the actual bbl).
- *  There's a separate routine to access it below.
  *
  *****************************************************************************/
 
@@ -2985,11 +2985,14 @@ __host__ __device__ void bbl_pass2_array(lb_t * lb, double rho0, colloid_t * pc)
 __global__ void bbl_pass2_array_kernel(lb_t * lb, double rho0,
 				       colloids_info_t * info) {
 
-  int nc = blockIdx.x;
-  colloid_t * pc = info->pointers->colloid[nc];
+  int nc = blockIdx.x*blockDim.x + threadIdx.x;
 
-  if (pc->s.bc == COLLOID_BC_BBL) {
-    bbl_pass2_array(lb, rho0, pc);
+  if (nc < info->npall) {
+    colloid_t * pc = info->pointers->colloid[nc];
+
+    if (pc->s.bc == COLLOID_BC_BBL) {
+      bbl_pass2_array(lb, rho0, pc);
+    }
   }
 
   return;
@@ -3018,11 +3021,11 @@ int bbl_pass2_array_driver(lb_t * lb, colloids_info_t * info) {
     }
   }
   else {
-    /* One colloid per block, all single thread */
-    dim3 blocks  = {1, 1, 1};
-    dim3 threads = {1, 1, 1};
+    /* One colloid per thread, single thread */
+    dim3 blocks  = { 1, 1, 1};
+    dim3 threads = {64, 1, 1};
 
-    blocks.x = info->npall;
+    blocks.x = 1 + (info->npall - 1)/64;
 
     tdpLaunchKernel(bbl_pass2_array_kernel, blocks, threads, 0, 0,
 		    lb->target, info->rho0, info->target);
