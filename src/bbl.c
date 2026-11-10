@@ -55,6 +55,8 @@ struct bbl_s {
   double stress[3][3];  /* Surface stress diagnostic */
 };
 
+static int bbl_solve_velocity(const colloid_t * pc, double a[6][6],
+                              double xb[6]);
 static int bbl_pass1(bbl_t * bbl, lb_t * lb, colloids_info_t * cinfo);
 static int bbl_pass2(bbl_t * bbl, lb_t * lb, colloids_info_t * cinfo);
 static int bbl_active_conservation(bbl_t * bbl, lb_t * lb,
@@ -1089,7 +1091,7 @@ int bbl_update_colloid_disk(bbl_t * bbl, colloid_t * pc,
     xb[3+ia] += pc->tc0[ia];
   }
 
-  iret = bbl_6x6_gaussian_elimination(a, xb);
+  iret = bbl_solve_velocity(pc, a, xb);
 
   return iret;
 }
@@ -1186,7 +1188,7 @@ int bbl_update_colloid_default(bbl_t * bbl, wall_t * wall, colloid_t * pc,
     xb[3+ia] += pc->tc0[ia];
   }
 
-  iret = bbl_6x6_gaussian_elimination(a, xb);
+  iret = bbl_solve_velocity(pc, a, xb);
 
   return iret;
 }
@@ -1214,7 +1216,7 @@ int bbl_update_ellipsoid(bbl_t * bbl, wall_t * wall, colloid_t * pc,
   /* Set up the matrix problem and solve it here. */
 
   bbl_ladd_ellipsoid(bbl, pc, wall, rho0, a, xb);
-  iret = bbl_6x6_gaussian_elimination(a, xb);
+  iret = bbl_solve_velocity(pc, a, xb);
 
   /* And then finding the new quaternions */
 
@@ -1417,6 +1419,41 @@ void bbl_ladd_ellipsoid(bbl_t * bbl, colloid_t * pc, wall_t * wall,
   }
 
   return;
+}
+
+/*****************************************************************************
+ *
+ *  bbl_solve_velocity
+ *
+ *  Prescribed velocities must also be used in the implicit solve, so that
+ *  the solution agrees with the subsequent bounce-back and position and
+ *  orientation updates. Move their contributions to the right-hand side
+ *  and replace their equations by identity rows.
+ *
+ *****************************************************************************/
+
+static int bbl_solve_velocity(const colloid_t * pc, double a[6][6],
+                              double xb[6]) {
+
+  int fixed[6] = {pc->s.isfixedvxyz[X], pc->s.isfixedvxyz[Y],
+                  pc->s.isfixedvxyz[Z], pc->s.isfixedw,
+                  pc->s.isfixedw, pc->s.isfixedw};
+  double velocity[6] = {pc->s.v[X], pc->s.v[Y], pc->s.v[Z],
+                        pc->s.w[X], pc->s.w[Y], pc->s.w[Z]};
+
+  for (int j = 0; j < 6; j++) {
+    if (fixed[j]) {
+      for (int i = 0; i < 6; i++) {
+        xb[i] -= a[i][j]*velocity[j];
+        a[i][j] = 0.0;
+      }
+      for (int i = 0; i < 6; i++) a[j][i] = 0.0;
+      a[j][j] = 1.0;
+      xb[j] = velocity[j];
+    }
+  }
+
+  return bbl_6x6_gaussian_elimination(a, xb);
 }
 
 /*****************************************************************************
