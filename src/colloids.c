@@ -1645,7 +1645,7 @@ int colloids_gravity_set(colloids_info_t * cinfo, const double g[3]) {
   return 0;
 }
 
-/*****************************************************************************
+/****************************************************************************
  *
  *  colloids_info_pointer_array_update
  *

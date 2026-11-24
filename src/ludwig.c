@@ -286,6 +286,7 @@ static int ludwig_rt(ludwig_t * ludwig) {
                               ludwig->lb);
     /* For initial conditions we want the map back on the host */
     map_memcpy(ludwig->map, tdpMemcpyDeviceToHost);
+    colloids_memcpy(ludwig->collinfo, tdpMemcpyDeviceToHost);
   }
 
   bbl_create(pe, ludwig->cs, ludwig->lb, &ludwig->bbl);
@@ -744,7 +745,7 @@ void ludwig_run(const char * inputfile) {
 	  if (ludwig->pth->method == FE_FORCE_METHOD_STRESS_DIVERGENCE) {
 	  pth_force_colloid(ludwig->pth, ludwig->fe, ludwig->collinfo,
 			    ludwig->hydro, ludwig->map, ludwig->wall,
-			    &ludwig->lb->model);
+			    ludwig->lb);
 	  }
 	  else {
 	    /* Allow case with colloids using PHI_GRADMU_CORRECTION */
@@ -2388,6 +2389,7 @@ int ludwig_report_statistics(ludwig_t * ludwig, int itimestep) {
     }
   }
 
+  map_memcpy(ludwig->map, tdpMemcpyDeviceToHost);
   stats_distribution_print(ludwig->lb, ludwig->map);
 
   if (ludwig->phi) {

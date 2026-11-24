@@ -2,14 +2,12 @@
  *
  *  phi_force_colloid.h
  *
- *  $Id: phi_force_colloid.h,v 1.2 2010-10-15 12:40:03 kevin Exp $
- *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *
- *  (c) 2009-2016 The University of Edinburgh
+ *  (c) 2009-2026 The University of Edinburgh
  *
  *****************************************************************************/
 
@@ -23,11 +21,10 @@
 #include "map.h"
 #include "wall.h"
 
-__host__ int pth_force_fluid_driver(pth_t * pth, hydro_t * hydro);
-__host__ int pth_force_fluid_wall_driver(pth_t * pth, hydro_t * hydro,
-					 map_t * map, wall_t * wall);
-__host__ int pth_force_colloid(pth_t * pth, fe_t * fe, colloids_info_t * cinfo,
-			       hydro_t * hydro, map_t * map, wall_t * wall,
-			       const lb_model_t * model);
-
+int pth_force_fluid_driver(pth_t * pth, hydro_t * hydro);
+int pth_force_fluid_wall_driver(pth_t * pth, hydro_t * hydro, map_t * map,
+                                wall_t * wall);
+int pth_force_colloid(pth_t * pth, fe_t * fe, colloids_info_t * cinfo,
+                      hydro_t * hydro, map_t * map, wall_t * wall,
+                      const lb_t * lb);
 #endif

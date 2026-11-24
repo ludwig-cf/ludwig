@@ -62,10 +62,13 @@
 #include "phi_force_stress.h"
 #include "phi_force_colloid.h"
 #include "timer.h"
+#include "util_math_inline.h"
 
 int pth_force_driver(pth_t * pth, colloids_info_t * cinfo,
 		     hydro_t * hydro, map_t * map, wall_t * wall,
-		     const lb_model_t * model);
+		     const lb_t * lb);
+int phi_force_colloid_stress_driver(const pth_t * pth, colloids_info_t * info,
+				    const lb_t * lb);
 
 __global__ void pth_force_map_kernel(kernel_3d_t k3d, pth_t * pth,
 				     hydro_t * hydro, map_t * map);
@@ -81,13 +84,13 @@ __global__ void pth_force_fluid_kernel_v(kernel_3d_v_t k3v, pth_t * pth,
  *  pth_force_colloid
  *
  *  If no colloids, and no hydrodynamics, no action is required.
+ *  The LB model is required (only the model, but need device pointer).
  *
  *****************************************************************************/
 
 __host__ int pth_force_colloid(pth_t * pth, fe_t * fe, colloids_info_t * cinfo,
 			       hydro_t * hydro, map_t * map, wall_t * wall,
-			       const lb_model_t * model) {
-
+			       const lb_t * lb) {
   int ncolloid;
 
   assert(pth);
@@ -98,7 +101,7 @@ __host__ int pth_force_colloid(pth_t * pth, fe_t * fe, colloids_info_t * cinfo,
 
   if (pth->method == FE_FORCE_METHOD_STRESS_DIVERGENCE) {
     pth_stress_compute(pth, fe);
-    pth_force_driver(pth, cinfo, hydro, map, wall, model);
+    pth_force_driver(pth, cinfo, hydro, map, wall, lb);
   }
 
   return 0;
@@ -113,14 +116,13 @@ __host__ int pth_force_colloid(pth_t * pth, fe_t * fe, colloids_info_t * cinfo,
  *  Relaxational dynamics (hydro == NULL) are allowed.
  *
  *  TODO: if no wall, wall kernel not required!
- *  TODO: Fix up a kernel for the colloids.
  *
  *****************************************************************************/
 
 __host__ int pth_force_driver(pth_t * pth, colloids_info_t * cinfo,
 			      hydro_t * hydro, map_t * map, wall_t * wall,
-			      const lb_model_t * model) {
-  int nlocal[3] = {0};
+			      const lb_t * lb) {
+  int nlocal[3] = {};
   wall_t * wallt = NULL;
 
   /* Net momentum balance for wall */
@@ -133,6 +135,8 @@ __host__ int pth_force_driver(pth_t * pth, colloids_info_t * cinfo,
 
   /* Relaxational dynamics only are allowed: hydro = NULL */
   if (hydro == NULL) return 0;
+
+  TIMER_start(TIMER_PHI_FORCE_CALC);
 
   cs_nlocal(pth->cs, nlocal);
   wall_target(wall, &wallt);
@@ -148,14 +152,13 @@ __host__ int pth_force_driver(pth_t * pth, colloids_info_t * cinfo,
     tdpAssert( tdpMalloc((void **) &fwd, 3*sizeof(double)) );
     tdpAssert( tdpMemcpy(fwd, fw, 3*sizeof(double), tdpMemcpyHostToDevice) );
 
-    TIMER_start(TIMER_PHI_FORCE_CALC);
-
     tdpLaunchKernel(pth_force_map_kernel, nblk, ntpb, 0, 0,
 		    k3d, pth->target, hydro->target, map->target);
 
     tdpLaunchKernel(pth_force_wall_kernel, nblk, ntpb, 0, 0,
 		    k3d, pth->target, map->target, wallt, fwd);
-    tdpAssert( tdpDeviceSynchronize() );
+
+    tdpAssert( tdpStreamSynchronize(0) );
   }
 
   tdpAssert( tdpMemcpy(fw, fwd, 3*sizeof(double), tdpMemcpyDeviceToHost) );
@@ -163,50 +166,9 @@ __host__ int pth_force_driver(pth_t * pth, colloids_info_t * cinfo,
 
   tdpAssert( tdpFree(fwd) );
 
-  /* A separate kernel is required to allow reduction of the
-   * force on each particle. A truly parallel version is
-   pending... */
+  /* Accumulate stress per particle */
 
-  /* COLLOID "KERNEL" */
-
-  /* Get stress back! */
-  pth_memcpy(pth, tdpMemcpyDeviceToHost);
-
-
-  colloid_t * pc;
-  colloid_link_t * p_link;
-
-  /* All colloids, including halo */
-  colloids_info_all_head(cinfo, &pc);
-
-  for ( ; pc; pc = pc->nextall) {
-
-    p_link = pc->lnk;
-
-    for (; p_link; p_link = p_link->next) {
-
-      if (p_link->status == LINK_FLUID) {
-	int id, p;
-	int cmod;
-
-	p = p_link->p;
-	cmod = model->cv[p][X]*model->cv[p][X]
-	     + model->cv[p][Y]*model->cv[p][Y]
-	     + model->cv[p][Z]*model->cv[p][Z];
-
-	if (cmod != 1) continue;
-	id = -1;
-	if (model->cv[p][X]) id = X;
-	if (model->cv[p][Y]) id = Y;
-	if (model->cv[p][Z]) id = Z;
-
-	for (int ia = 0; ia < 3; ia++) {
-	  pc->force[ia] += 1.0*model->cv[p][id]
-	    *pth->str[addr_rank2(pth->nsites, 3, 3, p_link->i, ia, id)];
-	}
-      }
-    }
-  }
+  phi_force_colloid_stress_driver(pth, cinfo, lb);
 
   TIMER_stop(TIMER_PHI_FORCE_CALC);
 
@@ -768,4 +730,114 @@ __global__ void pth_force_wall_kernel(kernel_3d_t k3d, pth_t * pth,
   }
 
   return;
+}
+
+/*****************************************************************************
+ *
+ *  phi_force_colloid_stress_accumulate
+ *
+ *  Accumulate contributions to the force on a single colloid from the
+ *  normal stress at (unit area) faces. This means links with c^2 = 1.
+ *
+ *  The stress at the relevant fluid site is used.
+ *
+ *****************************************************************************/
+
+__host__ __device__ void
+phi_force_colloid_stress_accumulate(const pth_t *      pth,
+                                    const lb_model_t * model, colloid_t * pc) {
+
+  double f[3] = {};
+
+  for (int nl = 0; nl < pc->links->active_links; ++nl) {
+
+    if (pc->links->status[nl] == LINK_FLUID) {
+
+      int i  = pc->links->i[nl];
+      int p  = pc->links->p[nl];
+      int pp = util_square_modulus_int8(model->cv[p]);
+
+      if (pp == 1) {
+        int ib = -1;
+        if (model->cv[p][X]) {
+          ib = X;
+        }
+        if (model->cv[p][Y]) {
+          ib = Y;
+        }
+        if (model->cv[p][Z]) {
+          ib = Z;
+        }
+
+        for (int ia = 0; ia < 3; ia++) {
+          double s = pth->str[addr_rank2(pth->nsites, 3, 3, i, ia, ib)];
+          f[ia] += s * model->cv[p][ib];
+        }
+      }
+    }
+    /* Next link */
+  }
+
+  /* This is accumulated ... */
+  pc->force[X] += f[X];
+  pc->force[Y] += f[Y];
+  pc->force[Z] += f[Z];
+
+  return;
+}
+
+/*****************************************************************************
+ *
+ *  phi_force_colloid_stress_kernel
+ *
+ *  Colloid per block, single thread.
+ *
+ *****************************************************************************/
+
+__global__ void phi_force_colloid_stress_kernel(const pth_t *      pth,
+                                                const lb_model_t * model,
+                                                colloids_info_t *  info) {
+  int         nc = blockIdx.x;
+  colloid_t * pc = info->pointers->colloid[nc];
+
+  phi_force_colloid_stress_accumulate(pth, model, pc);
+
+  return;
+}
+
+/*****************************************************************************
+ *
+ *  phi_force_colloid_stress_driver
+ *
+ *****************************************************************************/
+
+int phi_force_colloid_stress_driver(const pth_t * pth, colloids_info_t * info,
+                                    const lb_t * lb) {
+  int ndevice = 0;
+
+  tdpAssert(tdpGetDeviceCount(&ndevice));
+
+  if (ndevice == 0) {
+/* Host */
+#pragma omp parallel for
+    for (int n = 0; n < info->npall; ++n) {
+      colloid_t * pc = info->pointers->colloid[n];
+      phi_force_colloid_stress_accumulate(pth, &lb->model, pc);
+    }
+  }
+  else {
+    /* Kernel */
+    dim3 blocks  = {1, 1, 1};
+    dim3 threads = {1, 1, 1};
+
+    blocks.x = info->npall;
+
+    tdpLaunchKernel(phi_force_colloid_stress_kernel, blocks, threads, 0, 0,
+                    pth->target, &lb->target->model, info->target);
+
+    tdpAssert(tdpPeekAtLastError());
+    tdpAssert(tdpStreamSynchronize(0));
+  }
+
+  return 0;
 }

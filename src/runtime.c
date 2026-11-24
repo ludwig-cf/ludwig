@@ -31,7 +31,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2010-2025 The University of Edinburgh
+ *  (c) 2010-2026 The University of Edinburgh
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *
@@ -666,7 +666,7 @@ static int rt_line_count_tokens(const char * line) {
   assert(line);
 
   {
-    char * copy  = strndup(line, BUFSIZ);
+    char * copy  = strndup(line, NKEY_LENGTH);
     char * token = strtok(copy, sep_);
 
     while (token) {
@@ -700,7 +700,7 @@ static int rt_key_value(const char * line, char ** key, char ** val) {
     ifail = -1;
   }
   else {
-    char * copy = strndup(line, BUFSIZ);
+    char * copy = strndup(line, NKEY_LENGTH);
     *key = strdup(strtok(copy, sep_));
     *val = strdup(strtok(NULL, sep_));
     free(copy);

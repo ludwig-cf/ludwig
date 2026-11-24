@@ -74,7 +74,7 @@ int test_colloid_io_ansi_initialise(pe_t * pe) {
     int               ncell[3] = {8, 8, 8};
     colloid_options_t options  = colloid_options_ncell(ncell);
     colloids_info_t * info     = NULL;
-    colloid_io_ansi_t io       = {0};
+    colloid_io_ansi_t io       = {};
 
     colloids_info_create(pe, cs, &options, &info);
     ifail = colloid_io_ansi_initialise(info, &io);
@@ -151,7 +151,7 @@ int test_colloid_io_ansi_read(pe_t * pe) {
   {
     int                 ncell[3] = {3, 3, 3};
     colloid_options_t   opts     = colloid_options_ncell(ncell);
-    colloids_info_t     info     = {0};
+    colloids_info_t     info     = {};
     colloid_io_ansi_t * io       = NULL;
 
     colloids_info_initialise(pe, cs, &opts, &info);
@@ -173,7 +173,7 @@ int test_colloid_io_ansi_read(pe_t * pe) {
   {
     int               ncell[3] = {3, 3, 3};
     colloid_options_t opts     = colloid_options_ncell(ncell);
-    colloids_info_t   info     = {0};
+    colloids_info_t   info     = {};
 
     /* Switch input record format to non-default binary ... */
     opts.input.iorformat = IO_RECORD_BINARY;
@@ -219,7 +219,7 @@ int test_colloid_io_ansi_write(pe_t * pe) {
   {
     int                 ncell[3] = {3, 3, 3};
     colloid_options_t   opts     = colloid_options_ncell(ncell);
-    colloids_info_t     info     = {0};
+    colloids_info_t     info     = {};
     colloid_io_ansi_t * io       = NULL;
 
     colloids_info_initialise(pe, cs, &opts, &info);
@@ -239,7 +239,7 @@ int test_colloid_io_ansi_write(pe_t * pe) {
   {
     int               ncell[3] = {3, 3, 3};
     colloid_options_t opts     = colloid_options_ncell(ncell);
-    colloids_info_t   info     = {0};
+    colloids_info_t   info     = {};
 
     opts.output.iorformat = IO_RECORD_BINARY;
     ifail                 = colloids_info_initialise(pe, cs, &opts, &info);
