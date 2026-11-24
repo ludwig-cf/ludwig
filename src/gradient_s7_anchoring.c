@@ -756,6 +756,14 @@ __host__ __device__ void grad_s7_boundary_wall(fe_lc_param_t * param,
   {
     lc_anchoring_param_t * anchor = &param->wall;
 
+    if (anchor->type == LC_ANCHORING_NONE) {
+      for (int ia = 0; ia < 3; ++ia) {
+	for (int ib = 0; ib < 3; ++ib) {
+	  c[ia][ib] = 0.0;
+	}
+      }
+    }
+
     if (anchor->type == LC_ANCHORING_FIXED) {
       lc_anchoring_fixed_ct(anchor, qs, nhat, kappa1, q0, amp, c);
     }
