@@ -612,32 +612,6 @@ __host__ int colloids_info_nlocal(colloids_info_t * cinfo, int * nlocal) {
 
 /*****************************************************************************
  *
- *  colloids_info_n_all
- *
- *  Return the number of colloids in the all list. As the colloids move about,
- *  this must be recomputed each time.
- *
- ****************************************************************************/
-
-__host__ int colloids_info_n_all(colloids_info_t * cinfo, int * n_all) {
-
-  colloid_t * pc = NULL;
-
-  assert(cinfo);
-  assert(n_all);
-
-  *n_all = 0;
-
-  colloids_info_all_head(cinfo, &pc);
-  for (; pc; pc = pc->nextall) {
-    (*n_all)++;
-  }
-
-  return 0;
-}
-
-/*****************************************************************************
- *
  *  colloids_info_ntotal_set
  *
  *  Set the global number of colloids from the current list.

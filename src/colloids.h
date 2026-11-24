@@ -154,7 +154,6 @@ __host__ int colloids_info_ncell(colloids_info_t * info, int ncell[3]);
 __host__ int colloids_info_nhalo(colloids_info_t * info, int * nhalo);
 __host__ int colloids_info_ntotal(colloids_info_t * info, int * ntotal);
 __host__ int colloids_info_nlocal(colloids_info_t * cinfo, int * nlocal);
-__host__ int colloids_info_n_all(colloids_info_t * cinfo, int * n_all);
 __host__ int colloids_info_ntotal_set(colloids_info_t * cinfo);
 __host__ int colloids_info_cell_index(colloids_info_t * cinfo, int ic, int jc, int kc);
 __host__ int colloids_info_insert_colloid(colloids_info_t * cinfo, colloid_t * coll);

@@ -33,7 +33,6 @@
 #include "bbl.h"
 #include "colloid.h"
 #include "colloids.h"
-#include "timer.h"
 
 /* Ellipsoid update mechanism flag */
 /* There's no particular reason not to use the quaternion method, but
@@ -241,6 +240,8 @@ int bounce_back_on_links(bbl_t * bbl, lb_t * lb, wall_t * wall,
   assert(cinfo);
 
   if (1) {
+    /* We are only using the array version. */
+    /* The original link version is currently retined for reference. */
     bounce_back_on_links_array(bbl, lb, wall, cinfo);
     return 0;
   }
