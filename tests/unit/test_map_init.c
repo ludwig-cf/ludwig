@@ -7,7 +7,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Comuting Centre
  *
- *  (c) 2021-2024 The University of Edinburgh
+ *  (c) 2021-2026 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -88,8 +88,8 @@ int test_map_init_status_wall(pe_t * pe) {
 
 int test_map_init_status_wall_x(pe_t * pe, cs_t * cs) {
 
-  int ntotal[3]  = {0};
-  int noffset[3] = {0};
+  int ntotal[3]  = {};
+  int noffset[3] = {};
 
   assert(pe);
   assert(cs);
@@ -115,6 +115,7 @@ int test_map_init_status_wall_x(pe_t * pe, cs_t * cs) {
     {
       /* Global volume boundary ... */
       int vol = 0;
+      map_memcpy(map, tdpMemcpyHostToDevice);
       map_volume_allreduce(map, MAP_BOUNDARY, &vol);
       assert(vol == 2*ntotal[Y]*ntotal[Z]);
     }
@@ -148,9 +149,9 @@ int test_map_init_status_wall_x(pe_t * pe, cs_t * cs) {
 
 int test_map_init_status_wall_y(pe_t * pe, cs_t * cs) {
 
-  int ntotal[3] = {0};
-  int nlocal[3] = {0};
-  int noffset[3] = {0};
+  int ntotal[3] = {};
+  int nlocal[3] = {};
+  int noffset[3] = {};
 
   assert(pe);
   assert(cs);
@@ -177,6 +178,7 @@ int test_map_init_status_wall_y(pe_t * pe, cs_t * cs) {
     {
       /* Global volume boundary ... */
       int vol = 0;
+      map_memcpy(map, tdpMemcpyHostToDevice);
       map_volume_allreduce(map, MAP_BOUNDARY, &vol);
       assert(vol == ntotal[X]*2*ntotal[Z]);
     }
@@ -195,9 +197,9 @@ int test_map_init_status_wall_y(pe_t * pe, cs_t * cs) {
 
 int test_map_init_status_wall_z(pe_t * pe, cs_t * cs) {
 
-  int ntotal[3] = {0};
-  int nlocal[3] = {0};
-  int noffset[3] = {0};
+  int ntotal[3] = {};
+  int nlocal[3] = {};
+  int noffset[3] = {};
 
   assert(pe);
   assert(cs);
@@ -217,6 +219,7 @@ int test_map_init_status_wall_z(pe_t * pe, cs_t * cs) {
       /* A small sample of boundary points ... */
       int status = MAP_STATUS_MAX;
       int index = cs_index(cs, 2, 2, 1);
+      map_memcpy(map, tdpMemcpyHostToDevice);
       map_status(map, index, &status);
       if (noffset[Z] == 0) assert(status == MAP_BOUNDARY);
     }
@@ -272,8 +275,8 @@ int test_map_init_status_circle_odd(pe_t * pe) {
   {
     /* All the edges at least should be solid (no 'leaks') */
 
-    int noffset[3] = {0};
-    int nlocal[3] = {0};
+    int noffset[3] = {};
+    int nlocal[3] = {};
     int status1 = -1;
     int status2 = -1;
 
@@ -306,6 +309,7 @@ int test_map_init_status_circle_odd(pe_t * pe) {
     /* Global volumes ... */
     int nsolid = -1;
     int nfluid = -1;
+    map_memcpy(map, tdpMemcpyHostToDevice);
     map_volume_allreduce(map, MAP_BOUNDARY, &nsolid);
     map_volume_allreduce(map, MAP_FLUID,    &nfluid);
 
@@ -345,6 +349,7 @@ int test_map_init_status_circle_even(pe_t * pe) {
     /* Just check the global volumes ... */
     int nsolid = -1;
     int nfluid = -1;
+    map_memcpy(map, tdpMemcpyHostToDevice);
     map_volume_allreduce(map, MAP_BOUNDARY, &nsolid);
     map_volume_allreduce(map, MAP_FLUID,    &nfluid);
 
@@ -400,6 +405,7 @@ int test_map_init_status_body_centred_cubic(pe_t * pe) {
     double sf = 0.0;
     PI_DOUBLE(pi);
 
+    map_memcpy(map, tdpMemcpyHostToDevice);
     map_volume_allreduce(map, MAP_BOUNDARY, &nsolid);
     sf = 1.0*nsolid/(ntotal[X]*ntotal[Y]*ntotal[Z]);
 
@@ -450,6 +456,7 @@ int test_map_init_status_face_centred_cubic(pe_t * pe) {
     double sf = 0.0;
     PI_DOUBLE(pi);
 
+    map_memcpy(map, tdpMemcpyHostToDevice);
     map_volume_allreduce(map, MAP_BOUNDARY, &nsolid);
     sf = 1.0*nsolid/(ntotal[X]*ntotal[Y]*ntotal[Z]);
 
@@ -500,6 +507,7 @@ int test_map_init_status_simple_cubic(pe_t * pe) {
     double sf = 0.0;
     PI_DOUBLE(pi);
 
+    map_memcpy(map, tdpMemcpyHostToDevice);
     map_volume_allreduce(map, MAP_BOUNDARY, &nsolid);
     sf = 1.0*nsolid/(ntotal[X]*ntotal[Y]*ntotal[Z]);
     /* Should be good to 0.01 */
