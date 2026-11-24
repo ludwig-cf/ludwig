@@ -734,11 +734,11 @@ __host__ __device__ void grad_s7_boundary_coll(fe_lc_param_t * param,
  *****************************************************************************/
 
 __host__ __device__ void grad_s7_boundary_wall(fe_lc_param_t * param,
-					       const double qs[3][3],
-					       const int di[3],
-					       double c[3][3]) {
+                                               const double    qs[3][3],
+                                               const int       di[3],
+                                               double          c[3][3]) {
 
-  double nhat[3] = {1.0*di[X], 1.0*di[Y], 1.0*di[Z]};
+  double nhat[3] = {1.0 * di[X], 1.0 * di[Y], 1.0 * di[Z]};
   double amp     = 0.0;
   double kappa1  = param->kappa1;
   double q0      = param->q0;
@@ -747,7 +747,8 @@ __host__ __device__ void grad_s7_boundary_wall(fe_lc_param_t * param,
 
   /* Make sure we have a unit vector */
   {
-    double rd = 1.0/sqrt(nhat[X]*nhat[X] + nhat[Y]*nhat[Y] + nhat[Z]*nhat[Z]);
+    double rd =
+        1.0 / sqrt(nhat[X] * nhat[X] + nhat[Y] * nhat[Y] + nhat[Z] * nhat[Z]);
     nhat[X] *= rd;
     nhat[Y] *= rd;
     nhat[Z] *= rd;
@@ -758,9 +759,9 @@ __host__ __device__ void grad_s7_boundary_wall(fe_lc_param_t * param,
 
     if (anchor->type == LC_ANCHORING_NONE) {
       for (int ia = 0; ia < 3; ++ia) {
-	for (int ib = 0; ib < 3; ++ib) {
-	  c[ia][ib] = 0.0;
-	}
+        for (int ib = 0; ib < 3; ++ib) {
+          c[ia][ib] = 0.0;
+        }
       }
     }
 
