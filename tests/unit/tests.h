@@ -33,6 +33,7 @@ int test_bp_suite(void);
 int test_bond_fene_suite(void);
 int test_bonds_suite(void);
 int test_build_suite(void);
+int test_build_links_suite(void);
 int test_ch_suite(void);
 int test_colloid_array_util_suite(void);
 int test_colloid_options_suite(void);
